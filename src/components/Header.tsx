@@ -1,5 +1,6 @@
 import { Building2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Link } from "react-router-dom";
 
 const Header = () => {
   const scrollToSection = (id: string) => {
@@ -42,15 +43,19 @@ const Header = () => {
 
           {/* CTA Buttons */}
           <div className="flex items-center gap-3">
-            <Button variant="outline" size="sm" className="hidden sm:inline-flex">
-              Reset Password
-            </Button>
-            <Button 
-              size="sm"
-              className="bg-gradient-to-r from-primary to-accent text-white hover:opacity-90"
-            >
-              Start Free Trial
-            </Button>
+            <Link to="/auth/login">
+              <Button variant="outline" size="sm" className="hidden sm:inline-flex">
+                Sign In
+              </Button>
+            </Link>
+            <Link to="/auth/signup">
+              <Button 
+                size="sm"
+                className="bg-gradient-to-r from-primary to-accent text-white hover:opacity-90"
+              >
+                Start Free Trial
+              </Button>
+            </Link>
           </div>
         </div>
       </div>

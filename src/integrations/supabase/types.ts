@@ -14,16 +14,313 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      bookings: {
+        Row: {
+          check_in: string
+          check_out: string
+          created_at: string | null
+          guest_id: string
+          id: string
+          room_id: string
+          status: string | null
+          tenant_id: string
+          total_amount: number | null
+        }
+        Insert: {
+          check_in: string
+          check_out: string
+          created_at?: string | null
+          guest_id: string
+          id?: string
+          room_id: string
+          status?: string | null
+          tenant_id: string
+          total_amount?: number | null
+        }
+        Update: {
+          check_in?: string
+          check_out?: string
+          created_at?: string | null
+          guest_id?: string
+          id?: string
+          room_id?: string
+          status?: string | null
+          tenant_id?: string
+          total_amount?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bookings_guest_id_fkey"
+            columns: ["guest_id"]
+            isOneToOne: false
+            referencedRelation: "guests"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bookings_room_id_fkey"
+            columns: ["room_id"]
+            isOneToOne: false
+            referencedRelation: "rooms"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bookings_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      guests: {
+        Row: {
+          created_at: string | null
+          email: string | null
+          id: string
+          id_number: string | null
+          name: string
+          phone: string | null
+          tenant_id: string
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          email?: string | null
+          id?: string
+          id_number?: string | null
+          name: string
+          phone?: string | null
+          tenant_id: string
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          email?: string | null
+          id?: string
+          id_number?: string | null
+          name?: string
+          phone?: string | null
+          tenant_id?: string
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "guests_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      profiles: {
+        Row: {
+          avatar_url: string | null
+          created_at: string | null
+          email: string | null
+          full_name: string | null
+          id: string
+        }
+        Insert: {
+          avatar_url?: string | null
+          created_at?: string | null
+          email?: string | null
+          full_name?: string | null
+          id: string
+        }
+        Update: {
+          avatar_url?: string | null
+          created_at?: string | null
+          email?: string | null
+          full_name?: string | null
+          id?: string
+        }
+        Relationships: []
+      }
+      requests: {
+        Row: {
+          created_at: string | null
+          guest_id: string | null
+          id: string
+          note: string | null
+          room_id: string | null
+          status: string | null
+          tenant_id: string
+          type: string
+        }
+        Insert: {
+          created_at?: string | null
+          guest_id?: string | null
+          id?: string
+          note?: string | null
+          room_id?: string | null
+          status?: string | null
+          tenant_id: string
+          type: string
+        }
+        Update: {
+          created_at?: string | null
+          guest_id?: string | null
+          id?: string
+          note?: string | null
+          room_id?: string | null
+          status?: string | null
+          tenant_id?: string
+          type?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "requests_guest_id_fkey"
+            columns: ["guest_id"]
+            isOneToOne: false
+            referencedRelation: "guests"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "requests_room_id_fkey"
+            columns: ["room_id"]
+            isOneToOne: false
+            referencedRelation: "rooms"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "requests_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      rooms: {
+        Row: {
+          created_at: string | null
+          floor: number | null
+          id: string
+          notes: string | null
+          number: string
+          rate: number | null
+          status: string | null
+          tenant_id: string
+          type: string
+        }
+        Insert: {
+          created_at?: string | null
+          floor?: number | null
+          id?: string
+          notes?: string | null
+          number: string
+          rate?: number | null
+          status?: string | null
+          tenant_id: string
+          type: string
+        }
+        Update: {
+          created_at?: string | null
+          floor?: number | null
+          id?: string
+          notes?: string | null
+          number?: string
+          rate?: number | null
+          status?: string | null
+          tenant_id?: string
+          type?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "rooms_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      tenants: {
+        Row: {
+          brand_color: string | null
+          created_at: string | null
+          domain: string | null
+          id: string
+          logo_url: string | null
+          name: string
+          slug: string
+        }
+        Insert: {
+          brand_color?: string | null
+          created_at?: string | null
+          domain?: string | null
+          id?: string
+          logo_url?: string | null
+          name: string
+          slug: string
+        }
+        Update: {
+          brand_color?: string | null
+          created_at?: string | null
+          domain?: string | null
+          id?: string
+          logo_url?: string | null
+          name?: string
+          slug?: string
+        }
+        Relationships: []
+      }
+      user_roles: {
+        Row: {
+          created_at: string | null
+          id: string
+          role: Database["public"]["Enums"]["app_role"]
+          tenant_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          role: Database["public"]["Enums"]["app_role"]
+          tenant_id: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          tenant_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_roles_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      get_user_tenant: { Args: { _user_id: string }; Returns: string }
+      has_role: {
+        Args: {
+          _role: Database["public"]["Enums"]["app_role"]
+          _tenant_id: string
+          _user_id: string
+        }
+        Returns: boolean
+      }
     }
     Enums: {
-      [_ in never]: never
+      app_role:
+        | "owner"
+        | "manager"
+        | "frontdesk"
+        | "housekeeping"
+        | "maintenance"
+        | "guest"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -150,6 +447,15 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      app_role: [
+        "owner",
+        "manager",
+        "frontdesk",
+        "housekeeping",
+        "maintenance",
+        "guest",
+      ],
+    },
   },
 } as const
