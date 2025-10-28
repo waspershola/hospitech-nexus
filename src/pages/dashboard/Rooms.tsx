@@ -12,30 +12,38 @@ import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
 import { Plus, Edit, Trash2, Bed } from 'lucide-react';
+import { useRoomCategories } from '@/hooks/useRoomCategories';
 
 type Room = {
   id: string;
   number: string;
   type: string;
+  category_id: string | null;
   floor: number | null;
   status: string;
   rate: number | null;
   notes: string | null;
+  room_categories?: {
+    name: string;
+    short_code: string;
+  };
 };
 
 export default function Rooms() {
   const { tenantId } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const { categories } = useRoomCategories();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingRoom, setEditingRoom] = useState<Room | null>(null);
   const [formData, setFormData] = useState({
     number: '',
-    type: 'single',
+    category_id: '',
     floor: '',
     status: 'available',
     rate: '',
-    notes: ''
+    notes: '',
+    quantity: '1'
   });
 
   const { data: rooms, isLoading } = useQuery({
@@ -43,7 +51,7 @@ export default function Rooms() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('rooms')
-        .select('*')
+        .select('*, room_categories(name, short_code)')
         .eq('tenant_id', tenantId)
         .order('number');
       
@@ -55,20 +63,31 @@ export default function Rooms() {
 
   const createMutation = useMutation({
     mutationFn: async (newRoom: typeof formData) => {
+      const quantity = parseInt(newRoom.quantity) || 1;
+      const baseNumber = newRoom.number;
+      const category = categories.find(c => c.id === newRoom.category_id);
+      
+      const roomsToCreate = Array.from({ length: quantity }, (_, i) => ({
+        number: quantity > 1 ? `${baseNumber}-${i + 1}` : baseNumber,
+        type: category?.short_code || 'standard',
+        category_id: newRoom.category_id || null,
+        floor: newRoom.floor ? parseInt(newRoom.floor) : null,
+        rate: newRoom.rate ? parseFloat(newRoom.rate) : category?.base_rate || null,
+        status: newRoom.status,
+        notes: newRoom.notes || null,
+        tenant_id: tenantId
+      }));
+
       const { error } = await supabase
         .from('rooms')
-        .insert({
-          ...newRoom,
-          floor: newRoom.floor ? parseInt(newRoom.floor) : null,
-          rate: newRoom.rate ? parseFloat(newRoom.rate) : null,
-          tenant_id: tenantId
-        });
+        .insert(roomsToCreate);
       
       if (error) throw error;
     },
-    onSuccess: () => {
+    onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ['rooms'] });
-      toast({ title: 'Room created successfully' });
+      const quantity = parseInt(variables.quantity) || 1;
+      toast({ title: `${quantity} room${quantity > 1 ? 's' : ''} created successfully` });
       resetForm();
     },
     onError: (error: any) => {
@@ -78,12 +97,17 @@ export default function Rooms() {
 
   const updateMutation = useMutation({
     mutationFn: async ({ id, updates }: { id: string; updates: typeof formData }) => {
+      const category = categories.find(c => c.id === updates.category_id);
       const { error } = await supabase
         .from('rooms')
         .update({
-          ...updates,
+          number: updates.number,
+          type: category?.short_code || 'standard',
+          category_id: updates.category_id || null,
           floor: updates.floor ? parseInt(updates.floor) : null,
-          rate: updates.rate ? parseFloat(updates.rate) : null
+          rate: updates.rate ? parseFloat(updates.rate) : null,
+          status: updates.status,
+          notes: updates.notes || null
         })
         .eq('id', id);
       
@@ -120,11 +144,12 @@ export default function Rooms() {
   const resetForm = () => {
     setFormData({
       number: '',
-      type: 'single',
+      category_id: '',
       floor: '',
       status: 'available',
       rate: '',
-      notes: ''
+      notes: '',
+      quantity: '1'
     });
     setEditingRoom(null);
     setIsDialogOpen(false);
@@ -143,11 +168,12 @@ export default function Rooms() {
     setEditingRoom(room);
     setFormData({
       number: room.number,
-      type: room.type,
+      category_id: room.category_id || '',
       floor: room.floor?.toString() || '',
       status: room.status,
       rate: room.rate?.toString() || '',
-      notes: room.notes || ''
+      notes: room.notes || '',
+      quantity: '1'
     });
     setIsDialogOpen(true);
   };
@@ -192,19 +218,47 @@ export default function Rooms() {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="type">Room Type *</Label>
-                <Select value={formData.type} onValueChange={(value) => setFormData({ ...formData, type: value })}>
+                <Label htmlFor="category">Category *</Label>
+                <Select 
+                  value={formData.category_id} 
+                  onValueChange={(value) => {
+                    const category = categories.find(c => c.id === value);
+                    setFormData({ 
+                      ...formData, 
+                      category_id: value,
+                      rate: category?.base_rate?.toString() || formData.rate
+                    });
+                  }}
+                >
                   <SelectTrigger>
-                    <SelectValue />
+                    <SelectValue placeholder="Select category" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="single">Single</SelectItem>
-                    <SelectItem value="double">Double</SelectItem>
-                    <SelectItem value="suite">Suite</SelectItem>
-                    <SelectItem value="deluxe">Deluxe</SelectItem>
+                    {categories.map((cat) => (
+                      <SelectItem key={cat.id} value={cat.id}>
+                        {cat.name} ({cat.short_code})
+                      </SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
               </div>
+
+              {!editingRoom && (
+                <div className="space-y-2">
+                  <Label htmlFor="quantity">Quantity</Label>
+                  <Input
+                    id="quantity"
+                    type="number"
+                    min="1"
+                    max="50"
+                    value={formData.quantity}
+                    onChange={(e) => setFormData({ ...formData, quantity: e.target.value })}
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    Create multiple rooms at once (e.g., 101-1, 101-2, etc.)
+                  </p>
+                </div>
+              )}
 
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
@@ -278,7 +332,9 @@ export default function Rooms() {
                   </div>
                   <div>
                     <h3 className="font-display text-lg text-charcoal">Room {room.number}</h3>
-                    <p className="text-sm text-muted-foreground capitalize">{room.type}</p>
+                    <p className="text-sm text-muted-foreground">
+                      {room.room_categories?.name || room.type}
+                    </p>
                   </div>
                 </div>
                 <Badge className={getStatusColor(room.status)}>{room.status}</Badge>
