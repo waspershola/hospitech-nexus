@@ -1,49 +1,89 @@
+import { Hotel, Home, Bed, Calendar, Users, FileBarChart, Settings } from 'lucide-react';
 import { NavLink } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
-import { Home, Bed, Calendar, Users, FileBarChart, Settings, Hotel } from 'lucide-react';
+import {
+  Sidebar,
+  SidebarContent,
+  SidebarGroup,
+  SidebarGroupContent,
+  SidebarGroupLabel,
+  SidebarMenu,
+  SidebarMenuButton,
+  SidebarMenuItem,
+  SidebarHeader,
+  useSidebar,
+} from '@/components/ui/sidebar';
 
 const NAV_ITEMS = [
-  { name: 'Dashboard', icon: Home, path: '/dashboard', roles: ['owner', 'manager', 'frontdesk', 'housekeeping'] },
-  { name: 'Rooms', icon: Bed, path: '/dashboard/rooms', roles: ['owner', 'manager', 'frontdesk', 'housekeeping'] },
-  { name: 'Bookings', icon: Calendar, path: '/dashboard/bookings', roles: ['owner', 'manager', 'frontdesk'] },
-  { name: 'Guests', icon: Users, path: '/dashboard/guests', roles: ['owner', 'manager', 'frontdesk'] },
-  { name: 'Reports', icon: FileBarChart, path: '/dashboard/reports', roles: ['owner', 'manager'] },
-  { name: 'Settings', icon: Settings, path: '/dashboard/settings', roles: ['owner', 'manager'] },
+  { name: 'Overview', icon: Home, path: '/dashboard', roles: ['frontdesk', 'manager', 'owner'] },
+  { name: 'Rooms', icon: Bed, path: '/dashboard/rooms', roles: ['frontdesk', 'manager', 'owner'] },
+  { name: 'Bookings', icon: Calendar, path: '/dashboard/bookings', roles: ['frontdesk', 'manager', 'owner'] },
+  { name: 'Guests', icon: Users, path: '/dashboard/guests', roles: ['frontdesk', 'manager', 'owner'] },
+  { name: 'Reports', icon: FileBarChart, path: '/dashboard/reports', roles: ['manager', 'owner'] },
+  { name: 'Settings', icon: Settings, path: '/dashboard/settings', roles: ['manager', 'owner'] },
 ];
 
-export default function Sidebar() {
-  const { role } = useAuth();
-
-  const filteredNav = NAV_ITEMS.filter(item => 
+export function AppSidebar() {
+  const { role, tenantName } = useAuth();
+  const { open } = useSidebar();
+  
+  const filteredNav = NAV_ITEMS.filter((item) => 
     role && item.roles.includes(role)
   );
 
   return (
-    <aside className="hidden md:flex w-64 bg-offWhite border-r border-border shadow-md flex-col">
-      <div className="h-20 flex items-center justify-center gap-2 border-b border-border">
-        <Hotel className="w-8 h-8 text-accent" />
-        <span className="text-xl font-display text-accent">LuxuryHotelPro</span>
-      </div>
-      
-      <nav className="flex-1 p-4 space-y-2">
-        {filteredNav.map((item) => (
-          <NavLink
-            key={item.name}
-            to={item.path}
-            end={item.path === '/dashboard'}
-            className={({ isActive }) =>
-              `flex items-center gap-3 px-4 py-3 rounded-xl transition-all ${
-                isActive
-                  ? 'bg-accent text-white shadow-accent'
-                  : 'text-charcoal hover:bg-accent/10 hover:text-accent'
-              }`
-            }
-          >
-            <item.icon size={20} />
-            <span className="font-medium">{item.name}</span>
-          </NavLink>
-        ))}
-      </nav>
-    </aside>
+    <Sidebar collapsible="icon" className="border-r border-sidebar-border">
+      <SidebarHeader className="border-b border-sidebar-border">
+        <div className="flex items-center gap-2 px-2 py-4">
+          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-sidebar-primary">
+            <Hotel className="h-6 w-6 text-sidebar-primary-foreground" />
+          </div>
+          {open && (
+            <div className="flex flex-col">
+              <span className="text-sm font-display font-semibold text-sidebar-foreground">
+                LuxuryHotelPro
+              </span>
+              {tenantName && (
+                <span className="text-xs text-sidebar-foreground/70">
+                  {tenantName}
+                </span>
+              )}
+            </div>
+          )}
+        </div>
+      </SidebarHeader>
+
+      <SidebarContent>
+        <SidebarGroup>
+          <SidebarGroupLabel className="text-sidebar-foreground/70">
+            {open ? 'Main Menu' : ''}
+          </SidebarGroupLabel>
+          <SidebarGroupContent>
+            <SidebarMenu>
+              {filteredNav.map((item) => (
+                <SidebarMenuItem key={item.name}>
+                  <SidebarMenuButton asChild tooltip={item.name}>
+                    <NavLink
+                      to={item.path}
+                      end={item.path === '/dashboard'}
+                      className={({ isActive }) =>
+                        `flex items-center gap-3 px-3 py-2 rounded-xl transition-all ${
+                          isActive
+                            ? 'bg-sidebar-primary text-sidebar-primary-foreground font-semibold shadow-accent'
+                            : 'text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground'
+                        }`
+                      }
+                    >
+                      <item.icon className="h-5 w-5 shrink-0" />
+                      {open && <span>{item.name}</span>}
+                    </NavLink>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              ))}
+            </SidebarMenu>
+          </SidebarGroupContent>
+        </SidebarGroup>
+      </SidebarContent>
+    </Sidebar>
   );
 }

@@ -1,10 +1,19 @@
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
-import { Bell, LogOut } from 'lucide-react';
+import { Bell, LogOut, User } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 
 export default function Topbar() {
-  const { user, tenantName, signOut } = useAuth();
+  const { user, role, signOut } = useAuth();
   const navigate = useNavigate();
 
   const handleSignOut = async () => {
@@ -12,27 +21,47 @@ export default function Topbar() {
     navigate('/auth/login');
   };
 
+  const getInitials = (email: string) => {
+    return email.substring(0, 2).toUpperCase();
+  };
+
   return (
-    <header className="h-16 px-4 md:px-6 flex items-center justify-between bg-background/80 backdrop-blur-md border-b border-border">
-      <div>
-        <div className="font-display text-xl text-primary">Dashboard</div>
-        {tenantName && <p className="text-xs text-muted-foreground">{tenantName}</p>}
-      </div>
-      
-      <div className="flex items-center gap-4">
-        <Button variant="ghost" size="icon">
-          <Bell className="w-5 h-5 text-accent" />
-        </Button>
-        
-        <div className="hidden sm:flex items-center gap-3">
-          <div className="text-right">
-            <p className="text-sm font-medium text-charcoal">{user?.email}</p>
-          </div>
-          <Button variant="ghost" size="icon" onClick={handleSignOut}>
-            <LogOut className="w-5 h-5" />
+    <div className="flex-1 flex items-center justify-end gap-4">
+      <Button variant="ghost" size="icon" className="relative">
+        <Bell className="w-5 h-5" />
+        <span className="absolute top-1 right-1 h-2 w-2 rounded-full bg-primary"></span>
+      </Button>
+
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button variant="ghost" className="flex items-center gap-2">
+            <Avatar className="h-8 w-8">
+              <AvatarFallback className="bg-primary text-primary-foreground text-xs font-semibold">
+                {user?.email ? getInitials(user.email) : 'U'}
+              </AvatarFallback>
+            </Avatar>
+            <div className="hidden md:flex flex-col items-start">
+              <span className="text-sm font-medium">{user?.email}</span>
+              {role && (
+                <span className="text-xs text-muted-foreground capitalize">{role}</span>
+              )}
+            </div>
           </Button>
-        </div>
-      </div>
-    </header>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end" className="w-56">
+          <DropdownMenuLabel>My Account</DropdownMenuLabel>
+          <DropdownMenuSeparator />
+          <DropdownMenuItem onClick={() => navigate('/dashboard/settings')}>
+            <User className="mr-2 h-4 w-4" />
+            Profile Settings
+          </DropdownMenuItem>
+          <DropdownMenuSeparator />
+          <DropdownMenuItem onClick={handleSignOut} className="text-destructive">
+            <LogOut className="mr-2 h-4 w-4" />
+            Sign Out
+          </DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
+    </div>
   );
 }
