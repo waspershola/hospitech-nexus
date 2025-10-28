@@ -23,13 +23,14 @@ export default function Signup() {
     try {
       const redirectUrl = `${window.location.origin}/dashboard`;
 
-      // Sign up user
-      const { data: authData, error: authError } = await supabase.auth.signUp({
+      // Sign up user - the database trigger will automatically create tenant and role
+      const { error: authError } = await supabase.auth.signUp({
         email,
         password,
         options: {
           data: {
             full_name: fullName,
+            hotel_name: hotelName, // Passed to trigger function
           },
           emailRedirectTo: redirectUrl,
         },
@@ -37,37 +38,12 @@ export default function Signup() {
 
       if (authError) throw authError;
 
-      if (authData.user) {
-        // Create tenant
-        const { data: tenantData, error: tenantError } = await supabase
-          .from('tenants')
-          .insert({
-            name: hotelName,
-            slug: hotelName.toLowerCase().replace(/\s+/g, '-'),
-          })
-          .select()
-          .single();
+      toast({
+        title: 'Account created!',
+        description: 'Welcome to LuxuryHotelPro. Please check your email to confirm your account.',
+      });
 
-        if (tenantError) throw tenantError;
-
-        // Assign owner role
-        const { error: roleError } = await supabase
-          .from('user_roles')
-          .insert({
-            user_id: authData.user.id,
-            tenant_id: tenantData.id,
-            role: 'owner',
-          });
-
-        if (roleError) throw roleError;
-
-        toast({
-          title: 'Account created!',
-          description: 'Welcome to LuxuryHotelPro.',
-        });
-
-        navigate('/dashboard');
-      }
+      navigate('/dashboard');
     } catch (error: any) {
       toast({
         title: 'Error',
