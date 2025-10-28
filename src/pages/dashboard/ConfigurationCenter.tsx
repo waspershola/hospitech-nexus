@@ -4,12 +4,13 @@ import { useConfigStore } from '@/stores/configStore';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card } from '@/components/ui/card';
-import { Save, RotateCcw, Settings, DollarSign, Percent, Palette, FileText, Users, Lock, Clock, Mail, Database, Globe } from 'lucide-react';
+import { Save, RotateCcw, Settings, DollarSign, Percent, Palette, FileText, Users, Lock, Clock, Mail, Database, Globe, Building2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { GeneralTab } from '@/components/configuration/tabs/GeneralTab';
 import { FinancialsTab } from '@/components/configuration/tabs/FinancialsTab';
 import { TaxServiceTab } from '@/components/configuration/tabs/TaxServiceTab';
 import { BrandingTab } from '@/components/configuration/tabs/BrandingTab';
+import { MetaTab } from '@/components/configuration/tabs/MetaTab';
 import { DocumentsTab } from '@/components/configuration/tabs/DocumentsTab';
 import { GuestExperienceTab } from '@/components/configuration/tabs/GuestExperienceTab';
 import { PermissionsTab } from '@/components/configuration/tabs/PermissionsTab';
@@ -20,12 +21,13 @@ import { DomainsTab } from '@/components/configuration/tabs/DomainsTab';
 
 const tabs = [
   { id: 'general', label: 'General', icon: Settings },
+  { id: 'branding', label: 'Branding & Theme', icon: Palette },
+  { id: 'meta', label: 'Hotel Profile', icon: Building2 },
+  { id: 'domains', label: 'Domains', icon: Globe },
   { id: 'financials', label: 'Financials', icon: DollarSign },
   { id: 'tax', label: 'Tax & Service', icon: Percent },
-  { id: 'branding', label: 'Branding', icon: Palette },
   { id: 'documents', label: 'Documents', icon: FileText },
   { id: 'guest', label: 'Guest Experience', icon: Users },
-  { id: 'domains', label: 'Domains', icon: Globe },
   { id: 'permissions', label: 'Permissions', icon: Lock },
   { id: 'audit', label: 'Audit Logs', icon: Clock },
   { id: 'email', label: 'Email Settings', icon: Mail },
@@ -161,6 +163,10 @@ export default function ConfigurationCenter() {
 
           <TabsContent value="branding" className="space-y-6 animate-fade-in">
             <BrandingTab />
+          </TabsContent>
+
+          <TabsContent value="meta" className="space-y-6 animate-fade-in">
+            <MetaTab />
           </TabsContent>
 
           <TabsContent value="documents" className="space-y-6 animate-fade-in">

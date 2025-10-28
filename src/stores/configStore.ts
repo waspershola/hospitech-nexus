@@ -7,6 +7,7 @@ interface ConfigStore {
   branding: any;
   financials: any;
   emailSettings: any;
+  hotelMeta: any;
   unsavedChanges: Set<string>;
   lastSyncTime: Date | null;
   isLoading: boolean;
@@ -14,14 +15,17 @@ interface ConfigStore {
   // Actions
   setTenantId: (tenantId: string) => void;
   loadAllConfig: (tenantId: string) => Promise<void>;
+  loadHotelMeta: () => Promise<void>;
   updateConfig: (key: string, value: any) => void;
   updateBranding: (data: any) => void;
   updateFinancials: (data: any) => void;
   updateEmailSettings: (data: any) => void;
+  updateHotelMeta: (data: any) => void;
   saveConfig: (key: string) => Promise<void>;
   saveBranding: () => Promise<void>;
   saveFinancials: () => Promise<void>;
   saveEmailSettings: () => Promise<void>;
+  saveHotelMeta: () => Promise<void>;
   saveAllChanges: () => Promise<void>;
   resetChanges: () => void;
   markSaved: (key: string) => void;
@@ -33,6 +37,7 @@ export const useConfigStore = create<ConfigStore>((set, get) => ({
   branding: {},
   financials: {},
   emailSettings: {},
+  hotelMeta: {},
   unsavedChanges: new Set(),
   lastSyncTime: null,
   isLoading: false,
@@ -74,11 +79,19 @@ export const useConfigStore = create<ConfigStore>((set, get) => ({
         .eq('tenant_id', tenantId)
         .maybeSingle();
 
+      // Load hotel meta
+      const { data: hotelMeta } = await supabase
+        .from('hotel_meta')
+        .select('*')
+        .eq('tenant_id', tenantId)
+        .maybeSingle();
+
       set({
         configurations: configurationsMap,
         branding: branding || {},
         financials: financials || {},
         emailSettings: emailSettings || {},
+        hotelMeta: hotelMeta || {},
         lastSyncTime: new Date(),
         isLoading: false,
       });
@@ -114,6 +127,26 @@ export const useConfigStore = create<ConfigStore>((set, get) => ({
       emailSettings: { ...state.emailSettings, ...data },
       unsavedChanges: new Set(state.unsavedChanges).add('emailSettings'),
     }));
+  },
+
+  updateHotelMeta: (data) => {
+    set(state => ({
+      hotelMeta: { ...state.hotelMeta, ...data },
+      unsavedChanges: new Set(state.unsavedChanges).add('hotelMeta'),
+    }));
+  },
+
+  loadHotelMeta: async () => {
+    const { tenantId } = get();
+    if (!tenantId) return;
+
+    const { data: hotelMeta } = await supabase
+      .from('hotel_meta')
+      .select('*')
+      .eq('tenant_id', tenantId)
+      .maybeSingle();
+
+    set({ hotelMeta: hotelMeta || {} });
   },
 
   saveConfig: async (key: string) => {
@@ -168,6 +201,18 @@ export const useConfigStore = create<ConfigStore>((set, get) => ({
     get().markSaved('emailSettings');
   },
 
+  saveHotelMeta: async () => {
+    const { tenantId, hotelMeta } = get();
+    if (!tenantId) return;
+
+    await supabase.from('hotel_meta').upsert({
+      tenant_id: tenantId,
+      ...hotelMeta,
+    });
+
+    get().markSaved('hotelMeta');
+  },
+
   saveAllChanges: async () => {
     const { unsavedChanges } = get();
     const savePromises: Promise<void>[] = [];
@@ -175,10 +220,11 @@ export const useConfigStore = create<ConfigStore>((set, get) => ({
     if (unsavedChanges.has('branding')) savePromises.push(get().saveBranding());
     if (unsavedChanges.has('financials')) savePromises.push(get().saveFinancials());
     if (unsavedChanges.has('emailSettings')) savePromises.push(get().saveEmailSettings());
+    if (unsavedChanges.has('hotelMeta')) savePromises.push(get().saveHotelMeta());
 
     // Save all other config keys
     unsavedChanges.forEach(key => {
-      if (!['branding', 'financials', 'emailSettings'].includes(key)) {
+      if (!['branding', 'financials', 'emailSettings', 'hotelMeta'].includes(key)) {
         savePromises.push(get().saveConfig(key));
       }
     });

@@ -276,8 +276,11 @@ export type Database = {
         Row: {
           accent_color: string | null
           created_at: string
+          favicon_url: string | null
           font_body: string | null
           font_heading: string | null
+          headline: string | null
+          hero_image: string | null
           id: string
           logo_url: string | null
           primary_color: string | null
@@ -290,8 +293,11 @@ export type Database = {
         Insert: {
           accent_color?: string | null
           created_at?: string
+          favicon_url?: string | null
           font_body?: string | null
           font_heading?: string | null
+          headline?: string | null
+          hero_image?: string | null
           id?: string
           logo_url?: string | null
           primary_color?: string | null
@@ -304,8 +310,11 @@ export type Database = {
         Update: {
           accent_color?: string | null
           created_at?: string
+          favicon_url?: string | null
           font_body?: string | null
           font_heading?: string | null
+          headline?: string | null
+          hero_image?: string | null
           id?: string
           logo_url?: string | null
           primary_color?: string | null
@@ -471,6 +480,53 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "hotel_financials_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: true
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      hotel_meta: {
+        Row: {
+          contact_email: string | null
+          contact_phone: string | null
+          created_at: string | null
+          description: string | null
+          hotel_name: string | null
+          id: string
+          social_links: Json | null
+          tagline: string | null
+          tenant_id: string
+          updated_at: string | null
+        }
+        Insert: {
+          contact_email?: string | null
+          contact_phone?: string | null
+          created_at?: string | null
+          description?: string | null
+          hotel_name?: string | null
+          id?: string
+          social_links?: Json | null
+          tagline?: string | null
+          tenant_id: string
+          updated_at?: string | null
+        }
+        Update: {
+          contact_email?: string | null
+          contact_phone?: string | null
+          created_at?: string | null
+          description?: string | null
+          hotel_name?: string | null
+          id?: string
+          social_links?: Json | null
+          tagline?: string | null
+          tenant_id?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "hotel_meta_tenant_id_fkey"
             columns: ["tenant_id"]
             isOneToOne: true
             referencedRelation: "tenants"
