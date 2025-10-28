@@ -72,6 +72,115 @@ export type Database = {
           },
         ]
       }
+      document_templates: {
+        Row: {
+          created_at: string
+          format: string
+          id: string
+          include_qr: boolean
+          include_signature: boolean
+          next_number: number
+          number_length: number
+          prefix: string
+          template_data: Json
+          template_type: string
+          tenant_id: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          format?: string
+          id?: string
+          include_qr?: boolean
+          include_signature?: boolean
+          next_number?: number
+          number_length?: number
+          prefix?: string
+          template_data?: Json
+          template_type: string
+          tenant_id: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          format?: string
+          id?: string
+          include_qr?: boolean
+          include_signature?: boolean
+          next_number?: number
+          number_length?: number
+          prefix?: string
+          template_data?: Json
+          template_type?: string
+          tenant_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "document_templates_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      email_settings: {
+        Row: {
+          created_at: string
+          email_branding_enabled: boolean
+          from_email: string
+          from_name: string
+          id: string
+          reply_to: string | null
+          smtp_enabled: boolean
+          smtp_host: string | null
+          smtp_password: string | null
+          smtp_port: number | null
+          smtp_user: string | null
+          tenant_id: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          email_branding_enabled?: boolean
+          from_email?: string
+          from_name?: string
+          id?: string
+          reply_to?: string | null
+          smtp_enabled?: boolean
+          smtp_host?: string | null
+          smtp_password?: string | null
+          smtp_port?: number | null
+          smtp_user?: string | null
+          tenant_id: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          email_branding_enabled?: boolean
+          from_email?: string
+          from_name?: string
+          id?: string
+          reply_to?: string | null
+          smtp_enabled?: boolean
+          smtp_host?: string | null
+          smtp_password?: string | null
+          smtp_port?: number | null
+          smtp_user?: string | null
+          tenant_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "email_settings_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: true
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       guests: {
         Row: {
           created_at: string | null
@@ -108,6 +217,206 @@ export type Database = {
             foreignKeyName: "guests_tenant_id_fkey"
             columns: ["tenant_id"]
             isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      hotel_audit_logs: {
+        Row: {
+          action: string
+          after_data: Json | null
+          before_data: Json | null
+          created_at: string
+          id: string
+          ip_address: string | null
+          record_id: string | null
+          table_name: string
+          tenant_id: string
+          user_agent: string | null
+          user_id: string | null
+        }
+        Insert: {
+          action: string
+          after_data?: Json | null
+          before_data?: Json | null
+          created_at?: string
+          id?: string
+          ip_address?: string | null
+          record_id?: string | null
+          table_name: string
+          tenant_id: string
+          user_agent?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          action?: string
+          after_data?: Json | null
+          before_data?: Json | null
+          created_at?: string
+          id?: string
+          ip_address?: string | null
+          record_id?: string | null
+          table_name?: string
+          tenant_id?: string
+          user_agent?: string | null
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "hotel_audit_logs_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      hotel_branding: {
+        Row: {
+          accent_color: string | null
+          created_at: string
+          font_body: string | null
+          font_heading: string | null
+          id: string
+          logo_url: string | null
+          primary_color: string | null
+          receipt_footer: string | null
+          receipt_header: string | null
+          secondary_color: string | null
+          tenant_id: string
+          updated_at: string
+        }
+        Insert: {
+          accent_color?: string | null
+          created_at?: string
+          font_body?: string | null
+          font_heading?: string | null
+          id?: string
+          logo_url?: string | null
+          primary_color?: string | null
+          receipt_footer?: string | null
+          receipt_header?: string | null
+          secondary_color?: string | null
+          tenant_id: string
+          updated_at?: string
+        }
+        Update: {
+          accent_color?: string | null
+          created_at?: string
+          font_body?: string | null
+          font_heading?: string | null
+          id?: string
+          logo_url?: string | null
+          primary_color?: string | null
+          receipt_footer?: string | null
+          receipt_header?: string | null
+          secondary_color?: string | null
+          tenant_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "hotel_branding_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: true
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      hotel_configurations: {
+        Row: {
+          created_at: string
+          id: string
+          key: string
+          tenant_id: string
+          updated_at: string
+          updated_by: string | null
+          value: Json
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          key: string
+          tenant_id: string
+          updated_at?: string
+          updated_by?: string | null
+          value?: Json
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          key?: string
+          tenant_id?: string
+          updated_at?: string
+          updated_by?: string | null
+          value?: Json
+        }
+        Relationships: [
+          {
+            foreignKeyName: "hotel_configurations_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      hotel_financials: {
+        Row: {
+          created_at: string
+          currency: string
+          currency_symbol: string
+          decimal_places: number
+          decimal_separator: string
+          id: string
+          service_charge: number
+          service_charge_inclusive: boolean
+          symbol_position: string
+          tenant_id: string
+          thousand_separator: string
+          updated_at: string
+          vat_inclusive: boolean
+          vat_rate: number
+        }
+        Insert: {
+          created_at?: string
+          currency?: string
+          currency_symbol?: string
+          decimal_places?: number
+          decimal_separator?: string
+          id?: string
+          service_charge?: number
+          service_charge_inclusive?: boolean
+          symbol_position?: string
+          tenant_id: string
+          thousand_separator?: string
+          updated_at?: string
+          vat_inclusive?: boolean
+          vat_rate?: number
+        }
+        Update: {
+          created_at?: string
+          currency?: string
+          currency_symbol?: string
+          decimal_places?: number
+          decimal_separator?: string
+          id?: string
+          service_charge?: number
+          service_charge_inclusive?: boolean
+          symbol_position?: string
+          tenant_id?: string
+          thousand_separator?: string
+          updated_at?: string
+          vat_inclusive?: boolean
+          vat_rate?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "hotel_financials_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: true
             referencedRelation: "tenants"
             referencedColumns: ["id"]
           },
