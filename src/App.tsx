@@ -12,13 +12,15 @@ import ProtectedRoute from "./components/ProtectedRoute";
 import RoleGuard from "./components/RoleGuard";
 import DashboardShell from "./components/layout/DashboardShell";
 import GuestPortalShell from "./components/layout/GuestPortalShell";
-import Overview from "./pages/dashboard/Overview";
-import Rooms from "./pages/dashboard/Rooms";
-import Bookings from "./pages/dashboard/Bookings";
-import Guests from "./pages/dashboard/Guests";
-import Reports from "./pages/dashboard/Reports";
-import Settings from "./pages/dashboard/Settings";
-import ConfigurationCenter from "./pages/dashboard/ConfigurationCenter";
+import Overview from './pages/dashboard/Overview';
+import FrontDesk from './pages/dashboard/FrontDesk';
+import Rooms from './pages/dashboard/Rooms';
+import RoomCategories from './pages/dashboard/RoomCategories';
+import Bookings from './pages/dashboard/Bookings';
+import Guests from './pages/dashboard/Guests';
+import Reports from './pages/dashboard/Reports';
+import Settings from './pages/dashboard/Settings';
+import ConfigurationCenter from './pages/dashboard/ConfigurationCenter';
 import PortalHome from "./pages/portal/Home";
 import PortalRequests from "./pages/portal/Requests";
 import PortalPayments from "./pages/portal/Payments";
@@ -39,7 +41,9 @@ const App = () => (
             
             <Route path="/dashboard" element={<ProtectedRoute><DashboardShell /></ProtectedRoute>}>
               <Route index element={<Overview />} />
+              <Route path="front-desk" element={<FrontDesk />} />
               <Route path="rooms" element={<Rooms />} />
+              <Route path="categories" element={<RoleGuard allowedRoles={['owner', 'manager']}><RoomCategories /></RoleGuard>} />
               <Route path="bookings" element={<Bookings />} />
               <Route path="guests" element={<Guests />} />
               <Route path="reports" element={<RoleGuard allowedRoles={['owner', 'manager']}><Reports /></RoleGuard>} />

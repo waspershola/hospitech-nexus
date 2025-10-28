@@ -46,7 +46,14 @@ export function CategoryForm({ open, category, onClose }: CategoryFormProps) {
   });
 
   const onSubmit = (data: CategoryFormData) => {
-    const formData = { ...data, amenities: [] };
+    const formData: Omit<any, 'id' | 'tenant_id' | 'created_at' | 'updated_at'> = {
+      name: data.name,
+      short_code: data.short_code,
+      description: data.description || null,
+      base_rate: data.base_rate,
+      max_occupancy: data.max_occupancy,
+      amenities: [],
+    };
     if (category) {
       updateCategory({ id: category.id, ...formData });
     } else {
