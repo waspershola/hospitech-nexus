@@ -1,0 +1,91 @@
+import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { supabase } from '@/integrations/supabase/client';
+import { toast } from 'sonner';
+import { useAuditLog } from '@/hooks/useAuditLog';
+
+export function useRoomActions() {
+  const queryClient = useQueryClient();
+  const { logAction } = useAuditLog();
+
+  const updateRoomStatus = async (roomId: string, status: string, reason?: string) => {
+    const { data: oldRoom } = await supabase
+      .from('rooms')
+      .select('*')
+      .eq('id', roomId)
+      .single();
+
+    const { data, error } = await supabase
+      .from('rooms')
+      .update({ status })
+      .eq('id', roomId)
+      .select()
+      .single();
+
+    if (error) throw error;
+
+    logAction({
+      action: 'UPDATE',
+      table_name: 'rooms',
+      record_id: roomId,
+      before_data: oldRoom,
+      after_data: data,
+    });
+
+    return data;
+  };
+
+  const checkInMutation = useMutation({
+    mutationFn: (roomId: string) => updateRoomStatus(roomId, 'occupied', 'Guest checked in'),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['rooms-grid'] });
+      queryClient.invalidateQueries({ queryKey: ['frontdesk-kpis'] });
+      toast.success('Guest checked in successfully');
+    },
+    onError: (error: Error) => {
+      toast.error(`Check-in failed: ${error.message}`);
+    },
+  });
+
+  const checkOutMutation = useMutation({
+    mutationFn: (roomId: string) => updateRoomStatus(roomId, 'cleaning', 'Guest checked out'),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['rooms-grid'] });
+      queryClient.invalidateQueries({ queryKey: ['frontdesk-kpis'] });
+      toast.success('Guest checked out successfully');
+    },
+    onError: (error: Error) => {
+      toast.error(`Check-out failed: ${error.message}`);
+    },
+  });
+
+  const markCleanMutation = useMutation({
+    mutationFn: (roomId: string) => updateRoomStatus(roomId, 'available', 'Room cleaned'),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['rooms-grid'] });
+      queryClient.invalidateQueries({ queryKey: ['frontdesk-kpis'] });
+      toast.success('Room marked as clean');
+    },
+    onError: (error: Error) => {
+      toast.error(`Failed to update room: ${error.message}`);
+    },
+  });
+
+  const markMaintenanceMutation = useMutation({
+    mutationFn: (roomId: string) => updateRoomStatus(roomId, 'maintenance', 'Marked out of service'),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['rooms-grid'] });
+      queryClient.invalidateQueries({ queryKey: ['frontdesk-kpis'] });
+      toast.success('Room marked for maintenance');
+    },
+    onError: (error: Error) => {
+      toast.error(`Failed to update room: ${error.message}`);
+    },
+  });
+
+  return {
+    checkIn: checkInMutation.mutate,
+    checkOut: checkOutMutation.mutate,
+    markClean: markCleanMutation.mutate,
+    markMaintenance: markMaintenanceMutation.mutate,
+  };
+}

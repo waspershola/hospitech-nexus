@@ -1,0 +1,93 @@
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/contexts/AuthContext';
+import { toast } from 'sonner';
+
+export interface Payment {
+  id: string;
+  tenant_id: string;
+  booking_id: string | null;
+  amount: number;
+  currency: string;
+  method: string | null;
+  provider_reference: string | null;
+  status: 'pending' | 'paid' | 'failed' | 'refunded';
+  metadata: Record<string, any>;
+  created_at: string;
+}
+
+export function usePayments(bookingId?: string) {
+  const { tenantId } = useAuth();
+  const queryClient = useQueryClient();
+
+  const query = useQuery({
+    queryKey: ['payments', tenantId, bookingId],
+    queryFn: async () => {
+      if (!tenantId) return [];
+      let query = supabase
+        .from('payments')
+        .select('*')
+        .eq('tenant_id', tenantId)
+        .order('created_at', { ascending: false });
+      
+      if (bookingId) {
+        query = query.eq('booking_id', bookingId);
+      }
+      
+      const { data, error } = await query;
+      if (error) throw error;
+      return data as Payment[];
+    },
+    enabled: !!tenantId,
+  });
+
+  const createMutation = useMutation({
+    mutationFn: async (payment: Omit<Payment, 'id' | 'tenant_id' | 'created_at'>) => {
+      if (!tenantId) throw new Error('No tenant ID');
+      const { data, error } = await supabase
+        .from('payments')
+        .insert([{ ...payment, tenant_id: tenantId }])
+        .select()
+        .single();
+      
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['payments', tenantId] });
+      toast.success('Payment recorded successfully');
+    },
+    onError: (error: Error) => {
+      toast.error(`Failed to record payment: ${error.message}`);
+    },
+  });
+
+  const updateMutation = useMutation({
+    mutationFn: async ({ id, ...updates }: Partial<Payment> & { id: string }) => {
+      const { data, error } = await supabase
+        .from('payments')
+        .update(updates)
+        .eq('id', id)
+        .select()
+        .single();
+      
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['payments', tenantId] });
+      toast.success('Payment updated successfully');
+    },
+    onError: (error: Error) => {
+      toast.error(`Failed to update payment: ${error.message}`);
+    },
+  });
+
+  return {
+    payments: query.data ?? [],
+    isLoading: query.isLoading,
+    error: query.error,
+    createPayment: createMutation.mutate,
+    updatePayment: updateMutation.mutate,
+  };
+}

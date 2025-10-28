@@ -16,33 +16,39 @@ export type Database = {
     Tables: {
       bookings: {
         Row: {
+          action_id: string | null
           check_in: string
           check_out: string
           created_at: string | null
           guest_id: string
           id: string
+          metadata: Json | null
           room_id: string
           status: string | null
           tenant_id: string
           total_amount: number | null
         }
         Insert: {
+          action_id?: string | null
           check_in: string
           check_out: string
           created_at?: string | null
           guest_id: string
           id?: string
+          metadata?: Json | null
           room_id: string
           status?: string | null
           tenant_id: string
           total_amount?: number | null
         }
         Update: {
+          action_id?: string | null
           check_in?: string
           check_out?: string
           created_at?: string | null
           guest_id?: string
           id?: string
+          metadata?: Json | null
           room_id?: string
           status?: string | null
           tenant_id?: string
@@ -534,6 +540,60 @@ export type Database = {
           },
         ]
       }
+      payments: {
+        Row: {
+          amount: number
+          booking_id: string | null
+          created_at: string | null
+          currency: string | null
+          id: string
+          metadata: Json | null
+          method: string | null
+          provider_reference: string | null
+          status: string | null
+          tenant_id: string
+        }
+        Insert: {
+          amount: number
+          booking_id?: string | null
+          created_at?: string | null
+          currency?: string | null
+          id?: string
+          metadata?: Json | null
+          method?: string | null
+          provider_reference?: string | null
+          status?: string | null
+          tenant_id: string
+        }
+        Update: {
+          amount?: number
+          booking_id?: string | null
+          created_at?: string | null
+          currency?: string | null
+          id?: string
+          metadata?: Json | null
+          method?: string | null
+          provider_reference?: string | null
+          status?: string | null
+          tenant_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "payments_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: false
+            referencedRelation: "bookings"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "payments_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
           avatar_url: string | null
@@ -613,8 +673,105 @@ export type Database = {
           },
         ]
       }
+      room_categories: {
+        Row: {
+          amenities: Json | null
+          base_rate: number | null
+          created_at: string | null
+          description: string | null
+          id: string
+          max_occupancy: number | null
+          name: string
+          short_code: string
+          tenant_id: string
+          updated_at: string | null
+        }
+        Insert: {
+          amenities?: Json | null
+          base_rate?: number | null
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          max_occupancy?: number | null
+          name: string
+          short_code: string
+          tenant_id: string
+          updated_at?: string | null
+        }
+        Update: {
+          amenities?: Json | null
+          base_rate?: number | null
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          max_occupancy?: number | null
+          name?: string
+          short_code?: string
+          tenant_id?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "room_categories_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      room_status_history: {
+        Row: {
+          changed_by: string | null
+          created_at: string | null
+          id: string
+          new_status: string
+          old_status: string | null
+          reason: string | null
+          room_id: string
+          tenant_id: string
+        }
+        Insert: {
+          changed_by?: string | null
+          created_at?: string | null
+          id?: string
+          new_status: string
+          old_status?: string | null
+          reason?: string | null
+          room_id: string
+          tenant_id: string
+        }
+        Update: {
+          changed_by?: string | null
+          created_at?: string | null
+          id?: string
+          new_status?: string
+          old_status?: string | null
+          reason?: string | null
+          room_id?: string
+          tenant_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "room_status_history_room_id_fkey"
+            columns: ["room_id"]
+            isOneToOne: false
+            referencedRelation: "rooms"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "room_status_history_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       rooms: {
         Row: {
+          capacity: number | null
+          category_id: string | null
           created_at: string | null
           floor: number | null
           id: string
@@ -626,6 +783,8 @@ export type Database = {
           type: string
         }
         Insert: {
+          capacity?: number | null
+          category_id?: string | null
           created_at?: string | null
           floor?: number | null
           id?: string
@@ -637,6 +796,8 @@ export type Database = {
           type: string
         }
         Update: {
+          capacity?: number | null
+          category_id?: string | null
           created_at?: string | null
           floor?: number | null
           id?: string
@@ -648,6 +809,13 @@ export type Database = {
           type?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "rooms_category_id_fkey"
+            columns: ["category_id"]
+            isOneToOne: false
+            referencedRelation: "room_categories"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "rooms_tenant_id_fkey"
             columns: ["tenant_id"]
