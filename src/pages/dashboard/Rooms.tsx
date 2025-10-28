@@ -36,6 +36,7 @@ export default function Rooms() {
   const { categories } = useRoomCategories();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingRoom, setEditingRoom] = useState<Room | null>(null);
+  const [bulkMode, setBulkMode] = useState<'single' | 'range' | 'list'>('single');
   const [formData, setFormData] = useState({
     number: '',
     category_id: '',
@@ -43,7 +44,10 @@ export default function Rooms() {
     status: 'available',
     rate: '',
     notes: '',
-    quantity: '1'
+    quantity: '1',
+    rangeStart: '',
+    rangeEnd: '',
+    roomList: ''
   });
 
   const { data: rooms, isLoading } = useQuery({
@@ -63,12 +67,31 @@ export default function Rooms() {
 
   const createMutation = useMutation({
     mutationFn: async (newRoom: typeof formData) => {
-      const quantity = parseInt(newRoom.quantity) || 1;
-      const baseNumber = newRoom.number;
       const category = categories.find(c => c.id === newRoom.category_id);
-      
-      const roomsToCreate = Array.from({ length: quantity }, (_, i) => ({
-        number: quantity > 1 ? `${baseNumber}-${i + 1}` : baseNumber,
+      let roomNumbers: string[] = [];
+
+      // Generate room numbers based on mode
+      if (bulkMode === 'single') {
+        roomNumbers = [newRoom.number];
+      } else if (bulkMode === 'range') {
+        const start = parseInt(newRoom.rangeStart);
+        const end = parseInt(newRoom.rangeEnd);
+        if (isNaN(start) || isNaN(end) || start > end || end - start > 100) {
+          throw new Error('Invalid range. Maximum 100 rooms at once.');
+        }
+        roomNumbers = Array.from({ length: end - start + 1 }, (_, i) => String(start + i));
+      } else if (bulkMode === 'list') {
+        roomNumbers = newRoom.roomList
+          .split(',')
+          .map(n => n.trim())
+          .filter(n => n.length > 0 && n.length <= 20);
+        if (roomNumbers.length === 0 || roomNumbers.length > 100) {
+          throw new Error('Invalid list. Please provide 1-100 room numbers.');
+        }
+      }
+
+      const roomsToCreate = roomNumbers.map(number => ({
+        number,
         type: category?.short_code || 'standard',
         category_id: newRoom.category_id || null,
         floor: newRoom.floor ? parseInt(newRoom.floor) : null,
@@ -83,11 +106,11 @@ export default function Rooms() {
         .insert(roomsToCreate);
       
       if (error) throw error;
+      return roomNumbers.length;
     },
-    onSuccess: (_, variables) => {
+    onSuccess: (count) => {
       queryClient.invalidateQueries({ queryKey: ['rooms'] });
-      const quantity = parseInt(variables.quantity) || 1;
-      toast({ title: `${quantity} room${quantity > 1 ? 's' : ''} created successfully` });
+      toast({ title: `${count} room${count > 1 ? 's' : ''} created successfully` });
       resetForm();
     },
     onError: (error: any) => {
@@ -142,6 +165,7 @@ export default function Rooms() {
   });
 
   const resetForm = () => {
+    setBulkMode('single');
     setFormData({
       number: '',
       category_id: '',
@@ -149,7 +173,10 @@ export default function Rooms() {
       status: 'available',
       rate: '',
       notes: '',
-      quantity: '1'
+      quantity: '1',
+      rangeStart: '',
+      rangeEnd: '',
+      roomList: ''
     });
     setEditingRoom(null);
     setIsDialogOpen(false);
@@ -166,6 +193,7 @@ export default function Rooms() {
 
   const handleEdit = (room: Room) => {
     setEditingRoom(room);
+    setBulkMode('single');
     setFormData({
       number: room.number,
       category_id: room.category_id || '',
@@ -173,7 +201,10 @@ export default function Rooms() {
       status: room.status,
       rate: room.rate?.toString() || '',
       notes: room.notes || '',
-      quantity: '1'
+      quantity: '1',
+      rangeStart: '',
+      rangeEnd: '',
+      roomList: ''
     });
     setIsDialogOpen(true);
   };
@@ -207,15 +238,82 @@ export default function Rooms() {
               <DialogTitle>{editingRoom ? 'Edit Room' : 'Add New Room'}</DialogTitle>
             </DialogHeader>
             <form onSubmit={handleSubmit} className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="number">Room Number *</Label>
-                <Input
-                  id="number"
-                  value={formData.number}
-                  onChange={(e) => setFormData({ ...formData, number: e.target.value })}
-                  required
-                />
-              </div>
+              {!editingRoom && (
+                <div className="space-y-2">
+                  <Label>Creation Mode</Label>
+                  <Select value={bulkMode} onValueChange={(value: any) => setBulkMode(value)}>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="single">Single Room</SelectItem>
+                      <SelectItem value="range">Range (e.g., 101-110)</SelectItem>
+                      <SelectItem value="list">List (comma-separated)</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
+
+              {bulkMode === 'single' && (
+                <div className="space-y-2">
+                  <Label htmlFor="number">Room Number *</Label>
+                  <Input
+                    id="number"
+                    value={formData.number}
+                    onChange={(e) => setFormData({ ...formData, number: e.target.value })}
+                    placeholder="e.g., 101"
+                    maxLength={20}
+                    required
+                  />
+                </div>
+              )}
+
+              {bulkMode === 'range' && (
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="rangeStart">Start Number *</Label>
+                    <Input
+                      id="rangeStart"
+                      type="number"
+                      value={formData.rangeStart}
+                      onChange={(e) => setFormData({ ...formData, rangeStart: e.target.value })}
+                      placeholder="101"
+                      required
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="rangeEnd">End Number *</Label>
+                    <Input
+                      id="rangeEnd"
+                      type="number"
+                      value={formData.rangeEnd}
+                      onChange={(e) => setFormData({ ...formData, rangeEnd: e.target.value })}
+                      placeholder="110"
+                      required
+                    />
+                  </div>
+                  <p className="col-span-2 text-xs text-muted-foreground">
+                    Creates rooms 101, 102, 103... up to 110 (max 100 rooms)
+                  </p>
+                </div>
+              )}
+
+              {bulkMode === 'list' && (
+                <div className="space-y-2">
+                  <Label htmlFor="roomList">Room Numbers *</Label>
+                  <Textarea
+                    id="roomList"
+                    value={formData.roomList}
+                    onChange={(e) => setFormData({ ...formData, roomList: e.target.value })}
+                    placeholder="101, 102, 105, 201A, 202B"
+                    rows={3}
+                    required
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    Enter comma-separated room numbers (max 100)
+                  </p>
+                </div>
+              )}
 
               <div className="space-y-2">
                 <Label htmlFor="category">Category *</Label>
@@ -229,6 +327,7 @@ export default function Rooms() {
                       rate: category?.base_rate?.toString() || formData.rate
                     });
                   }}
+                  required
                 >
                   <SelectTrigger>
                     <SelectValue placeholder="Select category" />
@@ -242,23 +341,6 @@ export default function Rooms() {
                   </SelectContent>
                 </Select>
               </div>
-
-              {!editingRoom && (
-                <div className="space-y-2">
-                  <Label htmlFor="quantity">Quantity</Label>
-                  <Input
-                    id="quantity"
-                    type="number"
-                    min="1"
-                    max="50"
-                    value={formData.quantity}
-                    onChange={(e) => setFormData({ ...formData, quantity: e.target.value })}
-                  />
-                  <p className="text-xs text-muted-foreground">
-                    Create multiple rooms at once (e.g., 101-1, 101-2, etc.)
-                  </p>
-                </div>
-              )}
 
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
