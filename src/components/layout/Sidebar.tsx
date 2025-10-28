@@ -1,4 +1,4 @@
-import { Hotel, Home, Bed, Calendar, Users, FileBarChart, Settings } from 'lucide-react';
+import { Hotel, Home, Bed, Calendar, Users, FileBarChart, Settings as SettingsIcon, Wrench } from 'lucide-react';
 import { NavLink } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import {
@@ -20,7 +20,8 @@ const NAV_ITEMS = [
   { name: 'Bookings', icon: Calendar, path: '/dashboard/bookings', roles: ['frontdesk', 'manager', 'owner'] },
   { name: 'Guests', icon: Users, path: '/dashboard/guests', roles: ['frontdesk', 'manager', 'owner'] },
   { name: 'Reports', icon: FileBarChart, path: '/dashboard/reports', roles: ['manager', 'owner'] },
-  { name: 'Settings', icon: Settings, path: '/dashboard/settings', roles: ['manager', 'owner'] },
+  { name: 'Configuration', icon: Wrench, path: '/dashboard/configuration', roles: ['manager', 'owner'] },
+  { name: 'Settings', icon: SettingsIcon, path: '/dashboard/settings', roles: ['manager', 'owner'] },
 ];
 
 export function AppSidebar() {
