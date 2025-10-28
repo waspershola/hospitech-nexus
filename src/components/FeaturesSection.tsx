@@ -1,4 +1,5 @@
 import { Building2, Smartphone, Users, BarChart3, Shield, Zap } from "lucide-react";
+import { motion } from "framer-motion";
 
 const features = [
   {
@@ -48,8 +49,12 @@ const FeaturesSection = () => {
 
         <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
           {features.map((feature, index) => (
-            <div 
+            <motion.div 
               key={index}
+              initial={{ opacity: 0, y: 30 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ duration: 0.5, delay: index * 0.1 }}
               className="bg-card p-8 rounded-2xl shadow-card hover:shadow-hover transition-all group"
             >
               <div className="w-14 h-14 rounded-xl bg-primary/10 flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
@@ -61,7 +66,7 @@ const FeaturesSection = () => {
               <p className="text-muted-foreground leading-relaxed">
                 {feature.description}
               </p>
-            </div>
+            </motion.div>
           ))}
         </div>
       </div>

@@ -2,6 +2,7 @@ import { Mail, Lock, ArrowRight, Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
+import { motion } from "framer-motion";
 import heroHotelBg from "@/assets/hero-hotel-bg.jpg";
 
 const HeroSection = () => {
@@ -18,7 +19,12 @@ const HeroSection = () => {
       <div className="container mx-auto max-w-7xl">
         <div className="grid lg:grid-cols-2 gap-12 items-center">
           {/* Left Content */}
-          <div className="text-white space-y-6">
+          <motion.div 
+            initial={{ opacity: 0, x: -50 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ duration: 0.6 }}
+            className="text-white space-y-6"
+          >
             <Badge className="bg-accent text-accent-foreground mb-4">
               Modern Hotel Management
             </Badge>
@@ -40,10 +46,15 @@ const HeroSection = () => {
                 </div>
               ))}
             </div>
-          </div>
+          </motion.div>
 
           {/* Right - Login Form */}
-          <div className="bg-card/95 backdrop-blur-xl rounded-3xl p-8 shadow-luxury border border-border">
+          <motion.div 
+            initial={{ opacity: 0, x: 50 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ duration: 0.6, delay: 0.2 }}
+            className="bg-card/95 backdrop-blur-xl rounded-3xl p-8 shadow-luxury border border-border"
+          >
             <h2 className="text-2xl font-display font-bold text-foreground mb-6">
               Sign In to Dashboard
             </h2>
@@ -75,7 +86,8 @@ const HeroSection = () => {
 
               <Button 
                 type="submit"
-                className="w-full bg-accent hover:bg-accent/90 text-accent-foreground font-semibold"
+                variant="gold"
+                className="w-full font-semibold"
                 size="lg"
               >
                 Sign In to Dashboard
@@ -88,7 +100,7 @@ const HeroSection = () => {
                 New hotel? Request a demo →
               </a>
             </div>
-          </div>
+          </motion.div>
         </div>
       </div>
     </section>

@@ -1,4 +1,5 @@
 import { Button } from "@/components/ui/button";
+import { motion } from "framer-motion";
 import sunsetHotelBg from "@/assets/sunset-hotel-bg.jpg";
 
 const CTASection = () => {
@@ -11,7 +12,13 @@ const CTASection = () => {
         backgroundPosition: "center",
       }}
     >
-      <div className="container mx-auto max-w-4xl text-center">
+      <motion.div 
+        initial={{ opacity: 0, y: 30 }}
+        whileInView={{ opacity: 1, y: 0 }}
+        viewport={{ once: true }}
+        transition={{ duration: 0.6 }}
+        className="container mx-auto max-w-4xl text-center"
+      >
         <h2 className="text-5xl md:text-6xl font-display font-bold text-white mb-6">
           Start Managing Smarter
         </h2>
@@ -22,8 +29,9 @@ const CTASection = () => {
 
         <div className="flex flex-col sm:flex-row gap-4 justify-center">
           <Button 
+            variant="gold"
             size="lg"
-            className="bg-accent hover:bg-accent/90 text-accent-foreground text-lg px-8 py-6"
+            className="text-lg px-8 py-6"
           >
             Start Free Trial
           </Button>
@@ -35,7 +43,7 @@ const CTASection = () => {
             Book a Demo
           </Button>
         </div>
-      </div>
+      </motion.div>
     </section>
   );
 };

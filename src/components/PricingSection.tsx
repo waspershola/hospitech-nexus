@@ -1,6 +1,7 @@
 import { Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { motion } from "framer-motion";
 
 const plans = [
   {
@@ -67,8 +68,13 @@ const PricingSection = () => {
 
         <div className="grid md:grid-cols-3 gap-8">
           {plans.map((plan, index) => (
-            <div 
+            <motion.div 
               key={index}
+              initial={{ opacity: 0, y: 30 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ duration: 0.5, delay: index * 0.15 }}
+              whileHover={{ y: -8 }}
               className={`bg-card rounded-3xl p-8 ${
                 plan.popular 
                   ? "ring-2 ring-primary shadow-luxury" 
@@ -104,16 +110,13 @@ const PricingSection = () => {
               </ul>
 
               <Button 
-                className={`w-full ${
-                  plan.popular
-                    ? "bg-primary hover:bg-primary/90 text-primary-foreground"
-                    : "bg-accent hover:bg-accent/90 text-accent-foreground"
-                }`}
+                variant={plan.popular ? "default" : "gold"}
+                className="w-full"
                 size="lg"
               >
                 {plan.cta}
               </Button>
-            </div>
+            </motion.div>
           ))}
         </div>
       </div>

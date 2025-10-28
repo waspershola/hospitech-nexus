@@ -1,4 +1,5 @@
 import { Star } from "lucide-react";
+import { motion } from "framer-motion";
 import diningHotelBg from "@/assets/dining-hotel-bg.jpg";
 
 const testimonials = [
@@ -48,8 +49,12 @@ const TestimonialsSection = () => {
 
         <div className="grid md:grid-cols-3 gap-8">
           {testimonials.map((testimonial, index) => (
-            <div 
+            <motion.div 
               key={index}
+              initial={{ opacity: 0, scale: 0.9 }}
+              whileInView={{ opacity: 1, scale: 1 }}
+              viewport={{ once: true }}
+              transition={{ duration: 0.5, delay: index * 0.1 }}
               className="bg-white/95 backdrop-blur-sm rounded-2xl p-8 shadow-card hover:shadow-hover transition-all"
             >
               <div className="flex gap-1 mb-4">
@@ -70,7 +75,7 @@ const TestimonialsSection = () => {
                   {testimonial.role}, {testimonial.hotel}
                 </div>
               </div>
-            </div>
+            </motion.div>
           ))}
         </div>
       </div>
