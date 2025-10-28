@@ -1,1 +1,4 @@
 project_id = "akchmpmzcupzjaeewdui"
+
+[functions.manage-domain]
+verify_jwt = true

@@ -4,7 +4,7 @@ import { useConfigStore } from '@/stores/configStore';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card } from '@/components/ui/card';
-import { Save, RotateCcw, Settings, DollarSign, Percent, Palette, FileText, Users, Lock, Clock, Mail, Database } from 'lucide-react';
+import { Save, RotateCcw, Settings, DollarSign, Percent, Palette, FileText, Users, Lock, Clock, Mail, Database, Globe } from 'lucide-react';
 import { toast } from 'sonner';
 import { GeneralTab } from '@/components/configuration/tabs/GeneralTab';
 import { FinancialsTab } from '@/components/configuration/tabs/FinancialsTab';
@@ -16,6 +16,7 @@ import { PermissionsTab } from '@/components/configuration/tabs/PermissionsTab';
 import { AuditLogsTab } from '@/components/configuration/tabs/AuditLogsTab';
 import { EmailSettingsTab } from '@/components/configuration/tabs/EmailSettingsTab';
 import { MaintenanceTab } from '@/components/configuration/tabs/MaintenanceTab';
+import { DomainsTab } from '@/components/configuration/tabs/DomainsTab';
 
 const tabs = [
   { id: 'general', label: 'General', icon: Settings },
@@ -24,6 +25,7 @@ const tabs = [
   { id: 'branding', label: 'Branding', icon: Palette },
   { id: 'documents', label: 'Documents', icon: FileText },
   { id: 'guest', label: 'Guest Experience', icon: Users },
+  { id: 'domains', label: 'Domains', icon: Globe },
   { id: 'permissions', label: 'Permissions', icon: Lock },
   { id: 'audit', label: 'Audit Logs', icon: Clock },
   { id: 'email', label: 'Email Settings', icon: Mail },
@@ -129,7 +131,7 @@ export default function ConfigurationCenter() {
       {/* Content */}
       <div className="max-w-7xl mx-auto px-6 py-8">
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-          <TabsList className="grid grid-cols-5 lg:grid-cols-10 gap-2 h-auto p-2 bg-muted/50">
+          <TabsList className="grid grid-cols-3 lg:grid-cols-11 gap-2 h-auto p-2 bg-muted/50">
             {tabs.map((tab) => {
               const Icon = tab.icon;
               return (
@@ -167,6 +169,10 @@ export default function ConfigurationCenter() {
 
           <TabsContent value="guest" className="space-y-6 animate-fade-in">
             <GuestExperienceTab />
+          </TabsContent>
+
+          <TabsContent value="domains" className="space-y-6 animate-fade-in">
+            <DomainsTab />
           </TabsContent>
 
           <TabsContent value="permissions" className="space-y-6 animate-fade-in">
