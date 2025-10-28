@@ -1,17 +1,32 @@
 import { useState } from 'react';
+import { Button } from '@/components/ui/button';
+import { Plus } from 'lucide-react';
 import { HeaderBar } from '@/modules/frontdesk/components/HeaderBar';
 import { QuickKPIs } from '@/modules/frontdesk/components/QuickKPIs';
 import { RoomStatusOverview } from '@/modules/frontdesk/components/RoomStatusOverview';
 import { RoomLegend } from '@/modules/frontdesk/components/RoomLegend';
 import { RoomActionDrawer } from '@/modules/frontdesk/components/RoomActionDrawer';
+import { BookingFlow } from '@/modules/bookings/BookingFlow';
 
 export default function FrontDesk() {
   const [selectedRoomId, setSelectedRoomId] = useState<string | null>(null);
   const [statusFilter, setStatusFilter] = useState<string | null>(null);
+  const [isBookingFlowOpen, setIsBookingFlowOpen] = useState(false);
 
   return (
     <div className="h-full flex flex-col bg-background">
       <HeaderBar />
+      
+      <div className="p-6 border-b border-border flex items-center justify-between">
+        <div>
+          <h2 className="text-xl font-display font-semibold text-foreground">Room Management</h2>
+          <p className="text-sm text-muted-foreground">Monitor and manage all rooms from one dashboard</p>
+        </div>
+        <Button onClick={() => setIsBookingFlowOpen(true)} size="lg">
+          <Plus className="w-4 h-4 mr-2" />
+          New Booking
+        </Button>
+      </div>
       
       <div className="flex-1 overflow-auto p-6 space-y-6">
         <QuickKPIs onFilterClick={setStatusFilter} />
@@ -34,6 +49,11 @@ export default function FrontDesk() {
         roomId={selectedRoomId}
         open={!!selectedRoomId}
         onClose={() => setSelectedRoomId(null)}
+      />
+
+      <BookingFlow
+        open={isBookingFlowOpen}
+        onClose={() => setIsBookingFlowOpen(false)}
       />
     </div>
   );

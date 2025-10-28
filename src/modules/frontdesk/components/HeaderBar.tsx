@@ -2,6 +2,7 @@ import { Search, Hotel, Clock } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { useAuth } from '@/contexts/AuthContext';
 import { useEffect, useState } from 'react';
+import { OfflineIndicator } from './OfflineIndicator';
 
 export function HeaderBar() {
   const { tenantName } = useAuth();
@@ -33,6 +34,7 @@ export function HeaderBar() {
         </div>
 
         <div className="flex items-center gap-6">
+          <OfflineIndicator />
           <div className="text-sm">
             <p className="font-medium text-foreground">{tenantName}</p>
           </div>
