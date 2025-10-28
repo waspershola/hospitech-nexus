@@ -363,6 +363,62 @@ export type Database = {
           },
         ]
       }
+      hotel_domains: {
+        Row: {
+          certificate_status: string | null
+          created_at: string | null
+          dns_instructions: Json | null
+          domain: string
+          error_message: string | null
+          id: string
+          last_check: string | null
+          status: string
+          tenant_id: string
+          vercel_domain_config: Json | null
+          vercel_project_id: string | null
+          verification_token: string
+          verified_at: string | null
+        }
+        Insert: {
+          certificate_status?: string | null
+          created_at?: string | null
+          dns_instructions?: Json | null
+          domain: string
+          error_message?: string | null
+          id?: string
+          last_check?: string | null
+          status?: string
+          tenant_id: string
+          vercel_domain_config?: Json | null
+          vercel_project_id?: string | null
+          verification_token?: string
+          verified_at?: string | null
+        }
+        Update: {
+          certificate_status?: string | null
+          created_at?: string | null
+          dns_instructions?: Json | null
+          domain?: string
+          error_message?: string | null
+          id?: string
+          last_check?: string | null
+          status?: string
+          tenant_id?: string
+          vercel_domain_config?: Json | null
+          vercel_project_id?: string | null
+          verification_token?: string
+          verified_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "hotel_domains_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       hotel_financials: {
         Row: {
           created_at: string
@@ -612,6 +668,7 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      get_tenant_by_domain: { Args: { _domain: string }; Returns: string }
       get_user_tenant: { Args: { _user_id: string }; Returns: string }
       has_role: {
         Args: {
