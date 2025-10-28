@@ -4,7 +4,7 @@ import { Bell, LogOut } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
 export default function Topbar() {
-  const { user, signOut } = useAuth();
+  const { user, tenantName, signOut } = useAuth();
   const navigate = useNavigate();
 
   const handleSignOut = async () => {
@@ -14,8 +14,9 @@ export default function Topbar() {
 
   return (
     <header className="h-16 px-4 md:px-6 flex items-center justify-between bg-background/80 backdrop-blur-md border-b border-border">
-      <div className="font-display text-xl text-charcoal">
-        Front Desk Dashboard
+      <div>
+        <div className="font-display text-xl text-primary">Dashboard</div>
+        {tenantName && <p className="text-xs text-muted-foreground">{tenantName}</p>}
       </div>
       
       <div className="flex items-center gap-4">

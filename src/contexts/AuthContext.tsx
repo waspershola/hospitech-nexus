@@ -6,6 +6,7 @@ interface AuthContextType {
   user: User | null;
   session: Session | null;
   tenantId: string | null;
+  tenantName: string | null;
   role: string | null;
   loading: boolean;
   signOut: () => Promise<void>;
@@ -17,6 +18,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
   const [tenantId, setTenantId] = useState<string | null>(null);
+  const [tenantName, setTenantName] = useState<string | null>(null);
   const [role, setRole] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -59,7 +61,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try {
       const { data, error } = await supabase
         .from('user_roles')
-        .select('tenant_id, role')
+        .select('tenant_id, role, tenants(name)')
         .eq('user_id', userId)
         .single();
 
@@ -67,6 +69,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       setTenantId(data?.tenant_id || null);
       setRole(data?.role || null);
+      setTenantName((data?.tenants as any)?.name || null);
     } catch (error) {
       console.error('Error fetching user role:', error);
     } finally {
@@ -79,11 +82,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(null);
     setSession(null);
     setTenantId(null);
+    setTenantName(null);
     setRole(null);
   };
 
   return (
-    <AuthContext.Provider value={{ user, session, tenantId, role, loading, signOut }}>
+    <AuthContext.Provider value={{ user, session, tenantId, tenantName, role, loading, signOut }}>
       {children}
     </AuthContext.Provider>
   );
