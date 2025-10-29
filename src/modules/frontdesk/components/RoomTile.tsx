@@ -1,6 +1,6 @@
 import { Card, CardHeader } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Sparkles, CreditCard, IdCard, Wrench } from 'lucide-react';
+import { Sparkles, CreditCard, IdCard, Wrench, Building2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 interface RoomTileProps {
@@ -29,6 +29,12 @@ const statusBorderColors = {
 export function RoomTile({ room, onClick }: RoomTileProps) {
   const statusColor = statusColors[room.status as keyof typeof statusColors] || statusColors.available;
   const borderColor = statusBorderColors[room.status as keyof typeof statusBorderColors] || statusBorderColors.available;
+
+  // Get active booking organization if it exists
+  const activeBooking = room.bookings?.find((b: any) => 
+    b.status === 'checked_in' || b.status === 'reserved'
+  );
+  const organization = activeBooking?.organizations;
 
   return (
     <Card 
@@ -65,6 +71,12 @@ export function RoomTile({ room, onClick }: RoomTileProps) {
 
         {(room.status === 'occupied' || room.status === 'overstay') && (
           <div className="mt-3 pt-3 border-t border-border">
+            {organization && (
+              <div className="flex items-center gap-1 mb-2">
+                <Building2 className="w-3 h-3 text-primary" />
+                <span className="text-xs font-medium text-primary">{organization.name}</span>
+              </div>
+            )}
             <p className="text-sm font-medium text-foreground">Guest Name</p>
             <p className="text-xs text-muted-foreground mt-1">Balance: ₦0.00</p>
           </div>

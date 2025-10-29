@@ -46,7 +46,9 @@ export function RoomActionDrawer({ roomId, open, onClose }: RoomActionDrawerProp
             status,
             total_amount,
             guest_id,
-            guest:guests(id, name, email, phone)
+            organization_id,
+            guest:guests(id, name, email, phone),
+            organization:organizations(id, name, credit_limit, allow_negative_balance)
           )
         `)
         .eq('id', roomId)
@@ -137,6 +139,29 @@ export function RoomActionDrawer({ roomId, open, onClose }: RoomActionDrawerProp
                 <TabsContent value="details" className="space-y-6 mt-6">
                   {currentBooking && (
                     <>
+                      {currentBooking.organization && (
+                        <>
+                          <div className="space-y-3">
+                            <h3 className="font-semibold flex items-center gap-2">
+                              <Building2 className="w-4 h-4" />
+                              Organization
+                            </h3>
+                            <div className="text-sm space-y-1">
+                              <p className="font-medium">{currentBooking.organization.name}</p>
+                              <p className="text-muted-foreground">
+                                Credit Limit: ₦{currentBooking.organization.credit_limit?.toLocaleString() || '0'}
+                              </p>
+                              {currentBooking.organization.allow_negative_balance && (
+                                <Badge variant="outline" className="text-xs">
+                                  Negative Balance Allowed
+                                </Badge>
+                              )}
+                            </div>
+                          </div>
+                          <Separator />
+                        </>
+                      )}
+
                       <div className="space-y-3">
                         <h3 className="font-semibold flex items-center gap-2">
                           <User className="w-4 h-4" />

@@ -62,6 +62,11 @@ export function RoomSelection({ bookingData, onChange, onNext }: RoomSelectionPr
     }
   }, [checkIn, checkOut, bookingData.roomId, rooms]);
 
+  const nights = Math.ceil((checkOut.getTime() - checkIn.getTime()) / (1000 * 60 * 60 * 24));
+  const selectedRoom = rooms?.find(r => r.id === bookingData.roomId);
+  const selectedRate = selectedRoom?.category?.base_rate || selectedRoom?.rate || 0;
+  const totalAmount = selectedRate * nights;
+
   return (
     <div className="space-y-6">
       <div className="grid grid-cols-2 gap-4">
@@ -86,6 +91,21 @@ export function RoomSelection({ bookingData, onChange, onNext }: RoomSelectionPr
           />
         </div>
       </div>
+
+      {bookingData.roomId && (
+        <Card className="p-4 bg-primary/5 border-primary">
+          <div className="space-y-2">
+            <p className="text-sm text-muted-foreground">Stay Duration & Cost</p>
+            <div className="flex items-baseline gap-2">
+              <span className="text-2xl font-bold">₦{totalAmount.toLocaleString()}</span>
+              <span className="text-sm text-muted-foreground">total</span>
+            </div>
+            <p className="text-sm text-muted-foreground">
+              {nights} {nights === 1 ? 'night' : 'nights'} × ₦{selectedRate.toLocaleString()}/night
+            </p>
+          </div>
+        </Card>
+      )}
 
       {bookingData.roomId && availability && !availability.available && (
         <div className="flex items-center gap-2 p-3 bg-destructive/10 text-destructive rounded-lg">

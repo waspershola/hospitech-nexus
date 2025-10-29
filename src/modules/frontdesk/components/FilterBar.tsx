@@ -7,11 +7,14 @@ interface FilterBarProps {
   statusFilter: string | null;
   categoryFilter: string | null;
   floorFilter: number | null;
+  organizationFilter: string | null;
   categories: Array<{ id: string; name: string }>;
   floors: number[];
+  organizations: Array<{ id: string; name: string }>;
   onStatusChange: (value: string | null) => void;
   onCategoryChange: (value: string | null) => void;
   onFloorChange: (value: number | null) => void;
+  onOrganizationChange: (value: string | null) => void;
   onClearAll: () => void;
 }
 
@@ -19,14 +22,17 @@ export function FilterBar({
   statusFilter,
   categoryFilter,
   floorFilter,
+  organizationFilter,
   categories,
   floors,
+  organizations,
   onStatusChange,
   onCategoryChange,
   onFloorChange,
+  onOrganizationChange,
   onClearAll,
 }: FilterBarProps) {
-  const hasFilters = statusFilter || categoryFilter || floorFilter !== null;
+  const hasFilters = statusFilter || categoryFilter || floorFilter !== null || organizationFilter;
 
   return (
     <div className="space-y-3">
@@ -79,6 +85,20 @@ export function FilterBar({
           </SelectContent>
         </Select>
 
+        <Select value={organizationFilter || 'all'} onValueChange={(v) => onOrganizationChange(v === 'all' ? null : v)}>
+          <SelectTrigger className="w-48">
+            <SelectValue placeholder="Organization" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All Organizations</SelectItem>
+            {organizations.map((org) => (
+              <SelectItem key={org.id} value={org.id}>
+                {org.name}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+
         {hasFilters && (
           <Button variant="ghost" size="sm" onClick={onClearAll}>
             <X className="w-4 h-4 mr-1" />
@@ -113,6 +133,15 @@ export function FilterBar({
               <X
                 className="w-3 h-3 cursor-pointer"
                 onClick={() => onFloorChange(null)}
+              />
+            </Badge>
+          )}
+          {organizationFilter && (
+            <Badge variant="secondary" className="gap-1">
+              Organization: {organizations.find((o) => o.id === organizationFilter)?.name}
+              <X
+                className="w-3 h-3 cursor-pointer"
+                onClick={() => onOrganizationChange(null)}
               />
             </Badge>
           )}

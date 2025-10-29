@@ -18,6 +18,7 @@ export function RoomStatusOverview({ statusFilter, onRoomClick }: RoomStatusOver
   const [searchQuery, setSearchQuery] = useState('');
   const [categoryFilter, setCategoryFilter] = useState<string | null>(null);
   const [floorFilter, setFloorFilter] = useState<number | null>(null);
+  const [organizationFilter, setOrganizationFilter] = useState<string | null>(null);
   const { categories } = useRoomCategories();
 
   const { data: floors = [] } = useQuery({
@@ -37,9 +38,27 @@ export function RoomStatusOverview({ statusFilter, onRoomClick }: RoomStatusOver
     enabled: !!tenantId,
   });
 
+  const { data: organizations = [] } = useQuery({
+    queryKey: ['organizations', tenantId],
+    queryFn: async () => {
+      if (!tenantId) return [];
+      const { data, error } = await supabase
+        .from('organizations')
+        .select('id, name')
+        .eq('tenant_id', tenantId)
+        .eq('active', true)
+        .order('name');
+
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!tenantId,
+  });
+
   const handleClearFilters = () => {
     setCategoryFilter(null);
     setFloorFilter(null);
+    setOrganizationFilter(null);
   };
 
   return (
@@ -58,11 +77,14 @@ export function RoomStatusOverview({ statusFilter, onRoomClick }: RoomStatusOver
         statusFilter={statusFilter}
         categoryFilter={categoryFilter}
         floorFilter={floorFilter}
+        organizationFilter={organizationFilter}
         categories={categories}
         floors={floors}
+        organizations={organizations}
         onStatusChange={() => {}} // Status controlled by parent KPI clicks
         onCategoryChange={setCategoryFilter}
         onFloorChange={setFloorFilter}
+        onOrganizationChange={setOrganizationFilter}
         onClearAll={handleClearFilters}
       />
 
@@ -71,6 +93,7 @@ export function RoomStatusOverview({ statusFilter, onRoomClick }: RoomStatusOver
         statusFilter={statusFilter}
         categoryFilter={categoryFilter}
         floorFilter={floorFilter}
+        organizationFilter={organizationFilter}
         onRoomClick={onRoomClick}
       />
     </div>

@@ -9,14 +9,15 @@ interface RoomGridProps {
   statusFilter?: string | null;
   categoryFilter?: string | null;
   floorFilter?: number | null;
+  organizationFilter?: string | null;
   onRoomClick: (roomId: string) => void;
 }
 
-export function RoomGrid({ searchQuery, statusFilter, categoryFilter, floorFilter, onRoomClick }: RoomGridProps) {
+export function RoomGrid({ searchQuery, statusFilter, categoryFilter, floorFilter, organizationFilter, onRoomClick }: RoomGridProps) {
   const { tenantId } = useAuth();
 
   const { data: rooms, isLoading } = useQuery({
-    queryKey: ['rooms-grid', tenantId, searchQuery, statusFilter, categoryFilter, floorFilter],
+    queryKey: ['rooms-grid', tenantId, searchQuery, statusFilter, categoryFilter, floorFilter, organizationFilter],
     queryFn: async () => {
       if (!tenantId) return [];
       
@@ -24,7 +25,12 @@ export function RoomGrid({ searchQuery, statusFilter, categoryFilter, floorFilte
         .from('rooms')
         .select(`
           *,
-          category:room_categories(name, short_code, base_rate, max_occupancy)
+          category:room_categories(name, short_code, base_rate, max_occupancy),
+          bookings!bookings_room_id_fkey(
+            id,
+            organization_id,
+            organizations(id, name)
+          )
         `)
         .eq('tenant_id', tenantId)
         .order('number', { ascending: true });
@@ -47,6 +53,18 @@ export function RoomGrid({ searchQuery, statusFilter, categoryFilter, floorFilte
 
       const { data, error } = await query;
       if (error) throw error;
+      
+      // Filter by organization if needed (client-side since it's in nested data)
+      if (organizationFilter && data) {
+        return data.filter(room => {
+          if (!room.bookings || room.bookings.length === 0) return false;
+          const activeBooking = room.bookings.find((b: any) => 
+            b.organization_id === organizationFilter
+          );
+          return !!activeBooking;
+        });
+      }
+      
       return data;
     },
     enabled: !!tenantId,
