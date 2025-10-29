@@ -9,11 +9,15 @@ import {
   AlertCircle, 
   Search,
   Link2,
-  Unlink
+  Unlink,
+  Upload
 } from 'lucide-react';
 import { useReconciliation } from '@/hooks/useReconciliation';
 import { usePayments } from '@/hooks/usePayments';
+import { useFinanceProviders } from '@/hooks/useFinanceProviders';
+import { CSVImportDialog } from './CSVImportDialog';
 import { format } from 'date-fns';
+import { toast } from 'sonner';
 import {
   Select,
   SelectContent,
@@ -25,9 +29,12 @@ import {
 export function ReconciliationTab() {
   const { records, isLoading, matchTransaction, unmatchTransaction } = useReconciliation();
   const { payments } = usePayments();
+  const { providers } = useFinanceProviders();
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [selectedRecord, setSelectedRecord] = useState<string | null>(null);
+  const [csvImportOpen, setCsvImportOpen] = useState(false);
+  const [selectedProviderId, setSelectedProviderId] = useState<string>('');
 
   const filteredRecords = records.filter((record) => {
     const matchesSearch = record.reference.toLowerCase().includes(searchTerm.toLowerCase());
@@ -71,9 +78,22 @@ export function ReconciliationTab() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h2 className="text-2xl font-semibold">Reconciliation</h2>
-        <p className="text-muted-foreground">Match external transactions with internal payments</p>
+      <div className="flex items-center justify-between">
+        <div>
+          <h2 className="text-2xl font-semibold">Reconciliation</h2>
+          <p className="text-muted-foreground">Match external transactions with internal payments</p>
+        </div>
+        <Button onClick={() => {
+          if (providers.length > 0) {
+            setSelectedProviderId(providers[0].id);
+            setCsvImportOpen(true);
+          } else {
+            toast.error('Please add a provider first');
+          }
+        }}>
+          <Upload className="w-4 h-4 mr-2" />
+          Import CSV
+        </Button>
       </div>
 
       <div className="flex gap-4">
@@ -220,6 +240,12 @@ export function ReconciliationTab() {
           </Card>
         )}
       </div>
+
+      <CSVImportDialog
+        open={csvImportOpen}
+        onClose={() => setCsvImportOpen(false)}
+        providerId={selectedProviderId}
+      />
     </div>
   );
 }

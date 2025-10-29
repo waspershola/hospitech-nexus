@@ -2,14 +2,17 @@ import { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Wallet, TrendingUp, TrendingDown, History } from 'lucide-react';
+import { Wallet, TrendingUp, TrendingDown, History, Plus } from 'lucide-react';
 import { useWallets } from '@/hooks/useWallets';
 import { WalletTransactionsDrawer } from './WalletTransactionsDrawer';
+import { WalletOperationDialog } from './WalletOperationDialog';
 
 export function WalletsTab() {
   const { wallets, isLoading } = useWallets();
   const [selectedWalletId, setSelectedWalletId] = useState<string | null>(null);
+  const [selectedWalletName, setSelectedWalletName] = useState<string>('');
   const [transactionsOpen, setTransactionsOpen] = useState(false);
+  const [operationOpen, setOperationOpen] = useState(false);
 
   if (isLoading) {
     return <div>Loading wallets...</div>;
@@ -54,18 +57,31 @@ export function WalletsTab() {
                     Last transaction: {new Date(wallet.last_transaction_at).toLocaleDateString()}
                   </div>
                 )}
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="w-full"
-                  onClick={() => {
-                    setSelectedWalletId(wallet.id);
-                    setTransactionsOpen(true);
-                  }}
-                >
-                  <History className="w-4 h-4 mr-2" />
-                  View Transactions
-                </Button>
+                <div className="grid grid-cols-2 gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      setSelectedWalletId(wallet.id);
+                      setSelectedWalletName(wallet.name || wallet.department || 'Wallet');
+                      setOperationOpen(true);
+                    }}
+                  >
+                    <Plus className="w-4 h-4 mr-2" />
+                    Operation
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      setSelectedWalletId(wallet.id);
+                      setTransactionsOpen(true);
+                    }}
+                  >
+                    <History className="w-4 h-4 mr-2" />
+                    History
+                  </Button>
+                </div>
               </div>
             </CardContent>
           </Card>
@@ -83,6 +99,15 @@ export function WalletsTab() {
         onClose={() => setTransactionsOpen(false)}
         walletId={selectedWalletId}
       />
+      
+      {selectedWalletId && (
+        <WalletOperationDialog
+          open={operationOpen}
+          onClose={() => setOperationOpen(false)}
+          walletId={selectedWalletId}
+          walletName={selectedWalletName}
+        />
+      )}
     </div>
   );
 }
