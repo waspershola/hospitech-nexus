@@ -8,7 +8,11 @@ import { FileText } from 'lucide-react';
 import { toast } from 'sonner';
 
 export function DocumentsTab() {
-  const { documentTemplates, updateDocumentTemplate, saveDocumentTemplate, unsavedChanges, version } = useConfigStore();
+  const documentTemplates = useConfigStore(state => state.documentTemplates);
+  const updateDocumentTemplate = useConfigStore(state => state.updateDocumentTemplate);
+  const saveDocumentTemplate = useConfigStore(state => state.saveDocumentTemplate);
+  const hasInvoiceUnsaved = useConfigStore(state => state.unsavedChanges.has('template_invoice'));
+  const hasReceiptUnsaved = useConfigStore(state => state.unsavedChanges.has('template_receipt'));
 
   const getTemplate = (type: string) => {
     return documentTemplates.find(t => t.template_type === type) || {};
@@ -47,7 +51,7 @@ export function DocumentsTab() {
         description="Customize invoice numbering and format"
         icon={FileText}
         onSave={handleSaveInvoice}
-        hasUnsavedChanges={unsavedChanges.has('template_invoice')}
+        hasUnsavedChanges={hasInvoiceUnsaved}
       >
         <div className="space-y-4">
           <div className="grid grid-cols-3 gap-4">
@@ -109,7 +113,7 @@ export function DocumentsTab() {
         description="Customize receipt numbering and format"
         icon={FileText}
         onSave={handleSaveReceipt}
-        hasUnsavedChanges={unsavedChanges.has('template_receipt')}
+        hasUnsavedChanges={hasReceiptUnsaved}
       >
         <div className="space-y-4">
           <div className="grid grid-cols-3 gap-4">

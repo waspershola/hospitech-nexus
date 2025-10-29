@@ -12,7 +12,10 @@ import { BrandingPreview } from '../branding/BrandingPreview';
 import { PortalPreview } from '../shared/PortalPreview';
 
 export function BrandingTab() {
-  const { branding, updateBranding, saveBranding, unsavedChanges, version } = useConfigStore();
+  const branding = useConfigStore(state => state.branding);
+  const updateBranding = useConfigStore(state => state.updateBranding);
+  const saveBranding = useConfigStore(state => state.saveBranding);
+  const hasBrandingUnsaved = useConfigStore(state => state.unsavedChanges.has('branding'));
 
   const handleChange = (field: string, value: any) => {
     updateBranding({ [field]: value });
@@ -28,7 +31,7 @@ export function BrandingTab() {
           description="Upload your hotel's visual brand assets"
           icon={ImageIcon}
           onSave={saveBranding}
-          hasUnsavedChanges={unsavedChanges.has('branding')}
+          hasUnsavedChanges={hasBrandingUnsaved}
         >
           <div className="space-y-6">
             <LogoUploader
@@ -50,7 +53,7 @@ export function BrandingTab() {
           description="Large banner image for guest portal homepage"
           icon={ImageIcon}
           onSave={saveBranding}
-          hasUnsavedChanges={unsavedChanges.has('branding')}
+          hasUnsavedChanges={hasBrandingUnsaved}
         >
           <HeroImageUploader
             imageUrl={branding.hero_image}
@@ -65,7 +68,7 @@ export function BrandingTab() {
           description="Define your hotel's color identity"
           icon={Palette}
           onSave={saveBranding}
-          hasUnsavedChanges={unsavedChanges.has('branding')}
+          hasUnsavedChanges={hasBrandingUnsaved}
         >
           <div className="grid grid-cols-3 gap-6">
             <div className="space-y-2">
@@ -129,7 +132,7 @@ export function BrandingTab() {
           description="Font selections for headings and body text"
           icon={Type}
           onSave={saveBranding}
-          hasUnsavedChanges={unsavedChanges.has('branding')}
+          hasUnsavedChanges={hasBrandingUnsaved}
         >
           <FontSelector
             headingFont={branding.font_heading || 'Playfair Display'}
@@ -144,7 +147,7 @@ export function BrandingTab() {
           description="Header and footer text for printed documents"
           icon={FileText}
           onSave={saveBranding}
-          hasUnsavedChanges={unsavedChanges.has('branding')}
+          hasUnsavedChanges={hasBrandingUnsaved}
         >
           <div className="space-y-4">
             <div className="space-y-2">

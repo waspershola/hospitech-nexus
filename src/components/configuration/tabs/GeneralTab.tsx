@@ -8,7 +8,10 @@ import { Switch } from '@/components/ui/switch';
 import { Hotel, MapPin, Phone, ShieldCheck } from 'lucide-react';
 
 export function GeneralTab() {
-  const { configurations, updateConfig, saveConfig, unsavedChanges, version } = useConfigStore();
+  const configurations = useConfigStore(state => state.configurations);
+  const updateConfig = useConfigStore(state => state.updateConfig);
+  const saveConfig = useConfigStore(state => state.saveConfig);
+  const hasGeneralUnsaved = useConfigStore(state => state.unsavedChanges.has('general'));
   const general = configurations.general || {};
 
   const handleChange = (field: string, value: any) => {
@@ -24,7 +27,7 @@ export function GeneralTab() {
         description="Core details about your property"
         icon={Hotel}
         onSave={() => saveConfig('general')}
-        hasUnsavedChanges={unsavedChanges.has('general')}
+        hasUnsavedChanges={hasGeneralUnsaved}
       >
         <div className="grid gap-6">
           <div className="space-y-2">
@@ -67,7 +70,7 @@ export function GeneralTab() {
         description="How guests can reach you"
         icon={Phone}
         onSave={() => saveConfig('general')}
-        hasUnsavedChanges={unsavedChanges.has('general')}
+        hasUnsavedChanges={hasGeneralUnsaved}
       >
         <div className="grid gap-6">
           <div className="grid grid-cols-2 gap-4">
@@ -113,7 +116,7 @@ export function GeneralTab() {
         description="Physical location of your property"
         icon={MapPin}
         onSave={() => saveConfig('general')}
-        hasUnsavedChanges={unsavedChanges.has('general')}
+        hasUnsavedChanges={hasGeneralUnsaved}
       >
         <div className="space-y-4">
           <div className="space-y-2">
@@ -166,7 +169,7 @@ export function GeneralTab() {
         description="Configure checkout and payment policies"
         icon={ShieldCheck}
         onSave={() => saveConfig('general')}
-        hasUnsavedChanges={unsavedChanges.has('general')}
+        hasUnsavedChanges={hasGeneralUnsaved}
       >
         <div className="flex items-center justify-between">
           <div className="space-y-0.5 flex-1">

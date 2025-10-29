@@ -14,7 +14,10 @@ const currencies = [
 ];
 
 export function FinancialsTab() {
-  const { financials, updateFinancials, saveFinancials, unsavedChanges, version } = useConfigStore();
+  const financials = useConfigStore(state => state.financials);
+  const updateFinancials = useConfigStore(state => state.updateFinancials);
+  const saveFinancials = useConfigStore(state => state.saveFinancials);
+  const hasFinancialsUnsaved = useConfigStore(state => state.unsavedChanges.has('financials'));
 
   const handleChange = (field: string, value: any) => {
     updateFinancials({ [field]: value });
@@ -37,7 +40,7 @@ export function FinancialsTab() {
       description="Configure how monetary values are displayed"
       icon={DollarSign}
       onSave={handleSave}
-      hasUnsavedChanges={unsavedChanges.has('financials')}
+      hasUnsavedChanges={hasFinancialsUnsaved}
     >
       <div className="space-y-6">
         <div className="grid grid-cols-2 gap-4">

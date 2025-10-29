@@ -45,7 +45,12 @@ const tabs = [
 
 export default function ConfigurationCenter() {
   const { tenantId, role } = useAuth();
-  const { loadAllConfig, saveAllChanges, resetChanges, unsavedChanges, lastSyncTime, isLoading, version } = useConfigStore();
+  const loadAllConfig = useConfigStore(state => state.loadAllConfig);
+  const saveAllChanges = useConfigStore(state => state.saveAllChanges);
+  const resetChanges = useConfigStore(state => state.resetChanges);
+  const unsavedCount = useConfigStore(state => state.unsavedChanges.size);
+  const lastSyncTime = useConfigStore(state => state.lastSyncTime);
+  const isLoading = useConfigStore(state => state.isLoading);
   const [activeTab, setActiveTab] = useState('general');
 
   useEffect(() => {
@@ -100,11 +105,11 @@ export default function ConfigurationCenter() {
             </div>
 
             <div className="flex items-center gap-4">
-              {unsavedChanges.size > 0 && (
+              {unsavedCount > 0 && (
                 <div className="flex items-center gap-2 px-3 py-1.5 bg-amber-50 dark:bg-amber-950 border border-amber-200 dark:border-amber-800 rounded-lg">
                   <div className="w-2 h-2 bg-amber-500 rounded-full animate-pulse" />
                   <span className="text-sm font-medium text-amber-700 dark:text-amber-300">
-                    {unsavedChanges.size} unsaved change{unsavedChanges.size !== 1 ? 's' : ''}
+                    {unsavedCount} unsaved change{unsavedCount !== 1 ? 's' : ''}
                   </span>
                 </div>
               )}
@@ -118,8 +123,8 @@ export default function ConfigurationCenter() {
               <Button
                 variant="outline"
                 size="sm"
-                onClick={handleReset}
-                disabled={unsavedChanges.size === 0 || isLoading}
+            onClick={handleReset}
+            disabled={unsavedCount === 0 || isLoading}
               >
                 <RotateCcw className="h-4 w-4 mr-2" />
                 Reset All
@@ -127,8 +132,8 @@ export default function ConfigurationCenter() {
 
               <Button
                 size="sm"
-                onClick={handleSaveAll}
-                disabled={unsavedChanges.size === 0 || isLoading}
+            onClick={handleSaveAll}
+            disabled={unsavedCount === 0 || isLoading}
                 className="bg-primary hover:bg-primary/90"
               >
                 <Save className="h-4 w-4 mr-2" />

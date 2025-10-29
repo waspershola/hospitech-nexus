@@ -17,7 +17,10 @@ const checkInFields = [
 ];
 
 export function GuestExperienceTab() {
-  const { configurations, updateConfig, saveConfig, unsavedChanges, version } = useConfigStore();
+  const configurations = useConfigStore(state => state.configurations);
+  const updateConfig = useConfigStore(state => state.updateConfig);
+  const saveConfig = useConfigStore(state => state.saveConfig);
+  const hasGuestExperienceUnsaved = useConfigStore(state => state.unsavedChanges.has('guestExperience'));
   const guestExp = configurations.guestExperience || {};
 
   const handleChange = (field: string, value: any) => {
@@ -48,7 +51,7 @@ export function GuestExperienceTab() {
         description="Mandatory fields during guest registration"
         icon={Users}
         onSave={handleSave}
-        hasUnsavedChanges={unsavedChanges.has('guestExperience')}
+        hasUnsavedChanges={hasGuestExperienceUnsaved}
       >
         <div className="space-y-3">
           {checkInFields.map((field) => (
@@ -75,7 +78,7 @@ export function GuestExperienceTab() {
         title="Default Services"
         description="Auto-enable services for new bookings"
         onSave={handleSave}
-        hasUnsavedChanges={unsavedChanges.has('guestExperience')}
+        hasUnsavedChanges={hasGuestExperienceUnsaved}
       >
         <div className="space-y-3">
           <div className="flex items-center justify-between">
@@ -117,7 +120,7 @@ export function GuestExperienceTab() {
         title="QR Code Settings"
         description="Guest portal access configuration"
         onSave={handleSave}
-        hasUnsavedChanges={unsavedChanges.has('guestExperience')}
+        hasUnsavedChanges={hasGuestExperienceUnsaved}
       >
         <div className="space-y-3">
           <div className="flex items-center justify-between">

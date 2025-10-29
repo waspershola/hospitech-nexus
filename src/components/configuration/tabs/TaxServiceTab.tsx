@@ -8,7 +8,10 @@ import { Percent } from 'lucide-react';
 import { toast } from 'sonner';
 
 export function TaxServiceTab() {
-  const { financials, updateFinancials, saveFinancials, unsavedChanges, version } = useConfigStore();
+  const financials = useConfigStore(state => state.financials);
+  const updateFinancials = useConfigStore(state => state.updateFinancials);
+  const saveFinancials = useConfigStore(state => state.saveFinancials);
+  const hasFinancialsUnsaved = useConfigStore(state => state.unsavedChanges.has('financials'));
 
   const handleChange = (field: string, value: any) => {
     // Validate percentage values
@@ -35,7 +38,7 @@ export function TaxServiceTab() {
         description="Value Added Tax settings"
         icon={Percent}
         onSave={handleSave}
-        hasUnsavedChanges={unsavedChanges.has('financials')}
+        hasUnsavedChanges={hasFinancialsUnsaved}
       >
         <div className="space-y-4">
           <div className="grid grid-cols-2 gap-4">
@@ -84,7 +87,7 @@ export function TaxServiceTab() {
         description="Additional service fees"
         icon={Percent}
         onSave={handleSave}
-        hasUnsavedChanges={unsavedChanges.has('financials')}
+        hasUnsavedChanges={hasFinancialsUnsaved}
       >
         <div className="space-y-4">
           <div className="grid grid-cols-2 gap-4">

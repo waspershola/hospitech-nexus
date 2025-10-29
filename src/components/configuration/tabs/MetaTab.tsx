@@ -7,7 +7,11 @@ import { Textarea } from '@/components/ui/textarea';
 import { Building2, Mail, Phone, Share2 } from 'lucide-react';
 
 export function MetaTab() {
-  const { hotelMeta, updateHotelMeta, saveHotelMeta, loadHotelMeta, unsavedChanges, version } = useConfigStore();
+  const hotelMeta = useConfigStore(state => state.hotelMeta);
+  const updateHotelMeta = useConfigStore(state => state.updateHotelMeta);
+  const saveHotelMeta = useConfigStore(state => state.saveHotelMeta);
+  const loadHotelMeta = useConfigStore(state => state.loadHotelMeta);
+  const hasHotelMetaUnsaved = useConfigStore(state => state.unsavedChanges.has('hotel_meta'));
 
   useEffect(() => {
     loadHotelMeta();
@@ -31,7 +35,7 @@ export function MetaTab() {
         description="Basic information about your hotel"
         icon={Building2}
         onSave={saveHotelMeta}
-        hasUnsavedChanges={unsavedChanges.has('hotel_meta')}
+        hasUnsavedChanges={hasHotelMetaUnsaved}
       >
         <div className="space-y-4">
           <div className="space-y-2">
@@ -72,7 +76,7 @@ export function MetaTab() {
         description="How guests can reach you"
         icon={Mail}
         onSave={saveHotelMeta}
-        hasUnsavedChanges={unsavedChanges.has('hotel_meta')}
+        hasUnsavedChanges={hasHotelMetaUnsaved}
       >
         <div className="grid grid-cols-2 gap-4">
           <div className="space-y-2">
@@ -110,7 +114,7 @@ export function MetaTab() {
         description="Connect your social media profiles"
         icon={Share2}
         onSave={saveHotelMeta}
-        hasUnsavedChanges={unsavedChanges.has('hotel_meta')}
+        hasUnsavedChanges={hasHotelMetaUnsaved}
       >
         <div className="space-y-4">
           <div className="space-y-2">

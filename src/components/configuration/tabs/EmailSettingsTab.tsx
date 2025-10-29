@@ -6,7 +6,10 @@ import { Switch } from '@/components/ui/switch';
 import { Mail } from 'lucide-react';
 
 export function EmailSettingsTab() {
-  const { emailSettings, updateEmailSettings, saveEmailSettings, unsavedChanges, version } = useConfigStore();
+  const emailSettings = useConfigStore(state => state.emailSettings);
+  const updateEmailSettings = useConfigStore(state => state.updateEmailSettings);
+  const saveEmailSettings = useConfigStore(state => state.saveEmailSettings);
+  const hasEmailSettingsUnsaved = useConfigStore(state => state.unsavedChanges.has('email_settings'));
 
   const handleChange = (field: string, value: any) => {
     updateEmailSettings({ [field]: value });
@@ -19,7 +22,7 @@ export function EmailSettingsTab() {
         description="Configure how emails appear to recipients"
         icon={Mail}
         onSave={saveEmailSettings}
-        hasUnsavedChanges={unsavedChanges.has('email_settings')}
+        hasUnsavedChanges={hasEmailSettingsUnsaved}
       >
         <div className="space-y-4">
           <div className="grid grid-cols-2 gap-4">
@@ -73,7 +76,7 @@ export function EmailSettingsTab() {
         title="SMTP Configuration"
         description="Custom email server settings (optional)"
         onSave={saveEmailSettings}
-        hasUnsavedChanges={unsavedChanges.has('email_settings')}
+        hasUnsavedChanges={hasEmailSettingsUnsaved}
       >
         <div className="space-y-4">
           <div className="flex items-center space-x-2">
