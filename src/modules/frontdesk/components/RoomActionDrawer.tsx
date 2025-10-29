@@ -22,6 +22,7 @@ import { PaymentHistory } from '@/modules/payments/PaymentHistory';
 import { BookingAmendmentDrawer } from '@/modules/bookings/components/BookingAmendmentDrawer';
 import { CancelBookingModal } from '@/modules/bookings/components/CancelBookingModal';
 import { BookingConfirmationDocument } from '@/modules/bookings/components/BookingConfirmationDocument';
+import { BookingPaymentManager } from '@/modules/bookings/components/BookingPaymentManager';
 import { toast } from '@/hooks/use-toast';
 import { 
   Loader2, User, CreditCard, Calendar, AlertCircle, Clock, Building2, AlertTriangle, 
@@ -272,8 +273,12 @@ export function RoomActionDrawer({ roomId, open, onClose }: RoomActionDrawerProp
               </SheetHeader>
 
               <Tabs defaultValue={showConfirmationDoc ? "confirmation" : "details"} className="mt-6">
-                <TabsList className="grid w-full grid-cols-3">
+                <TabsList className="grid w-full grid-cols-4">
                   <TabsTrigger value="details">Details</TabsTrigger>
+                  <TabsTrigger value="payments">
+                    <Receipt className="w-4 h-4 mr-2" />
+                    Payments
+                  </TabsTrigger>
                   <TabsTrigger value="confirmation">
                     <FileText className="w-4 h-4 mr-2" />
                     Confirmation
@@ -496,6 +501,17 @@ export function RoomActionDrawer({ roomId, open, onClose }: RoomActionDrawerProp
                         <p className="text-sm text-muted-foreground">{room.notes}</p>
                       </div>
                     </>
+                  )}
+                </TabsContent>
+
+                <TabsContent value="payments" className="mt-6">
+                  {currentBooking ? (
+                    <BookingPaymentManager bookingId={currentBooking.id} />
+                  ) : (
+                    <div className="text-center py-8 text-muted-foreground">
+                      <Receipt className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                      <p>No active booking for this room</p>
+                    </div>
                   )}
                 </TabsContent>
 

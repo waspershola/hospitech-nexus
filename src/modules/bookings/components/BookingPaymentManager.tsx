@@ -1,0 +1,384 @@
+import { useState } from 'react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { supabase } from '@/integrations/supabase/client';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Separator } from '@/components/ui/separator';
+import { Badge } from '@/components/ui/badge';
+import { Textarea } from '@/components/ui/textarea';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Plus, Receipt, CreditCard, Trash2, Loader2 } from 'lucide-react';
+import { format } from 'date-fns';
+import { toast } from 'sonner';
+import { useRecordPayment } from '@/hooks/useRecordPayment';
+import { useAuth } from '@/contexts/AuthContext';
+
+interface BookingPaymentManagerProps {
+  bookingId: string;
+}
+
+interface BookingCharge {
+  id: string;
+  description: string;
+  amount: number;
+  category: string;
+  created_at: string;
+}
+
+export function BookingPaymentManager({ bookingId }: BookingPaymentManagerProps) {
+  const { tenantId } = useAuth();
+  const queryClient = useQueryClient();
+  const recordPayment = useRecordPayment();
+  
+  const [showAddCharge, setShowAddCharge] = useState(false);
+  const [showAddPayment, setShowAddPayment] = useState(false);
+  const [chargeForm, setChargeForm] = useState({
+    description: '',
+    amount: '',
+    category: 'room_service',
+  });
+  const [paymentForm, setPaymentForm] = useState({
+    amount: '',
+    method: 'cash',
+    reference: '',
+  });
+
+  // Fetch booking details
+  const { data: booking, isLoading: bookingLoading } = useQuery({
+    queryKey: ['booking-payment', bookingId],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('bookings')
+        .select('*, guest:guests(*), room:rooms(*)')
+        .eq('id', bookingId)
+        .single();
+      if (error) throw error;
+      return data;
+    },
+  });
+
+  // Fetch payments
+  const { data: payments = [] } = useQuery({
+    queryKey: ['booking-payments', bookingId],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('payments')
+        .select('*')
+        .eq('booking_id', bookingId)
+        .order('created_at', { ascending: false });
+      if (error) throw error;
+      return data;
+    },
+  });
+
+  // Fetch charges from metadata
+  const metadata = booking?.metadata as any;
+  const charges: BookingCharge[] = metadata?.charges || [];
+
+  // Add charge mutation
+  const addChargeMutation = useMutation({
+    mutationFn: async (charge: Omit<BookingCharge, 'id' | 'created_at'>) => {
+      const newCharge = {
+        id: crypto.randomUUID(),
+        ...charge,
+        created_at: new Date().toISOString(),
+      };
+      
+      const updatedCharges = [...charges, newCharge];
+      const newTotal = Number(booking.total_amount) + Number(charge.amount);
+      
+      const currentMetadata = booking.metadata as any;
+      const { error } = await supabase
+        .from('bookings')
+        .update({
+          metadata: { ...currentMetadata, charges: updatedCharges },
+          total_amount: newTotal,
+        })
+        .eq('id', bookingId);
+      
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['booking-payment', bookingId] });
+      toast.success('Charge added successfully');
+      setChargeForm({ description: '', amount: '', category: 'room_service' });
+      setShowAddCharge(false);
+    },
+    onError: (error: Error) => {
+      toast.error(error.message);
+    },
+  });
+
+  // Remove charge mutation
+  const removeChargeMutation = useMutation({
+    mutationFn: async (chargeId: string) => {
+      const chargeToRemove = charges.find(c => c.id === chargeId);
+      if (!chargeToRemove) throw new Error('Charge not found');
+      
+      const updatedCharges = charges.filter(c => c.id !== chargeId);
+      const newTotal = Number(booking.total_amount) - Number(chargeToRemove.amount);
+      
+      const currentMetadata = booking.metadata as any;
+      const { error } = await supabase
+        .from('bookings')
+        .update({
+          metadata: { ...currentMetadata, charges: updatedCharges },
+          total_amount: newTotal,
+        })
+        .eq('id', bookingId);
+      
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['booking-payment', bookingId] });
+      toast.success('Charge removed');
+    },
+  });
+
+  const handleAddCharge = () => {
+    if (!chargeForm.description || !chargeForm.amount) {
+      toast.error('Please fill all fields');
+      return;
+    }
+    addChargeMutation.mutate({
+      description: chargeForm.description,
+      amount: Number(chargeForm.amount),
+      category: chargeForm.category,
+    });
+  };
+
+  const handleAddPayment = () => {
+    if (!paymentForm.amount) {
+      toast.error('Please enter payment amount');
+      return;
+    }
+    
+    recordPayment.mutate({
+      transaction_ref: paymentForm.reference || `PAY-${Date.now()}`,
+      booking_id: bookingId,
+      guest_id: booking?.guest_id,
+      amount: Number(paymentForm.amount),
+      expected_amount: Number(booking?.total_amount),
+      method: paymentForm.method,
+      metadata: { source: 'booking_folio' },
+    }, {
+      onSuccess: () => {
+        setPaymentForm({ amount: '', method: 'cash', reference: '' });
+        setShowAddPayment(false);
+      },
+    });
+  };
+
+  if (bookingLoading) {
+    return (
+      <div className="flex items-center justify-center py-8">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+
+  if (!booking) return null;
+
+  const totalPaid = payments.reduce((sum, p) => sum + (p.status === 'completed' ? Number(p.amount) : 0), 0);
+  const balance = Number(booking.total_amount) - totalPaid;
+
+  return (
+    <div className="space-y-6">
+      {/* Summary Card */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Receipt className="h-5 w-5" />
+            Booking Folio Summary
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="grid grid-cols-3 gap-4">
+            <div>
+              <p className="text-sm text-muted-foreground">Total Charges</p>
+              <p className="text-2xl font-bold">₦{Number(booking.total_amount).toLocaleString()}</p>
+            </div>
+            <div>
+              <p className="text-sm text-muted-foreground">Total Paid</p>
+              <p className="text-2xl font-bold text-green-600">₦{totalPaid.toLocaleString()}</p>
+            </div>
+            <div>
+              <p className="text-sm text-muted-foreground">Balance</p>
+              <p className={`text-2xl font-bold ${balance > 0 ? 'text-destructive' : 'text-green-600'}`}>
+                ₦{balance.toLocaleString()}
+              </p>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Charges Section */}
+      <Card>
+        <CardHeader className="flex flex-row items-center justify-between">
+          <CardTitle>Charges</CardTitle>
+          <Button onClick={() => setShowAddCharge(!showAddCharge)} size="sm">
+            <Plus className="h-4 w-4 mr-2" />
+            Add Charge
+          </Button>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {showAddCharge && (
+            <div className="p-4 border rounded-lg space-y-4 bg-muted/50">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label>Description</Label>
+                  <Input
+                    value={chargeForm.description}
+                    onChange={(e) => setChargeForm({ ...chargeForm, description: e.target.value })}
+                    placeholder="e.g., Room Service"
+                  />
+                </div>
+                <div>
+                  <Label>Category</Label>
+                  <Select value={chargeForm.category} onValueChange={(v) => setChargeForm({ ...chargeForm, category: v })}>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="room_service">Room Service</SelectItem>
+                      <SelectItem value="minibar">Minibar</SelectItem>
+                      <SelectItem value="laundry">Laundry</SelectItem>
+                      <SelectItem value="restaurant">Restaurant</SelectItem>
+                      <SelectItem value="spa">Spa</SelectItem>
+                      <SelectItem value="other">Other</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+              <div>
+                <Label>Amount (₦)</Label>
+                <Input
+                  type="number"
+                  value={chargeForm.amount}
+                  onChange={(e) => setChargeForm({ ...chargeForm, amount: e.target.value })}
+                  placeholder="0.00"
+                />
+              </div>
+              <div className="flex gap-2">
+                <Button onClick={handleAddCharge} disabled={addChargeMutation.isPending}>
+                  {addChargeMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Add Charge'}
+                </Button>
+                <Button variant="outline" onClick={() => setShowAddCharge(false)}>Cancel</Button>
+              </div>
+            </div>
+          )}
+
+          <div className="space-y-2">
+            {charges.length === 0 && !showAddCharge && (
+              <p className="text-sm text-muted-foreground text-center py-4">No additional charges</p>
+            )}
+            {charges.map((charge) => (
+              <div key={charge.id} className="flex items-center justify-between p-3 border rounded-lg">
+                <div className="flex-1">
+                  <div className="flex items-center gap-2">
+                    <p className="font-medium">{charge.description}</p>
+                    <Badge variant="outline">{charge.category.replace('_', ' ')}</Badge>
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    {format(new Date(charge.created_at), 'PPp')}
+                  </p>
+                </div>
+                <div className="flex items-center gap-4">
+                  <p className="font-semibold">₦{Number(charge.amount).toLocaleString()}</p>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => removeChargeMutation.mutate(charge.id)}
+                    disabled={removeChargeMutation.isPending}
+                  >
+                    <Trash2 className="h-4 w-4 text-destructive" />
+                  </Button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Payments Section */}
+      <Card>
+        <CardHeader className="flex flex-row items-center justify-between">
+          <CardTitle>Payments</CardTitle>
+          <Button onClick={() => setShowAddPayment(!showAddPayment)} size="sm" variant="default">
+            <CreditCard className="h-4 w-4 mr-2" />
+            Record Payment
+          </Button>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {showAddPayment && (
+            <div className="p-4 border rounded-lg space-y-4 bg-muted/50">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label>Amount (₦)</Label>
+                  <Input
+                    type="number"
+                    value={paymentForm.amount}
+                    onChange={(e) => setPaymentForm({ ...paymentForm, amount: e.target.value })}
+                    placeholder={balance > 0 ? balance.toString() : '0.00'}
+                  />
+                </div>
+                <div>
+                  <Label>Method</Label>
+                  <Select value={paymentForm.method} onValueChange={(v) => setPaymentForm({ ...paymentForm, method: v })}>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="cash">Cash</SelectItem>
+                      <SelectItem value="card">Card</SelectItem>
+                      <SelectItem value="transfer">Bank Transfer</SelectItem>
+                      <SelectItem value="pos">POS</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+              <div>
+                <Label>Reference (Optional)</Label>
+                <Input
+                  value={paymentForm.reference}
+                  onChange={(e) => setPaymentForm({ ...paymentForm, reference: e.target.value })}
+                  placeholder="Transaction reference"
+                />
+              </div>
+              <div className="flex gap-2">
+                <Button onClick={handleAddPayment} disabled={recordPayment.isPending}>
+                  {recordPayment.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Record Payment'}
+                </Button>
+                <Button variant="outline" onClick={() => setShowAddPayment(false)}>Cancel</Button>
+              </div>
+            </div>
+          )}
+
+          <div className="space-y-2">
+            {payments.length === 0 && !showAddPayment && (
+              <p className="text-sm text-muted-foreground text-center py-4">No payments recorded</p>
+            )}
+            {payments.map((payment) => (
+              <div key={payment.id} className="flex items-center justify-between p-3 border rounded-lg">
+                <div className="flex-1">
+                  <div className="flex items-center gap-2">
+                    <p className="font-medium">{payment.method}</p>
+                    <Badge variant={payment.status === 'completed' ? 'default' : 'secondary'}>
+                      {payment.status}
+                    </Badge>
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    {payment.transaction_ref} • {format(new Date(payment.created_at), 'PPp')}
+                  </p>
+                </div>
+                <p className="font-semibold text-green-600">₦{Number(payment.amount).toLocaleString()}</p>
+              </div>
+            ))}
+          </div>
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
