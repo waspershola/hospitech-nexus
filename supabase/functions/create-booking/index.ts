@@ -17,7 +17,7 @@ serve(async (req) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
     );
 
-    const { action_id, tenant_id, guest_id, room_id, check_in, check_out, total_amount } = await req.json();
+    const { action_id, tenant_id, guest_id, room_id, check_in, check_out, total_amount, organization_id, department } = await req.json();
 
     console.log('Creating booking with action_id:', action_id);
 
@@ -80,6 +80,7 @@ serve(async (req) => {
         check_in: checkInDate.toISOString(),
         check_out: checkOutDate.toISOString(),
         total_amount,
+        organization_id: organization_id || null,
         status: 'reserved',
         action_id,
         metadata: {
@@ -103,8 +104,82 @@ serve(async (req) => {
 
     console.log('Booking created successfully:', newBooking.id);
 
+    // If organization booking, create payment and debit wallet
+    let payment = null;
+    if (organization_id && total_amount > 0) {
+      console.log('Creating organization payment for booking:', newBooking.id);
+      
+      // Get organization wallet
+      const { data: wallet, error: walletError } = await supabaseClient
+        .from('wallets')
+        .select('id')
+        .eq('owner_id', organization_id)
+        .eq('wallet_type', 'organization')
+        .single();
+
+      if (walletError || !wallet) {
+        console.error('Organization wallet not found:', walletError);
+        // Don't fail the booking, just log the error
+      } else {
+        // Create payment record
+        const { data: newPayment, error: paymentError } = await supabaseClient
+          .from('payments')
+          .insert({
+            tenant_id,
+            booking_id: newBooking.id,
+            guest_id,
+            organization_id,
+            wallet_id: wallet.id,
+            amount: total_amount,
+            expected_amount: total_amount,
+            payment_type: 'full',
+            method: 'organization_wallet',
+            status: 'completed',
+            charged_to_organization: true,
+            department: department || 'front_desk',
+            transaction_ref: `ORG-${newBooking.id.substring(0, 8)}`,
+            metadata: {
+              booking_id: newBooking.id,
+              auto_created: true,
+              created_at: new Date().toISOString()
+            }
+          })
+          .select()
+          .single();
+
+        if (paymentError) {
+          console.error('Error creating organization payment:', paymentError);
+        } else {
+          payment = newPayment;
+          
+          // Create wallet transaction (debit)
+          const { error: txnError } = await supabaseClient
+            .from('wallet_transactions')
+            .insert({
+              tenant_id,
+              wallet_id: wallet.id,
+              type: 'debit',
+              amount: total_amount,
+              payment_id: newPayment.id,
+              description: `Booking charge - Room ${room_id} - Guest ${guest_id}`,
+              created_by: guest_id
+            });
+
+          if (txnError) {
+            console.error('Error creating wallet transaction:', txnError);
+          } else {
+            console.log('Organization wallet debited successfully');
+          }
+        }
+      }
+    }
+
     return new Response(
-      JSON.stringify({ success: true, booking: newBooking }),
+      JSON.stringify({ 
+        success: true, 
+        booking: newBooking,
+        payment: payment
+      }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 201 }
     );
 

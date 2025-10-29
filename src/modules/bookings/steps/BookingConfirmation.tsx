@@ -95,40 +95,38 @@ export function BookingConfirmation({ bookingData, onComplete }: BookingConfirma
 
       const actionId = crypto.randomUUID();
 
-      const { data, error } = await supabase
-        .from('bookings')
-        .insert([{
+      // Use edge function to create booking (auto-creates payment for organizations)
+      const { data: createResult, error: createError } = await supabase.functions.invoke('create-booking', {
+        body: {
           tenant_id: tenantId,
           guest_id: bookingData.guestId,
-          organization_id: bookingData.organizationId,
           room_id: bookingData.roomId,
+          organization_id: bookingData.organizationId,
           check_in: bookingData.checkIn.toISOString(),
           check_out: bookingData.checkOut.toISOString(),
           total_amount: bookingData.totalAmount || 0,
-          status: 'reserved',
           action_id: actionId,
-          metadata: {
-            created_via: 'front_desk',
-            created_at: new Date().toISOString(),
-          },
-        }])
-        .select()
-        .single();
+          department: 'front_desk',
+        },
+      });
 
-      if (error) throw error;
+      if (createError) {
+        throw new Error(createError.message || 'Failed to create booking');
+      }
 
-      // Update room status to reserved
-      await supabase
-        .from('rooms')
-        .update({ status: 'reserved' })
-        .eq('id', bookingData.roomId);
+      if (!createResult?.success) {
+        throw new Error(createResult?.error || 'Booking creation failed');
+      }
 
-      return data;
+      return createResult.booking;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['bookings'] });
       queryClient.invalidateQueries({ queryKey: ['rooms-grid'] });
       queryClient.invalidateQueries({ queryKey: ['frontdesk-kpis'] });
+      queryClient.invalidateQueries({ queryKey: ['wallets'] });
+      queryClient.invalidateQueries({ queryKey: ['wallet-transactions'] });
+      queryClient.invalidateQueries({ queryKey: ['payments'] });
       toast.success('Booking created successfully!');
       onComplete();
     },

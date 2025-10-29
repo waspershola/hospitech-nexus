@@ -154,7 +154,7 @@ Deno.serve(async (req) => {
       );
     }
 
-    // Validation 6: If organization booking, check credit limit
+    // Validation 6: If organization booking, check credit limit and wallet rules
     if (organization_id) {
       const { data: org, error: orgError } = await supabase
         .from('organizations')
@@ -190,6 +190,39 @@ Deno.serve(async (req) => {
             { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 400 }
           );
         }
+      }
+
+      // Validation 7: Check organization wallet rules (per-guest limits, per-department limits, etc.)
+      const { data: category } = await supabase
+        .from('room_categories')
+        .select('base_rate')
+        .eq('id', category_id)
+        .single();
+
+      const bookingAmount = category?.base_rate || 0;
+      const department = 'front_desk'; // Default department
+
+      // Call the database function to validate organization limits
+      const { data: validationResult, error: validationError } = await supabase
+        .rpc('validate_org_limits', {
+          _org_id: organization_id,
+          _guest_id: guest_id,
+          _department: department,
+          _amount: bookingAmount
+        });
+
+      if (validationError) {
+        console.error('Error validating org limits:', validationError);
+        // Don't fail on validation error, just log it
+      } else if (validationResult && !validationResult.allowed) {
+        return new Response(
+          JSON.stringify({ 
+            success: false, 
+            error: `Organization limit exceeded: ${validationResult.detail || 'Please check spending limits'}`,
+            code: validationResult.code
+          }),
+          { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 400 }
+        );
       }
     }
 

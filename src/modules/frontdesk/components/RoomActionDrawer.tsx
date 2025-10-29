@@ -159,6 +159,7 @@ export function RoomActionDrawer({ roomId, open, onClose }: RoomActionDrawerProp
       case 'reserved':
         return [
           { label: 'Check In', action: () => checkIn(room.id), variant: 'default' as const, tooltip: 'Complete guest check-in' },
+          { label: 'Take Payment', action: () => setQuickPaymentOpen(true), variant: 'secondary' as const, icon: CreditCard, tooltip: 'Record payment' },
           { label: 'Cancel', action: () => {}, variant: 'destructive' as const, tooltip: 'Cancel reservation' },
         ];
       case 'cleaning':
