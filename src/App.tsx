@@ -23,6 +23,7 @@ import Settings from './pages/dashboard/Settings';
 import ConfigurationCenter from './pages/dashboard/ConfigurationCenter';
 import FinanceCenter from './pages/dashboard/FinanceCenter';
 import Payments from './pages/dashboard/Payments';
+import Wallets from './pages/dashboard/Wallets';
 import PortalHome from "./pages/portal/Home";
 import PortalRequests from "./pages/portal/Requests";
 import PortalPayments from "./pages/portal/Payments";
@@ -49,6 +50,7 @@ const App = () => (
               <Route path="bookings" element={<Bookings />} />
               <Route path="guests" element={<Guests />} />
               <Route path="payments" element={<Payments />} />
+              <Route path="wallets" element={<Wallets />} />
               <Route path="reports" element={<RoleGuard allowedRoles={['owner', 'manager']}><Reports /></RoleGuard>} />
               <Route path="configuration" element={<RoleGuard allowedRoles={['owner', 'manager']}><ConfigurationCenter /></RoleGuard>} />
               <Route path="finance" element={<RoleGuard allowedRoles={['owner', 'manager']}><FinanceCenter /></RoleGuard>} />
