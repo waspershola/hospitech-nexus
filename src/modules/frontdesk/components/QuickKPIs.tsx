@@ -23,31 +23,31 @@ export function QuickKPIs({ onFilterClick }: QuickKPIsProps) {
       label: 'Available', 
       value: kpis?.available || 0, 
       icon: Hotel, 
-      color: 'text-green-600', 
-      bg: 'bg-green-50',
+      color: 'text-[hsl(var(--status-available))]', 
+      bg: 'bg-[hsl(var(--status-available)/0.1)]',
       filter: 'available'
     },
     { 
       label: 'Occupied', 
       value: kpis?.occupied || 0, 
       icon: Users, 
-      color: 'text-red-600', 
-      bg: 'bg-red-50',
+      color: 'text-[hsl(var(--status-occupied))]', 
+      bg: 'bg-[hsl(var(--status-occupied)/0.1)]',
       filter: 'occupied'
     },
     { 
       label: 'Expected Arrivals', 
       value: kpis?.arrivals || 0, 
       icon: LogIn, 
-      color: 'text-blue-600', 
-      bg: 'bg-blue-50'
+      color: 'text-[hsl(var(--status-reserved))]', 
+      bg: 'bg-[hsl(var(--status-reserved)/0.1)]'
     },
     { 
       label: 'Expected Departures', 
       value: kpis?.departures || 0, 
       icon: LogOut, 
-      color: 'text-purple-600', 
-      bg: 'bg-purple-50'
+      color: 'text-[hsl(var(--status-overstay))]', 
+      bg: 'bg-[hsl(var(--status-overstay)/0.1)]'
     },
     { 
       label: 'In-House Guests', 
@@ -60,23 +60,24 @@ export function QuickKPIs({ onFilterClick }: QuickKPIsProps) {
       label: 'Pending Payments', 
       value: kpis?.pendingPayments || 0, 
       icon: CreditCard, 
-      color: 'text-amber-600', 
-      bg: 'bg-amber-50'
+      color: 'text-[hsl(var(--warning))]', 
+      bg: 'bg-[hsl(var(--warning)/0.1)]'
+    },
+    {
+      label: 'Overstays',
+      value: kpis?.overstays || 0,
+      icon: AlertTriangle,
+      color: 'text-[hsl(var(--status-overstay))]',
+      bg: 'bg-[hsl(var(--status-overstay)/0.1)]',
+      filter: 'overstay'
     },
     { 
       label: 'Out of Service', 
       value: kpis?.outOfService || 0, 
       icon: AlertTriangle, 
-      color: 'text-gray-600', 
-      bg: 'bg-gray-50',
+      color: 'text-[hsl(var(--status-oos))]', 
+      bg: 'bg-[hsl(var(--status-oos)/0.1)]',
       filter: 'maintenance'
-    },
-    { 
-      label: 'Diesel Level', 
-      value: `${kpis?.dieselLevel || 75}%`, 
-      icon: Fuel, 
-      color: 'text-emerald-600', 
-      bg: 'bg-emerald-50'
     },
   ];
 
@@ -93,20 +94,22 @@ export function QuickKPIs({ onFilterClick }: QuickKPIsProps) {
   }
 
   return (
-    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+    <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4">
       {cards.map((card) => (
         <Card 
           key={card.label}
-          className={`p-4 cursor-pointer transition-all hover:shadow-lg ${card.filter ? 'hover:scale-105' : ''}`}
+          className={`p-3 md:p-4 cursor-pointer transition-all duration-300 hover:shadow-luxury rounded-2xl ${
+            card.filter ? 'hover:scale-105' : ''
+          }`}
           onClick={() => card.filter && onFilterClick(card.filter)}
         >
           <div className="flex items-center justify-between mb-2">
-            <div className={`p-2 rounded-lg ${card.bg}`}>
-              <card.icon className={`w-5 h-5 ${card.color}`} />
+            <div className={`p-2 rounded-xl ${card.bg}`}>
+              <card.icon className={`w-4 h-4 md:w-5 md:h-5 ${card.color}`} />
             </div>
-            <span className="text-2xl font-bold text-foreground">{card.value}</span>
+            <span className="text-xl md:text-2xl font-bold font-display text-foreground">{card.value}</span>
           </div>
-          <p className="text-sm text-muted-foreground">{card.label}</p>
+          <p className="text-xs md:text-sm text-muted-foreground truncate">{card.label}</p>
         </Card>
       ))}
     </div>

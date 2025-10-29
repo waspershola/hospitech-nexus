@@ -1,12 +1,18 @@
+import { useState } from 'react';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useRoomActions } from '../hooks/useRoomActions';
-import { Loader2, User, CreditCard, Calendar, AlertCircle } from 'lucide-react';
+import { AssignRoomModal } from './AssignRoomModal';
+import { ExtendStayModal } from './ExtendStayModal';
+import { AddChargeModal } from './AddChargeModal';
+import { RoomAuditTrail } from './RoomAuditTrail';
+import { Loader2, User, CreditCard, Calendar, AlertCircle, Clock } from 'lucide-react';
 
 interface RoomActionDrawerProps {
   roomId: string | null;
@@ -17,6 +23,9 @@ interface RoomActionDrawerProps {
 export function RoomActionDrawer({ roomId, open, onClose }: RoomActionDrawerProps) {
   const { tenantId } = useAuth();
   const { checkIn, checkOut, markClean, markMaintenance } = useRoomActions();
+  const [assignModalOpen, setAssignModalOpen] = useState(false);
+  const [extendModalOpen, setExtendModalOpen] = useState(false);
+  const [chargeModalOpen, setChargeModalOpen] = useState(false);
 
   const { data: room, isLoading } = useQuery({
     queryKey: ['room-detail', roomId],
@@ -54,15 +63,16 @@ export function RoomActionDrawer({ roomId, open, onClose }: RoomActionDrawerProp
     switch (room.status) {
       case 'available':
         return [
-          { label: 'Assign Room', action: () => {}, variant: 'default' as const },
-          { label: 'Reserve', action: () => {}, variant: 'secondary' as const },
+          { label: 'Assign Room', action: () => setAssignModalOpen(true), variant: 'default' as const },
+          { label: 'Reserve', action: () => setAssignModalOpen(true), variant: 'secondary' as const },
           { label: 'Mark OOS', action: () => markMaintenance(room.id), variant: 'outline' as const },
         ];
       case 'occupied':
+      case 'overstay':
         return [
           { label: 'Check Out', action: () => checkOut(room.id), variant: 'default' as const },
-          { label: 'Extend Stay', action: () => {}, variant: 'secondary' as const },
-          { label: 'Add Charge', action: () => {}, variant: 'outline' as const },
+          { label: 'Extend Stay', action: () => setExtendModalOpen(true), variant: 'secondary' as const },
+          { label: 'Add Charge', action: () => setChargeModalOpen(true), variant: 'outline' as const },
         ];
       case 'reserved':
         return [
@@ -83,105 +93,146 @@ export function RoomActionDrawer({ roomId, open, onClose }: RoomActionDrawerProp
   };
 
   return (
-    <Sheet open={open} onOpenChange={onClose}>
-      <SheetContent className="w-full sm:max-w-md overflow-y-auto">
-        {isLoading ? (
-          <div className="flex items-center justify-center h-full">
-            <Loader2 className="w-8 h-8 animate-spin text-primary" />
-          </div>
-        ) : room ? (
-          <>
-            <SheetHeader>
-              <SheetTitle className="text-2xl">Room {room.number}</SheetTitle>
-              <div className="flex items-center gap-2">
-                <Badge>{room.status}</Badge>
-                <span className="text-sm text-muted-foreground">
-                  {room.category?.name || room.type}
-                </span>
-              </div>
-            </SheetHeader>
-
-            <div className="mt-6 space-y-6">
-              {currentBooking && (
-                <>
-                  <div className="space-y-3">
-                    <h3 className="font-semibold flex items-center gap-2">
-                      <User className="w-4 h-4" />
-                      Guest Information
-                    </h3>
-                    <div className="text-sm space-y-1">
-                      <p className="font-medium">{currentBooking.guest?.name}</p>
-                      <p className="text-muted-foreground">{currentBooking.guest?.email}</p>
-                      <p className="text-muted-foreground">{currentBooking.guest?.phone}</p>
-                    </div>
-                  </div>
-
-                  <Separator />
-
-                  <div className="space-y-3">
-                    <h3 className="font-semibold flex items-center gap-2">
-                      <Calendar className="w-4 h-4" />
-                      Stay Details
-                    </h3>
-                    <div className="text-sm space-y-1">
-                      <p>Check-in: {new Date(currentBooking.check_in).toLocaleDateString()}</p>
-                      <p>Check-out: {new Date(currentBooking.check_out).toLocaleDateString()}</p>
-                    </div>
-                  </div>
-
-                  <Separator />
-
-                  <div className="space-y-3">
-                    <h3 className="font-semibold flex items-center gap-2">
-                      <CreditCard className="w-4 h-4" />
-                      Folio Balance
-                    </h3>
-                    <p className="text-2xl font-bold text-primary">₦0.00</p>
-                  </div>
-
-                  <Separator />
-                </>
-              )}
-
-              <div className="space-y-3">
-                <h3 className="font-semibold">Quick Actions</h3>
-                <div className="space-y-2">
-                  {getActions().map((action, i) => (
-                    <Button
-                      key={i}
-                      variant={action.variant}
-                      className="w-full"
-                      onClick={() => {
-                        action.action();
-                        onClose();
-                      }}
-                    >
-                      {action.label}
-                    </Button>
-                  ))}
-                </div>
-              </div>
-
-              {room.notes && (
-                <>
-                  <Separator />
-                  <div className="space-y-3">
-                    <h3 className="font-semibold flex items-center gap-2">
-                      <AlertCircle className="w-4 h-4" />
-                      Notes
-                    </h3>
-                    <p className="text-sm text-muted-foreground">{room.notes}</p>
-                  </div>
-                </>
-              )}
+    <>
+      <Sheet open={open} onOpenChange={onClose}>
+        <SheetContent className="w-full sm:max-w-lg overflow-y-auto">
+          {isLoading ? (
+            <div className="flex items-center justify-center h-full">
+              <Loader2 className="w-8 h-8 animate-spin text-primary" />
             </div>
-          </>
-        ) : (
-          <div className="flex items-center justify-center h-full">
-            <p className="text-muted-foreground">Room not found</p>
-          </div>
-        )}
-      </SheetContent>
-    </Sheet>
+          ) : room ? (
+            <>
+              <SheetHeader>
+                <SheetTitle className="text-2xl font-display">Room {room.number}</SheetTitle>
+                <div className="flex items-center gap-2">
+                  <Badge className="capitalize">{room.status}</Badge>
+                  <span className="text-sm text-muted-foreground">
+                    {room.category?.name || room.type}
+                  </span>
+                </div>
+              </SheetHeader>
+
+              <Tabs defaultValue="details" className="mt-6">
+                <TabsList className="grid w-full grid-cols-2">
+                  <TabsTrigger value="details">Details</TabsTrigger>
+                  <TabsTrigger value="history">
+                    <Clock className="w-4 h-4 mr-2" />
+                    History
+                  </TabsTrigger>
+                </TabsList>
+
+                <TabsContent value="details" className="space-y-6 mt-6">
+                  {currentBooking && (
+                    <>
+                      <div className="space-y-3">
+                        <h3 className="font-semibold flex items-center gap-2">
+                          <User className="w-4 h-4" />
+                          Guest Information
+                        </h3>
+                        <div className="text-sm space-y-1">
+                          <p className="font-medium">{currentBooking.guest?.name}</p>
+                          <p className="text-muted-foreground">{currentBooking.guest?.email}</p>
+                          <p className="text-muted-foreground">{currentBooking.guest?.phone}</p>
+                        </div>
+                      </div>
+
+                      <Separator />
+
+                      <div className="space-y-3">
+                        <h3 className="font-semibold flex items-center gap-2">
+                          <Calendar className="w-4 h-4" />
+                          Stay Details
+                        </h3>
+                        <div className="text-sm space-y-1">
+                          <p>Check-in: {new Date(currentBooking.check_in).toLocaleDateString()}</p>
+                          <p>Check-out: {new Date(currentBooking.check_out).toLocaleDateString()}</p>
+                        </div>
+                      </div>
+
+                      <Separator />
+
+                      <div className="space-y-3">
+                        <h3 className="font-semibold flex items-center gap-2">
+                          <CreditCard className="w-4 h-4" />
+                          Folio Balance
+                        </h3>
+                        <p className="text-2xl font-bold text-primary">₦0.00</p>
+                      </div>
+
+                      <Separator />
+                    </>
+                  )}
+
+                  <div className="space-y-3">
+                    <h3 className="font-semibold">Quick Actions</h3>
+                    <div className="space-y-2">
+                      {getActions().map((action, i) => (
+                        <Button
+                          key={i}
+                          variant={action.variant}
+                          className="w-full rounded-xl"
+                          onClick={action.action}
+                        >
+                          {action.label}
+                        </Button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {room.notes && (
+                    <>
+                      <Separator />
+                      <div className="space-y-3">
+                        <h3 className="font-semibold flex items-center gap-2">
+                          <AlertCircle className="w-4 h-4" />
+                          Notes
+                        </h3>
+                        <p className="text-sm text-muted-foreground">{room.notes}</p>
+                      </div>
+                    </>
+                  )}
+                </TabsContent>
+
+                <TabsContent value="history" className="mt-6">
+                  <RoomAuditTrail roomId={room.id} />
+                </TabsContent>
+              </Tabs>
+            </>
+          ) : (
+            <div className="flex items-center justify-center h-full">
+              <p className="text-muted-foreground">Room not found</p>
+            </div>
+          )}
+        </SheetContent>
+      </Sheet>
+
+      {room && (
+        <>
+          <AssignRoomModal
+            open={assignModalOpen}
+            onClose={() => setAssignModalOpen(false)}
+            roomId={room.id}
+            roomNumber={room.number}
+          />
+          {currentBooking && (
+            <>
+              <ExtendStayModal
+                open={extendModalOpen}
+                onClose={() => setExtendModalOpen(false)}
+                bookingId={currentBooking.id}
+                currentCheckOut={currentBooking.check_out}
+                roomNumber={room.number}
+              />
+              <AddChargeModal
+                open={chargeModalOpen}
+                onClose={() => setChargeModalOpen(false)}
+                bookingId={currentBooking.id}
+                roomNumber={room.number}
+              />
+            </>
+          )}
+        </>
+      )}
+    </>
   );
 }

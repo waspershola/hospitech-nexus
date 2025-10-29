@@ -7,15 +7,16 @@ import { Loader2 } from 'lucide-react';
 interface RoomGridProps {
   searchQuery?: string;
   statusFilter?: string | null;
-  typeFilter?: string | null;
+  categoryFilter?: string | null;
+  floorFilter?: number | null;
   onRoomClick: (roomId: string) => void;
 }
 
-export function RoomGrid({ searchQuery, statusFilter, typeFilter, onRoomClick }: RoomGridProps) {
+export function RoomGrid({ searchQuery, statusFilter, categoryFilter, floorFilter, onRoomClick }: RoomGridProps) {
   const { tenantId } = useAuth();
 
   const { data: rooms, isLoading } = useQuery({
-    queryKey: ['rooms-grid', tenantId, searchQuery, statusFilter, typeFilter],
+    queryKey: ['rooms-grid', tenantId, searchQuery, statusFilter, categoryFilter, floorFilter],
     queryFn: async () => {
       if (!tenantId) return [];
       
@@ -23,7 +24,7 @@ export function RoomGrid({ searchQuery, statusFilter, typeFilter, onRoomClick }:
         .from('rooms')
         .select(`
           *,
-          category:room_categories(name, short_code, base_rate)
+          category:room_categories(name, short_code, base_rate, max_occupancy)
         `)
         .eq('tenant_id', tenantId)
         .order('number', { ascending: true });
@@ -32,8 +33,12 @@ export function RoomGrid({ searchQuery, statusFilter, typeFilter, onRoomClick }:
         query = query.eq('status', statusFilter);
       }
 
-      if (typeFilter) {
-        query = query.eq('type', typeFilter);
+      if (categoryFilter) {
+        query = query.eq('category_id', categoryFilter);
+      }
+
+      if (floorFilter !== null) {
+        query = query.eq('floor', floorFilter);
       }
 
       if (searchQuery) {
@@ -64,7 +69,7 @@ export function RoomGrid({ searchQuery, statusFilter, typeFilter, onRoomClick }:
   }
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-4">
       {rooms.map((room) => (
         <RoomTile 
           key={room.id} 

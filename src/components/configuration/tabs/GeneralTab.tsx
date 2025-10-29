@@ -1,5 +1,6 @@
 import { useConfigStore } from '@/stores/configStore';
 import { ConfigCard } from '../shared/ConfigCard';
+import { PortalPreviewCard } from '../shared/PortalPreviewCard';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
@@ -18,6 +19,8 @@ export function GeneralTab() {
 
   return (
     <div className="space-y-6">
+      <PortalPreviewCard />
+      
       <ConfigCard
         title="Hotel Information"
         description="Core details about your property"

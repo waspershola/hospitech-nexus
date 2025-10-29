@@ -10,6 +10,7 @@ export interface FrontDeskKPIs {
   inHouse: number;
   pendingPayments: number;
   outOfService: number;
+  overstays: number;
   dieselLevel: number;
 }
 
@@ -64,8 +65,26 @@ export function useFrontDeskKPIs() {
         .eq('tenant_id', tenantId)
         .eq('status', 'pending');
 
+      // Get overstays (checked-in bookings past check-out date)
+      const { data: overstays } = await supabase
+        .from('bookings')
+        .select('id, room_id')
+        .eq('tenant_id', tenantId)
+        .eq('status', 'checked_in')
+        .lt('check_out', today.toISOString());
+
+      // Mark rooms as overstay
+      if (overstays && overstays.length > 0) {
+        const overstayRoomIds = overstays.map(b => b.room_id);
+        await supabase
+          .from('rooms')
+          .update({ status: 'overstay' })
+          .in('id', overstayRoomIds)
+          .eq('status', 'occupied');
+      }
+
       const available = rooms?.filter(r => r.status === 'available').length || 0;
-      const occupied = rooms?.filter(r => r.status === 'occupied').length || 0;
+      const occupied = rooms?.filter(r => r.status === 'occupied' || r.status === 'overstay').length || 0;
       const outOfService = rooms?.filter(r => r.status === 'maintenance').length || 0;
 
       return {
@@ -76,6 +95,7 @@ export function useFrontDeskKPIs() {
         inHouse: inHouse?.length || 0,
         pendingPayments: pendingPayments?.length || 0,
         outOfService,
+        overstays: overstays?.length || 0,
         dieselLevel: 75, // This would come from a custom metric in production
       } as FrontDeskKPIs;
     },
