@@ -19,6 +19,7 @@ import { usePayments } from '@/hooks/usePayments';
 import { useFinanceProviders } from '@/hooks/useFinanceProviders';
 import { useAutoSyncReconciliation } from '@/hooks/useAutoSyncReconciliation';
 import { CSVImportDialog } from './CSVImportDialog';
+import { ReconciliationSummary } from './components/ReconciliationSummary';
 import { format, subDays } from 'date-fns';
 import { toast } from 'sonner';
 import {
@@ -30,7 +31,7 @@ import {
 } from '@/components/ui/select';
 
 export function ReconciliationTab() {
-  const { records, isLoading, matchTransaction, unmatchTransaction } = useReconciliation();
+  const { records, isLoading, matchTransaction, unmatchTransaction, autoMatch, isAutoMatching } = useReconciliation();
   const { payments } = usePayments();
   const { providers } = useFinanceProviders();
   const { autoSync, isSyncing } = useAutoSyncReconciliation();
@@ -100,7 +101,15 @@ export function ReconciliationTab() {
           <h2 className="text-2xl font-display font-semibold">Reconciliation</h2>
           <p className="text-muted-foreground">Match external transactions with internal payments</p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex gap-2 flex-wrap">
+          <Button
+            variant="outline"
+            onClick={() => autoMatch()}
+            disabled={isAutoMatching || records.filter(r => r.status === 'unmatched').length === 0}
+          >
+            <Zap className={`w-4 h-4 mr-2 ${isAutoMatching ? 'animate-spin' : ''}`} />
+            {isAutoMatching ? 'Auto-Matching...' : 'Smart Auto-Match'}
+          </Button>
           {activeProviders.length > 0 && (
             <Select
               value={selectedProviderId}
@@ -139,7 +148,7 @@ export function ReconciliationTab() {
             disabled={isSyncing || activeProviders.length === 0}
           >
             <RefreshCw className={`w-4 h-4 mr-2 ${isSyncing ? 'animate-spin' : ''}`} />
-            {isSyncing ? 'Syncing...' : 'Auto-Sync'}
+            {isSyncing ? 'Syncing...' : 'Sync Transactions'}
           </Button>
           <Button onClick={() => {
             if (providers.length > 0) {
@@ -154,6 +163,11 @@ export function ReconciliationTab() {
           </Button>
         </div>
       </div>
+
+      {/* Reconciliation Summary */}
+      {records.length > 0 && (
+        <ReconciliationSummary records={records} />
+      )}
 
       <div className="flex gap-4">
         <div className="relative flex-1">
