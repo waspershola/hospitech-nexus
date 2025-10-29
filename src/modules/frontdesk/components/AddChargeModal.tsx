@@ -17,11 +17,13 @@ import { Textarea } from '@/components/ui/textarea';
 import { Loader2 } from 'lucide-react';
 import { useRecordPayment } from '@/hooks/useRecordPayment';
 import { useFinanceProviders } from '@/hooks/useFinanceProviders';
+import { useFinanceLocations } from '@/hooks/useFinanceLocations';
 import { useWallets } from '@/hooks/useWallets';
 
 const chargeSchema = z.object({
   amount: z.number().positive('Amount must be greater than 0'),
   method: z.string().min(1, 'Payment method is required'),
+  location_id: z.string().optional(),
   provider_id: z.string().optional(),
   wallet_id: z.string().optional(),
   notes: z.string().optional(),
@@ -44,6 +46,7 @@ export function AddChargeModal({
 }: AddChargeModalProps) {
   const { mutate: recordPayment, isPending } = useRecordPayment();
   const { providers } = useFinanceProviders();
+  const { locations } = useFinanceLocations();
   const { wallets } = useWallets('department');
 
   const {
@@ -58,7 +61,9 @@ export function AddChargeModal({
   });
 
   const selectedMethod = watch('method');
+  const selectedLocationId = watch('location_id');
   const activeProviders = providers.filter(p => p.status === 'active');
+  const activeLocations = locations.filter(l => l.status === 'active');
 
   const onSubmit = (data: ChargeForm) => {
     const transaction_ref = `CHG-${Date.now()}-${Math.random().toString(36).substring(7)}`;
@@ -69,6 +74,7 @@ export function AddChargeModal({
         booking_id: bookingId || undefined,
         amount: data.amount,
         method: data.method,
+        location_id: data.location_id,
         provider_id: data.provider_id,
         wallet_id: data.wallet_id,
         department: 'front_desk',
@@ -112,6 +118,32 @@ export function AddChargeModal({
             )}
           </div>
 
+          {activeLocations.length > 0 && (
+            <div className="space-y-2">
+              <Label htmlFor="location">Payment Location</Label>
+              <Select
+                value={selectedLocationId}
+                onValueChange={(value) => setValue('location_id', value)}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Select location (optional)" />
+                </SelectTrigger>
+                <SelectContent>
+                  {activeLocations.map((location) => (
+                    <SelectItem key={location.id} value={location.id}>
+                      {location.name} {location.department && `(${location.department})`}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              {selectedLocationId && (
+                <p className="text-xs text-muted-foreground">
+                  Provider will be auto-selected from location
+                </p>
+              )}
+            </div>
+          )}
+
           <div className="space-y-2">
             <Label htmlFor="method">Payment Method</Label>
             <Select
@@ -133,7 +165,7 @@ export function AddChargeModal({
             )}
           </div>
 
-          {selectedMethod && selectedMethod !== 'cash' && (
+          {selectedMethod && selectedMethod !== 'cash' && !selectedLocationId && (
             <div className="space-y-2">
               <Label htmlFor="provider">Provider</Label>
               <Select

@@ -12,8 +12,9 @@ import { useBookingFolio } from '@/hooks/useBookingFolio';
 import { AssignRoomModal } from './AssignRoomModal';
 import { ExtendStayModal } from './ExtendStayModal';
 import { AddChargeModal } from './AddChargeModal';
+import { ChargeToOrgModal } from './ChargeToOrgModal';
 import { RoomAuditTrail } from './RoomAuditTrail';
-import { Loader2, User, CreditCard, Calendar, AlertCircle, Clock } from 'lucide-react';
+import { Loader2, User, CreditCard, Calendar, AlertCircle, Clock, Building2 } from 'lucide-react';
 
 interface RoomActionDrawerProps {
   roomId: string | null;
@@ -27,6 +28,7 @@ export function RoomActionDrawer({ roomId, open, onClose }: RoomActionDrawerProp
   const [assignModalOpen, setAssignModalOpen] = useState(false);
   const [extendModalOpen, setExtendModalOpen] = useState(false);
   const [chargeModalOpen, setChargeModalOpen] = useState(false);
+  const [chargeToOrgModalOpen, setChargeToOrgModalOpen] = useState(false);
 
   const { data: room, isLoading } = useQuery({
     queryKey: ['room-detail', roomId],
@@ -43,7 +45,8 @@ export function RoomActionDrawer({ roomId, open, onClose }: RoomActionDrawerProp
             check_out,
             status,
             total_amount,
-            guest:guests(name, email, phone)
+            guest_id,
+            guest:guests(id, name, email, phone)
           )
         `)
         .eq('id', roomId)
@@ -82,6 +85,7 @@ export function RoomActionDrawer({ roomId, open, onClose }: RoomActionDrawerProp
           { label: 'Check Out', action: () => checkOut(room.id), variant: 'default' as const },
           { label: 'Extend Stay', action: () => setExtendModalOpen(true), variant: 'secondary' as const },
           { label: 'Add Charge', action: () => setChargeModalOpen(true), variant: 'outline' as const },
+          { label: 'Charge to Org', action: () => setChargeToOrgModalOpen(true), variant: 'outline' as const, icon: Building2 },
         ];
       case 'reserved':
         return [
@@ -187,6 +191,7 @@ export function RoomActionDrawer({ roomId, open, onClose }: RoomActionDrawerProp
                           className="w-full rounded-xl"
                           onClick={action.action}
                         >
+                          {'icon' in action && action.icon && <action.icon className="w-4 h-4 mr-2" />}
                           {action.label}
                         </Button>
                       ))}
@@ -241,6 +246,13 @@ export function RoomActionDrawer({ roomId, open, onClose }: RoomActionDrawerProp
                 open={chargeModalOpen}
                 onClose={() => setChargeModalOpen(false)}
                 bookingId={currentBooking.id}
+                roomNumber={room.number}
+              />
+              <ChargeToOrgModal
+                open={chargeToOrgModalOpen}
+                onClose={() => setChargeToOrgModalOpen(false)}
+                bookingId={currentBooking.id}
+                guestId={currentBooking.guest?.id}
                 roomNumber={room.number}
               />
             </>
