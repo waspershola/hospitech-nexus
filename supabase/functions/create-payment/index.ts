@@ -1,10 +1,30 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import { z } from 'https://deno.land/x/zod@v3.22.4/mod.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
+
+// Input validation schema
+const paymentSchema = z.object({
+  tenant_id: z.string().uuid('Invalid tenant ID format'),
+  transaction_ref: z.string().min(1, 'Transaction reference required').max(100, 'Transaction reference too long'),
+  guest_id: z.string().uuid('Invalid guest ID format').optional().nullable(),
+  organization_id: z.string().uuid('Invalid organization ID format').optional().nullable(),
+  booking_id: z.string().uuid('Invalid booking ID format').optional().nullable(),
+  amount: z.number().positive('Amount must be positive').max(1000000000, 'Amount exceeds maximum'),
+  expected_amount: z.number().positive().max(1000000000).optional().nullable(),
+  payment_type: z.enum(['partial', 'full', 'overpayment']).optional().nullable(),
+  method: z.string().min(1, 'Payment method required').max(50, 'Method name too long'),
+  provider_id: z.string().uuid('Invalid provider ID format').optional().nullable(),
+  location_id: z.string().uuid('Invalid location ID format').optional().nullable(),
+  department: z.string().max(100, 'Department name too long').optional().nullable(),
+  wallet_id: z.string().uuid('Invalid wallet ID format').optional().nullable(),
+  recorded_by: z.string().uuid('Invalid user ID format').optional().nullable(),
+  metadata: z.record(z.any()).optional().nullable(),
+});
 
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
@@ -16,6 +36,23 @@ serve(async (req) => {
       Deno.env.get('SUPABASE_URL') ?? '',
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
     );
+
+    // Parse and validate input
+    const rawBody = await req.json();
+    const validationResult = paymentSchema.safeParse(rawBody);
+    
+    if (!validationResult.success) {
+      console.error('Validation failed:', validationResult.error.errors);
+      return new Response(
+        JSON.stringify({ 
+          success: false, 
+          error: 'Invalid input', 
+          code: 'VALIDATION_ERROR',
+          details: validationResult.error.errors.map(e => `${e.path.join('.')}: ${e.message}`)
+        }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
 
     const {
       tenant_id,
@@ -33,17 +70,9 @@ serve(async (req) => {
       wallet_id,
       recorded_by,
       metadata,
-    } = await req.json();
+    } = validationResult.data;
 
     console.log('Processing payment:', { transaction_ref, amount, method, provider_id, location_id });
-
-    // Validate required fields
-    if (!tenant_id || !amount || !transaction_ref) {
-      return new Response(
-        JSON.stringify({ success: false, error: 'Missing required fields: tenant_id, amount, transaction_ref' }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
 
     // Check for idempotency
     const { data: existing } = await supabase
