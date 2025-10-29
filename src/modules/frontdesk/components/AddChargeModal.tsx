@@ -69,10 +69,9 @@ export function AddChargeModal({
         booking_id: bookingId || undefined,
         amount: data.amount,
         method: data.method,
-        provider: data.provider_id,
+        provider_id: data.provider_id,
         wallet_id: data.wallet_id,
         department: 'front_desk',
-        location: 'Front Desk',
         metadata: {
           notes: data.notes,
           room_number: roomNumber,

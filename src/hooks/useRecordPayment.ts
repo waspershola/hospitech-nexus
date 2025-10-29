@@ -12,10 +12,10 @@ interface RecordPaymentParams {
   expected_amount?: number;
   payment_type?: 'partial' | 'full' | 'overpayment';
   method: string;
-  provider?: string;
+  provider_id?: string;
+  location_id?: string;
   department?: string;
   wallet_id?: string;
-  location?: string;
   metadata?: Record<string, any>;
 }
 

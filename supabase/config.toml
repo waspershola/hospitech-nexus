@@ -17,3 +17,7 @@ verify_jwt = true
 
 [functions.reconcile-transactions]
 verify_jwt = true
+
+[functions.auto-sync-reconciliation]
+verify_jwt = true
+

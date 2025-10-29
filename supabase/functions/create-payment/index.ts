@@ -27,15 +27,23 @@ serve(async (req) => {
       expected_amount,
       payment_type,
       method,
-      provider,
+      provider_id,
+      location_id,
       department,
       wallet_id,
       recorded_by,
       metadata,
-      location,
     } = await req.json();
 
-    console.log('Processing payment:', { transaction_ref, amount, method });
+    console.log('Processing payment:', { transaction_ref, amount, method, provider_id, location_id });
+
+    // Validate required fields
+    if (!tenant_id || !amount || !transaction_ref) {
+      return new Response(
+        JSON.stringify({ success: false, error: 'Missing required fields: tenant_id, amount, transaction_ref' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
 
     // Check for idempotency
     const { data: existing } = await supabase
@@ -47,9 +55,72 @@ serve(async (req) => {
     if (existing) {
       console.log('Payment already exists:', existing.id);
       return new Response(
-        JSON.stringify({ success: true, payment_id: existing.id, payment: existing, message: 'Payment already exists' }),
+        JSON.stringify({ 
+          success: true, 
+          payment_id: existing.id, 
+          payment: existing, 
+          message: 'Payment already processed (idempotent)' 
+        }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
+    }
+
+    // Get provider details if provider_id is provided
+    let providerName = null;
+    let providerFee = 0;
+    if (provider_id) {
+      const { data: provider } = await supabase
+        .from('finance_providers')
+        .select('name, fee_percent, status')
+        .eq('id', provider_id)
+        .eq('tenant_id', tenant_id)
+        .single();
+
+      if (!provider) {
+        return new Response(
+          JSON.stringify({ success: false, error: 'Provider not found' }),
+          { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      if (provider.status !== 'active') {
+        return new Response(
+          JSON.stringify({ success: false, error: 'Provider is inactive' }),
+          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      providerName = provider.name;
+      providerFee = provider.fee_percent || 0;
+      console.log('Using provider:', providerName, 'with fee:', providerFee, '%');
+    }
+
+    // Check provider rules if location or department specified
+    if (location_id || department) {
+      const { data: rules } = await supabase
+        .from('finance_provider_rules')
+        .select('max_txn_limit, auto_reconcile')
+        .eq('tenant_id', tenant_id)
+        .eq('provider_id', provider_id)
+        .or(location_id ? `location_id.eq.${location_id}` : 'location_id.is.null');
+
+      if (rules && rules.length > 0) {
+        const rule = rules[0];
+        
+        // Check transaction limit
+        if (rule.max_txn_limit && amount > rule.max_txn_limit) {
+          console.log('Transaction exceeds limit:', amount, '>', rule.max_txn_limit);
+          return new Response(
+            JSON.stringify({ 
+              success: false, 
+              error: 'Transaction amount exceeds configured limit',
+              code: 'TRANSACTION_LIMIT_EXCEEDED',
+              detail: `Maximum allowed: ₦${rule.max_txn_limit.toLocaleString()}` 
+            }),
+            { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+      }
     }
 
     // Validate organization limits if applicable
@@ -64,9 +135,29 @@ serve(async (req) => {
       if (validation && !validation.allowed) {
         console.log('Organization limit exceeded:', validation.detail);
         return new Response(
-          JSON.stringify({ success: false, error: validation.detail, code: validation.code }),
+          JSON.stringify({ 
+            success: false, 
+            error: validation.detail || 'Organization spending limit exceeded', 
+            code: validation.code || 'ORG_LIMIT_EXCEEDED' 
+          }),
           { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
+      }
+      console.log('Organization limits validated');
+    }
+
+    // Get location details if provided
+    let locationName = null;
+    if (location_id) {
+      const { data: location } = await supabase
+        .from('finance_locations')
+        .select('name, status')
+        .eq('id', location_id)
+        .eq('tenant_id', tenant_id)
+        .single();
+
+      if (location && location.status === 'active') {
+        locationName = location.name;
       }
     }
 
@@ -81,15 +172,21 @@ serve(async (req) => {
         booking_id,
         amount,
         expected_amount,
-        payment_type,
+        payment_type: payment_type || (expected_amount ? (amount < expected_amount ? 'partial' : amount > expected_amount ? 'overpayment' : 'full') : 'full'),
         method,
-        method_provider: provider,
+        method_provider: providerName,
         department,
         wallet_id,
-        location,
+        location: locationName,
         recorded_by,
         status: 'success',
-        metadata,
+        metadata: {
+          ...metadata,
+          provider_id,
+          location_id,
+          provider_fee: providerFee,
+          net_amount: amount - (amount * providerFee / 100),
+        },
       }])
       .select()
       .single();
@@ -103,6 +200,8 @@ serve(async (req) => {
 
     // If wallet_id provided, create wallet transaction
     if (wallet_id) {
+      const netAmount = amount - (amount * providerFee / 100);
+      
       const { error: walletError } = await supabase
         .from('wallet_transactions')
         .insert([{
@@ -110,16 +209,17 @@ serve(async (req) => {
           payment_id: payment.id,
           tenant_id,
           type: 'credit',
-          amount,
-          description: `Payment via ${method} - ${metadata?.notes || ''}`,
+          amount: netAmount,
+          description: `Payment via ${method}${providerName ? ` (${providerName})` : ''} - ${metadata?.notes || transaction_ref}`,
           created_by: recorded_by,
         }]);
 
       if (walletError) {
         console.error('Error creating wallet transaction:', walletError);
-        throw walletError;
+        // Don't throw here, payment is already created
+      } else {
+        console.log('Wallet transaction created for wallet:', wallet_id, 'amount:', netAmount);
       }
-      console.log('Wallet transaction created for wallet:', wallet_id);
     }
 
     // Create audit log
@@ -135,14 +235,23 @@ serve(async (req) => {
     console.log('Payment processing complete:', payment.id);
 
     return new Response(
-      JSON.stringify({ success: true, payment_id: payment.id, payment }),
+      JSON.stringify({ 
+        success: true, 
+        payment_id: payment.id, 
+        payment,
+        message: 'Payment processed successfully'
+      }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
 
   } catch (error) {
     console.error('Error processing payment:', error);
     return new Response(
-      JSON.stringify({ success: false, error: error instanceof Error ? error.message : 'Unknown error' }),
+      JSON.stringify({ 
+        success: false, 
+        error: error instanceof Error ? error.message : 'Unknown error occurred',
+        code: 'PAYMENT_PROCESSING_ERROR'
+      }),
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   }
