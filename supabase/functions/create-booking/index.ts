@@ -152,7 +152,7 @@ serve(async (req) => {
         } else {
           payment = newPayment;
           
-          // Create wallet transaction (debit)
+          // Create wallet transaction (debit) with department and metadata
           const { error: txnError } = await supabaseClient
             .from('wallet_transactions')
             .insert({
@@ -162,7 +162,14 @@ serve(async (req) => {
               amount: total_amount,
               payment_id: newPayment.id,
               description: `Booking charge - Room ${room_id} - Guest ${guest_id}`,
-              created_by: guest_id
+              created_by: guest_id,
+              department: department || 'front_desk',
+              metadata: {
+                booking_id: newBooking.id,
+                guest_id: guest_id,
+                room_id: room_id,
+                organization_id: organization_id,
+              }
             });
 
           if (txnError) {

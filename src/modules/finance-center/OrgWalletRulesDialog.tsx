@@ -49,11 +49,16 @@ export function OrgWalletRulesDialog({
 }: OrgWalletRulesDialogProps) {
   const { tenantId, user } = useAuth();
   const queryClient = useQueryClient();
-  const [newRule, setNewRule] = useState({
-    rule_type: 'per_guest' as const,
-    entity_ref: '',
+  const [newRule, setNewRule] = useState<{
+    rule_type: 'per_guest' | 'per_department' | 'total_wallet_cap';
+    entity_ref: string | null;
+    limit_amount: number;
+    period: 'daily' | 'weekly' | 'monthly' | 'none';
+  }>({
+    rule_type: 'per_guest',
+    entity_ref: null,
     limit_amount: 0,
-    period: 'monthly' as const,
+    period: 'monthly',
   });
 
   const { data: rules = [] } = useQuery({
@@ -74,6 +79,16 @@ export function OrgWalletRulesDialog({
     mutationFn: async () => {
       if (!tenantId) throw new Error('No tenant');
 
+      // Validate per_department rule has entity_ref
+      if (newRule.rule_type === 'per_department' && !newRule.entity_ref) {
+        throw new Error('Please select a department for per-department rules');
+      }
+
+      // Validate limit amount
+      if (newRule.limit_amount <= 0) {
+        throw new Error('Limit amount must be greater than 0');
+      }
+
       const { error } = await supabase
         .from('organization_wallet_rules')
         .insert([{
@@ -90,10 +105,13 @@ export function OrgWalletRulesDialog({
       toast.success('Rule created');
       setNewRule({
         rule_type: 'per_guest',
-        entity_ref: '',
+        entity_ref: null,
         limit_amount: 0,
         period: 'monthly',
       });
+    },
+    onError: (error: Error) => {
+      toast.error(error.message);
     },
   });
 
@@ -130,7 +148,7 @@ export function OrgWalletRulesDialog({
                 <Label>Rule Type</Label>
                 <Select
                   value={newRule.rule_type}
-                  onValueChange={(value: any) => setNewRule({ ...newRule, rule_type: value })}
+                  onValueChange={(value: any) => setNewRule({ ...newRule, rule_type: value, entity_ref: value === 'per_guest' ? null : newRule.entity_ref })}
                 >
                   <SelectTrigger>
                     <SelectValue />
@@ -141,6 +159,13 @@ export function OrgWalletRulesDialog({
                     <SelectItem value="total_wallet_cap">Total Wallet Cap</SelectItem>
                   </SelectContent>
                 </Select>
+                <p className="text-xs text-muted-foreground">
+                  {newRule.rule_type === 'per_guest' 
+                    ? 'Limit applies to EACH guest booking with this organization'
+                    : newRule.rule_type === 'per_department'
+                    ? 'Limit applies to all bookings in the selected department'
+                    : 'Overall wallet cap for the organization'}
+                </p>
               </div>
 
               <div className="space-y-2">
@@ -161,14 +186,25 @@ export function OrgWalletRulesDialog({
                 </Select>
               </div>
 
-              {(newRule.rule_type === 'per_guest' || newRule.rule_type === 'per_department') && (
-                <div className="space-y-2">
-                  <Label>Entity Reference</Label>
-                  <Input
-                    value={newRule.entity_ref}
-                    onChange={(e) => setNewRule({ ...newRule, entity_ref: e.target.value })}
-                    placeholder={newRule.rule_type === 'per_guest' ? 'Guest ID' : 'Department name'}
-                  />
+              {newRule.rule_type === 'per_department' && (
+                <div className="space-y-2 col-span-2">
+                  <Label>Department *</Label>
+                  <Select
+                    value={newRule.entity_ref || ''}
+                    onValueChange={(value) => setNewRule({ ...newRule, entity_ref: value })}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select department" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="front_desk">Front Desk</SelectItem>
+                      <SelectItem value="restaurant">Restaurant</SelectItem>
+                      <SelectItem value="bar">Bar</SelectItem>
+                      <SelectItem value="housekeeping">Housekeeping</SelectItem>
+                      <SelectItem value="spa">Spa</SelectItem>
+                      <SelectItem value="laundry">Laundry</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
               )}
 

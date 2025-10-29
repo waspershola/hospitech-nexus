@@ -1433,8 +1433,10 @@ export type Database = {
           amount: number
           created_at: string | null
           created_by: string | null
+          department: string | null
           description: string | null
           id: string
+          metadata: Json | null
           payment_id: string | null
           tenant_id: string
           type: string
@@ -1444,8 +1446,10 @@ export type Database = {
           amount: number
           created_at?: string | null
           created_by?: string | null
+          department?: string | null
           description?: string | null
           id?: string
+          metadata?: Json | null
           payment_id?: string | null
           tenant_id: string
           type: string
@@ -1455,8 +1459,10 @@ export type Database = {
           amount?: number
           created_at?: string | null
           created_by?: string | null
+          department?: string | null
           description?: string | null
           id?: string
+          metadata?: Json | null
           payment_id?: string | null
           tenant_id?: string
           type?: string
