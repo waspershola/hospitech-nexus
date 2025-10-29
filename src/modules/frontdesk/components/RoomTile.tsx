@@ -72,16 +72,16 @@ export function RoomTile({ room, onClick, isSelectionMode, isSelected, onSelecti
     <TooltipProvider>
       <Card 
         className={cn(
-          'cursor-pointer transition-all duration-200 active:scale-95 border-2 rounded-xl sm:rounded-2xl relative touch-manipulation',
-          'lg:hover:shadow-luxury lg:hover:scale-[1.02] min-h-[180px] flex flex-col',
+          'cursor-pointer transition-all duration-200 active:scale-95 border-2 rounded-lg sm:rounded-xl relative touch-manipulation',
+          'lg:hover:shadow-md lg:hover:scale-[1.01] min-h-[130px] flex flex-col',
           borderColor,
           isSelected && 'ring-2 ring-primary ring-offset-2'
         )}
         onClick={handleClick}
       >
-      <CardHeader className="p-3 sm:p-4 flex-1 flex flex-col justify-between">
+      <CardHeader className="p-2 sm:p-3 flex-1 flex flex-col justify-between">
         {isSelectionMode && (
-          <div className="absolute top-2 left-2 z-10">
+          <div className="absolute top-1.5 left-1.5 z-10">
             <Checkbox
               checked={isSelected}
               onCheckedChange={handleCheckboxChange}
@@ -90,10 +90,10 @@ export function RoomTile({ room, onClick, isSelectionMode, isSelected, onSelecti
             />
           </div>
         )}
-        <div className="flex items-start justify-between mb-2">
+        <div className="flex items-start justify-between mb-1.5">
           <div className="flex-1">
-            <div className="flex items-center gap-1.5 sm:gap-2 mb-1">
-              <h3 className="text-lg sm:text-xl font-bold font-display text-foreground">Room {room.number}</h3>
+            <div className="flex items-center gap-1.5 mb-0.5">
+              <h3 className="text-base sm:text-lg font-bold font-display text-foreground">Room {room.number}</h3>
               {hasDND && (
                 <Tooltip>
                   <TooltipTrigger asChild>
@@ -107,7 +107,7 @@ export function RoomTile({ room, onClick, isSelectionMode, isSelected, onSelecti
             </div>
             <Tooltip>
               <TooltipTrigger asChild>
-                <p className="text-sm text-muted-foreground cursor-help truncate">
+                <p className="text-xs text-muted-foreground cursor-help truncate">
                   {room.category?.name || room.type || 'Standard'}
                 </p>
               </TooltipTrigger>
@@ -116,7 +116,7 @@ export function RoomTile({ room, onClick, isSelectionMode, isSelected, onSelecti
               </TooltipContent>
             </Tooltip>
             {displayRate > 0 && (
-              <p className="text-sm font-semibold text-primary mt-1">
+              <p className="text-xs font-semibold text-primary mt-0.5">
                 ₦{displayRate.toLocaleString()}/night
               </p>
             )}
@@ -127,43 +127,43 @@ export function RoomTile({ room, onClick, isSelectionMode, isSelected, onSelecti
         </div>
 
         {(room.status === 'occupied' || room.status === 'overstay') && (
-          <div className="mt-3 pt-3 border-t border-border">
+          <div className="mt-2 pt-2 border-t border-border">
             {organization && (
-              <div className="mb-2">
-                <div className="flex items-center justify-between gap-1 mb-1">
+              <div className="mb-1.5">
+                <div className="flex items-center justify-between gap-1 mb-0.5">
                   <div className="flex items-center gap-1">
-                    <Building2 className="w-3 h-3 text-primary" />
-                    <span className="text-xs font-medium text-primary">{organization.name}</span>
+                    <Building2 className="w-2.5 h-2.5 text-primary" />
+                    <span className="text-[10px] font-medium text-primary truncate">{organization.name}</span>
                   </div>
                   {orgWallet?.nearLimit && (
-                    <AlertTriangle className="w-3 h-3 text-yellow-500" />
+                    <AlertTriangle className="w-2.5 h-2.5 text-yellow-500" />
                   )}
                   {orgWallet?.overLimit && (
-                    <AlertTriangle className="w-3 h-3 text-destructive" />
+                    <AlertTriangle className="w-2.5 h-2.5 text-destructive" />
                   )}
                 </div>
                 {orgWallet && (
-                  <p className="text-[10px] text-muted-foreground">
+                  <p className="text-[9px] text-muted-foreground">
                     Wallet: ₦{orgWallet.balance.toLocaleString()} / ₦{orgWallet.credit_limit.toLocaleString()}
                   </p>
                 )}
               </div>
             )}
-            <p className="text-sm font-medium text-foreground">
+            <p className="text-xs font-medium text-foreground truncate">
               {guest?.name || 'Guest'}
             </p>
-            <p className="text-xs text-muted-foreground mt-1">
+            <p className="text-[10px] text-muted-foreground mt-0.5">
               Balance: ₦{totalAmount.toLocaleString()}
             </p>
           </div>
         )}
 
-        <div className="flex gap-2 mt-3">
+        <div className="flex gap-1.5 mt-2">
           {room.status === 'cleaning' && (
             <Tooltip>
               <TooltipTrigger asChild>
-                <div className="p-1.5 rounded-lg bg-[hsl(var(--status-dirty)/0.1)] cursor-help">
-                  <Sparkles className="w-4 h-4 text-[hsl(var(--status-dirty))]" />
+                <div className="p-1 rounded bg-[hsl(var(--status-dirty)/0.1)] cursor-help">
+                  <Sparkles className="w-3 h-3 text-[hsl(var(--status-dirty))]" />
                 </div>
               </TooltipTrigger>
               <TooltipContent>Needs housekeeping</TooltipContent>
@@ -173,16 +173,16 @@ export function RoomTile({ room, onClick, isSelectionMode, isSelected, onSelecti
             <>
               <Tooltip>
                 <TooltipTrigger asChild>
-                  <div className="p-1.5 rounded-lg bg-[hsl(var(--status-reserved)/0.1)] cursor-help">
-                    <IdCard className="w-4 h-4 text-[hsl(var(--status-reserved))]" />
+                  <div className="p-1 rounded bg-[hsl(var(--status-reserved)/0.1)] cursor-help">
+                    <IdCard className="w-3 h-3 text-[hsl(var(--status-reserved))]" />
                   </div>
                 </TooltipTrigger>
                 <TooltipContent>ID on file</TooltipContent>
               </Tooltip>
               <Tooltip>
                 <TooltipTrigger asChild>
-                  <div className="p-1.5 rounded-lg bg-[hsl(var(--success)/0.1)] cursor-help">
-                    <CreditCard className="w-4 h-4 text-[hsl(var(--success))]" />
+                  <div className="p-1 rounded bg-[hsl(var(--success)/0.1)] cursor-help">
+                    <CreditCard className="w-3 h-3 text-[hsl(var(--success))]" />
                   </div>
                 </TooltipTrigger>
                 <TooltipContent>Has deposit/balance</TooltipContent>
@@ -192,8 +192,8 @@ export function RoomTile({ room, onClick, isSelectionMode, isSelected, onSelecti
           {room.status === 'maintenance' && (
             <Tooltip>
               <TooltipTrigger asChild>
-                <div className="p-1.5 rounded-lg bg-[hsl(var(--status-oos)/0.1)] cursor-help">
-                  <Wrench className="w-4 h-4 text-[hsl(var(--status-oos))]" />
+                <div className="p-1 rounded bg-[hsl(var(--status-oos)/0.1)] cursor-help">
+                  <Wrench className="w-3 h-3 text-[hsl(var(--status-oos))]" />
                 </div>
               </TooltipTrigger>
               <TooltipContent>Under maintenance</TooltipContent>

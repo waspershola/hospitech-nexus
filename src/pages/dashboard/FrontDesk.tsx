@@ -88,17 +88,16 @@ export default function FrontDesk() {
           <QuickKPIs onFilterClick={setStatusFilter} />
         </div>
         
-        <ScrollArea className="flex-1 px-3 sm:px-4 lg:px-6 pb-20 lg:pb-6">
-          <div className="flex flex-col lg:flex-row gap-4 lg:gap-6 pt-3 sm:pt-4">
-            <div className="flex-1 min-w-0">
-              <RoomStatusOverview 
-                statusFilter={statusFilter}
-                onRoomClick={setSelectedRoomId}
-                globalSearchQuery={searchQuery}
-              />
-            </div>
+        <ScrollArea className="flex-1">
+          <div className="px-3 sm:px-4 lg:px-6 pt-3 sm:pt-4 pb-20 lg:pb-6">
+            <RoomStatusOverview 
+              statusFilter={statusFilter}
+              onRoomClick={setSelectedRoomId}
+              globalSearchQuery={searchQuery}
+            />
             
-            <div className="lg:w-64 flex-shrink-0 hidden lg:block">
+            {/* Legend moved to bottom */}
+            <div className="mt-6">
               <RoomLegend />
             </div>
           </div>

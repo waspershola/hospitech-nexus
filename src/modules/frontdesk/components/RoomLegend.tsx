@@ -11,16 +11,16 @@ export function RoomLegend() {
   ];
 
   return (
-    <Card className="p-6 sticky top-4 rounded-2xl shadow-[var(--shadow-card)] transition-[var(--transition-smooth)]">
-      <h3 className="text-lg font-display font-semibold mb-6 text-foreground">Room Status Legend</h3>
-      <div className="space-y-4">
+    <Card className="p-4 rounded-xl shadow-sm">
+      <h3 className="text-sm font-display font-semibold mb-3 text-foreground">Room Status Legend</h3>
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
         {statuses.map((status) => (
-          <div key={status.label} className="flex items-center gap-3 group">
+          <div key={status.label} className="flex items-center gap-2 group">
             <div 
-              className="w-4 h-4 rounded-full transition-[var(--transition-smooth)] group-hover:scale-110 shadow-sm" 
+              className="w-3 h-3 rounded-full transition-[var(--transition-smooth)] group-hover:scale-110 shadow-sm flex-shrink-0" 
               style={{ backgroundColor: status.color }}
             />
-            <span className="text-sm font-medium text-foreground">{status.label}</span>
+            <span className="text-xs font-medium text-foreground">{status.label}</span>
           </div>
         ))}
       </div>
