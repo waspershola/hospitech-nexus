@@ -11,9 +11,12 @@ interface RoomGridProps {
   floorFilter?: number | null;
   organizationFilter?: string | null;
   onRoomClick: (roomId: string) => void;
+  isSelectionMode?: boolean;
+  selectedRoomIds?: string[];
+  onRoomSelectionChange?: (roomId: string, selected: boolean) => void;
 }
 
-export function RoomGrid({ searchQuery, statusFilter, categoryFilter, floorFilter, organizationFilter, onRoomClick }: RoomGridProps) {
+export function RoomGrid({ searchQuery, statusFilter, categoryFilter, floorFilter, organizationFilter, onRoomClick, isSelectionMode, selectedRoomIds = [], onRoomSelectionChange }: RoomGridProps) {
   const { tenantId } = useAuth();
 
   const { data: rooms, isLoading } = useQuery({
@@ -93,6 +96,9 @@ export function RoomGrid({ searchQuery, statusFilter, categoryFilter, floorFilte
           key={room.id} 
           room={room}
           onClick={() => onRoomClick(room.id)}
+          isSelectionMode={isSelectionMode}
+          isSelected={selectedRoomIds.includes(room.id)}
+          onSelectionChange={(selected) => onRoomSelectionChange?.(room.id, selected)}
         />
       ))}
     </div>

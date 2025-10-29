@@ -1,10 +1,12 @@
-import { RoomGrid } from './RoomGrid';
-import { Input } from '@/components/ui/input';
-import { FilterBar } from './FilterBar';
-import { Search } from 'lucide-react';
 import { useState } from 'react';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { CheckSquare, Search } from 'lucide-react';
+import { RoomGrid } from './RoomGrid';
+import { FilterBar } from './FilterBar';
+import { BulkRoomActions } from './BulkRoomActions';
 import { useRoomCategories } from '@/hooks/useRoomCategories';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 
@@ -15,10 +17,13 @@ interface RoomStatusOverviewProps {
 
 export function RoomStatusOverview({ statusFilter, onRoomClick }: RoomStatusOverviewProps) {
   const { tenantId } = useAuth();
+  const queryClient = useQueryClient();
   const [searchQuery, setSearchQuery] = useState('');
   const [categoryFilter, setCategoryFilter] = useState<string | null>(null);
   const [floorFilter, setFloorFilter] = useState<number | null>(null);
   const [organizationFilter, setOrganizationFilter] = useState<string | null>(null);
+  const [isSelectionMode, setIsSelectionMode] = useState(false);
+  const [selectedRoomIds, setSelectedRoomIds] = useState<string[]>([]);
   const { categories } = useRoomCategories();
 
   const { data: floors = [] } = useQuery({
@@ -61,16 +66,50 @@ export function RoomStatusOverview({ statusFilter, onRoomClick }: RoomStatusOver
     setOrganizationFilter(null);
   };
 
+  const handleRoomSelectionChange = (roomId: string, selected: boolean) => {
+    setSelectedRoomIds(prev => 
+      selected 
+        ? [...prev, roomId]
+        : prev.filter(id => id !== roomId)
+    );
+  };
+
+  const handleClearSelection = () => {
+    setSelectedRoomIds([]);
+    setIsSelectionMode(false);
+  };
+
+  const handleBulkActionComplete = () => {
+    queryClient.invalidateQueries({ queryKey: ['rooms-grid'] });
+    queryClient.invalidateQueries({ queryKey: ['frontdesk-kpis'] });
+  };
+
   return (
     <div className="space-y-4">
-      <div className="relative">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-        <Input
-          placeholder="Search by room number..."
-          value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
-          className="pl-10"
-        />
+      <div className="flex items-center gap-4">
+        <div className="relative flex-1">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+          <Input
+            placeholder="Search by room number..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="pl-10"
+          />
+        </div>
+        <Button
+          variant={isSelectionMode ? "default" : "outline"}
+          size="default"
+          onClick={() => {
+            setIsSelectionMode(!isSelectionMode);
+            if (isSelectionMode) {
+              setSelectedRoomIds([]);
+            }
+          }}
+          className="rounded-xl"
+        >
+          <CheckSquare className="w-4 h-4 mr-2" />
+          {isSelectionMode ? 'Exit Selection' : 'Select Multiple'}
+        </Button>
       </div>
 
       <FilterBar
@@ -95,6 +134,15 @@ export function RoomStatusOverview({ statusFilter, onRoomClick }: RoomStatusOver
         floorFilter={floorFilter}
         organizationFilter={organizationFilter}
         onRoomClick={onRoomClick}
+        isSelectionMode={isSelectionMode}
+        selectedRoomIds={selectedRoomIds}
+        onRoomSelectionChange={handleRoomSelectionChange}
+      />
+
+      <BulkRoomActions
+        selectedRoomIds={selectedRoomIds}
+        onClearSelection={handleClearSelection}
+        onComplete={handleBulkActionComplete}
       />
     </div>
   );

@@ -7,6 +7,14 @@ import { Textarea } from '@/components/ui/textarea';
 import { useRecordPayment } from '@/hooks/useRecordPayment';
 import { Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
+import { z } from 'zod';
+
+const paymentSchema = z.object({
+  amount: z.number().positive('Amount must be greater than 0').max(10000000, 'Amount cannot exceed ₦10,000,000'),
+  method: z.string().min(1, 'Please select a payment method'),
+  reference: z.string().max(100, 'Reference must be less than 100 characters').optional(),
+  notes: z.string().max(500, 'Notes must be less than 500 characters').optional(),
+});
 
 interface QuickPaymentFormProps {
   bookingId: string;
@@ -32,14 +40,19 @@ export function QuickPaymentForm({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!method) {
-      toast.error('Please select a payment method');
-      return;
-    }
-
     const paymentAmount = parseFloat(amount);
-    if (isNaN(paymentAmount) || paymentAmount <= 0) {
-      toast.error('Please enter a valid amount');
+    
+    // Validate with Zod schema
+    const validation = paymentSchema.safeParse({
+      amount: paymentAmount,
+      method,
+      reference: reference.trim() || undefined,
+      notes: notes.trim() || undefined,
+    });
+
+    if (!validation.success) {
+      const firstError = validation.error.errors[0];
+      toast.error(firstError.message);
       return;
     }
 
@@ -47,10 +60,10 @@ export function QuickPaymentForm({
       await recordPayment({
         booking_id: bookingId,
         guest_id: guestId,
-        amount: paymentAmount,
-        method,
-        transaction_ref: reference || `PMT-${Date.now()}`,
-        metadata: notes ? { notes } : undefined,
+        amount: validation.data.amount,
+        method: validation.data.method,
+        transaction_ref: validation.data.reference || `PMT-${Date.now()}`,
+        metadata: validation.data.notes ? { notes: validation.data.notes } : undefined,
       });
 
       onSuccess();

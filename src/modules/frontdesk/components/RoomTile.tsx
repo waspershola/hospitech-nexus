@@ -1,11 +1,15 @@
 import { Card, CardHeader } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Sparkles, CreditCard, IdCard, Wrench, Building2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 interface RoomTileProps {
   room: any;
   onClick: () => void;
+  isSelectionMode?: boolean;
+  isSelected?: boolean;
+  onSelectionChange?: (selected: boolean) => void;
 }
 
 const statusColors = {
@@ -26,7 +30,7 @@ const statusBorderColors = {
   overstay: 'border-[hsl(var(--status-overstay)/0.3)] hover:border-[hsl(var(--status-overstay))]',
 };
 
-export function RoomTile({ room, onClick }: RoomTileProps) {
+export function RoomTile({ room, onClick, isSelectionMode, isSelected, onSelectionChange }: RoomTileProps) {
   const statusColor = statusColors[room.status as keyof typeof statusColors] || statusColors.available;
   const borderColor = statusBorderColors[room.status as keyof typeof statusBorderColors] || statusBorderColors.available;
 
@@ -36,15 +40,39 @@ export function RoomTile({ room, onClick }: RoomTileProps) {
   );
   const organization = activeBooking?.organizations;
 
+  const handleClick = (e: React.MouseEvent) => {
+    if (isSelectionMode) {
+      e.stopPropagation();
+      onSelectionChange?.(!isSelected);
+    } else {
+      onClick();
+    }
+  };
+
+  const handleCheckboxChange = (checked: boolean) => {
+    onSelectionChange?.(checked);
+  };
+
   return (
     <Card 
       className={cn(
-        'cursor-pointer transition-all duration-300 hover:shadow-luxury hover:scale-[1.02] border-2 rounded-2xl',
-        borderColor
+        'cursor-pointer transition-all duration-300 hover:shadow-luxury hover:scale-[1.02] border-2 rounded-2xl relative',
+        borderColor,
+        isSelected && 'ring-2 ring-primary ring-offset-2'
       )}
-      onClick={onClick}
+      onClick={handleClick}
     >
       <CardHeader className="p-4">
+        {isSelectionMode && (
+          <div className="absolute top-2 left-2 z-10">
+            <Checkbox
+              checked={isSelected}
+              onCheckedChange={handleCheckboxChange}
+              onClick={(e) => e.stopPropagation()}
+              className="bg-background border-2"
+            />
+          </div>
+        )}
         <div className="flex items-start justify-between mb-2">
           <div className="flex-1">
             <div className="flex items-center gap-2 mb-1">
