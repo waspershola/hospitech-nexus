@@ -39,6 +39,7 @@ export function useRoomActions() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['rooms-grid'] });
       queryClient.invalidateQueries({ queryKey: ['frontdesk-kpis'] });
+      queryClient.invalidateQueries({ queryKey: ['room-detail'] });
       toast.success('Guest checked in successfully');
     },
     onError: (error: Error) => {
@@ -51,6 +52,7 @@ export function useRoomActions() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['rooms-grid'] });
       queryClient.invalidateQueries({ queryKey: ['frontdesk-kpis'] });
+      queryClient.invalidateQueries({ queryKey: ['room-detail'] });
       toast.success('Guest checked out successfully');
     },
     onError: (error: Error) => {
@@ -63,6 +65,7 @@ export function useRoomActions() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['rooms-grid'] });
       queryClient.invalidateQueries({ queryKey: ['frontdesk-kpis'] });
+      queryClient.invalidateQueries({ queryKey: ['room-detail'] });
       toast.success('Room marked as clean');
     },
     onError: (error: Error) => {
@@ -75,10 +78,34 @@ export function useRoomActions() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['rooms-grid'] });
       queryClient.invalidateQueries({ queryKey: ['frontdesk-kpis'] });
+      queryClient.invalidateQueries({ queryKey: ['room-detail'] });
       toast.success('Room marked for maintenance');
     },
     onError: (error: Error) => {
       toast.error(`Failed to update room: ${error.message}`);
+    },
+  });
+
+  const cancelBookingMutation = useMutation({
+    mutationFn: async (bookingId: string) => {
+      const { data, error } = await supabase
+        .from('bookings')
+        .update({ status: 'cancelled' })
+        .eq('id', bookingId)
+        .select()
+        .single();
+
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['rooms-grid'] });
+      queryClient.invalidateQueries({ queryKey: ['frontdesk-kpis'] });
+      queryClient.invalidateQueries({ queryKey: ['room-detail'] });
+      toast.success('Booking cancelled successfully');
+    },
+    onError: (error: Error) => {
+      toast.error(`Cancellation failed: ${error.message}`);
     },
   });
 
@@ -87,5 +114,7 @@ export function useRoomActions() {
     checkOut: checkOutMutation.mutate,
     markClean: markCleanMutation.mutate,
     markMaintenance: markMaintenanceMutation.mutate,
+    cancelBooking: cancelBookingMutation.mutate,
+    isLoading: checkInMutation.isPending || checkOutMutation.isPending || markCleanMutation.isPending || markMaintenanceMutation.isPending,
   };
 }

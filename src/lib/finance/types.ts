@@ -1,0 +1,38 @@
+/**
+ * Finance-related TypeScript types
+ */
+
+export interface HotelFinancials {
+  id?: string;
+  tenant_id: string;
+  vat_rate: number;
+  vat_inclusive: boolean;
+  service_charge: number;
+  service_charge_inclusive: boolean;
+  currency: string;
+  created_at?: string;
+  updated_at?: string;
+}
+
+export interface TaxBreakdown {
+  baseAmount: number;
+  vatAmount: number;
+  serviceChargeAmount: number;
+  totalAmount: number;
+  nights?: number;
+  ratePerNight?: number;
+}
+
+export interface PaymentType {
+  type: 'full' | 'partial' | 'overpayment' | 'pay_later';
+  amount: number;
+  balance: number;
+}
+
+export interface WalletBalance {
+  balance: number;
+  credit_limit: number;
+  percentUsed: number;
+  overLimit: boolean;
+  nearLimit: boolean;
+}
