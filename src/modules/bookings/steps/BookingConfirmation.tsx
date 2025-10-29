@@ -52,6 +52,27 @@ export function BookingConfirmation({ bookingData, onComplete }: BookingConfirma
         throw new Error('Missing required booking information');
       }
 
+      // Validate booking with edge function first
+      const { data: validationResult, error: validationError } = await supabase.functions.invoke('validate-booking', {
+        body: {
+          tenant_id: tenantId,
+          room_id: bookingData.roomId,
+          guest_id: bookingData.guestId,
+          organization_id: bookingData.organizationId,
+          check_in: bookingData.checkIn.toISOString(),
+          check_out: bookingData.checkOut.toISOString(),
+          category_id: room?.category_id,
+        },
+      });
+
+      if (validationError) {
+        throw new Error(validationError.message || 'Validation failed');
+      }
+
+      if (!validationResult?.success) {
+        throw new Error(validationResult?.error || 'Booking validation failed');
+      }
+
       const actionId = crypto.randomUUID();
 
       const { data, error } = await supabase
@@ -59,6 +80,7 @@ export function BookingConfirmation({ bookingData, onComplete }: BookingConfirma
         .insert([{
           tenant_id: tenantId,
           guest_id: bookingData.guestId,
+          organization_id: bookingData.organizationId,
           room_id: bookingData.roomId,
           check_in: bookingData.checkIn.toISOString(),
           check_out: bookingData.checkOut.toISOString(),

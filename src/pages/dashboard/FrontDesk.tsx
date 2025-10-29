@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Plus } from 'lucide-react';
 import { HeaderBar } from '@/modules/frontdesk/components/HeaderBar';
@@ -6,13 +6,29 @@ import { QuickKPIs } from '@/modules/frontdesk/components/QuickKPIs';
 import { RoomStatusOverview } from '@/modules/frontdesk/components/RoomStatusOverview';
 import { RoomLegend } from '@/modules/frontdesk/components/RoomLegend';
 import { RoomActionDrawer } from '@/modules/frontdesk/components/RoomActionDrawer';
+import { OverstayAlertModal } from '@/modules/frontdesk/components/OverstayAlertModal';
 import { BookingFlow } from '@/modules/bookings/BookingFlow';
 import { MobileBottomNav } from '@/modules/frontdesk/components/MobileBottomNav';
+import { useOverstayRooms } from '@/hooks/useOverstayRooms';
+import { useRoomActions } from '@/modules/frontdesk/hooks/useRoomActions';
 
 export default function FrontDesk() {
   const [selectedRoomId, setSelectedRoomId] = useState<string | null>(null);
   const [statusFilter, setStatusFilter] = useState<string | null>(null);
   const [isBookingFlowOpen, setIsBookingFlowOpen] = useState(false);
+  const [overstayModalOpen, setOverstayModalOpen] = useState(false);
+  const [hasShownOverstayAlert, setHasShownOverstayAlert] = useState(false);
+  
+  const { data: overstayRooms = [] } = useOverstayRooms();
+  const { checkOut } = useRoomActions();
+
+  // Show overstay alert on page load if there are overstays
+  useEffect(() => {
+    if (overstayRooms.length > 0 && !hasShownOverstayAlert) {
+      setOverstayModalOpen(true);
+      setHasShownOverstayAlert(true);
+    }
+  }, [overstayRooms.length, hasShownOverstayAlert]);
 
   return (
     <div className="h-full flex flex-col bg-background">
@@ -50,6 +66,20 @@ export default function FrontDesk() {
         roomId={selectedRoomId}
         open={!!selectedRoomId}
         onClose={() => setSelectedRoomId(null)}
+      />
+
+      <OverstayAlertModal
+        open={overstayModalOpen}
+        onClose={() => setOverstayModalOpen(false)}
+        overstayRooms={overstayRooms}
+        onExtendStay={(roomId) => {
+          setSelectedRoomId(roomId);
+          setOverstayModalOpen(false);
+        }}
+        onCheckOut={(roomId) => {
+          checkOut(roomId);
+          setOverstayModalOpen(false);
+        }}
       />
 
       <BookingFlow

@@ -19,6 +19,7 @@ export type BookingData = {
   checkIn?: Date;
   checkOut?: Date;
   totalAmount?: number;
+  organizationId?: string;
 };
 
 export function BookingFlow({ open, onClose, preselectedRoomId }: BookingFlowProps) {
