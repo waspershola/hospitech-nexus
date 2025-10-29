@@ -45,7 +45,7 @@ const tabs = [
 
 export default function ConfigurationCenter() {
   const { tenantId, role } = useAuth();
-  const { loadAllConfig, saveAllChanges, resetChanges, unsavedChanges, lastSyncTime, isLoading } = useConfigStore();
+  const { loadAllConfig, saveAllChanges, resetChanges, unsavedChanges, lastSyncTime, isLoading, version } = useConfigStore();
   const [activeTab, setActiveTab] = useState('general');
 
   useEffect(() => {
