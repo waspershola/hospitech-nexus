@@ -85,10 +85,12 @@ export function BookingConfirmation({ bookingData, onComplete }: BookingConfirma
         },
       });
 
+      // Check for HTTP errors first
       if (validationError) {
-        throw new Error(validationError.message || 'Validation failed');
+        throw new Error(validationError.message || 'Validation request failed');
       }
 
+      // Check the actual validation result
       if (!validationResult?.success) {
         throw new Error(validationResult?.error || 'Booking validation failed');
       }
@@ -110,10 +112,12 @@ export function BookingConfirmation({ bookingData, onComplete }: BookingConfirma
         },
       });
 
+      // Check for HTTP errors first
       if (createError) {
-        throw new Error(createError.message || 'Failed to create booking');
+        throw new Error(createError.message || 'Booking creation request failed');
       }
 
+      // Check the actual creation result
       if (!createResult?.success) {
         throw new Error(createResult?.error || 'Booking creation failed');
       }
@@ -131,7 +135,7 @@ export function BookingConfirmation({ bookingData, onComplete }: BookingConfirma
       onComplete();
     },
     onError: (error: Error) => {
-      toast.error(`Failed to create booking: ${error.message}`);
+      toast.error(error.message);
     },
   });
 

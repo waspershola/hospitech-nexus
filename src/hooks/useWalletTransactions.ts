@@ -22,9 +22,18 @@ export function useWalletTransactions(walletId?: string) {
     queryFn: async () => {
       if (!tenantId) return [];
       
+      // First get transactions with payment/booking/room/guest data
       let query = supabase
         .from('wallet_transactions')
-        .select('*')
+        .select(`
+          *,
+          payment:payments(
+            booking:bookings(
+              room:rooms(number),
+              guest:guests(name)
+            )
+          )
+        `)
         .eq('tenant_id', tenantId)
         .order('created_at', { ascending: false });
       
@@ -32,9 +41,29 @@ export function useWalletTransactions(walletId?: string) {
         query = query.eq('wallet_id', walletId);
       }
       
-      const { data, error } = await query;
+      const { data: transactions, error } = await query;
       if (error) throw error;
-      return data as WalletTransaction[];
+
+      // Fetch profiles for created_by users
+      const createdByIds = [...new Set(transactions?.map(t => t.created_by).filter(Boolean))] as string[];
+      
+      let profiles: any = {};
+      if (createdByIds.length > 0) {
+        const { data: profilesData } = await supabase
+          .from('profiles')
+          .select('id, full_name')
+          .in('id', createdByIds);
+        
+        profiles = Object.fromEntries(
+          (profilesData || []).map(p => [p.id, p.full_name])
+        );
+      }
+
+      // Merge profile data into transactions
+      return transactions?.map(txn => ({
+        ...txn,
+        created_by_name: txn.created_by ? profiles[txn.created_by] : null,
+      }));
     },
     enabled: !!tenantId,
   });
