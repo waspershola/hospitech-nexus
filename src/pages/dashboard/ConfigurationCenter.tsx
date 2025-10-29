@@ -6,6 +6,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card } from '@/components/ui/card';
 import { Save, RotateCcw, Settings, DollarSign, Percent, Palette, FileText, Users, Lock, Clock, Mail, Database, Globe, Building2 } from 'lucide-react';
 import { toast } from 'sonner';
+import { ConfigurationStatus } from '@/components/configuration/shared/ConfigurationStatus';
 import { GeneralTab } from '@/components/configuration/tabs/GeneralTab';
 import { FinancialsTab } from '@/components/configuration/tabs/FinancialsTab';
 import { TaxServiceTab } from '@/components/configuration/tabs/TaxServiceTab';
@@ -158,6 +159,7 @@ export default function ConfigurationCenter() {
           </TabsList>
 
           <TabsContent value="general" className="space-y-6 animate-fade-in">
+            <ConfigurationStatus />
             <GeneralTab />
           </TabsContent>
 

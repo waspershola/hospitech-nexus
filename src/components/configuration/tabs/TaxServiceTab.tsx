@@ -1,5 +1,6 @@
 import { useConfigStore } from '@/stores/configStore';
 import { ConfigCard } from '../shared/ConfigCard';
+import { ValidationMessage } from '../shared/ValidationMessage';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
@@ -10,10 +11,16 @@ export function TaxServiceTab() {
   const { financials, updateFinancials, saveFinancials } = useConfigStore();
 
   const handleChange = (field: string, value: any) => {
+    // Validate percentage values
+    if ((field === 'vat_rate' || field === 'service_charge') && typeof value === 'number') {
+      if (value < 0) value = 0;
+      if (value > 100) value = 100;
+    }
     updateFinancials({ [field]: value });
   };
 
-  useAutoSave(saveFinancials, financials);
+  // Auto-save with debounce
+  useAutoSave(saveFinancials, financials, 1500);
 
   return (
     <div className="space-y-6">
@@ -35,7 +42,11 @@ export function TaxServiceTab() {
                 value={financials.vat_rate || 0}
                 onChange={(e) => handleChange('vat_rate', parseFloat(e.target.value) || 0)}
                 placeholder="7.50"
+                className={(financials.vat_rate ?? 0) < 0 || (financials.vat_rate ?? 0) > 100 ? 'border-destructive' : ''}
               />
+              {((financials.vat_rate ?? 0) < 0 || (financials.vat_rate ?? 0) > 100) && (
+                <ValidationMessage message="VAT rate must be between 0% and 100%" />
+              )}
             </div>
 
             <div className="flex items-end">
@@ -78,7 +89,11 @@ export function TaxServiceTab() {
                 value={financials.service_charge || 0}
                 onChange={(e) => handleChange('service_charge', parseFloat(e.target.value) || 0)}
                 placeholder="10.00"
+                className={(financials.service_charge ?? 0) < 0 || (financials.service_charge ?? 0) > 100 ? 'border-destructive' : ''}
               />
+              {((financials.service_charge ?? 0) < 0 || (financials.service_charge ?? 0) > 100) && (
+                <ValidationMessage message="Service charge must be between 0% and 100%" />
+              )}
             </div>
 
             <div className="flex items-end">

@@ -24,7 +24,8 @@ export function GuestExperienceTab() {
     updateConfig('guestExperience', { ...guestExp, [field]: value });
   };
 
-  useAutoSave(() => saveConfig('guestExperience'), guestExp);
+  // Auto-save with debounce
+  useAutoSave(() => saveConfig('guestExperience'), guestExp, 1500);
 
   const toggleField = (fieldId: string) => {
     const fields = guestExp.requiredFields || ['fullName'];

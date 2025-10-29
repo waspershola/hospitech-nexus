@@ -20,7 +20,8 @@ export function FinancialsTab() {
     updateFinancials({ [field]: value });
   };
 
-  useAutoSave(saveFinancials, financials);
+  // Auto-save with debounce
+  useAutoSave(saveFinancials, financials, 1500);
 
   const selectedCurrency = currencies.find(c => c.code === financials.currency) || currencies[0];
 
