@@ -60,22 +60,33 @@ export default function FrontDesk() {
     <div className="h-full flex flex-col bg-background">
       <HeaderBar searchQuery={searchQuery} onSearchChange={setSearchQuery} />
       
-      <div className="p-6 border-b border-border flex items-center justify-between">
-        <div>
-          <h2 className="text-xl font-display font-semibold text-foreground">Room Management</h2>
-          <p className="text-sm text-muted-foreground">Monitor and manage all rooms from one dashboard</p>
+      <div className="p-4 lg:p-6 border-b border-border flex items-center justify-between gap-4">
+        <div className="flex-1 min-w-0">
+          <h2 className="text-lg lg:text-xl font-display font-semibold text-foreground truncate">Room Management</h2>
+          <p className="text-xs lg:text-sm text-muted-foreground hidden sm:block">Monitor and manage all rooms from one dashboard</p>
         </div>
-        <Button onClick={() => setIsBookingFlowOpen(true)} size="lg">
+        <Button 
+          onClick={() => setIsBookingFlowOpen(true)} 
+          size="lg"
+          className="hidden sm:flex"
+        >
           <Plus className="w-4 h-4 mr-2" />
           New Booking
         </Button>
+        <Button 
+          onClick={() => setIsBookingFlowOpen(true)} 
+          size="icon"
+          className="sm:hidden"
+        >
+          <Plus className="w-5 h-5" />
+        </Button>
       </div>
       
-      <div className="flex-1 overflow-auto p-6 space-y-6">
+      <div className="flex-1 overflow-auto p-3 sm:p-4 lg:p-6 space-y-4 lg:space-y-6">
         <QuickKPIs onFilterClick={setStatusFilter} />
         
-        <div className="flex gap-6">
-        <div className="flex-1">
+        <div className="flex flex-col lg:flex-row gap-4 lg:gap-6">
+          <div className="flex-1 min-w-0">
             <RoomStatusOverview 
               statusFilter={statusFilter}
               onRoomClick={setSelectedRoomId}
@@ -83,7 +94,7 @@ export default function FrontDesk() {
             />
           </div>
           
-          <div className="w-64 flex-shrink-0">
+          <div className="lg:w-64 flex-shrink-0 hidden lg:block">
             <RoomLegend />
           </div>
         </div>

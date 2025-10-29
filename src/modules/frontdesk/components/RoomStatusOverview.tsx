@@ -89,13 +89,13 @@ export function RoomStatusOverview({ statusFilter, onRoomClick, globalSearchQuer
   };
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-3 sm:space-y-4">
       {!globalSearchQuery && (
-        <div className="flex items-center gap-4">
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 sm:gap-4">
           <div className="relative flex-1">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
             <Input
-              placeholder="Search by room number or guest name..."
+              placeholder="Search rooms or guests..."
               value={localSearchQuery}
               onChange={(e) => setLocalSearchQuery(e.target.value)}
               className="pl-10"
@@ -110,7 +110,7 @@ export function RoomStatusOverview({ statusFilter, onRoomClick, globalSearchQuer
                 setSelectedRoomIds([]);
               }
             }}
-            className="rounded-xl"
+            className="rounded-xl whitespace-nowrap"
           >
             <CheckSquare className="w-4 h-4 mr-2" />
             {isSelectionMode ? 'Exit Selection' : 'Select Multiple'}
@@ -119,7 +119,7 @@ export function RoomStatusOverview({ statusFilter, onRoomClick, globalSearchQuer
       )}
       
       {globalSearchQuery && (
-        <div className="flex items-center justify-between">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 sm:gap-4">
           <p className="text-sm text-muted-foreground">
             Searching: <span className="font-medium text-foreground">"{globalSearchQuery}"</span>
           </p>
@@ -132,7 +132,7 @@ export function RoomStatusOverview({ statusFilter, onRoomClick, globalSearchQuer
                 setSelectedRoomIds([]);
               }
             }}
-            className="rounded-xl"
+            className="rounded-xl whitespace-nowrap w-full sm:w-auto"
           >
             <CheckSquare className="w-4 h-4 mr-2" />
             {isSelectionMode ? 'Exit Selection' : 'Select Multiple'}
@@ -167,11 +167,15 @@ export function RoomStatusOverview({ statusFilter, onRoomClick, globalSearchQuer
         onRoomSelectionChange={handleRoomSelectionChange}
       />
 
-      <BulkRoomActions
-        selectedRoomIds={selectedRoomIds}
-        onClearSelection={handleClearSelection}
-        onComplete={handleBulkActionComplete}
-      />
+      {isSelectionMode && selectedRoomIds.length > 0 && (
+        <div className="fixed bottom-16 lg:bottom-4 left-4 right-4 lg:left-auto lg:right-6 z-40">
+          <BulkRoomActions
+            selectedRoomIds={selectedRoomIds}
+            onClearSelection={handleClearSelection}
+            onComplete={handleBulkActionComplete}
+          />
+        </div>
+      )}
     </div>
   );
 }

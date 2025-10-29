@@ -72,13 +72,14 @@ export function RoomTile({ room, onClick, isSelectionMode, isSelected, onSelecti
     <TooltipProvider>
       <Card 
         className={cn(
-          'cursor-pointer transition-all duration-300 hover:shadow-luxury hover:scale-[1.02] border-2 rounded-2xl relative',
+          'cursor-pointer transition-all duration-200 active:scale-95 border-2 rounded-xl sm:rounded-2xl relative touch-manipulation',
+          'lg:hover:shadow-luxury lg:hover:scale-[1.02]',
           borderColor,
           isSelected && 'ring-2 ring-primary ring-offset-2'
         )}
         onClick={handleClick}
       >
-      <CardHeader className="p-4">
+      <CardHeader className="p-3 sm:p-4">
         {isSelectionMode && (
           <div className="absolute top-2 left-2 z-10">
             <Checkbox
@@ -91,8 +92,8 @@ export function RoomTile({ room, onClick, isSelectionMode, isSelected, onSelecti
         )}
         <div className="flex items-start justify-between mb-2">
           <div className="flex-1">
-            <div className="flex items-center gap-2 mb-1">
-              <h3 className="text-xl font-bold font-display text-foreground">Room {room.number}</h3>
+            <div className="flex items-center gap-1.5 sm:gap-2 mb-1">
+              <h3 className="text-lg sm:text-xl font-bold font-display text-foreground">Room {room.number}</h3>
               {hasDND && (
                 <Tooltip>
                   <TooltipTrigger asChild>
