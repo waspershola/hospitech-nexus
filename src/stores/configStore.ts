@@ -12,6 +12,7 @@ interface ConfigStore {
   unsavedChanges: Set<string>;
   lastSyncTime: Date | null;
   isLoading: boolean;
+  version: number;
   
   // Actions
   setTenantId: (tenantId: string) => void;
@@ -45,6 +46,7 @@ export const useConfigStore = create<ConfigStore>((set, get) => ({
   unsavedChanges: new Set(),
   lastSyncTime: null,
   isLoading: false,
+  version: 0,
 
   setTenantId: (tenantId) => set({ tenantId }),
 
@@ -197,7 +199,7 @@ export const useConfigStore = create<ConfigStore>((set, get) => ({
     set(state => {
       const newUnsaved = new Set(state.unsavedChanges);
       newUnsaved.delete(key);
-      return { unsavedChanges: newUnsaved, lastSyncTime: new Date() };
+      return { unsavedChanges: newUnsaved, lastSyncTime: new Date(), version: state.version + 1 };
     });
   },
 
@@ -216,7 +218,7 @@ export const useConfigStore = create<ConfigStore>((set, get) => ({
     set(state => {
       const newUnsaved = new Set(state.unsavedChanges);
       newUnsaved.delete('branding');
-      return { unsavedChanges: newUnsaved, lastSyncTime: new Date() };
+      return { unsavedChanges: newUnsaved, lastSyncTime: new Date(), version: state.version + 1 };
     });
   },
 
@@ -235,7 +237,7 @@ export const useConfigStore = create<ConfigStore>((set, get) => ({
     set(state => {
       const newUnsaved = new Set(state.unsavedChanges);
       newUnsaved.delete('financials');
-      return { unsavedChanges: newUnsaved, lastSyncTime: new Date() };
+      return { unsavedChanges: newUnsaved, lastSyncTime: new Date(), version: state.version + 1 };
     });
   },
 
@@ -254,7 +256,7 @@ export const useConfigStore = create<ConfigStore>((set, get) => ({
     set(state => {
       const newUnsaved = new Set(state.unsavedChanges);
       newUnsaved.delete('email_settings');
-      return { unsavedChanges: newUnsaved, lastSyncTime: new Date() };
+      return { unsavedChanges: newUnsaved, lastSyncTime: new Date(), version: state.version + 1 };
     });
   },
 
@@ -273,7 +275,7 @@ export const useConfigStore = create<ConfigStore>((set, get) => ({
     set(state => {
       const newUnsaved = new Set(state.unsavedChanges);
       newUnsaved.delete('hotel_meta');
-      return { unsavedChanges: newUnsaved, lastSyncTime: new Date() };
+      return { unsavedChanges: newUnsaved, lastSyncTime: new Date(), version: state.version + 1 };
     });
   },
 
@@ -296,7 +298,7 @@ export const useConfigStore = create<ConfigStore>((set, get) => ({
     set(state => {
       const newUnsaved = new Set(state.unsavedChanges);
       newUnsaved.delete(`template_${templateType}`);
-      return { unsavedChanges: newUnsaved, lastSyncTime: new Date() };
+      return { unsavedChanges: newUnsaved, lastSyncTime: new Date(), version: state.version + 1 };
     });
   },
 
