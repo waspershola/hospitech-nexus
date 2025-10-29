@@ -21,6 +21,7 @@ import Guests from './pages/dashboard/Guests';
 import Reports from './pages/dashboard/Reports';
 import Settings from './pages/dashboard/Settings';
 import ConfigurationCenter from './pages/dashboard/ConfigurationCenter';
+import FinanceCenter from './pages/dashboard/FinanceCenter';
 import PortalHome from "./pages/portal/Home";
 import PortalRequests from "./pages/portal/Requests";
 import PortalPayments from "./pages/portal/Payments";
@@ -48,6 +49,7 @@ const App = () => (
               <Route path="guests" element={<Guests />} />
               <Route path="reports" element={<RoleGuard allowedRoles={['owner', 'manager']}><Reports /></RoleGuard>} />
               <Route path="configuration" element={<RoleGuard allowedRoles={['owner', 'manager']}><ConfigurationCenter /></RoleGuard>} />
+              <Route path="finance" element={<RoleGuard allowedRoles={['owner', 'manager']}><FinanceCenter /></RoleGuard>} />
               <Route path="settings" element={<Settings />} />
             </Route>
 

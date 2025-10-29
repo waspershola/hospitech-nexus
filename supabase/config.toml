@@ -11,3 +11,9 @@ verify_jwt = true
 
 [functions.verify-payment]
 verify_jwt = true
+
+[functions.create-payment]
+verify_jwt = true
+
+[functions.reconcile-transactions]
+verify_jwt = true

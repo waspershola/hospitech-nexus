@@ -1,4 +1,4 @@
-import { Hotel, Home, Bed, Calendar, Users, FileBarChart, Settings as SettingsIcon, Wrench, LayoutDashboard, Grid3x3 } from 'lucide-react';
+import { Hotel, Home, Bed, Calendar, Users, FileBarChart, Settings as SettingsIcon, Wrench, LayoutDashboard, Grid3x3, Wallet } from 'lucide-react';
 import { NavLink } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import {
@@ -21,6 +21,7 @@ const NAV_ITEMS = [
   { name: 'Categories', icon: Grid3x3, path: '/dashboard/categories', roles: ['manager', 'owner'] },
   { name: 'Bookings', icon: Calendar, path: '/dashboard/bookings', roles: ['frontdesk', 'manager', 'owner'] },
   { name: 'Guests', icon: Users, path: '/dashboard/guests', roles: ['frontdesk', 'manager', 'owner'] },
+  { name: 'Finance', icon: Wallet, path: '/dashboard/finance', roles: ['manager', 'owner'] },
   { name: 'Reports', icon: FileBarChart, path: '/dashboard/reports', roles: ['manager', 'owner'] },
   { name: 'Configuration', icon: Wrench, path: '/dashboard/configuration', roles: ['manager', 'owner'] },
   { name: 'Settings', icon: SettingsIcon, path: '/dashboard/settings', roles: ['manager', 'owner'] },

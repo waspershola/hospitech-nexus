@@ -187,6 +187,337 @@ export type Database = {
           },
         ]
       }
+      finance_analytics_snapshots: {
+        Row: {
+          created_at: string | null
+          date: string
+          department: string | null
+          discrepancy: number | null
+          generated_by: string | null
+          id: string
+          matched_txn_count: number | null
+          overpayment_count: number | null
+          tenant_id: string
+          total_expense: number | null
+          total_income: number | null
+          unmatched_txn_count: number | null
+        }
+        Insert: {
+          created_at?: string | null
+          date: string
+          department?: string | null
+          discrepancy?: number | null
+          generated_by?: string | null
+          id?: string
+          matched_txn_count?: number | null
+          overpayment_count?: number | null
+          tenant_id: string
+          total_expense?: number | null
+          total_income?: number | null
+          unmatched_txn_count?: number | null
+        }
+        Update: {
+          created_at?: string | null
+          date?: string
+          department?: string | null
+          discrepancy?: number | null
+          generated_by?: string | null
+          id?: string
+          matched_txn_count?: number | null
+          overpayment_count?: number | null
+          tenant_id?: string
+          total_expense?: number | null
+          total_income?: number | null
+          unmatched_txn_count?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "finance_analytics_snapshots_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      finance_locations: {
+        Row: {
+          created_at: string | null
+          created_by: string | null
+          department: string | null
+          id: string
+          name: string
+          provider_id: string | null
+          status: string | null
+          tenant_id: string
+          wallet_id: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          created_by?: string | null
+          department?: string | null
+          id?: string
+          name: string
+          provider_id?: string | null
+          status?: string | null
+          tenant_id: string
+          wallet_id?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          created_by?: string | null
+          department?: string | null
+          id?: string
+          name?: string
+          provider_id?: string | null
+          status?: string | null
+          tenant_id?: string
+          wallet_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "finance_locations_provider_id_fkey"
+            columns: ["provider_id"]
+            isOneToOne: false
+            referencedRelation: "finance_providers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "finance_locations_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "finance_locations_wallet_id_fkey"
+            columns: ["wallet_id"]
+            isOneToOne: false
+            referencedRelation: "wallets"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      finance_provider_rules: {
+        Row: {
+          auto_reconcile: boolean | null
+          created_at: string | null
+          created_by: string | null
+          department: string | null
+          id: string
+          location_id: string | null
+          max_txn_limit: number | null
+          provider_id: string
+          tenant_id: string
+        }
+        Insert: {
+          auto_reconcile?: boolean | null
+          created_at?: string | null
+          created_by?: string | null
+          department?: string | null
+          id?: string
+          location_id?: string | null
+          max_txn_limit?: number | null
+          provider_id: string
+          tenant_id: string
+        }
+        Update: {
+          auto_reconcile?: boolean | null
+          created_at?: string | null
+          created_by?: string | null
+          department?: string | null
+          id?: string
+          location_id?: string | null
+          max_txn_limit?: number | null
+          provider_id?: string
+          tenant_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "finance_provider_rules_location_id_fkey"
+            columns: ["location_id"]
+            isOneToOne: false
+            referencedRelation: "finance_locations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "finance_provider_rules_provider_id_fkey"
+            columns: ["provider_id"]
+            isOneToOne: false
+            referencedRelation: "finance_providers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "finance_provider_rules_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      finance_providers: {
+        Row: {
+          api_key: string | null
+          api_secret: string | null
+          created_at: string | null
+          created_by: string | null
+          fee_percent: number | null
+          id: string
+          meta: Json | null
+          name: string
+          status: string | null
+          tenant_id: string
+          type: string
+          updated_at: string | null
+        }
+        Insert: {
+          api_key?: string | null
+          api_secret?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          fee_percent?: number | null
+          id?: string
+          meta?: Json | null
+          name: string
+          status?: string | null
+          tenant_id: string
+          type: string
+          updated_at?: string | null
+        }
+        Update: {
+          api_key?: string | null
+          api_secret?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          fee_percent?: number | null
+          id?: string
+          meta?: Json | null
+          name?: string
+          status?: string | null
+          tenant_id?: string
+          type?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "finance_providers_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      finance_reconciliation_audit: {
+        Row: {
+          action: string
+          created_at: string | null
+          id: string
+          performed_by: string | null
+          reconciliation_id: string | null
+          tenant_id: string
+        }
+        Insert: {
+          action: string
+          created_at?: string | null
+          id?: string
+          performed_by?: string | null
+          reconciliation_id?: string | null
+          tenant_id: string
+        }
+        Update: {
+          action?: string
+          created_at?: string | null
+          id?: string
+          performed_by?: string | null
+          reconciliation_id?: string | null
+          tenant_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "finance_reconciliation_audit_reconciliation_id_fkey"
+            columns: ["reconciliation_id"]
+            isOneToOne: false
+            referencedRelation: "finance_reconciliation_records"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "finance_reconciliation_audit_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      finance_reconciliation_records: {
+        Row: {
+          amount: number
+          created_at: string | null
+          id: string
+          internal_txn_id: string | null
+          matched_by: string | null
+          provider_id: string | null
+          raw_data: Json | null
+          reconciled_at: string | null
+          reference: string
+          source: string
+          status: string | null
+          tenant_id: string
+        }
+        Insert: {
+          amount: number
+          created_at?: string | null
+          id?: string
+          internal_txn_id?: string | null
+          matched_by?: string | null
+          provider_id?: string | null
+          raw_data?: Json | null
+          reconciled_at?: string | null
+          reference: string
+          source: string
+          status?: string | null
+          tenant_id: string
+        }
+        Update: {
+          amount?: number
+          created_at?: string | null
+          id?: string
+          internal_txn_id?: string | null
+          matched_by?: string | null
+          provider_id?: string | null
+          raw_data?: Json | null
+          reconciled_at?: string | null
+          reference?: string
+          source?: string
+          status?: string | null
+          tenant_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "finance_reconciliation_records_internal_txn_id_fkey"
+            columns: ["internal_txn_id"]
+            isOneToOne: false
+            referencedRelation: "payments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "finance_reconciliation_records_provider_id_fkey"
+            columns: ["provider_id"]
+            isOneToOne: false
+            referencedRelation: "finance_providers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "finance_reconciliation_records_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       guests: {
         Row: {
           created_at: string | null
@@ -540,42 +871,180 @@ export type Database = {
           },
         ]
       }
+      organization_wallet_rules: {
+        Row: {
+          active: boolean | null
+          created_at: string | null
+          created_by: string | null
+          entity_ref: string | null
+          id: string
+          limit_amount: number
+          organization_id: string
+          period: string
+          rule_type: string
+          tenant_id: string
+        }
+        Insert: {
+          active?: boolean | null
+          created_at?: string | null
+          created_by?: string | null
+          entity_ref?: string | null
+          id?: string
+          limit_amount: number
+          organization_id: string
+          period: string
+          rule_type: string
+          tenant_id: string
+        }
+        Update: {
+          active?: boolean | null
+          created_at?: string | null
+          created_by?: string | null
+          entity_ref?: string | null
+          id?: string
+          limit_amount?: number
+          organization_id?: string
+          period?: string
+          rule_type?: string
+          tenant_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "organization_wallet_rules_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "organization_wallet_rules_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      organizations: {
+        Row: {
+          active: boolean | null
+          allow_negative_balance: boolean | null
+          contact_email: string | null
+          contact_person: string | null
+          created_at: string | null
+          credit_limit: number | null
+          id: string
+          name: string
+          tenant_id: string
+          wallet_id: string | null
+        }
+        Insert: {
+          active?: boolean | null
+          allow_negative_balance?: boolean | null
+          contact_email?: string | null
+          contact_person?: string | null
+          created_at?: string | null
+          credit_limit?: number | null
+          id?: string
+          name: string
+          tenant_id: string
+          wallet_id?: string | null
+        }
+        Update: {
+          active?: boolean | null
+          allow_negative_balance?: boolean | null
+          contact_email?: string | null
+          contact_person?: string | null
+          created_at?: string | null
+          credit_limit?: number | null
+          id?: string
+          name?: string
+          tenant_id?: string
+          wallet_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "organizations_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "organizations_wallet_id_fkey"
+            columns: ["wallet_id"]
+            isOneToOne: false
+            referencedRelation: "wallets"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       payments: {
         Row: {
           amount: number
           booking_id: string | null
           created_at: string | null
           currency: string | null
+          department: string | null
+          expected_amount: number | null
+          guest_id: string | null
           id: string
+          location: string | null
           metadata: Json | null
           method: string | null
+          method_provider: string | null
+          organization_id: string | null
+          payment_type: string | null
           provider_reference: string | null
+          recorded_by: string | null
           status: string | null
           tenant_id: string
+          transaction_ref: string | null
+          wallet_id: string | null
         }
         Insert: {
           amount: number
           booking_id?: string | null
           created_at?: string | null
           currency?: string | null
+          department?: string | null
+          expected_amount?: number | null
+          guest_id?: string | null
           id?: string
+          location?: string | null
           metadata?: Json | null
           method?: string | null
+          method_provider?: string | null
+          organization_id?: string | null
+          payment_type?: string | null
           provider_reference?: string | null
+          recorded_by?: string | null
           status?: string | null
           tenant_id: string
+          transaction_ref?: string | null
+          wallet_id?: string | null
         }
         Update: {
           amount?: number
           booking_id?: string | null
           created_at?: string | null
           currency?: string | null
+          department?: string | null
+          expected_amount?: number | null
+          guest_id?: string | null
           id?: string
+          location?: string | null
           metadata?: Json | null
           method?: string | null
+          method_provider?: string | null
+          organization_id?: string | null
+          payment_type?: string | null
           provider_reference?: string | null
+          recorded_by?: string | null
           status?: string | null
           tenant_id?: string
+          transaction_ref?: string | null
+          wallet_id?: string | null
         }
         Relationships: [
           {
@@ -586,10 +1055,24 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "payments_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "payments_tenant_id_fkey"
             columns: ["tenant_id"]
             isOneToOne: false
             referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "payments_wallet_id_fkey"
+            columns: ["wallet_id"]
+            isOneToOne: false
+            referencedRelation: "wallets"
             referencedColumns: ["id"]
           },
         ]
@@ -887,6 +1370,114 @@ export type Database = {
           },
         ]
       }
+      wallet_transactions: {
+        Row: {
+          amount: number
+          created_at: string | null
+          created_by: string | null
+          description: string | null
+          id: string
+          payment_id: string | null
+          tenant_id: string
+          type: string
+          wallet_id: string
+        }
+        Insert: {
+          amount: number
+          created_at?: string | null
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          payment_id?: string | null
+          tenant_id: string
+          type: string
+          wallet_id: string
+        }
+        Update: {
+          amount?: number
+          created_at?: string | null
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          payment_id?: string | null
+          tenant_id?: string
+          type?: string
+          wallet_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "wallet_transactions_payment_id_fkey"
+            columns: ["payment_id"]
+            isOneToOne: false
+            referencedRelation: "payments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "wallet_transactions_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "wallet_transactions_wallet_id_fkey"
+            columns: ["wallet_id"]
+            isOneToOne: false
+            referencedRelation: "wallets"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      wallets: {
+        Row: {
+          balance: number
+          created_at: string | null
+          currency: string
+          department: string | null
+          id: string
+          last_transaction_at: string | null
+          name: string | null
+          owner_id: string | null
+          tenant_id: string
+          updated_at: string | null
+          wallet_type: string
+        }
+        Insert: {
+          balance?: number
+          created_at?: string | null
+          currency?: string
+          department?: string | null
+          id?: string
+          last_transaction_at?: string | null
+          name?: string | null
+          owner_id?: string | null
+          tenant_id: string
+          updated_at?: string | null
+          wallet_type: string
+        }
+        Update: {
+          balance?: number
+          created_at?: string | null
+          currency?: string
+          department?: string | null
+          id?: string
+          last_transaction_at?: string | null
+          name?: string | null
+          owner_id?: string | null
+          tenant_id?: string
+          updated_at?: string | null
+          wallet_type?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "wallets_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
@@ -901,6 +1492,15 @@ export type Database = {
           _user_id: string
         }
         Returns: boolean
+      }
+      validate_org_limits: {
+        Args: {
+          _amount: number
+          _department: string
+          _guest_id: string
+          _org_id: string
+        }
+        Returns: Json
       }
     }
     Enums: {
