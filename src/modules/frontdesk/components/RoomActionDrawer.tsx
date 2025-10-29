@@ -19,10 +19,11 @@ import { ChargeToOrgModal } from './ChargeToOrgModal';
 import { RoomAuditTrail } from './RoomAuditTrail';
 import { QuickPaymentForm } from './QuickPaymentForm';
 import { PaymentHistory } from '@/modules/payments/PaymentHistory';
+import { BookingAmendmentDrawer } from '@/modules/bookings/components/BookingAmendmentDrawer';
 import { toast } from '@/hooks/use-toast';
 import { 
   Loader2, User, CreditCard, Calendar, AlertCircle, Clock, Building2, AlertTriangle, 
-  Wallet, Zap, Coffee, BellOff, UserPlus, LogIn, LogOut, Wrench, Sparkles, FileText, Receipt
+  Wallet, Zap, Coffee, BellOff, UserPlus, LogIn, LogOut, Wrench, Sparkles, FileText, Receipt, Edit
 } from 'lucide-react';
 
 interface RoomActionDrawerProps {
@@ -41,6 +42,7 @@ export function RoomActionDrawer({ roomId, open, onClose }: RoomActionDrawerProp
   const [chargeToOrgModalOpen, setChargeToOrgModalOpen] = useState(false);
   const [quickPaymentOpen, setQuickPaymentOpen] = useState(false);
   const [paymentHistoryOpen, setPaymentHistoryOpen] = useState(false);
+  const [amendmentDrawerOpen, setAmendmentDrawerOpen] = useState(false);
 
   const { data: room, isLoading } = useQuery({
     queryKey: ['room-detail', roomId],
@@ -415,6 +417,15 @@ export function RoomActionDrawer({ roomId, open, onClose }: RoomActionDrawerProp
                               <Receipt className="w-4 h-4 mr-2" />
                               View Payment History
                             </Button>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => setAmendmentDrawerOpen(true)}
+                              className="w-full"
+                            >
+                              <Edit className="w-4 h-4 mr-2" />
+                              Amend Booking
+                            </Button>
                           </>
                         )}
                       </div>
@@ -514,6 +525,21 @@ export function RoomActionDrawer({ roomId, open, onClose }: RoomActionDrawerProp
                 bookingId={currentBooking.id}
                 guestId={currentBooking.guest?.id}
                 roomNumber={room.number}
+              />
+            </>
+          )}
+          {currentBooking && (
+            <>
+              {paymentHistoryOpen && (
+                <PaymentHistory
+                  bookingId={currentBooking.id}
+                  onClose={() => setPaymentHistoryOpen(false)}
+                />
+              )}
+              <BookingAmendmentDrawer
+                open={amendmentDrawerOpen}
+                onClose={() => setAmendmentDrawerOpen(false)}
+                bookingId={currentBooking.id}
               />
             </>
           )}
