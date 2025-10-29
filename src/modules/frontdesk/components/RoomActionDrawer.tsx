@@ -486,6 +486,7 @@ export function RoomActionDrawer({ roomId, open, onClose }: RoomActionDrawerProp
                 onClose={() => setChargeModalOpen(false)}
                 bookingId={currentBooking.id}
                 roomNumber={room.number}
+                organizationId={currentBooking.organization_id}
               />
               <ChargeToOrgModal
                 open={chargeToOrgModalOpen}

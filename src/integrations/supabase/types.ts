@@ -926,6 +926,51 @@ export type Database = {
           },
         ]
       }
+      organization_service_rules: {
+        Row: {
+          allowed_services: Json
+          created_at: string | null
+          created_by: string | null
+          id: string
+          organization_id: string
+          tenant_id: string
+          updated_at: string | null
+        }
+        Insert: {
+          allowed_services?: Json
+          created_at?: string | null
+          created_by?: string | null
+          id?: string
+          organization_id: string
+          tenant_id: string
+          updated_at?: string | null
+        }
+        Update: {
+          allowed_services?: Json
+          created_at?: string | null
+          created_by?: string | null
+          id?: string
+          organization_id?: string
+          tenant_id?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "organization_service_rules_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "organization_service_rules_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       organization_wallet_rules: {
         Row: {
           active: boolean | null

@@ -14,13 +14,17 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
-import { Loader2 } from 'lucide-react';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Loader2, AlertTriangle } from 'lucide-react';
 import { useRecordPayment } from '@/hooks/useRecordPayment';
 import { useFinanceProviders } from '@/hooks/useFinanceProviders';
 import { useFinanceLocations } from '@/hooks/useFinanceLocations';
 import { useWallets } from '@/hooks/useWallets';
+import { useOrgServiceRules } from '@/hooks/useOrgServiceRules';
+import { useState, useEffect } from 'react';
 
 const chargeSchema = z.object({
+  service_type: z.string().min(1, 'Service type is required'),
   amount: z.number().positive('Amount must be greater than 0'),
   method: z.string().min(1, 'Payment method is required'),
   location_id: z.string().optional(),
@@ -36,6 +40,7 @@ interface AddChargeModalProps {
   onClose: () => void;
   bookingId: string;
   roomNumber: string;
+  organizationId?: string;
 }
 
 export function AddChargeModal({
@@ -43,11 +48,28 @@ export function AddChargeModal({
   onClose,
   bookingId,
   roomNumber,
+  organizationId,
 }: AddChargeModalProps) {
   const { mutate: recordPayment, isPending } = useRecordPayment();
   const { providers } = useFinanceProviders();
   const { locations } = useFinanceLocations();
   const { wallets } = useWallets('department');
+  const { serviceRules } = useOrgServiceRules(organizationId);
+  const [serviceError, setServiceError] = useState<string | null>(null);
+
+  const AVAILABLE_SERVICES = [
+    { id: 'room', label: 'Room Charge' },
+    { id: 'breakfast', label: 'Breakfast' },
+    { id: 'lunch', label: 'Lunch' },
+    { id: 'dinner', label: 'Dinner' },
+    { id: 'bar', label: 'Bar' },
+    { id: 'spa', label: 'Spa & Wellness' },
+    { id: 'laundry', label: 'Laundry' },
+    { id: 'room_service', label: 'Room Service' },
+    { id: 'minibar', label: 'Minibar' },
+    { id: 'events', label: 'Events & Conferences' },
+    { id: 'other', label: 'Other' },
+  ];
 
   const {
     register,
@@ -62,10 +84,33 @@ export function AddChargeModal({
 
   const selectedMethod = watch('method');
   const selectedLocationId = watch('location_id');
+  const selectedServiceType = watch('service_type');
   const activeProviders = providers.filter(p => p.status === 'active');
   const activeLocations = locations.filter(l => l.status === 'active');
 
+  // Check service restrictions
+  useEffect(() => {
+    setServiceError(null);
+    
+    if (!organizationId || !selectedServiceType || !serviceRules) return;
+
+    const allowedServices = serviceRules.allowed_services || [];
+    
+    // If no restrictions are set, allow all
+    if (allowedServices.length === 0) return;
+    
+    // Check if selected service is allowed
+    if (!allowedServices.includes(selectedServiceType)) {
+      setServiceError(`This organization is not allowed to use ${AVAILABLE_SERVICES.find(s => s.id === selectedServiceType)?.label} service.`);
+    }
+  }, [selectedServiceType, serviceRules, organizationId]);
+
   const onSubmit = (data: ChargeForm) => {
+    // Block if service restriction error exists
+    if (serviceError) {
+      return;
+    }
+
     const transaction_ref = `CHG-${Date.now()}-${Math.random().toString(36).substring(7)}`;
 
     recordPayment(
@@ -82,6 +127,7 @@ export function AddChargeModal({
           notes: data.notes,
           room_number: roomNumber,
           charge_type: 'manual',
+          service_type: data.service_type,
         },
       },
       {
@@ -104,6 +150,35 @@ export function AddChargeModal({
         </DialogHeader>
 
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+          {serviceError && (
+            <Alert variant="destructive">
+              <AlertTriangle className="h-4 w-4" />
+              <AlertDescription>{serviceError}</AlertDescription>
+            </Alert>
+          )}
+
+          <div className="space-y-2">
+            <Label htmlFor="service_type">Service Type</Label>
+            <Select
+              value={selectedServiceType}
+              onValueChange={(value) => setValue('service_type', value)}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="Select service type" />
+              </SelectTrigger>
+              <SelectContent>
+                {AVAILABLE_SERVICES.map((service) => (
+                  <SelectItem key={service.id} value={service.id}>
+                    {service.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            {errors.service_type && (
+              <p className="text-sm text-destructive">{errors.service_type.message}</p>
+            )}
+          </div>
+
           <div className="space-y-2">
             <Label htmlFor="amount">Amount (₦)</Label>
             <Input
@@ -220,7 +295,7 @@ export function AddChargeModal({
             <Button type="button" variant="outline" onClick={onClose}>
               Cancel
             </Button>
-            <Button type="submit" disabled={isPending}>
+            <Button type="submit" disabled={isPending || !!serviceError}>
               {isPending && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
               Add Charge
             </Button>

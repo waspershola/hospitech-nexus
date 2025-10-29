@@ -1,11 +1,12 @@
 import { useState } from 'react';
-import { Plus, Building2, Mail, User, CreditCard, Settings } from 'lucide-react';
+import { Plus, Building2, Mail, User, CreditCard, Settings, ShieldCheck } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { useOrganizations } from '@/hooks/useOrganizations';
 import { OrganizationDrawer } from './OrganizationDrawer';
 import { OrgWalletRulesDialog } from './OrgWalletRulesDialog';
+import { OrgServiceRestrictionsDialog } from './OrgServiceRestrictionsDialog';
 import { OrgLimitsSummary } from './components/OrgLimitsSummary';
 import {
   Dialog,
@@ -21,6 +22,7 @@ export function OrganizationsTab() {
   const [rulesDialogOpen, setRulesDialogOpen] = useState(false);
   const [selectedOrgName, setSelectedOrgName] = useState<string>('');
   const [limitsDialogOpen, setLimitsDialogOpen] = useState(false);
+  const [serviceRestrictionsOpen, setServiceRestrictionsOpen] = useState(false);
   const [selectedOrgForLimits, setSelectedOrgForLimits] = useState<{
     id: string;
     name: string;
@@ -82,11 +84,10 @@ export function OrganizationsTab() {
                 Credit Limit: ₦{org.credit_limit.toLocaleString()}
               </div>
               
-              <div className="flex gap-2 mt-2">
+              <div className="grid grid-cols-3 gap-2 mt-2">
                 <Button
                   variant="outline"
                   size="sm"
-                  className="flex-1"
                   onClick={(e) => {
                     e.stopPropagation();
                     setSelectedOrg(org.id);
@@ -94,21 +95,33 @@ export function OrganizationsTab() {
                     setRulesDialogOpen(true);
                   }}
                 >
-                  <Settings className="w-4 h-4 mr-2" />
+                  <Settings className="w-4 h-4 mr-1" />
                   Rules
                 </Button>
                 <Button
                   variant="outline"
                   size="sm"
-                  className="flex-1"
                   onClick={(e) => {
                     e.stopPropagation();
                     setSelectedOrgForLimits({ id: org.id, name: org.name });
                     setLimitsDialogOpen(true);
                   }}
                 >
-                  <Settings className="w-4 h-4 mr-2" />
+                  <CreditCard className="w-4 h-4 mr-1" />
                   Limits
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setSelectedOrg(org.id);
+                    setSelectedOrgName(org.name);
+                    setServiceRestrictionsOpen(true);
+                  }}
+                >
+                  <ShieldCheck className="w-4 h-4 mr-1" />
+                  Services
                 </Button>
               </div>
             </div>
@@ -137,12 +150,20 @@ export function OrganizationsTab() {
       />
       
       {selectedOrg && (
-        <OrgWalletRulesDialog
-          open={rulesDialogOpen}
-          onClose={() => setRulesDialogOpen(false)}
-          organizationId={selectedOrg}
-          organizationName={selectedOrgName}
-        />
+        <>
+          <OrgWalletRulesDialog
+            open={rulesDialogOpen}
+            onClose={() => setRulesDialogOpen(false)}
+            organizationId={selectedOrg}
+            organizationName={selectedOrgName}
+          />
+          <OrgServiceRestrictionsDialog
+            open={serviceRestrictionsOpen}
+            onClose={() => setServiceRestrictionsOpen(false)}
+            organizationId={selectedOrg}
+            organizationName={selectedOrgName}
+          />
+        </>
       )}
 
       {selectedOrgForLimits && (
