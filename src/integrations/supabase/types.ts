@@ -23,6 +23,7 @@ export type Database = {
           guest_id: string
           id: string
           metadata: Json | null
+          organization_id: string | null
           room_id: string
           status: string | null
           tenant_id: string
@@ -36,6 +37,7 @@ export type Database = {
           guest_id: string
           id?: string
           metadata?: Json | null
+          organization_id?: string | null
           room_id: string
           status?: string | null
           tenant_id: string
@@ -49,6 +51,7 @@ export type Database = {
           guest_id?: string
           id?: string
           metadata?: Json | null
+          organization_id?: string | null
           room_id?: string
           status?: string | null
           tenant_id?: string
@@ -60,6 +63,13 @@ export type Database = {
             columns: ["guest_id"]
             isOneToOne: false
             referencedRelation: "guests"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bookings_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
             referencedColumns: ["id"]
           },
           {
