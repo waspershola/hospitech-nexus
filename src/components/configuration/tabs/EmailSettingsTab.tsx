@@ -6,7 +6,7 @@ import { Switch } from '@/components/ui/switch';
 import { Mail } from 'lucide-react';
 
 export function EmailSettingsTab() {
-  const { emailSettings, updateEmailSettings, saveEmailSettings, unsavedChanges } = useConfigStore();
+  const { emailSettings, updateEmailSettings, saveEmailSettings, unsavedChanges, version } = useConfigStore();
 
   const handleChange = (field: string, value: any) => {
     updateEmailSettings({ [field]: value });

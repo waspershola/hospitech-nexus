@@ -17,7 +17,7 @@ const checkInFields = [
 ];
 
 export function GuestExperienceTab() {
-  const { configurations, updateConfig, saveConfig, unsavedChanges } = useConfigStore();
+  const { configurations, updateConfig, saveConfig, unsavedChanges, version } = useConfigStore();
   const guestExp = configurations.guestExperience || {};
 
   const handleChange = (field: string, value: any) => {

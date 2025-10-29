@@ -8,7 +8,7 @@ import { Switch } from '@/components/ui/switch';
 import { Hotel, MapPin, Phone, ShieldCheck } from 'lucide-react';
 
 export function GeneralTab() {
-  const { configurations, updateConfig, saveConfig, unsavedChanges } = useConfigStore();
+  const { configurations, updateConfig, saveConfig, unsavedChanges, version } = useConfigStore();
   const general = configurations.general || {};
 
   const handleChange = (field: string, value: any) => {

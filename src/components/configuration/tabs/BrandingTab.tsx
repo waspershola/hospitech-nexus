@@ -12,7 +12,7 @@ import { BrandingPreview } from '../branding/BrandingPreview';
 import { PortalPreview } from '../shared/PortalPreview';
 
 export function BrandingTab() {
-  const { branding, updateBranding, saveBranding, unsavedChanges } = useConfigStore();
+  const { branding, updateBranding, saveBranding, unsavedChanges, version } = useConfigStore();
 
   const handleChange = (field: string, value: any) => {
     updateBranding({ [field]: value });

@@ -7,7 +7,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Building2, Mail, Phone, Share2 } from 'lucide-react';
 
 export function MetaTab() {
-  const { hotelMeta, updateHotelMeta, saveHotelMeta, loadHotelMeta, unsavedChanges } = useConfigStore();
+  const { hotelMeta, updateHotelMeta, saveHotelMeta, loadHotelMeta, unsavedChanges, version } = useConfigStore();
 
   useEffect(() => {
     loadHotelMeta();

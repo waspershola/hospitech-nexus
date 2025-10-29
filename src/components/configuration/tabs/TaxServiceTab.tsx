@@ -8,7 +8,7 @@ import { Percent } from 'lucide-react';
 import { toast } from 'sonner';
 
 export function TaxServiceTab() {
-  const { financials, updateFinancials, saveFinancials, unsavedChanges } = useConfigStore();
+  const { financials, updateFinancials, saveFinancials, unsavedChanges, version } = useConfigStore();
 
   const handleChange = (field: string, value: any) => {
     // Validate percentage values

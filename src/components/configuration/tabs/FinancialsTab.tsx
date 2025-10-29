@@ -14,7 +14,7 @@ const currencies = [
 ];
 
 export function FinancialsTab() {
-  const { financials, updateFinancials, saveFinancials, unsavedChanges } = useConfigStore();
+  const { financials, updateFinancials, saveFinancials, unsavedChanges, version } = useConfigStore();
 
   const handleChange = (field: string, value: any) => {
     updateFinancials({ [field]: value });

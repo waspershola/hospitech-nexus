@@ -8,7 +8,7 @@ import { FileText } from 'lucide-react';
 import { toast } from 'sonner';
 
 export function DocumentsTab() {
-  const { documentTemplates, updateDocumentTemplate, saveDocumentTemplate, unsavedChanges } = useConfigStore();
+  const { documentTemplates, updateDocumentTemplate, saveDocumentTemplate, unsavedChanges, version } = useConfigStore();
 
   const getTemplate = (type: string) => {
     return documentTemplates.find(t => t.template_type === type) || {};
