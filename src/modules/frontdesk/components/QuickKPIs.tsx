@@ -96,11 +96,11 @@ export function QuickKPIs({ onFilterClick }: QuickKPIsProps) {
   }
 
   return (
-    <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4">
+    <div className="grid grid-cols-4 lg:grid-cols-8 gap-2 sm:gap-3">
       {cards.map((card) => (
         <Card 
           key={card.label}
-          className={`p-3 md:p-4 cursor-pointer transition-all duration-300 hover:shadow-luxury rounded-2xl relative ${
+          className={`p-2 md:p-3 cursor-pointer transition-all duration-300 hover:shadow-lg rounded-xl relative ${
             card.filter ? 'hover:scale-105' : ''
           }`}
           onClick={() => card.filter && onFilterClick(card.filter)}
@@ -108,18 +108,18 @@ export function QuickKPIs({ onFilterClick }: QuickKPIsProps) {
           {card.showBadge && (
             <Badge 
               variant="destructive" 
-              className="absolute -top-2 -right-2 h-6 w-6 p-0 flex items-center justify-center rounded-full shadow-lg"
+              className="absolute -top-1 -right-1 h-5 w-5 p-0 flex items-center justify-center rounded-full shadow-lg text-[10px]"
             >
               {card.value}
             </Badge>
           )}
-          <div className="flex items-center justify-between mb-2">
-            <div className={`p-2 rounded-xl ${card.bg}`}>
-              <card.icon className={`w-4 h-4 md:w-5 md:h-5 ${card.color}`} />
+          <div className="flex items-center justify-between mb-1.5">
+            <div className={`p-1.5 rounded-lg ${card.bg}`}>
+              <card.icon className={`w-3 h-3 md:w-4 md:h-4 ${card.color}`} />
             </div>
-            <span className="text-xl md:text-2xl font-bold font-display text-foreground">{card.value}</span>
+            <span className="text-lg md:text-xl font-bold font-display text-foreground">{card.value}</span>
           </div>
-          <p className="text-xs md:text-sm text-muted-foreground truncate">{card.label}</p>
+          <p className="text-[10px] md:text-xs text-muted-foreground truncate leading-tight">{card.label}</p>
         </Card>
       ))}
     </div>

@@ -35,12 +35,12 @@ export function FilterBar({
   const hasFilters = statusFilter || categoryFilter || floorFilter !== null || organizationFilter;
 
   return (
-    <div className="space-y-3">
-      <div className="flex flex-wrap gap-2 items-center">
-        <Filter className="w-4 h-4 text-muted-foreground" />
+    <div className="space-y-2">
+      <div className="flex flex-wrap gap-1.5 sm:gap-2 items-center">
+        <Filter className="w-4 h-4 text-muted-foreground shrink-0" />
         
         <Select value={statusFilter || 'all'} onValueChange={(v) => onStatusChange(v === 'all' ? null : v)}>
-          <SelectTrigger className="w-40">
+          <SelectTrigger className="w-32 sm:w-36 h-9 text-xs">
             <SelectValue placeholder="Status" />
           </SelectTrigger>
           <SelectContent>
@@ -55,7 +55,7 @@ export function FilterBar({
         </Select>
 
         <Select value={categoryFilter || 'all'} onValueChange={(v) => onCategoryChange(v === 'all' ? null : v)}>
-          <SelectTrigger className="w-40">
+          <SelectTrigger className="w-32 sm:w-36 h-9 text-xs">
             <SelectValue placeholder="Category" />
           </SelectTrigger>
           <SelectContent>
@@ -72,7 +72,7 @@ export function FilterBar({
           value={floorFilter !== null ? String(floorFilter) : 'all'}
           onValueChange={(v) => onFloorChange(v === 'all' ? null : parseInt(v))}
         >
-          <SelectTrigger className="w-32">
+          <SelectTrigger className="w-24 sm:w-28 h-9 text-xs">
             <SelectValue placeholder="Floor" />
           </SelectTrigger>
           <SelectContent>
@@ -86,7 +86,7 @@ export function FilterBar({
         </Select>
 
         <Select value={organizationFilter || 'all'} onValueChange={(v) => onOrganizationChange(v === 'all' ? null : v)}>
-          <SelectTrigger className="w-48">
+          <SelectTrigger className="w-36 sm:w-44 h-9 text-xs">
             <SelectValue placeholder="Organization" />
           </SelectTrigger>
           <SelectContent>
@@ -100,9 +100,9 @@ export function FilterBar({
         </Select>
 
         {hasFilters && (
-          <Button variant="ghost" size="sm" onClick={onClearAll}>
-            <X className="w-4 h-4 mr-1" />
-            Clear All
+          <Button variant="ghost" size="sm" onClick={onClearAll} className="h-9">
+            <X className="w-3 h-3 mr-1" />
+            <span className="text-xs">Clear</span>
           </Button>
         )}
       </div>

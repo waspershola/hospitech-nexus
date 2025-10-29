@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { CheckSquare, Search } from 'lucide-react';
 import { RoomGrid } from './RoomGrid';
@@ -91,7 +92,7 @@ export function RoomStatusOverview({ statusFilter, onRoomClick, globalSearchQuer
   return (
     <div className="space-y-3 sm:space-y-4">
       {!globalSearchQuery && (
-        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 sm:gap-4">
+        <div className="flex items-center gap-2 sm:gap-3">
           <div className="relative flex-1">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
             <Input
@@ -110,17 +111,22 @@ export function RoomStatusOverview({ statusFilter, onRoomClick, globalSearchQuer
                 setSelectedRoomIds([]);
               }
             }}
-            className="rounded-xl whitespace-nowrap"
+            className="rounded-xl whitespace-nowrap shrink-0"
           >
             <CheckSquare className="w-4 h-4 mr-2" />
-            {isSelectionMode ? 'Exit Selection' : 'Select Multiple'}
+            <span className="hidden sm:inline">{isSelectionMode ? 'Exit' : 'Select'}</span>
+            {isSelectionMode && selectedRoomIds.length > 0 && (
+              <Badge variant="secondary" className="ml-2">
+                {selectedRoomIds.length}
+              </Badge>
+            )}
           </Button>
         </div>
       )}
       
       {globalSearchQuery && (
-        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 sm:gap-4">
-          <p className="text-sm text-muted-foreground">
+        <div className="flex items-center justify-between gap-2 sm:gap-3">
+          <p className="text-sm text-muted-foreground truncate">
             Searching: <span className="font-medium text-foreground">"{globalSearchQuery}"</span>
           </p>
           <Button
@@ -132,10 +138,15 @@ export function RoomStatusOverview({ statusFilter, onRoomClick, globalSearchQuer
                 setSelectedRoomIds([]);
               }
             }}
-            className="rounded-xl whitespace-nowrap w-full sm:w-auto"
+            className="rounded-xl whitespace-nowrap shrink-0"
           >
             <CheckSquare className="w-4 h-4 mr-2" />
-            {isSelectionMode ? 'Exit Selection' : 'Select Multiple'}
+            <span className="hidden sm:inline">{isSelectionMode ? 'Exit' : 'Select'}</span>
+            {isSelectionMode && selectedRoomIds.length > 0 && (
+              <Badge variant="secondary" className="ml-2">
+                {selectedRoomIds.length}
+              </Badge>
+            )}
           </Button>
         </div>
       )}

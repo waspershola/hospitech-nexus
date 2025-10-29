@@ -73,13 +73,13 @@ export function RoomTile({ room, onClick, isSelectionMode, isSelected, onSelecti
       <Card 
         className={cn(
           'cursor-pointer transition-all duration-200 active:scale-95 border-2 rounded-xl sm:rounded-2xl relative touch-manipulation',
-          'lg:hover:shadow-luxury lg:hover:scale-[1.02]',
+          'lg:hover:shadow-luxury lg:hover:scale-[1.02] min-h-[180px] flex flex-col',
           borderColor,
           isSelected && 'ring-2 ring-primary ring-offset-2'
         )}
         onClick={handleClick}
       >
-      <CardHeader className="p-3 sm:p-4">
+      <CardHeader className="p-3 sm:p-4 flex-1 flex flex-col justify-between">
         {isSelectionMode && (
           <div className="absolute top-2 left-2 z-10">
             <Checkbox
@@ -104,27 +104,24 @@ export function RoomTile({ room, onClick, isSelectionMode, isSelected, onSelecti
                   <TooltipContent>Do Not Disturb</TooltipContent>
                 </Tooltip>
               )}
-              {room.category?.short_code && (
-                <Badge variant="outline" className="text-xs border-accent text-accent-foreground">
-                  {room.category.short_code}
-                </Badge>
-              )}
             </div>
-            <p className="text-sm text-muted-foreground">
-              {room.category?.name || room.type || 'Standard'}
-            </p>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <p className="text-sm text-muted-foreground cursor-help truncate">
+                  {room.category?.name || room.type || 'Standard'}
+                </p>
+              </TooltipTrigger>
+              <TooltipContent>
+                <p>Max {room.category?.max_occupancy || 2} guest{(room.category?.max_occupancy || 2) !== 1 ? 's' : ''}</p>
+              </TooltipContent>
+            </Tooltip>
             {displayRate > 0 && (
               <p className="text-sm font-semibold text-primary mt-1">
                 ₦{displayRate.toLocaleString()}/night
               </p>
             )}
-            {room.category?.max_occupancy && (
-              <p className="text-xs text-muted-foreground">
-                Max {room.category.max_occupancy} guest{room.category.max_occupancy !== 1 ? 's' : ''}
-              </p>
-            )}
           </div>
-          <Badge className={cn(statusColor, 'capitalize')}>
+          <Badge className={cn(statusColor, 'capitalize shrink-0')}>
             {room.status}
           </Badge>
         </div>

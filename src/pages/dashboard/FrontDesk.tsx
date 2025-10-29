@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
+import { ScrollArea } from '@/components/ui/scroll-area';
 import { Plus } from 'lucide-react';
 import { HeaderBar } from '@/modules/frontdesk/components/HeaderBar';
 import { QuickKPIs } from '@/modules/frontdesk/components/QuickKPIs';
@@ -60,7 +61,7 @@ export default function FrontDesk() {
     <div className="h-full flex flex-col bg-background">
       <HeaderBar searchQuery={searchQuery} onSearchChange={setSearchQuery} />
       
-      <div className="p-4 lg:p-6 border-b border-border flex items-center justify-between gap-4">
+      <div className="p-3 sm:p-4 lg:p-6 border-b border-border flex items-center justify-between gap-4">
         <div className="flex-1 min-w-0">
           <h2 className="text-lg lg:text-xl font-display font-semibold text-foreground truncate">Room Management</h2>
           <p className="text-xs lg:text-sm text-muted-foreground hidden sm:block">Monitor and manage all rooms from one dashboard</p>
@@ -82,22 +83,26 @@ export default function FrontDesk() {
         </Button>
       </div>
       
-      <div className="flex-1 overflow-auto p-3 sm:p-4 lg:p-6 space-y-4 lg:space-y-6">
-        <QuickKPIs onFilterClick={setStatusFilter} />
-        
-        <div className="flex flex-col lg:flex-row gap-4 lg:gap-6">
-          <div className="flex-1 min-w-0">
-            <RoomStatusOverview 
-              statusFilter={statusFilter}
-              onRoomClick={setSelectedRoomId}
-              globalSearchQuery={searchQuery}
-            />
-          </div>
-          
-          <div className="lg:w-64 flex-shrink-0 hidden lg:block">
-            <RoomLegend />
-          </div>
+      <div className="flex-1 flex flex-col overflow-hidden">
+        <div className="px-3 sm:px-4 lg:px-6 pt-3 sm:pt-4 lg:pt-6">
+          <QuickKPIs onFilterClick={setStatusFilter} />
         </div>
+        
+        <ScrollArea className="flex-1 px-3 sm:px-4 lg:px-6 pb-20 lg:pb-6">
+          <div className="flex flex-col lg:flex-row gap-4 lg:gap-6 pt-3 sm:pt-4">
+            <div className="flex-1 min-w-0">
+              <RoomStatusOverview 
+                statusFilter={statusFilter}
+                onRoomClick={setSelectedRoomId}
+                globalSearchQuery={searchQuery}
+              />
+            </div>
+            
+            <div className="lg:w-64 flex-shrink-0 hidden lg:block">
+              <RoomLegend />
+            </div>
+          </div>
+        </ScrollArea>
       </div>
 
       <RoomActionDrawer 
