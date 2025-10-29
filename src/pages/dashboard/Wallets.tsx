@@ -22,6 +22,7 @@ import {
 import { Search, Wallet, Plus, TrendingUp, TrendingDown } from 'lucide-react';
 import { WalletDetail } from '@/modules/wallets/WalletDetail';
 import { CreateWalletDialog } from '@/modules/wallets/CreateWalletDialog';
+import { ErrorBoundary } from '@/components/ErrorBoundary';
 
 export default function Wallets() {
   const { wallets, isLoading } = useWallets();
@@ -56,7 +57,7 @@ export default function Wallets() {
   }
 
   return (
-    <>
+    <ErrorBoundary>
       <div className="space-y-6">
         <div className="flex justify-between items-center">
           <div>
@@ -205,6 +206,6 @@ export default function Wallets() {
         open={createDialogOpen}
         onClose={() => setCreateDialogOpen(false)}
       />
-    </>
+    </ErrorBoundary>
   );
 }

@@ -21,6 +21,7 @@ const NAV_ITEMS = [
   { name: 'Categories', icon: Grid3x3, path: '/dashboard/categories', roles: ['manager', 'owner'] },
   { name: 'Bookings', icon: Calendar, path: '/dashboard/bookings', roles: ['frontdesk', 'manager', 'owner'] },
   { name: 'Guests', icon: Users, path: '/dashboard/guests', roles: ['frontdesk', 'manager', 'owner'] },
+  { name: 'Wallets', icon: Wallet, path: '/dashboard/wallets', roles: ['manager', 'owner'] },
   { name: 'Finance', icon: Wallet, path: '/dashboard/finance', roles: ['manager', 'owner'] },
   { name: 'Reports', icon: FileBarChart, path: '/dashboard/reports', roles: ['manager', 'owner'] },
   { name: 'Configuration', icon: Wrench, path: '/dashboard/configuration', roles: ['manager', 'owner'] },

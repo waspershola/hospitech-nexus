@@ -6,11 +6,13 @@ import { WalletsTab } from '@/modules/finance-center/WalletsTab';
 import { OrganizationsTab } from '@/modules/finance-center/OrganizationsTab';
 import { AnalyticsTab } from '@/modules/finance-center/AnalyticsTab';
 import { ReconciliationTab } from '@/modules/finance-center/ReconciliationTab';
+import { ErrorBoundary } from '@/components/ErrorBoundary';
 import { Wallet, Building2, TrendingUp, Building, RefreshCcw, MapPin, Shield } from 'lucide-react';
 
 export default function FinanceCenter() {
   return (
-    <div className="h-full flex flex-col p-6">
+    <ErrorBoundary>
+      <div className="h-full flex flex-col p-6">
       <div className="mb-6">
         <h1 className="text-3xl font-display font-bold">Finance Center</h1>
         <p className="text-muted-foreground">Manage payments, providers, and wallets</p>
@@ -76,6 +78,7 @@ export default function FinanceCenter() {
           <AnalyticsTab />
         </TabsContent>
       </Tabs>
-    </div>
+      </div>
+    </ErrorBoundary>
   );
 }
