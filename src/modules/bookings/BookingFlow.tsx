@@ -9,6 +9,7 @@ import { GuestSelection } from './steps/GuestSelection';
 import { RoomSelection } from './steps/RoomSelection';
 import { GroupBookingSetup } from './steps/GroupBookingSetup';
 import { MultiRoomSelection } from './steps/MultiRoomSelection';
+import { BookingOptions } from './steps/BookingOptions';
 import { BookingConfirmation } from './steps/BookingConfirmation';
 import { ChevronLeft, ChevronRight, Users } from 'lucide-react';
 
@@ -30,6 +31,11 @@ export type BookingData = {
   groupSize?: number;
   groupLeaderName?: string;
   selectedRoomIds?: string[];
+  rateOverride?: number;
+  selectedAddons?: string[];
+  addonsTotal?: number;
+  depositAmount?: number;
+  specialRequests?: string;
 };
 
 export function BookingFlow({ open, onClose, preselectedRoomId }: BookingFlowProps) {
@@ -42,14 +48,16 @@ export function BookingFlow({ open, onClose, preselectedRoomId }: BookingFlowPro
   const singleSteps = [
     { number: 1, title: 'Select Guest', component: GuestSelection },
     { number: 2, title: 'Select Room & Dates', component: RoomSelection },
-    { number: 3, title: 'Confirm Booking', component: BookingConfirmation },
+    { number: 3, title: 'Booking Options', component: BookingOptions },
+    { number: 4, title: 'Confirm Booking', component: BookingConfirmation },
   ];
 
   const groupSteps = [
     { number: 1, title: 'Select Guest', component: GuestSelection },
     { number: 2, title: 'Group Details', component: GroupBookingSetup },
     { number: 3, title: 'Select Rooms', component: MultiRoomSelection },
-    { number: 4, title: 'Confirm Booking', component: BookingConfirmation },
+    { number: 4, title: 'Booking Options', component: BookingOptions },
+    { number: 5, title: 'Confirm Booking', component: BookingConfirmation },
   ];
 
   const steps = isGroupMode ? groupSteps : singleSteps;
@@ -86,6 +94,7 @@ export function BookingFlow({ open, onClose, preselectedRoomId }: BookingFlowPro
         case 3:
           return (bookingData.selectedRoomIds?.length || 0) > 0 && !!bookingData.checkIn && !!bookingData.checkOut;
         case 4:
+        case 5:
           return true;
         default:
           return false;
@@ -97,6 +106,7 @@ export function BookingFlow({ open, onClose, preselectedRoomId }: BookingFlowPro
         case 2:
           return !!bookingData.roomId && !!bookingData.checkIn && !!bookingData.checkOut;
         case 3:
+        case 4:
           return true;
         default:
           return false;

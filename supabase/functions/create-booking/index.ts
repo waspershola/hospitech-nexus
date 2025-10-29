@@ -17,7 +17,7 @@ serve(async (req) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
     );
 
-    const { action_id, tenant_id, guest_id, room_id, check_in, check_out, total_amount, organization_id, department, created_by, group_booking, group_id, group_name, group_size, group_leader } = await req.json();
+    const { action_id, tenant_id, guest_id, room_id, check_in, check_out, total_amount, organization_id, department, created_by, group_booking, group_id, group_name, group_size, group_leader, rate_override, addons, addons_total, deposit_amount, special_requests } = await req.json();
 
     console.log('Creating booking with action_id:', action_id);
 
@@ -150,7 +150,11 @@ serve(async (req) => {
             group_name,
             group_size,
             group_leader,
-          } : {})
+          } : {}),
+          ...(rate_override ? { rate_override } : {}),
+          ...(addons && addons.length > 0 ? { addons, addons_total } : {}),
+          ...(deposit_amount ? { deposit_amount } : {}),
+          ...(special_requests ? { special_requests } : {}),
         }
       }])
       .select()

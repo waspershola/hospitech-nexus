@@ -167,6 +167,11 @@ export function BookingConfirmation({ bookingData, onComplete }: BookingConfirma
           action_id: actionId,
           department: 'front_desk',
           created_by: user?.id,
+          rate_override: bookingData.rateOverride,
+          addons: bookingData.selectedAddons,
+          addons_total: bookingData.addonsTotal,
+          deposit_amount: bookingData.depositAmount,
+          special_requests: bookingData.specialRequests,
         },
       });
 
@@ -309,10 +314,62 @@ export function BookingConfirmation({ bookingData, onComplete }: BookingConfirma
             <div className="space-y-1 text-sm">
               <p><span className="text-muted-foreground">Room:</span> {room?.number}</p>
               <p><span className="text-muted-foreground">Type:</span> {room?.category?.name || room?.type}</p>
-              <p><span className="text-muted-foreground">Rate:</span> ₦{room?.category?.base_rate || room?.rate}/night</p>
+              <p>
+                <span className="text-muted-foreground">Rate:</span>{' '}
+                {bookingData.rateOverride ? (
+                  <>
+                    <span className="line-through text-muted-foreground text-xs">
+                      ₦{room?.category?.base_rate || room?.rate}
+                    </span>
+                    {' '}
+                    <span className="font-medium">₦{bookingData.rateOverride}</span>
+                    {' '}
+                    <Badge variant="secondary" className="text-xs">Overridden</Badge>
+                  </>
+                ) : (
+                  <span>₦{room?.category?.base_rate || room?.rate}/night</span>
+                )}
+              </p>
             </div>
           )}
         </div>
+
+        {/* Booking Options Summary */}
+        {(bookingData.selectedAddons?.length || bookingData.depositAmount || bookingData.specialRequests) && (
+          <>
+            <Separator />
+            <div>
+              <h3 className="font-semibold text-lg mb-3">Booking Options</h3>
+              <div className="space-y-2 text-sm">
+                {bookingData.selectedAddons && bookingData.selectedAddons.length > 0 && (
+                  <div>
+                    <p className="text-muted-foreground mb-1">Add-ons:</p>
+                    <div className="flex flex-wrap gap-1">
+                      {bookingData.selectedAddons.map((addon) => (
+                        <Badge key={addon} variant="secondary">{addon.replace('_', ' ')}</Badge>
+                      ))}
+                    </div>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Total: ₦{bookingData.addonsTotal || 0}
+                    </p>
+                  </div>
+                )}
+                {bookingData.depositAmount && (
+                  <p>
+                    <span className="text-muted-foreground">Deposit:</span>{' '}
+                    <span className="font-medium">₦{bookingData.depositAmount.toFixed(2)}</span>
+                  </p>
+                )}
+                {bookingData.specialRequests && (
+                  <div>
+                    <p className="text-muted-foreground mb-1">Special Requests:</p>
+                    <p className="text-xs bg-muted/50 p-2 rounded">{bookingData.specialRequests}</p>
+                  </div>
+                )}
+              </div>
+            </div>
+          </>
+        )}
 
         <Separator />
 
