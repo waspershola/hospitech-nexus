@@ -8,6 +8,7 @@ import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useRoomActions } from '../hooks/useRoomActions';
+import { useBookingFolio } from '@/hooks/useBookingFolio';
 import { AssignRoomModal } from './AssignRoomModal';
 import { ExtendStayModal } from './ExtendStayModal';
 import { AddChargeModal } from './AddChargeModal';
@@ -30,28 +31,36 @@ export function RoomActionDrawer({ roomId, open, onClose }: RoomActionDrawerProp
   const { data: room, isLoading } = useQuery({
     queryKey: ['room-detail', roomId],
     queryFn: async () => {
-      if (!roomId) return null;
+      if (!roomId || !tenantId) return null;
       const { data, error } = await supabase
         .from('rooms')
         .select(`
           *,
-          category:room_categories(name, base_rate),
-          bookings!bookings_room_id_fkey(
+          category:room_categories(name, short_code, base_rate),
+          bookings(
             id,
-            status,
             check_in,
             check_out,
+            status,
+            total_amount,
             guest:guests(name, email, phone)
           )
         `)
         .eq('id', roomId)
+        .eq('tenant_id', tenantId)
         .single();
 
       if (error) throw error;
       return data;
     },
-    enabled: !!roomId && open,
+    enabled: !!roomId && !!tenantId,
   });
+
+  // Get current active booking
+  const activeBooking = room?.bookings?.find((b: any) => b.status !== 'cancelled' && b.status !== 'completed');
+  
+  // Fetch folio balance for active booking
+  const { data: folio } = useBookingFolio(activeBooking?.id || null);
 
   const currentBooking = room?.bookings?.find((b: any) => 
     b.status === 'checked_in' || b.status === 'reserved'
@@ -156,7 +165,12 @@ export function RoomActionDrawer({ roomId, open, onClose }: RoomActionDrawerProp
                           <CreditCard className="w-4 h-4" />
                           Folio Balance
                         </h3>
-                        <p className="text-2xl font-bold text-primary">₦0.00</p>
+                        <p className={`text-2xl font-bold ${folio && folio.balance > 0 ? 'text-warning' : 'text-success'}`}>
+                          {folio 
+                            ? `${folio.currency === 'NGN' ? '₦' : folio.currency}${folio.balance.toFixed(2)}`
+                            : '₦0.00'
+                          }
+                        </p>
                       </div>
 
                       <Separator />

@@ -7,6 +7,7 @@ import { RoomStatusOverview } from '@/modules/frontdesk/components/RoomStatusOve
 import { RoomLegend } from '@/modules/frontdesk/components/RoomLegend';
 import { RoomActionDrawer } from '@/modules/frontdesk/components/RoomActionDrawer';
 import { BookingFlow } from '@/modules/bookings/BookingFlow';
+import { MobileBottomNav } from '@/modules/frontdesk/components/MobileBottomNav';
 
 export default function FrontDesk() {
   const [selectedRoomId, setSelectedRoomId] = useState<string | null>(null);
@@ -54,6 +55,10 @@ export default function FrontDesk() {
       <BookingFlow
         open={isBookingFlowOpen}
         onClose={() => setIsBookingFlowOpen(false)}
+      />
+
+      <MobileBottomNav 
+        onNewBooking={() => setIsBookingFlowOpen(true)}
       />
     </div>
   );

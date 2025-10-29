@@ -60,7 +60,7 @@ export function RoomStatusOverview({ statusFilter, onRoomClick }: RoomStatusOver
         floorFilter={floorFilter}
         categories={categories}
         floors={floors}
-        onStatusChange={() => {}}
+        onStatusChange={() => {}} // Status controlled by parent KPI clicks
         onCategoryChange={setCategoryFilter}
         onFloorChange={setFloorFilter}
         onClearAll={handleClearFilters}
