@@ -20,7 +20,7 @@ import { Loader2, AlertCircle, CheckCircle } from 'lucide-react';
 import { useRecordPayment } from '@/hooks/useRecordPayment';
 import { useOrganizations } from '@/hooks/useOrganizations';
 import { useFinanceLocations } from '@/hooks/useFinanceLocations';
-import { supabase } from '@/integrations/supabase/client';
+import { useOrgLimitValidation } from '@/hooks/useOrgLimitValidation';
 import { useAuth } from '@/contexts/AuthContext';
 
 const chargeSchema = z.object({
@@ -53,10 +53,6 @@ export function ChargeToOrgModal({
   const { mutate: recordPayment, isPending } = useRecordPayment();
   const { organizations } = useOrganizations();
   const { locations } = useFinanceLocations();
-  const [limitValidation, setLimitValidation] = useState<{
-    allowed: boolean;
-    message?: string;
-  } | null>(null);
 
   const {
     register,
@@ -77,36 +73,14 @@ export function ChargeToOrgModal({
   const activeOrgs = organizations.filter(o => o.active);
   const activeLocations = locations.filter(l => l.status === 'active');
 
-  // Validate organization spending limits
-  useEffect(() => {
-    if (!selectedOrgId || !amount || !guestId) {
-      setLimitValidation(null);
-      return;
-    }
-
-    const validateLimits = async () => {
-      const { data, error } = await supabase.rpc('validate_org_limits', {
-        _org_id: selectedOrgId,
-        _guest_id: guestId,
-        _department: 'front_desk',
-        _amount: amount,
-      });
-
-      if (error) {
-        console.error('Limit validation error:', error);
-        setLimitValidation({ allowed: false, message: 'Failed to validate limits' });
-        return;
-      }
-
-      const result = data as { allowed: boolean; detail?: string };
-      setLimitValidation({
-        allowed: result.allowed,
-        message: result.detail,
-      });
-    };
-
-    validateLimits();
-  }, [selectedOrgId, amount, guestId, tenantId]);
+  // Validate organization spending limits using the new hook
+  const limitValidation = useOrgLimitValidation({
+    organizationId: selectedOrgId,
+    guestId,
+    department: 'front_desk',
+    amount,
+    enabled: !!selectedOrgId && !!amount,
+  });
 
   const onSubmit = (data: ChargeForm) => {
     const transaction_ref = `ORG-${Date.now()}-${Math.random().toString(36).substring(7)}`;
@@ -198,7 +172,14 @@ export function ChargeToOrgModal({
             )}
           </div>
 
-          {limitValidation && (
+          {limitValidation.isLoading && (
+            <Alert>
+              <Loader2 className="h-4 w-4 animate-spin" />
+              <AlertDescription>Validating spending limits...</AlertDescription>
+            </Alert>
+          )}
+
+          {!limitValidation.isLoading && selectedOrgId && amount && (
             <Alert variant={limitValidation.allowed ? 'default' : 'destructive'}>
               {limitValidation.allowed ? (
                 <CheckCircle className="h-4 w-4" />
@@ -206,9 +187,14 @@ export function ChargeToOrgModal({
                 <AlertCircle className="h-4 w-4" />
               )}
               <AlertDescription>
-                {limitValidation.allowed
-                  ? 'Transaction within spending limits'
-                  : limitValidation.message || 'Spending limit exceeded - requires approval'}
+                {limitValidation.allowed ? (
+                  'Transaction within spending limits'
+                ) : (
+                  <div className="space-y-1">
+                    <p className="font-semibold">{limitValidation.code || 'Limit Exceeded'}</p>
+                    <p className="text-sm">{limitValidation.detail || 'Spending limit exceeded'}</p>
+                  </div>
+                )}
               </AlertDescription>
             </Alert>
           )}
@@ -244,12 +230,15 @@ export function ChargeToOrgModal({
           </div>
 
           <DialogFooter>
-            <Button type="button" variant="outline" onClick={onClose}>
+            <Button type="button" variant="outline" onClick={onClose} disabled={isPending}>
               Cancel
             </Button>
-            <Button type="submit" disabled={isPending || (limitValidation && !limitValidation.allowed)}>
+            <Button 
+              type="submit" 
+              disabled={isPending || !limitValidation.allowed || limitValidation.isLoading}
+            >
               {isPending && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
-              {limitValidation && !limitValidation.allowed ? 'Submit for Approval' : 'Charge Organization'}
+              Charge Organization
             </Button>
           </DialogFooter>
         </form>

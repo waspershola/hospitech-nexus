@@ -6,6 +6,13 @@ import { Badge } from '@/components/ui/badge';
 import { useOrganizations } from '@/hooks/useOrganizations';
 import { OrganizationDrawer } from './OrganizationDrawer';
 import { OrgWalletRulesDialog } from './OrgWalletRulesDialog';
+import { OrgLimitsSummary } from './components/OrgLimitsSummary';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
 
 export function OrganizationsTab() {
   const { organizations, isLoading } = useOrganizations();
@@ -13,6 +20,11 @@ export function OrganizationsTab() {
   const [selectedOrg, setSelectedOrg] = useState<string | null>(null);
   const [rulesDialogOpen, setRulesDialogOpen] = useState(false);
   const [selectedOrgName, setSelectedOrgName] = useState<string>('');
+  const [limitsDialogOpen, setLimitsDialogOpen] = useState(false);
+  const [selectedOrgForLimits, setSelectedOrgForLimits] = useState<{
+    id: string;
+    name: string;
+  } | null>(null);
 
   if (isLoading) {
     return <div className="text-center py-8 text-muted-foreground">Loading organizations...</div>;
@@ -70,20 +82,35 @@ export function OrganizationsTab() {
                 Credit Limit: ₦{org.credit_limit.toLocaleString()}
               </div>
               
-              <Button
-                variant="outline"
-                size="sm"
-                className="w-full mt-2"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setSelectedOrg(org.id);
-                  setSelectedOrgName(org.name);
-                  setRulesDialogOpen(true);
-                }}
-              >
-                <Settings className="w-4 h-4 mr-2" />
-                Wallet Rules
-              </Button>
+              <div className="flex gap-2 mt-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="flex-1"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setSelectedOrg(org.id);
+                    setSelectedOrgName(org.name);
+                    setRulesDialogOpen(true);
+                  }}
+                >
+                  <Settings className="w-4 h-4 mr-2" />
+                  Rules
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="flex-1"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setSelectedOrgForLimits({ id: org.id, name: org.name });
+                    setLimitsDialogOpen(true);
+                  }}
+                >
+                  <Settings className="w-4 h-4 mr-2" />
+                  Limits
+                </Button>
+              </div>
             </div>
           </Card>
         ))}
@@ -116,6 +143,17 @@ export function OrganizationsTab() {
           organizationId={selectedOrg}
           organizationName={selectedOrgName}
         />
+      )}
+
+      {selectedOrgForLimits && (
+        <Dialog open={limitsDialogOpen} onOpenChange={setLimitsDialogOpen}>
+          <DialogContent className="max-w-2xl">
+            <DialogHeader>
+              <DialogTitle>{selectedOrgForLimits.name} - Spending Limits</DialogTitle>
+            </DialogHeader>
+            <OrgLimitsSummary organizationId={selectedOrgForLimits.id} />
+          </DialogContent>
+        </Dialog>
       )}
     </div>
   );

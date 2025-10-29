@@ -10,6 +10,9 @@ import { Badge } from '@/components/ui/badge';
 import { Search, UserPlus, Check, Building2 } from 'lucide-react';
 import { GuestQuickForm } from '../components/GuestQuickForm';
 import { useOrganizations } from '@/hooks/useOrganizations';
+import { useOrgLimitValidation } from '@/hooks/useOrgLimitValidation';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { AlertCircle, CheckCircle, Loader2 } from 'lucide-react';
 import type { BookingData } from '../BookingFlow';
 
 interface GuestSelectionProps {
@@ -23,6 +26,15 @@ export function GuestSelection({ bookingData, onChange, onNext }: GuestSelection
   const [searchQuery, setSearchQuery] = useState('');
   const [showNewGuestForm, setShowNewGuestForm] = useState(false);
   const { organizations } = useOrganizations();
+
+  // Validate organization spending limits if organization is selected
+  const limitValidation = useOrgLimitValidation({
+    organizationId: bookingData.organizationId,
+    guestId: bookingData.guestId,
+    department: 'booking',
+    amount: bookingData.totalAmount,
+    enabled: !!bookingData.organizationId && !!bookingData.totalAmount,
+  });
 
   const { data: guests, isLoading } = useQuery({
     queryKey: ['guests', tenantId, searchQuery],
@@ -123,6 +135,38 @@ export function GuestSelection({ bookingData, onChange, onNext }: GuestSelection
             <Building2 className="h-3 w-3" />
             Will be charged to organization account
           </Badge>
+        )}
+
+        {/* Organization Limit Validation */}
+        {bookingData.organizationId && bookingData.totalAmount && (
+          <>
+            {limitValidation.isLoading && (
+              <Alert>
+                <Loader2 className="h-4 w-4 animate-spin" />
+                <AlertDescription>Validating organization spending limits...</AlertDescription>
+              </Alert>
+            )}
+
+            {!limitValidation.isLoading && (
+              <Alert variant={limitValidation.allowed ? 'default' : 'destructive'}>
+                {limitValidation.allowed ? (
+                  <CheckCircle className="h-4 w-4" />
+                ) : (
+                  <AlertCircle className="h-4 w-4" />
+                )}
+                <AlertDescription>
+                  {limitValidation.allowed ? (
+                    'Organization spending limits verified'
+                  ) : (
+                    <div className="space-y-1">
+                      <p className="font-semibold">{limitValidation.code || 'Spending Limit Exceeded'}</p>
+                      <p className="text-sm">{limitValidation.detail || 'This booking exceeds the organization spending limits.'}</p>
+                    </div>
+                  )}
+                </AlertDescription>
+              </Alert>
+            )}
+          </>
         )}
       </div>
 

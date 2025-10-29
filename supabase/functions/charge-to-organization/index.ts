@@ -69,7 +69,40 @@ serve(async (req) => {
       );
     }
 
-    // Check credit limit
+    // Validate organization spending limits (per-guest, per-department, etc.)
+    const { data: limitValidation, error: limitError } = await supabase.rpc('validate_org_limits', {
+      _org_id: organization_id,
+      _guest_id: guest_id || '',
+      _department: department || 'general',
+      _amount: amount,
+    });
+
+    if (limitError) {
+      console.error('Limit validation error:', limitError);
+      return new Response(
+        JSON.stringify({ 
+          success: false, 
+          error: 'Failed to validate spending limits',
+          code: 'VALIDATION_ERROR'
+        }),
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    const validation = limitValidation as { allowed: boolean; code?: string; detail?: string };
+    if (!validation.allowed) {
+      console.log('Organization limit exceeded:', validation.detail);
+      return new Response(
+        JSON.stringify({ 
+          success: false, 
+          error: validation.detail || 'Organization spending limit exceeded',
+          code: validation.code || 'ORG_LIMIT_EXCEEDED'
+        }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // Check wallet balance and credit limit
     const { data: wallet } = await supabase
       .from('wallets')
       .select('balance')
@@ -83,6 +116,7 @@ serve(async (req) => {
           JSON.stringify({ 
             success: false, 
             error: 'Charge would exceed organization credit limit',
+            code: 'CREDIT_LIMIT_EXCEEDED',
             current_debt: currentDebt,
             credit_limit: org.credit_limit
           }),
@@ -90,6 +124,8 @@ serve(async (req) => {
         );
       }
     }
+
+    console.log('Organization limits validated successfully');
 
     // Create payment record
     const transaction_ref = `ORG-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
