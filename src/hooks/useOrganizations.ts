@@ -41,18 +41,47 @@ export function useOrganizations() {
     mutationFn: async (org: Omit<Organization, 'id' | 'tenant_id' | 'created_at'>) => {
       if (!tenantId) throw new Error('No tenant ID');
       
-      const { data, error } = await supabase
+      // Create organization
+      const { data: orgData, error: orgError } = await supabase
         .from('organizations')
         .insert([{ ...org, tenant_id: tenantId }])
         .select()
         .single();
       
-      if (error) throw error;
-      return data;
+      if (orgError) throw orgError;
+      
+      // Auto-create organization wallet
+      const { data: walletData, error: walletError } = await supabase
+        .from('wallets')
+        .insert([{
+          tenant_id: tenantId,
+          wallet_type: 'organization',
+          owner_id: orgData.id,
+          name: `${orgData.name} Wallet`,
+          currency: 'NGN',
+        }])
+        .select()
+        .single();
+      
+      if (walletError) throw walletError;
+      
+      // Link wallet back to organization
+      const { error: updateError } = await supabase
+        .from('organizations')
+        .update({ wallet_id: walletData.id })
+        .eq('id', orgData.id);
+      
+      if (updateError) throw updateError;
+      
+      return { ...orgData, wallet_id: walletData.id };
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['organizations', tenantId] });
-      toast.success('Organization created successfully');
+      queryClient.invalidateQueries({ queryKey: ['wallets', tenantId] });
+      toast.success('Organization and wallet created successfully');
+    },
+    onError: (error: Error) => {
+      toast.error(`Failed to create organization: ${error.message}`);
     },
   });
 

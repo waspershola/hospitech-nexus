@@ -4,10 +4,11 @@ import { LocationsTab } from '@/modules/finance-center/LocationsTab';
 import { RulesTab } from '@/modules/finance-center/RulesTab';
 import { WalletsTab } from '@/modules/finance-center/WalletsTab';
 import { OrganizationsTab } from '@/modules/finance-center/OrganizationsTab';
+import { OrganizationAnalyticsTab } from '@/modules/finance-center/OrganizationAnalyticsTab';
 import { AnalyticsTab } from '@/modules/finance-center/AnalyticsTab';
 import { ReconciliationTab } from '@/modules/finance-center/ReconciliationTab';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
-import { Wallet, Building2, TrendingUp, Building, RefreshCcw, MapPin, Shield } from 'lucide-react';
+import { Wallet, Building2, TrendingUp, Building, RefreshCcw, MapPin, Shield, BarChart3 } from 'lucide-react';
 
 export default function FinanceCenter() {
   return (
@@ -19,7 +20,7 @@ export default function FinanceCenter() {
       </div>
 
       <Tabs defaultValue="providers" className="flex-1">
-        <TabsList className="grid w-full grid-cols-7 mb-6">
+        <TabsList className="grid w-full grid-cols-8 mb-6">
           <TabsTrigger value="providers" className="flex items-center gap-2">
             <Building2 className="w-4 h-4" />
             Providers
@@ -43,6 +44,10 @@ export default function FinanceCenter() {
           <TabsTrigger value="reconciliation" className="flex items-center gap-2">
             <RefreshCcw className="w-4 h-4" />
             Reconciliation
+          </TabsTrigger>
+          <TabsTrigger value="org-analytics" className="flex items-center gap-2">
+            <BarChart3 className="w-4 h-4" />
+            Org Analytics
           </TabsTrigger>
           <TabsTrigger value="analytics" className="flex items-center gap-2">
             <TrendingUp className="w-4 h-4" />
@@ -72,6 +77,10 @@ export default function FinanceCenter() {
 
         <TabsContent value="reconciliation">
           <ReconciliationTab />
+        </TabsContent>
+
+        <TabsContent value="org-analytics">
+          <OrganizationAnalyticsTab />
         </TabsContent>
 
         <TabsContent value="analytics">

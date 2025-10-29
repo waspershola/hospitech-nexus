@@ -881,6 +881,51 @@ export type Database = {
           },
         ]
       }
+      organization_members: {
+        Row: {
+          added_by: string | null
+          created_at: string
+          guest_id: string
+          id: string
+          organization_id: string
+          role: string | null
+          tenant_id: string
+        }
+        Insert: {
+          added_by?: string | null
+          created_at?: string
+          guest_id: string
+          id?: string
+          organization_id: string
+          role?: string | null
+          tenant_id: string
+        }
+        Update: {
+          added_by?: string | null
+          created_at?: string
+          guest_id?: string
+          id?: string
+          organization_id?: string
+          role?: string | null
+          tenant_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "organization_members_guest_id_fkey"
+            columns: ["guest_id"]
+            isOneToOne: false
+            referencedRelation: "guests"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "organization_members_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       organization_wallet_rules: {
         Row: {
           active: boolean | null
@@ -993,6 +1038,7 @@ export type Database = {
         Row: {
           amount: number
           booking_id: string | null
+          charged_to_organization: boolean | null
           created_at: string | null
           currency: string | null
           department: string | null
@@ -1015,6 +1061,7 @@ export type Database = {
         Insert: {
           amount: number
           booking_id?: string | null
+          charged_to_organization?: boolean | null
           created_at?: string | null
           currency?: string | null
           department?: string | null
@@ -1037,6 +1084,7 @@ export type Database = {
         Update: {
           amount?: number
           booking_id?: string | null
+          charged_to_organization?: boolean | null
           created_at?: string | null
           currency?: string | null
           department?: string | null

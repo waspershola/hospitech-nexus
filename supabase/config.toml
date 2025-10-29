@@ -1,26 +1,29 @@
 project_id = "akchmpmzcupzjaeewdui"
 
-[functions.manage-domain]
+[functions.auto-sync-reconciliation]
 verify_jwt = true
 
 [functions.create-booking]
 verify_jwt = true
 
-[functions.validate-booking]
-verify_jwt = true
-
-[functions.sync]
-verify_jwt = true
-
-[functions.verify-payment]
-verify_jwt = true
-
 [functions.create-payment]
+verify_jwt = true
+
+[functions.charge-to-organization]
+verify_jwt = true
+
+[functions.manage-domain]
 verify_jwt = true
 
 [functions.reconcile-transactions]
 verify_jwt = true
 
-[functions.auto-sync-reconciliation]
+[functions.sync]
+verify_jwt = true
+
+[functions.validate-booking]
+verify_jwt = true
+
+[functions.verify-payment]
 verify_jwt = true
 

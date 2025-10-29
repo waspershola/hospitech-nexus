@@ -4,8 +4,10 @@ import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
-import { Loader2, Check } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
+import { Loader2, Check, Building2, AlertCircle } from 'lucide-react';
 import { toast } from 'sonner';
+import { useOrganizationWallet } from '@/hooks/useOrganizationWallet';
 import type { BookingData } from '../BookingFlow';
 
 interface BookingConfirmationProps {
@@ -17,6 +19,9 @@ interface BookingConfirmationProps {
 export function BookingConfirmation({ bookingData, onComplete }: BookingConfirmationProps) {
   const { tenantId } = useAuth();
   const queryClient = useQueryClient();
+  
+  // Fetch organization wallet if booking for org
+  const { data: orgWallet } = useOrganizationWallet(bookingData.organizationId);
 
   const { data: guest } = useQuery({
     queryKey: ['guest', bookingData.guestId],
@@ -44,6 +49,21 @@ export function BookingConfirmation({ bookingData, onComplete }: BookingConfirma
       return data;
     },
     enabled: !!bookingData.roomId,
+  });
+
+  const { data: organization } = useQuery({
+    queryKey: ['organization', bookingData.organizationId],
+    queryFn: async () => {
+      if (!bookingData.organizationId) return null;
+      const { data, error } = await supabase
+        .from('organizations')
+        .select('*')
+        .eq('id', bookingData.organizationId)
+        .single();
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!bookingData.organizationId,
   });
 
   const createBookingMutation = useMutation({
@@ -123,6 +143,25 @@ export function BookingConfirmation({ bookingData, onComplete }: BookingConfirma
 
   return (
     <div className="space-y-6">
+      {/* Organization Credit Warning */}
+      {orgWallet && orgWallet.nearLimit && (
+        <div className="flex items-center gap-2 p-3 bg-yellow-500/10 border border-yellow-500/30 rounded-lg">
+          <AlertCircle className="h-4 w-4 text-yellow-500" />
+          <p className="text-sm text-yellow-700 dark:text-yellow-400">
+            Organization wallet is at {orgWallet.percentUsed.toFixed(0)}% of credit limit
+          </p>
+        </div>
+      )}
+      
+      {orgWallet && orgWallet.overLimit && (
+        <div className="flex items-center gap-2 p-3 bg-destructive/10 border border-destructive/30 rounded-lg">
+          <AlertCircle className="h-4 w-4 text-destructive" />
+          <p className="text-sm text-destructive">
+            Organization credit limit exceeded. Booking may not be allowed.
+          </p>
+        </div>
+      )}
+
       <Card className="p-6 space-y-4">
         <div>
           <h3 className="font-semibold text-lg mb-3">Guest Details</h3>
@@ -132,6 +171,39 @@ export function BookingConfirmation({ bookingData, onComplete }: BookingConfirma
             <p><span className="text-muted-foreground">Phone:</span> {guest?.phone}</p>
           </div>
         </div>
+
+        {organization && (
+          <>
+            <Separator />
+            <div>
+              <div className="flex items-center gap-2 mb-3">
+                <Building2 className="h-5 w-5 text-muted-foreground" />
+                <h3 className="font-semibold text-lg">Organization Booking</h3>
+              </div>
+              <div className="space-y-1 text-sm">
+                <p><span className="text-muted-foreground">Organization:</span> {organization.name}</p>
+                <p><span className="text-muted-foreground">Contact:</span> {organization.contact_person}</p>
+                {orgWallet && (
+                  <>
+                    <p>
+                      <span className="text-muted-foreground">Wallet Balance:</span>{' '}
+                      <span className={orgWallet.balance < 0 ? 'text-destructive font-medium' : 'text-green-600 font-medium'}>
+                        ₦{Math.abs(orgWallet.balance).toLocaleString()} {orgWallet.balance < 0 ? '(owing)' : ''}
+                      </span>
+                    </p>
+                    <p>
+                      <span className="text-muted-foreground">Credit Limit:</span>{' '}
+                      ₦{orgWallet.credit_limit.toLocaleString()}
+                    </p>
+                  </>
+                )}
+                <Badge variant="secondary" className="mt-2">
+                  Will be charged to organization account
+                </Badge>
+              </div>
+            </div>
+          </>
+        )}
 
         <Separator />
 

@@ -5,8 +5,11 @@ import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card } from '@/components/ui/card';
-import { Search, UserPlus, Check } from 'lucide-react';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Badge } from '@/components/ui/badge';
+import { Search, UserPlus, Check, Building2 } from 'lucide-react';
 import { GuestQuickForm } from '../components/GuestQuickForm';
+import { useOrganizations } from '@/hooks/useOrganizations';
 import type { BookingData } from '../BookingFlow';
 
 interface GuestSelectionProps {
@@ -19,6 +22,7 @@ export function GuestSelection({ bookingData, onChange, onNext }: GuestSelection
   const { tenantId } = useAuth();
   const [searchQuery, setSearchQuery] = useState('');
   const [showNewGuestForm, setShowNewGuestForm] = useState(false);
+  const { organizations } = useOrganizations();
 
   const { data: guests, isLoading } = useQuery({
     queryKey: ['guests', tenantId, searchQuery],
@@ -46,6 +50,10 @@ export function GuestSelection({ bookingData, onChange, onNext }: GuestSelection
     onChange({ ...bookingData, guestId });
   };
 
+  const handleOrganizationSelect = (organizationId: string | undefined) => {
+    onChange({ ...bookingData, organizationId });
+  };
+
   const handleNewGuest = (guestId: string) => {
     onChange({ ...bookingData, guestId });
     setShowNewGuestForm(false);
@@ -67,20 +75,55 @@ export function GuestSelection({ bookingData, onChange, onNext }: GuestSelection
 
   return (
     <div className="space-y-4">
-      <div className="flex gap-2">
-        <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-          <Input
-            placeholder="Search by name, email, or phone..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="pl-10"
-          />
+      <div className="space-y-4 mb-6">
+        <div className="flex gap-2">
+          <div className="relative flex-1">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+            <Input
+              placeholder="Search by name, email, or phone..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="pl-10"
+            />
+          </div>
+          <Button onClick={() => setShowNewGuestForm(true)}>
+            <UserPlus className="w-4 h-4 mr-2" />
+            New Guest
+          </Button>
         </div>
-        <Button onClick={() => setShowNewGuestForm(true)}>
-          <UserPlus className="w-4 h-4 mr-2" />
-          New Guest
-        </Button>
+
+        {/* Organization Selector */}
+        <div className="flex items-center gap-3 p-4 border rounded-lg bg-muted/30">
+          <Building2 className="h-5 w-5 text-muted-foreground" />
+          <div className="flex-1">
+            <label className="text-sm font-medium mb-1 block">
+              Book for Organization (Optional)
+            </label>
+            <Select
+              value={bookingData.organizationId || 'none'}
+              onValueChange={(value) => handleOrganizationSelect(value === 'none' ? undefined : value)}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="Select organization..." />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="none">Personal Booking</SelectItem>
+                {organizations.map((org) => (
+                  <SelectItem key={org.id} value={org.id}>
+                    {org.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
+
+        {bookingData.organizationId && (
+          <Badge variant="secondary" className="gap-1">
+            <Building2 className="h-3 w-3" />
+            Will be charged to organization account
+          </Badge>
+        )}
       </div>
 
       <div className="space-y-2 max-h-[400px] overflow-y-auto">

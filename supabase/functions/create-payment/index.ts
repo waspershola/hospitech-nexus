@@ -173,6 +173,32 @@ serve(async (req) => {
         );
       }
       console.log('Organization limits validated');
+      
+      // Auto-fetch organization wallet if not provided
+      if (!wallet_id) {
+        const { data: org } = await supabase
+          .from('organizations')
+          .select('wallet_id')
+          .eq('id', organization_id)
+          .eq('tenant_id', tenant_id)
+          .single();
+        
+        if (org?.wallet_id) {
+          console.log('Auto-linking organization wallet:', org.wallet_id);
+        }
+      }
+    }
+
+    // Helper function to get organization wallet
+    async function getOrgWalletId(supabase: any, orgId: string, tenantId: string): Promise<string | null> {
+      const { data: org } = await supabase
+        .from('organizations')
+        .select('wallet_id')
+        .eq('id', orgId)
+        .eq('tenant_id', tenantId)
+        .single();
+      
+      return org?.wallet_id || null;
     }
 
     // Get location details if provided
@@ -205,10 +231,11 @@ serve(async (req) => {
         method,
         method_provider: providerName,
         department,
-        wallet_id,
+        wallet_id: wallet_id || (organization_id ? await getOrgWalletId(supabase, organization_id, tenant_id) : null),
         location: locationName,
         recorded_by,
         status: 'success',
+        charged_to_organization: !!organization_id,
         metadata: {
           ...metadata,
           provider_id,
@@ -227,19 +254,25 @@ serve(async (req) => {
 
     console.log('Payment created:', payment.id);
 
-    // If wallet_id provided, create wallet transaction
-    if (wallet_id) {
+    // Auto-create wallet transaction for organization or provided wallet
+    const finalWalletId = payment.wallet_id;
+    if (finalWalletId) {
       const netAmount = amount - (amount * providerFee / 100);
+      
+      // Debit organization wallet (negative transaction)
+      const txnType = organization_id ? 'debit' : 'credit';
       
       const { error: walletError } = await supabase
         .from('wallet_transactions')
         .insert([{
-          wallet_id,
+          wallet_id: finalWalletId,
           payment_id: payment.id,
           tenant_id,
-          type: 'credit',
+          type: txnType,
           amount: netAmount,
-          description: `Payment via ${method}${providerName ? ` (${providerName})` : ''} - ${metadata?.notes || transaction_ref}`,
+          description: organization_id 
+            ? `Charged to organization - ${method}${providerName ? ` (${providerName})` : ''} - ${metadata?.notes || transaction_ref}`
+            : `Payment via ${method}${providerName ? ` (${providerName})` : ''} - ${metadata?.notes || transaction_ref}`,
           created_by: recorded_by,
         }]);
 
@@ -247,7 +280,7 @@ serve(async (req) => {
         console.error('Error creating wallet transaction:', walletError);
         // Don't throw here, payment is already created
       } else {
-        console.log('Wallet transaction created for wallet:', wallet_id, 'amount:', netAmount);
+        console.log('Wallet transaction created for wallet:', finalWalletId, 'type:', txnType, 'amount:', netAmount);
       }
     }
 
