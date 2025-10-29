@@ -11,6 +11,7 @@ export function TaxServiceTab() {
   const financials = useConfigStore(state => state.financials);
   const updateFinancials = useConfigStore(state => state.updateFinancials);
   const saveFinancials = useConfigStore(state => state.saveFinancials);
+  const saveCounter = useConfigStore(state => state.saveCounter);
   const hasFinancialsUnsaved = useConfigStore(state => state.unsavedChanges.has('financials'));
 
   const handleChange = (field: string, value: any) => {

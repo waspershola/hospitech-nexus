@@ -9,6 +9,7 @@ export function EmailSettingsTab() {
   const emailSettings = useConfigStore(state => state.emailSettings);
   const updateEmailSettings = useConfigStore(state => state.updateEmailSettings);
   const saveEmailSettings = useConfigStore(state => state.saveEmailSettings);
+  const saveCounter = useConfigStore(state => state.saveCounter);
   const hasEmailSettingsUnsaved = useConfigStore(state => state.unsavedChanges.has('email_settings'));
 
   const handleChange = (field: string, value: any) => {

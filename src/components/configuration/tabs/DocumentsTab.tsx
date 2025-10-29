@@ -11,6 +11,7 @@ export function DocumentsTab() {
   const documentTemplates = useConfigStore(state => state.documentTemplates);
   const updateDocumentTemplate = useConfigStore(state => state.updateDocumentTemplate);
   const saveDocumentTemplate = useConfigStore(state => state.saveDocumentTemplate);
+  const saveCounter = useConfigStore(state => state.saveCounter);
   const hasInvoiceUnsaved = useConfigStore(state => state.unsavedChanges.has('template_invoice'));
   const hasReceiptUnsaved = useConfigStore(state => state.unsavedChanges.has('template_receipt'));
 

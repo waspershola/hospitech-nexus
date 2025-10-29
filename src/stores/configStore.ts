@@ -13,6 +13,7 @@ interface ConfigStore {
   lastSyncTime: Date | null;
   isLoading: boolean;
   version: number;
+  saveCounter: number;
   
   // Actions
   setTenantId: (tenantId: string) => void;
@@ -47,6 +48,7 @@ export const useConfigStore = create<ConfigStore>((set, get) => ({
   lastSyncTime: null,
   isLoading: false,
   version: 0,
+  saveCounter: 0,
 
   setTenantId: (tenantId) => set({ tenantId }),
 
@@ -199,7 +201,7 @@ export const useConfigStore = create<ConfigStore>((set, get) => ({
     set(state => {
       const newUnsaved = new Set(state.unsavedChanges);
       newUnsaved.delete(key);
-      return { unsavedChanges: newUnsaved, lastSyncTime: new Date(), version: state.version + 1 };
+      return { unsavedChanges: newUnsaved, lastSyncTime: new Date(), version: state.version + 1, saveCounter: state.saveCounter + 1 };
     });
   },
 
@@ -218,7 +220,7 @@ export const useConfigStore = create<ConfigStore>((set, get) => ({
     set(state => {
       const newUnsaved = new Set(state.unsavedChanges);
       newUnsaved.delete('branding');
-      return { unsavedChanges: newUnsaved, lastSyncTime: new Date(), version: state.version + 1 };
+      return { unsavedChanges: newUnsaved, lastSyncTime: new Date(), version: state.version + 1, saveCounter: state.saveCounter + 1 };
     });
   },
 
@@ -237,7 +239,7 @@ export const useConfigStore = create<ConfigStore>((set, get) => ({
     set(state => {
       const newUnsaved = new Set(state.unsavedChanges);
       newUnsaved.delete('financials');
-      return { unsavedChanges: newUnsaved, lastSyncTime: new Date(), version: state.version + 1 };
+      return { unsavedChanges: newUnsaved, lastSyncTime: new Date(), version: state.version + 1, saveCounter: state.saveCounter + 1 };
     });
   },
 
@@ -256,7 +258,7 @@ export const useConfigStore = create<ConfigStore>((set, get) => ({
     set(state => {
       const newUnsaved = new Set(state.unsavedChanges);
       newUnsaved.delete('email_settings');
-      return { unsavedChanges: newUnsaved, lastSyncTime: new Date(), version: state.version + 1 };
+      return { unsavedChanges: newUnsaved, lastSyncTime: new Date(), version: state.version + 1, saveCounter: state.saveCounter + 1 };
     });
   },
 
@@ -275,7 +277,7 @@ export const useConfigStore = create<ConfigStore>((set, get) => ({
     set(state => {
       const newUnsaved = new Set(state.unsavedChanges);
       newUnsaved.delete('hotel_meta');
-      return { unsavedChanges: newUnsaved, lastSyncTime: new Date(), version: state.version + 1 };
+      return { unsavedChanges: newUnsaved, lastSyncTime: new Date(), version: state.version + 1, saveCounter: state.saveCounter + 1 };
     });
   },
 
@@ -298,7 +300,7 @@ export const useConfigStore = create<ConfigStore>((set, get) => ({
     set(state => {
       const newUnsaved = new Set(state.unsavedChanges);
       newUnsaved.delete(`template_${templateType}`);
-      return { unsavedChanges: newUnsaved, lastSyncTime: new Date(), version: state.version + 1 };
+      return { unsavedChanges: newUnsaved, lastSyncTime: new Date(), version: state.version + 1, saveCounter: state.saveCounter + 1 };
     });
   },
 

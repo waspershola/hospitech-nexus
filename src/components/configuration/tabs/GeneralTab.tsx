@@ -11,6 +11,7 @@ export function GeneralTab() {
   const configurations = useConfigStore(state => state.configurations);
   const updateConfig = useConfigStore(state => state.updateConfig);
   const saveConfig = useConfigStore(state => state.saveConfig);
+  const saveCounter = useConfigStore(state => state.saveCounter);
   const hasGeneralUnsaved = useConfigStore(state => state.unsavedChanges.has('general'));
   const general = configurations.general || {};
 
