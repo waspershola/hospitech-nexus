@@ -1,4 +1,5 @@
 import { Card } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
 import { 
   Hotel, 
   Users, 
@@ -69,7 +70,8 @@ export function QuickKPIs({ onFilterClick }: QuickKPIsProps) {
       icon: AlertTriangle,
       color: 'text-[hsl(var(--status-overstay))]',
       bg: 'bg-[hsl(var(--status-overstay)/0.1)]',
-      filter: 'overstay'
+      filter: 'overstay',
+      showBadge: (kpis?.overstays || 0) > 0
     },
     { 
       label: 'Out of Service', 
@@ -98,11 +100,19 @@ export function QuickKPIs({ onFilterClick }: QuickKPIsProps) {
       {cards.map((card) => (
         <Card 
           key={card.label}
-          className={`p-3 md:p-4 cursor-pointer transition-all duration-300 hover:shadow-luxury rounded-2xl ${
+          className={`p-3 md:p-4 cursor-pointer transition-all duration-300 hover:shadow-luxury rounded-2xl relative ${
             card.filter ? 'hover:scale-105' : ''
           }`}
           onClick={() => card.filter && onFilterClick(card.filter)}
         >
+          {card.showBadge && (
+            <Badge 
+              variant="destructive" 
+              className="absolute -top-2 -right-2 h-6 w-6 p-0 flex items-center justify-center rounded-full shadow-lg"
+            >
+              {card.value}
+            </Badge>
+          )}
           <div className="flex items-center justify-between mb-2">
             <div className={`p-2 rounded-xl ${card.bg}`}>
               <card.icon className={`w-4 h-4 md:w-5 md:h-5 ${card.color}`} />

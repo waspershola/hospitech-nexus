@@ -14,6 +14,7 @@ import { ExtendStayModal } from './ExtendStayModal';
 import { AddChargeModal } from './AddChargeModal';
 import { ChargeToOrgModal } from './ChargeToOrgModal';
 import { RoomAuditTrail } from './RoomAuditTrail';
+import { QuickPaymentForm } from './QuickPaymentForm';
 import { Loader2, User, CreditCard, Calendar, AlertCircle, Clock, Building2 } from 'lucide-react';
 
 interface RoomActionDrawerProps {
@@ -29,6 +30,7 @@ export function RoomActionDrawer({ roomId, open, onClose }: RoomActionDrawerProp
   const [extendModalOpen, setExtendModalOpen] = useState(false);
   const [chargeModalOpen, setChargeModalOpen] = useState(false);
   const [chargeToOrgModalOpen, setChargeToOrgModalOpen] = useState(false);
+  const [quickPaymentOpen, setQuickPaymentOpen] = useState(false);
 
   const { data: room, isLoading } = useQuery({
     queryKey: ['room-detail', roomId],
@@ -84,8 +86,9 @@ export function RoomActionDrawer({ roomId, open, onClose }: RoomActionDrawerProp
       case 'occupied':
       case 'overstay':
         return [
-          { label: 'Check Out', action: () => checkOut(room.id), variant: 'default' as const },
-          { label: 'Extend Stay', action: () => setExtendModalOpen(true), variant: 'secondary' as const },
+          { label: 'Take Payment', action: () => setQuickPaymentOpen(true), variant: 'default' as const, icon: CreditCard },
+          { label: 'Check Out', action: () => checkOut(room.id), variant: 'secondary' as const },
+          { label: 'Extend Stay', action: () => setExtendModalOpen(true), variant: 'outline' as const },
           { label: 'Add Charge', action: () => setChargeModalOpen(true), variant: 'outline' as const },
           { label: 'Charge to Org', action: () => setChargeToOrgModalOpen(true), variant: 'outline' as const, icon: Building2 },
         ];
@@ -191,15 +194,42 @@ export function RoomActionDrawer({ roomId, open, onClose }: RoomActionDrawerProp
 
                       <div className="space-y-3">
                         <h3 className="font-semibold flex items-center gap-2">
-                          <CreditCard className="w-4 h-4" />
+                       <CreditCard className="w-4 h-4" />
                           Folio Balance
                         </h3>
-                        <p className={`text-2xl font-bold ${folio && folio.balance > 0 ? 'text-warning' : 'text-success'}`}>
-                          {folio 
-                            ? `${folio.currency === 'NGN' ? '₦' : folio.currency}${folio.balance.toFixed(2)}`
-                            : '₦0.00'
-                          }
-                        </p>
+                        {quickPaymentOpen ? (
+                          <QuickPaymentForm
+                            bookingId={currentBooking.id}
+                            guestId={currentBooking.guest?.id || ''}
+                            expectedAmount={folio?.balance || 0}
+                            onSuccess={() => {
+                              setQuickPaymentOpen(false);
+                              // Refetch folio data
+                              window.location.reload();
+                            }}
+                            onCancel={() => setQuickPaymentOpen(false)}
+                          />
+                        ) : (
+                          <>
+                            <p className={`text-2xl font-bold ${folio && folio.balance > 0 ? 'text-warning' : 'text-success'}`}>
+                              {folio 
+                                ? `${folio.currency === 'NGN' ? '₦' : folio.currency}${folio.balance.toFixed(2)}`
+                                : '₦0.00'
+                              }
+                            </p>
+                            {folio && folio.balance > 0 && (
+                              <Button
+                                variant="default"
+                                size="sm"
+                                onClick={() => setQuickPaymentOpen(true)}
+                                className="mt-2 w-full"
+                              >
+                                <CreditCard className="w-4 h-4 mr-2" />
+                                Take Payment
+                              </Button>
+                            )}
+                          </>
+                        )}
                       </div>
 
                       <Separator />
