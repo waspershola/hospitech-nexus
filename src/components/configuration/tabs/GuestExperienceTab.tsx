@@ -4,7 +4,7 @@ import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Users } from 'lucide-react';
-import { useAutoSave } from '@/hooks/useAutoSave';
+import { toast } from 'sonner';
 
 const checkInFields = [
   { id: 'fullName', label: 'Full Name', required: true },
@@ -17,15 +17,21 @@ const checkInFields = [
 ];
 
 export function GuestExperienceTab() {
-  const { configurations, updateConfig, saveConfig } = useConfigStore();
+  const { configurations, updateConfig, saveConfig, unsavedChanges } = useConfigStore();
   const guestExp = configurations.guestExperience || {};
 
   const handleChange = (field: string, value: any) => {
     updateConfig('guestExperience', { ...guestExp, [field]: value });
   };
 
-  // Auto-save with debounce
-  useAutoSave(() => saveConfig('guestExperience'), guestExp, 1500);
+  const handleSave = async () => {
+    try {
+      await saveConfig('guestExperience');
+      toast.success('Guest experience settings saved');
+    } catch (error) {
+      toast.error('Failed to save guest experience settings');
+    }
+  };
 
   const toggleField = (fieldId: string) => {
     const fields = guestExp.requiredFields || ['fullName'];
@@ -41,6 +47,8 @@ export function GuestExperienceTab() {
         title="Check-In Requirements"
         description="Mandatory fields during guest registration"
         icon={Users}
+        onSave={handleSave}
+        hasUnsavedChanges={unsavedChanges.has('guestExperience')}
       >
         <div className="space-y-3">
           {checkInFields.map((field) => (
@@ -66,6 +74,8 @@ export function GuestExperienceTab() {
       <ConfigCard
         title="Default Services"
         description="Auto-enable services for new bookings"
+        onSave={handleSave}
+        hasUnsavedChanges={unsavedChanges.has('guestExperience')}
       >
         <div className="space-y-3">
           <div className="flex items-center justify-between">
@@ -106,6 +116,8 @@ export function GuestExperienceTab() {
       <ConfigCard
         title="QR Code Settings"
         description="Guest portal access configuration"
+        onSave={handleSave}
+        hasUnsavedChanges={unsavedChanges.has('guestExperience')}
       >
         <div className="space-y-3">
           <div className="flex items-center justify-between">

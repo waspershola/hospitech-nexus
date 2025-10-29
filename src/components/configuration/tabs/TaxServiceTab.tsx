@@ -5,10 +5,10 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Percent } from 'lucide-react';
-import { useAutoSave } from '@/hooks/useAutoSave';
+import { toast } from 'sonner';
 
 export function TaxServiceTab() {
-  const { financials, updateFinancials, saveFinancials } = useConfigStore();
+  const { financials, updateFinancials, saveFinancials, unsavedChanges } = useConfigStore();
 
   const handleChange = (field: string, value: any) => {
     // Validate percentage values
@@ -19,8 +19,14 @@ export function TaxServiceTab() {
     updateFinancials({ [field]: value });
   };
 
-  // Auto-save with debounce
-  useAutoSave(saveFinancials, financials, 1500);
+  const handleSave = async () => {
+    try {
+      await saveFinancials();
+      toast.success('Tax & service settings saved');
+    } catch (error) {
+      toast.error('Failed to save tax & service settings');
+    }
+  };
 
   return (
     <div className="space-y-6">
@@ -28,6 +34,8 @@ export function TaxServiceTab() {
         title="VAT Configuration"
         description="Value Added Tax settings"
         icon={Percent}
+        onSave={handleSave}
+        hasUnsavedChanges={unsavedChanges.has('financials')}
       >
         <div className="space-y-4">
           <div className="grid grid-cols-2 gap-4">
@@ -75,6 +83,8 @@ export function TaxServiceTab() {
         title="Service Charge Configuration"
         description="Additional service fees"
         icon={Percent}
+        onSave={handleSave}
+        hasUnsavedChanges={unsavedChanges.has('financials')}
       >
         <div className="space-y-4">
           <div className="grid grid-cols-2 gap-4">

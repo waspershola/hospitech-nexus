@@ -5,10 +5,10 @@ import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { FileText } from 'lucide-react';
-import { useAutoSave } from '@/hooks/useAutoSave';
+import { toast } from 'sonner';
 
 export function DocumentsTab() {
-  const { documentTemplates, updateDocumentTemplate, saveDocumentTemplate } = useConfigStore();
+  const { documentTemplates, updateDocumentTemplate, saveDocumentTemplate, unsavedChanges } = useConfigStore();
 
   const getTemplate = (type: string) => {
     return documentTemplates.find(t => t.template_type === type) || {};
@@ -19,13 +19,26 @@ export function DocumentsTab() {
     updateDocumentTemplate(templateType, { ...template, [field]: value });
   };
 
-  // Auto-save for invoice template
-  const invoiceTemplate = getTemplate('invoice');
-  useAutoSave(() => saveDocumentTemplate('invoice'), invoiceTemplate, 1500);
+  const handleSaveInvoice = async () => {
+    try {
+      await saveDocumentTemplate('invoice');
+      toast.success('Invoice template saved');
+    } catch (error) {
+      toast.error('Failed to save invoice template');
+    }
+  };
 
-  // Auto-save for receipt template
+  const handleSaveReceipt = async () => {
+    try {
+      await saveDocumentTemplate('receipt');
+      toast.success('Receipt template saved');
+    } catch (error) {
+      toast.error('Failed to save receipt template');
+    }
+  };
+
+  const invoiceTemplate = getTemplate('invoice');
   const receiptTemplate = getTemplate('receipt');
-  useAutoSave(() => saveDocumentTemplate('receipt'), receiptTemplate, 1500);
 
   return (
     <div className="space-y-6">
@@ -33,6 +46,8 @@ export function DocumentsTab() {
         title="Invoice Configuration"
         description="Customize invoice numbering and format"
         icon={FileText}
+        onSave={handleSaveInvoice}
+        hasUnsavedChanges={unsavedChanges.has('template_invoice')}
       >
         <div className="space-y-4">
           <div className="grid grid-cols-3 gap-4">
@@ -93,6 +108,8 @@ export function DocumentsTab() {
         title="Receipt Configuration"
         description="Customize receipt numbering and format"
         icon={FileText}
+        onSave={handleSaveReceipt}
+        hasUnsavedChanges={unsavedChanges.has('template_receipt')}
       >
         <div className="space-y-4">
           <div className="grid grid-cols-3 gap-4">

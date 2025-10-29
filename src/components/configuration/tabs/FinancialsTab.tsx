@@ -4,7 +4,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { DollarSign } from 'lucide-react';
-import { useAutoSave } from '@/hooks/useAutoSave';
+import { toast } from 'sonner';
 
 const currencies = [
   { code: 'NGN', symbol: '₦', name: 'Nigerian Naira' },
@@ -14,14 +14,20 @@ const currencies = [
 ];
 
 export function FinancialsTab() {
-  const { financials, updateFinancials, saveFinancials } = useConfigStore();
+  const { financials, updateFinancials, saveFinancials, unsavedChanges } = useConfigStore();
 
   const handleChange = (field: string, value: any) => {
     updateFinancials({ [field]: value });
   };
 
-  // Auto-save with debounce
-  useAutoSave(saveFinancials, financials, 1500);
+  const handleSave = async () => {
+    try {
+      await saveFinancials();
+      toast.success('Currency settings saved');
+    } catch (error) {
+      toast.error('Failed to save currency settings');
+    }
+  };
 
   const selectedCurrency = currencies.find(c => c.code === financials.currency) || currencies[0];
 
@@ -30,6 +36,8 @@ export function FinancialsTab() {
       title="Currency & Display Settings"
       description="Configure how monetary values are displayed"
       icon={DollarSign}
+      onSave={handleSave}
+      hasUnsavedChanges={unsavedChanges.has('financials')}
     >
       <div className="space-y-6">
         <div className="grid grid-cols-2 gap-4">
