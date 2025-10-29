@@ -12,7 +12,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useRoomActions } from '../hooks/useRoomActions';
 import { useBookingFolio } from '@/hooks/useBookingFolio';
 import { useOrganizationWallet } from '@/hooks/useOrganizationWallet';
-import { AssignRoomModal } from './AssignRoomModal';
+import { AssignRoomDrawer } from './AssignRoomDrawer';
 import { ExtendStayModal } from './ExtendStayModal';
 import { AddChargeModal } from './AddChargeModal';
 import { ChargeToOrgModal } from './ChargeToOrgModal';
@@ -466,7 +466,7 @@ export function RoomActionDrawer({ roomId, open, onClose }: RoomActionDrawerProp
 
       {room && (
         <>
-          <AssignRoomModal
+          <AssignRoomDrawer
             open={assignModalOpen}
             onClose={() => setAssignModalOpen(false)}
             roomId={room.id}

@@ -31,6 +31,7 @@ const paymentSchema = z.object({
   wallet_id: z.string().optional(),
   department: z.string().optional(),
   notes: z.string().optional(),
+  pay_later: z.boolean().optional(),
 });
 
 type PaymentFormData = z.infer<typeof paymentSchema>;
@@ -74,6 +75,7 @@ export function PaymentForm({
       amount: prefilledAmount?.toString() || '',
       method: '',
       notes: '',
+      pay_later: false,
     },
   });
 
@@ -81,6 +83,7 @@ export function PaymentForm({
   const selectedLocationId = watch('location_id');
   const amount = watch('amount');
   const expectedAmount = watch('expected_amount');
+  const payLater = watch('pay_later');
 
   // Calculate tax breakdown
   const taxBreakdown = amount && financials ? calculateTaxForAmount(parseFloat(amount), financials) : null;
@@ -109,6 +112,12 @@ export function PaymentForm({
   const onSubmit = (data: PaymentFormData) => {
     setValidationError(null);
 
+    // If pay later, skip payment recording and just create debt record
+    if (data.pay_later) {
+      onSuccess?.();
+      return;
+    }
+
     const transactionRef = `PAY-${Date.now()}-${Math.random().toString(36).substring(7).toUpperCase()}`;
     const paymentType = getPaymentType();
 
@@ -128,6 +137,7 @@ export function PaymentForm({
         wallet_id: data.wallet_id,
         metadata: {
           notes: data.notes,
+          pay_later: data.pay_later,
         },
       },
       {
@@ -177,7 +187,27 @@ export function PaymentForm({
         </div>
       </div>
 
-      {expectedAmount && amount && getPaymentType() && (
+      <div className="flex items-center space-x-2">
+        <input
+          type="checkbox"
+          id="pay_later"
+          {...register('pay_later')}
+          className="h-4 w-4 rounded border-input"
+        />
+        <Label htmlFor="pay_later" className="text-sm font-normal cursor-pointer">
+          Pay Later (Create debt record / Accounts Receivable)
+        </Label>
+      </div>
+
+      {payLater && (
+        <Alert>
+          <AlertDescription>
+            Payment will be recorded as <strong>Pay Later</strong>. The balance will be tracked as accounts receivable.
+          </AlertDescription>
+        </Alert>
+      )}
+
+      {!payLater && expectedAmount && amount && getPaymentType() && (
         <Alert>
           <AlertDescription>
             Payment Type: <strong className="capitalize">{getPaymentType()}</strong>

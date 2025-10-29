@@ -4,7 +4,8 @@ import { PortalPreviewCard } from '../shared/PortalPreviewCard';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { Hotel, MapPin, Phone, Globe } from 'lucide-react';
+import { Switch } from '@/components/ui/switch';
+import { Hotel, MapPin, Phone, ShieldCheck } from 'lucide-react';
 import { useAutoSave } from '@/hooks/useAutoSave';
 
 export function GeneralTab() {
@@ -154,6 +155,28 @@ export function GeneralTab() {
               />
             </div>
           </div>
+        </div>
+      </ConfigCard>
+
+      <ConfigCard
+        title="Checkout Settings"
+        description="Configure checkout and payment policies"
+        icon={ShieldCheck}
+      >
+        <div className="flex items-center justify-between">
+          <div className="space-y-0.5 flex-1">
+            <Label htmlFor="allowCheckoutWithoutPayment" className="text-base">
+              Allow Checkout Without Payment
+            </Label>
+            <p className="text-sm text-muted-foreground">
+              When disabled, guests cannot check out until all outstanding balances are settled
+            </p>
+          </div>
+          <Switch
+            id="allowCheckoutWithoutPayment"
+            checked={general.allowCheckoutWithoutPayment ?? true}
+            onCheckedChange={(checked) => handleChange('allowCheckoutWithoutPayment', checked)}
+          />
         </div>
       </ConfigCard>
     </div>
