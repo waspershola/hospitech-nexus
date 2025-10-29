@@ -4,7 +4,12 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useEffect, useState } from 'react';
 import { OfflineIndicator } from './OfflineIndicator';
 
-export function HeaderBar() {
+interface HeaderBarProps {
+  searchQuery?: string;
+  onSearchChange?: (query: string) => void;
+}
+
+export function HeaderBar({ searchQuery = '', onSearchChange }: HeaderBarProps) {
   const { tenantName } = useAuth();
   const [currentTime, setCurrentTime] = useState(new Date());
 
@@ -28,6 +33,8 @@ export function HeaderBar() {
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
             <Input
               placeholder="Search rooms, guests..."
+              value={searchQuery}
+              onChange={(e) => onSearchChange?.(e.target.value)}
               className="pl-10"
             />
           </div>

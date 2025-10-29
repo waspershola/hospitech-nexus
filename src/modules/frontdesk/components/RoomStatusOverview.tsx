@@ -13,13 +13,17 @@ import { useAuth } from '@/contexts/AuthContext';
 interface RoomStatusOverviewProps {
   statusFilter: string | null;
   onRoomClick: (roomId: string) => void;
+  globalSearchQuery?: string;
 }
 
-export function RoomStatusOverview({ statusFilter, onRoomClick }: RoomStatusOverviewProps) {
+export function RoomStatusOverview({ statusFilter, onRoomClick, globalSearchQuery = '' }: RoomStatusOverviewProps) {
   const { tenantId } = useAuth();
   const queryClient = useQueryClient();
-  const [searchQuery, setSearchQuery] = useState('');
+  const [localSearchQuery, setLocalSearchQuery] = useState('');
   const [categoryFilter, setCategoryFilter] = useState<string | null>(null);
+  
+  // Use global search from HeaderBar if provided, otherwise use local search
+  const searchQuery = globalSearchQuery || localSearchQuery;
   const [floorFilter, setFloorFilter] = useState<number | null>(null);
   const [organizationFilter, setOrganizationFilter] = useState<string | null>(null);
   const [isSelectionMode, setIsSelectionMode] = useState(false);
@@ -86,31 +90,55 @@ export function RoomStatusOverview({ statusFilter, onRoomClick }: RoomStatusOver
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center gap-4">
-        <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-          <Input
-            placeholder="Search by room number..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="pl-10"
-          />
+      {!globalSearchQuery && (
+        <div className="flex items-center gap-4">
+          <div className="relative flex-1">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+            <Input
+              placeholder="Search by room number or guest name..."
+              value={localSearchQuery}
+              onChange={(e) => setLocalSearchQuery(e.target.value)}
+              className="pl-10"
+            />
+          </div>
+          <Button
+            variant={isSelectionMode ? "default" : "outline"}
+            size="default"
+            onClick={() => {
+              setIsSelectionMode(!isSelectionMode);
+              if (isSelectionMode) {
+                setSelectedRoomIds([]);
+              }
+            }}
+            className="rounded-xl"
+          >
+            <CheckSquare className="w-4 h-4 mr-2" />
+            {isSelectionMode ? 'Exit Selection' : 'Select Multiple'}
+          </Button>
         </div>
-        <Button
-          variant={isSelectionMode ? "default" : "outline"}
-          size="default"
-          onClick={() => {
-            setIsSelectionMode(!isSelectionMode);
-            if (isSelectionMode) {
-              setSelectedRoomIds([]);
-            }
-          }}
-          className="rounded-xl"
-        >
-          <CheckSquare className="w-4 h-4 mr-2" />
-          {isSelectionMode ? 'Exit Selection' : 'Select Multiple'}
-        </Button>
-      </div>
+      )}
+      
+      {globalSearchQuery && (
+        <div className="flex items-center justify-between">
+          <p className="text-sm text-muted-foreground">
+            Searching: <span className="font-medium text-foreground">"{globalSearchQuery}"</span>
+          </p>
+          <Button
+            variant={isSelectionMode ? "default" : "outline"}
+            size="sm"
+            onClick={() => {
+              setIsSelectionMode(!isSelectionMode);
+              if (isSelectionMode) {
+                setSelectedRoomIds([]);
+              }
+            }}
+            className="rounded-xl"
+          >
+            <CheckSquare className="w-4 h-4 mr-2" />
+            {isSelectionMode ? 'Exit Selection' : 'Select Multiple'}
+          </Button>
+        </div>
+      )}
 
       <FilterBar
         statusFilter={statusFilter}

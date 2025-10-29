@@ -34,11 +34,19 @@ export function RoomTile({ room, onClick, isSelectionMode, isSelected, onSelecti
   const statusColor = statusColors[room.status as keyof typeof statusColors] || statusColors.available;
   const borderColor = statusBorderColors[room.status as keyof typeof statusBorderColors] || statusBorderColors.available;
 
-  // Get active booking organization if it exists
+  // Get active booking with guest and organization info
   const activeBooking = room.bookings?.find((b: any) => 
     b.status === 'checked_in' || b.status === 'reserved'
   );
-  const organization = activeBooking?.organizations;
+  const organization = activeBooking?.organization;
+  const guest = activeBooking?.guest;
+  
+  // Calculate rate: room-specific rate or category base rate
+  const displayRate = room.rate ?? room.category?.base_rate ?? 0;
+  
+  // Calculate folio balance (total amount - payments made)
+  // This is a simplified calculation - in real scenarios would need to fetch payments
+  const totalAmount = activeBooking?.total_amount ?? 0;
 
   const handleClick = (e: React.MouseEvent) => {
     if (isSelectionMode) {
@@ -86,8 +94,13 @@ export function RoomTile({ room, onClick, isSelectionMode, isSelected, onSelecti
             <p className="text-sm text-muted-foreground">
               {room.category?.name || room.type || 'Standard'}
             </p>
+            {displayRate > 0 && (
+              <p className="text-sm font-semibold text-primary mt-1">
+                ₦{displayRate.toLocaleString()}/night
+              </p>
+            )}
             {room.category?.max_occupancy && (
-              <p className="text-xs text-muted-foreground mt-1">
+              <p className="text-xs text-muted-foreground">
                 Max {room.category.max_occupancy} guest{room.category.max_occupancy !== 1 ? 's' : ''}
               </p>
             )}
@@ -105,8 +118,12 @@ export function RoomTile({ room, onClick, isSelectionMode, isSelected, onSelecti
                 <span className="text-xs font-medium text-primary">{organization.name}</span>
               </div>
             )}
-            <p className="text-sm font-medium text-foreground">Guest Name</p>
-            <p className="text-xs text-muted-foreground mt-1">Balance: ₦0.00</p>
+            <p className="text-sm font-medium text-foreground">
+              {guest?.name || 'Guest'}
+            </p>
+            <p className="text-xs text-muted-foreground mt-1">
+              Balance: ₦{totalAmount.toLocaleString()}
+            </p>
           </div>
         )}
 

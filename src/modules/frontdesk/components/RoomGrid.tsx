@@ -31,8 +31,14 @@ export function RoomGrid({ searchQuery, statusFilter, categoryFilter, floorFilte
           category:room_categories(name, short_code, base_rate, max_occupancy),
           bookings!bookings_room_id_fkey(
             id,
+            check_in,
+            check_out,
+            status,
+            total_amount,
+            guest_id,
             organization_id,
-            organizations(id, name)
+            guest:guests(id, name, email, phone),
+            organization:organizations(id, name, credit_limit, allow_negative_balance)
           )
         `)
         .eq('tenant_id', tenantId)
@@ -51,15 +57,17 @@ export function RoomGrid({ searchQuery, statusFilter, categoryFilter, floorFilte
       }
 
       if (searchQuery) {
-        query = query.ilike('number', `%${searchQuery}%`);
+        query = query.or(`number.ilike.%${searchQuery}%`);
       }
 
       const { data, error } = await query;
       if (error) throw error;
       
+      let filteredData = data || [];
+      
       // Filter by organization if needed (client-side since it's in nested data)
       if (organizationFilter && data) {
-        return data.filter(room => {
+        filteredData = data.filter(room => {
           if (!room.bookings || room.bookings.length === 0) return false;
           const activeBooking = room.bookings.find((b: any) => 
             b.organization_id === organizationFilter
@@ -68,7 +76,27 @@ export function RoomGrid({ searchQuery, statusFilter, categoryFilter, floorFilte
         });
       }
       
-      return data;
+      // Additional client-side search for guest names if searchQuery exists
+      if (searchQuery && filteredData) {
+        const searchLower = searchQuery.toLowerCase();
+        filteredData = filteredData.filter(room => {
+          // Search by room number (already done server-side but keep for consistency)
+          if (room.number.toLowerCase().includes(searchLower)) return true;
+          
+          // Search by guest name in active bookings
+          if (room.bookings && room.bookings.length > 0) {
+            const hasMatchingGuest = room.bookings.some((b: any) => 
+              (b.status === 'checked_in' || b.status === 'reserved') &&
+              b.guest?.name?.toLowerCase().includes(searchLower)
+            );
+            if (hasMatchingGuest) return true;
+          }
+          
+          return false;
+        });
+      }
+      
+      return filteredData;
     },
     enabled: !!tenantId,
   });
