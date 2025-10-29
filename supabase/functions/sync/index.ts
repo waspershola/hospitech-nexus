@@ -92,7 +92,15 @@ serve(async (req) => {
 
   } catch (error) {
     console.error('Error in sync function:', error);
-    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    
+    // Sanitize error message for client
+    let errorMessage = 'An error occurred processing your request';
+    if (error instanceof Error) {
+      const msg = error.message.toLowerCase();
+      if (msg.includes('not found')) errorMessage = 'Resource not found';
+      else if (msg.includes('permission') || msg.includes('violates')) errorMessage = 'Permission denied';
+    }
+    
     return new Response(
       JSON.stringify({ success: false, error: errorMessage }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 500 }

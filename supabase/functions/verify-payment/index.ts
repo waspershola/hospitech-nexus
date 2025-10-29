@@ -6,6 +6,22 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
+// Sanitize error messages to prevent information leakage
+function sanitizeError(error: unknown): string {
+  if (error instanceof Error) {
+    console.error('Full error (server-side only):', error);
+    
+    // Return generic messages that don't expose internals
+    const message = error.message.toLowerCase();
+    if (message.includes('violates') || message.includes('permission')) return 'Permission denied';
+    if (message.includes('not found') || message.includes('does not exist')) return 'Resource not found';
+    if (message.includes('invalid') || message.includes('malformed')) return 'Invalid request';
+    
+    return 'An error occurred processing your request';
+  }
+  return 'Unknown error';
+}
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
@@ -17,21 +33,75 @@ serve(async (req) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
     );
 
+    // Verify authentication
+    const authHeader = req.headers.get('Authorization');
+    if (!authHeader) {
+      return new Response(
+        JSON.stringify({ success: false, error: 'Authentication required' }),
+        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    const { data: { user }, error: authError } = await supabaseClient.auth.getUser(
+      authHeader.replace('Bearer ', '')
+    );
+
+    if (authError || !user) {
+      return new Response(
+        JSON.stringify({ success: false, error: 'Invalid authentication' }),
+        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
     const { payment_id, provider_reference } = await req.json();
 
-    console.log('Verifying payment:', payment_id);
+    if (!payment_id) {
+      return new Response(
+        JSON.stringify({ success: false, error: 'Payment ID is required' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
 
-    // In production, this would call the actual payment provider API
-    // For now, we'll simulate verification
-    
+    console.log('Verifying payment:', payment_id, 'by user:', user.id);
+
     // Get the payment record
     const { data: payment, error: fetchError } = await supabaseClient
       .from('payments')
-      .select('*')
+      .select('*, tenant_id')
       .eq('id', payment_id)
       .single();
 
-    if (fetchError) throw fetchError;
+    if (fetchError) {
+      return new Response(
+        JSON.stringify({ success: false, error: sanitizeError(fetchError) }),
+        { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // Verify user belongs to the payment's tenant
+    const { data: userRole } = await supabaseClient
+      .from('user_roles')
+      .select('tenant_id, role')
+      .eq('user_id', user.id)
+      .single();
+
+    if (!userRole || userRole.tenant_id !== payment.tenant_id) {
+      console.warn('Unauthorized payment verification attempt:', { user_id: user.id, payment_id, payment_tenant: payment.tenant_id });
+      return new Response(
+        JSON.stringify({ success: false, error: 'Permission denied' }),
+        { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // Check if user has manager or owner role (payment verification is a sensitive operation)
+    const hasPermission = userRole.role === 'owner' || userRole.role === 'manager';
+    if (!hasPermission) {
+      console.warn('Insufficient role for payment verification:', { user_id: user.id, role: userRole.role });
+      return new Response(
+        JSON.stringify({ success: false, error: 'Insufficient permissions' }),
+        { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
 
     // Simulate payment verification
     // In production, replace with actual provider API call
@@ -51,6 +121,7 @@ serve(async (req) => {
         metadata: {
           ...payment.metadata,
           verified_at: verificationResult.verified_at,
+          verified_by: user.id,
           verification_result: verificationResult,
         }
       })
@@ -58,7 +129,14 @@ serve(async (req) => {
       .select()
       .single();
 
-    if (updateError) throw updateError;
+    if (updateError) {
+      return new Response(
+        JSON.stringify({ success: false, error: sanitizeError(updateError) }),
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    console.log('Payment verified successfully:', payment_id);
 
     return new Response(
       JSON.stringify({ 
@@ -71,9 +149,8 @@ serve(async (req) => {
 
   } catch (error) {
     console.error('Error in verify-payment function:', error);
-    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
     return new Response(
-      JSON.stringify({ success: false, error: errorMessage }),
+      JSON.stringify({ success: false, error: sanitizeError(error) }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 500 }
     );
   }
