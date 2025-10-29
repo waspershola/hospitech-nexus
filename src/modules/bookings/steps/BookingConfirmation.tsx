@@ -7,7 +7,8 @@ import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
-import { Loader2, Check, Building2, AlertCircle } from 'lucide-react';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Loader2, Check, Building2, AlertCircle, Users } from 'lucide-react';
 import { toast } from 'sonner';
 import { useOrganizationWallet } from '@/hooks/useOrganizationWallet';
 import type { BookingData } from '../BookingFlow';
@@ -22,6 +23,7 @@ export function BookingConfirmation({ bookingData, onComplete }: BookingConfirma
   const { tenantId, user } = useAuth();
   const queryClient = useQueryClient();
   const { data: financials } = useFinancials();
+  const isGroupBooking = bookingData.isGroupBooking && (bookingData.selectedRoomIds?.length || 0) > 1;
   
   // Fetch organization wallet if booking for org
   const { data: orgWallet } = useOrganizationWallet(bookingData.organizationId);
@@ -71,8 +73,60 @@ export function BookingConfirmation({ bookingData, onComplete }: BookingConfirma
 
   const createBookingMutation = useMutation({
     mutationFn: async () => {
-      if (!tenantId || !bookingData.guestId || !bookingData.roomId || !bookingData.checkIn || !bookingData.checkOut) {
+      if (!tenantId || !bookingData.guestId || !bookingData.checkIn || !bookingData.checkOut) {
         throw new Error('Missing required booking information');
+      }
+
+      // Group booking: multiple rooms
+      if (isGroupBooking) {
+        if (!bookingData.selectedRoomIds || bookingData.selectedRoomIds.length === 0) {
+          throw new Error('No rooms selected for group booking');
+        }
+
+        const groupId = crypto.randomUUID();
+        const actionId = crypto.randomUUID();
+
+        // Create bookings for each room
+        const results = await Promise.all(
+          bookingData.selectedRoomIds.map(async (roomId) => {
+            const { data: createResult, error: createError } = await supabase.functions.invoke('create-booking', {
+              body: {
+                tenant_id: tenantId,
+                guest_id: bookingData.guestId,
+                room_id: roomId,
+                organization_id: bookingData.organizationId,
+                check_in: bookingData.checkIn!.toISOString(),
+                check_out: bookingData.checkOut!.toISOString(),
+                total_amount: bookingData.totalAmount || 0,
+                action_id: `${actionId}-${roomId}`,
+                department: 'front_desk',
+                created_by: user?.id,
+                group_booking: true,
+                group_id: groupId,
+                group_name: bookingData.groupName,
+                group_size: bookingData.groupSize,
+                group_leader: bookingData.groupLeaderName,
+              },
+            });
+
+            if (createError) {
+              throw new Error(`Failed to create booking for room: ${createError.message}`);
+            }
+
+            if (!createResult?.success) {
+              throw new Error(createResult?.error || 'Booking creation failed');
+            }
+
+            return createResult.booking;
+          })
+        );
+
+        return results;
+      }
+
+      // Single booking
+      if (!bookingData.roomId) {
+        throw new Error('No room selected');
       }
 
       // Validate booking with edge function first
@@ -135,7 +189,13 @@ export function BookingConfirmation({ bookingData, onComplete }: BookingConfirma
       queryClient.invalidateQueries({ queryKey: ['wallets'] });
       queryClient.invalidateQueries({ queryKey: ['wallet-transactions'] });
       queryClient.invalidateQueries({ queryKey: ['payments'] });
-      toast.success('Booking created successfully!');
+      
+      if (isGroupBooking) {
+        toast.success(`Group booking created successfully! ${bookingData.selectedRoomIds?.length} rooms reserved.`);
+      } else {
+        toast.success('Booking created successfully!');
+      }
+      
       onComplete();
     },
     onError: (error: Error) => {
@@ -155,6 +215,16 @@ export function BookingConfirmation({ bookingData, onComplete }: BookingConfirma
 
   return (
     <div className="space-y-6">
+      {/* Group Booking Badge */}
+      {isGroupBooking && (
+        <Alert className="bg-primary/10 border-primary/20">
+          <Users className="h-4 w-4 text-primary" />
+          <AlertDescription>
+            <strong>Group Booking:</strong> {bookingData.groupName} • {bookingData.selectedRoomIds?.length} rooms
+          </AlertDescription>
+        </Alert>
+      )}
+
       {/* Organization Credit Warning */}
       {orgWallet && orgWallet.nearLimit && (
         <div className="flex items-center gap-2 p-3 bg-yellow-500/10 border border-yellow-500/30 rounded-lg">
@@ -220,12 +290,28 @@ export function BookingConfirmation({ bookingData, onComplete }: BookingConfirma
         <Separator />
 
         <div>
-          <h3 className="font-semibold text-lg mb-3">Room Details</h3>
-          <div className="space-y-1 text-sm">
-            <p><span className="text-muted-foreground">Room:</span> {room?.number}</p>
-            <p><span className="text-muted-foreground">Type:</span> {room?.category?.name || room?.type}</p>
-            <p><span className="text-muted-foreground">Rate:</span> ₦{room?.category?.base_rate || room?.rate}/night</p>
-          </div>
+          <h3 className="font-semibold text-lg mb-3">
+            {isGroupBooking ? 'Group & Rooms' : 'Room Details'}
+          </h3>
+          {isGroupBooking ? (
+            <div className="space-y-3">
+              <div className="space-y-1 text-sm">
+                <p><span className="text-muted-foreground">Group Name:</span> {bookingData.groupName}</p>
+                <p><span className="text-muted-foreground">Group Leader:</span> {bookingData.groupLeaderName}</p>
+                <p><span className="text-muted-foreground">Group Size:</span> {bookingData.groupSize} guests</p>
+                <p><span className="text-muted-foreground">Rooms:</span> {bookingData.selectedRoomIds?.length}</p>
+              </div>
+              <Badge variant="secondary">
+                Multiple rooms will be reserved for this group
+              </Badge>
+            </div>
+          ) : (
+            <div className="space-y-1 text-sm">
+              <p><span className="text-muted-foreground">Room:</span> {room?.number}</p>
+              <p><span className="text-muted-foreground">Type:</span> {room?.category?.name || room?.type}</p>
+              <p><span className="text-muted-foreground">Rate:</span> ₦{room?.category?.base_rate || room?.rate}/night</p>
+            </div>
+          )}
         </div>
 
         <Separator />
@@ -251,32 +337,42 @@ export function BookingConfirmation({ bookingData, onComplete }: BookingConfirma
 
         <div>
           <h3 className="font-semibold text-lg mb-3">Pricing</h3>
-          <div className="space-y-2">
-            <div className="flex items-center justify-between text-sm">
-              <span className="text-muted-foreground">Room Rate ({nights} {nights === 1 ? 'night' : 'nights'})</span>
-              <span className="font-medium">₦{taxBreakdown.baseAmount.toLocaleString()}</span>
+          {isGroupBooking ? (
+            <div className="space-y-2">
+              <div className="flex items-center justify-between text-sm">
+                <span className="text-muted-foreground">Total for {bookingData.selectedRoomIds?.length} rooms ({nights} {nights === 1 ? 'night' : 'nights'})</span>
+                <span className="font-medium">₦{bookingData.totalAmount?.toFixed(2)}</span>
+              </div>
+              <p className="text-xs text-muted-foreground">Includes all taxes and charges</p>
             </div>
-            
-            {taxBreakdown.vatAmount > 0 && financials && (
+          ) : (
+            <div className="space-y-2">
               <div className="flex items-center justify-between text-sm">
-                <span className="text-muted-foreground">
-                  VAT ({financials.vat_rate}%)
-                  {financials.vat_inclusive && <span className="text-xs ml-1">(inclusive)</span>}
-                </span>
-                <span className="font-medium">₦{taxBreakdown.vatAmount.toFixed(2)}</span>
+                <span className="text-muted-foreground">Room Rate ({nights} {nights === 1 ? 'night' : 'nights'})</span>
+                <span className="font-medium">₦{taxBreakdown.baseAmount.toLocaleString()}</span>
               </div>
-            )}
-            
-            {taxBreakdown.serviceChargeAmount > 0 && financials && (
-              <div className="flex items-center justify-between text-sm">
-                <span className="text-muted-foreground">
-                  Service Charge ({financials.service_charge}%)
-                  {financials.service_charge_inclusive && <span className="text-xs ml-1">(inclusive)</span>}
-                </span>
-                <span className="font-medium">₦{taxBreakdown.serviceChargeAmount.toFixed(2)}</span>
-              </div>
-            )}
-          </div>
+              
+              {taxBreakdown.vatAmount > 0 && financials && (
+                <div className="flex items-center justify-between text-sm">
+                  <span className="text-muted-foreground">
+                    VAT ({financials.vat_rate}%)
+                    {financials.vat_inclusive && <span className="text-xs ml-1">(inclusive)</span>}
+                  </span>
+                  <span className="font-medium">₦{taxBreakdown.vatAmount.toFixed(2)}</span>
+                </div>
+              )}
+              
+              {taxBreakdown.serviceChargeAmount > 0 && financials && (
+                <div className="flex items-center justify-between text-sm">
+                  <span className="text-muted-foreground">
+                    Service Charge ({financials.service_charge}%)
+                    {financials.service_charge_inclusive && <span className="text-xs ml-1">(inclusive)</span>}
+                  </span>
+                  <span className="font-medium">₦{taxBreakdown.serviceChargeAmount.toFixed(2)}</span>
+                </div>
+              )}
+            </div>
+          )}
         </div>
 
         <Separator />
@@ -284,7 +380,7 @@ export function BookingConfirmation({ bookingData, onComplete }: BookingConfirma
         <div className="flex items-center justify-between">
           <span className="text-lg font-semibold">Total Amount:</span>
           <span className="text-2xl font-bold text-primary">
-            ₦{taxBreakdown.totalAmount.toFixed(2)}
+            ₦{isGroupBooking ? bookingData.totalAmount?.toFixed(2) : taxBreakdown.totalAmount.toFixed(2)}
           </span>
         </div>
       </Card>
@@ -298,12 +394,12 @@ export function BookingConfirmation({ bookingData, onComplete }: BookingConfirma
         {createBookingMutation.isPending ? (
           <>
             <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-            Creating Booking...
+            {isGroupBooking ? 'Creating Group Bookings...' : 'Creating Booking...'}
           </>
         ) : (
           <>
             <Check className="w-4 h-4 mr-2" />
-            Confirm Booking
+            {isGroupBooking ? `Confirm ${bookingData.selectedRoomIds?.length} Room Bookings` : 'Confirm Booking'}
           </>
         )}
       </Button>
