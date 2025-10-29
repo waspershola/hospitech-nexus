@@ -5,7 +5,8 @@ import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { useQuery } from '@tanstack/react-query';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useRoomActions } from '../hooks/useRoomActions';
@@ -17,7 +18,8 @@ import { AddChargeModal } from './AddChargeModal';
 import { ChargeToOrgModal } from './ChargeToOrgModal';
 import { RoomAuditTrail } from './RoomAuditTrail';
 import { QuickPaymentForm } from './QuickPaymentForm';
-import { Loader2, User, CreditCard, Calendar, AlertCircle, Clock, Building2, AlertTriangle, Wallet } from 'lucide-react';
+import { toast } from '@/hooks/use-toast';
+import { Loader2, User, CreditCard, Calendar, AlertCircle, Clock, Building2, AlertTriangle, Wallet, Zap, Coffee, BellOff } from 'lucide-react';
 
 interface RoomActionDrawerProps {
   roomId: string | null;
@@ -27,6 +29,7 @@ interface RoomActionDrawerProps {
 
 export function RoomActionDrawer({ roomId, open, onClose }: RoomActionDrawerProps) {
   const { tenantId } = useAuth();
+  const queryClient = useQueryClient();
   const { checkIn, checkOut, markClean, markMaintenance } = useRoomActions();
   const [assignModalOpen, setAssignModalOpen] = useState(false);
   const [extendModalOpen, setExtendModalOpen] = useState(false);
@@ -78,37 +81,93 @@ export function RoomActionDrawer({ roomId, open, onClose }: RoomActionDrawerProp
     b.status === 'checked_in' || b.status === 'reserved'
   );
 
+  const handleQuickCheckIn = () => {
+    toast({ title: 'Quick Check-In', description: 'Opening simplified booking flow...' });
+    onClose();
+    setAssignModalOpen(true);
+  };
+
+  const handleExpressCheckout = async () => {
+    if (!room || !activeBooking) return;
+    
+    if (folio && folio.balance > 0) {
+      toast({ 
+        title: 'Outstanding Balance', 
+        description: 'Please settle balance before express checkout',
+        variant: 'destructive'
+      });
+      return;
+    }
+
+    checkOut(room.id);
+    toast({ title: 'Express Checkout', description: 'Guest checked out successfully' });
+    onClose();
+  };
+
+  const handleRoomService = () => {
+    if (!activeBooking) return;
+    setChargeModalOpen(true);
+  };
+
+  const handleToggleDND = async () => {
+    if (!room) return;
+
+    const currentNotes = room.notes || '';
+    const hasDND = currentNotes.includes('[DND]');
+    const newNotes = hasDND 
+      ? currentNotes.replace('[DND]', '').trim()
+      : `${currentNotes} [DND]`.trim();
+
+    try {
+      await supabase
+        .from('rooms')
+        .update({ notes: newNotes })
+        .eq('id', roomId);
+
+      queryClient.invalidateQueries({ queryKey: ['room-detail', roomId] });
+      queryClient.invalidateQueries({ queryKey: ['rooms-grid'] });
+      toast({ 
+        title: hasDND ? 'DND Removed' : 'Do Not Disturb', 
+        description: hasDND ? 'Room can be serviced' : 'Guest requests no disturbance' 
+      });
+    } catch (error) {
+      toast({ title: 'Error', description: 'Failed to update DND status', variant: 'destructive' });
+    }
+  };
+
   const getActions = () => {
     if (!room) return [];
+
+    const hasDND = room.notes?.includes('[DND]');
 
     switch (room.status) {
       case 'available':
         return [
-          { label: 'Assign Room', action: () => setAssignModalOpen(true), variant: 'default' as const },
-          { label: 'Reserve', action: () => setAssignModalOpen(true), variant: 'secondary' as const },
-          { label: 'Mark OOS', action: () => markMaintenance(room.id), variant: 'outline' as const },
+          { label: 'Assign Room', action: () => setAssignModalOpen(true), variant: 'default' as const, tooltip: 'Full booking with all details' },
+          { label: 'Quick Check-In', action: handleQuickCheckIn, variant: 'secondary' as const, icon: Zap, tooltip: 'Express walk-in check-in' },
+          { label: 'Mark OOS', action: () => markMaintenance(room.id), variant: 'outline' as const, tooltip: 'Mark as Out of Service' },
         ];
       case 'occupied':
       case 'overstay':
         return [
-          { label: 'Take Payment', action: () => setQuickPaymentOpen(true), variant: 'default' as const, icon: CreditCard },
-          { label: 'Check Out', action: () => checkOut(room.id), variant: 'secondary' as const },
-          { label: 'Extend Stay', action: () => setExtendModalOpen(true), variant: 'outline' as const },
-          { label: 'Add Charge', action: () => setChargeModalOpen(true), variant: 'outline' as const },
-          { label: 'Charge to Org', action: () => setChargeToOrgModalOpen(true), variant: 'outline' as const, icon: Building2 },
+          { label: 'Express Checkout', action: handleExpressCheckout, variant: 'default' as const, icon: Zap, tooltip: 'Quick checkout if balance settled' },
+          { label: 'Take Payment', action: () => setQuickPaymentOpen(true), variant: 'secondary' as const, icon: CreditCard, tooltip: 'Record payment' },
+          { label: 'Room Service', action: handleRoomService, variant: 'outline' as const, icon: Coffee, tooltip: 'Add service charge' },
+          { label: 'Extend Stay', action: () => setExtendModalOpen(true), variant: 'outline' as const, tooltip: 'Extend checkout date' },
+          { label: hasDND ? 'Remove DND' : 'Do Not Disturb', action: handleToggleDND, variant: hasDND ? 'default' : 'ghost' as const, icon: BellOff, tooltip: 'Toggle guest DND status' },
         ];
       case 'reserved':
         return [
-          { label: 'Check In', action: () => checkIn(room.id), variant: 'default' as const },
-          { label: 'Cancel', action: () => {}, variant: 'destructive' as const },
+          { label: 'Check In', action: () => checkIn(room.id), variant: 'default' as const, tooltip: 'Complete guest check-in' },
+          { label: 'Cancel', action: () => {}, variant: 'destructive' as const, tooltip: 'Cancel reservation' },
         ];
       case 'cleaning':
         return [
-          { label: 'Mark Clean', action: () => markClean(room.id), variant: 'default' as const },
+          { label: 'Mark Clean', action: () => markClean(room.id), variant: 'default' as const, tooltip: 'Mark room as ready' },
         ];
       case 'maintenance':
         return [
-          { label: 'Complete Maintenance', action: () => markClean(room.id), variant: 'default' as const },
+          { label: 'Complete Maintenance', action: () => markClean(room.id), variant: 'default' as const, tooltip: 'Mark maintenance complete' },
         ];
       default:
         return [];
@@ -286,19 +345,27 @@ export function RoomActionDrawer({ roomId, open, onClose }: RoomActionDrawerProp
 
                   <div className="space-y-3">
                     <h3 className="font-semibold">Quick Actions</h3>
-                    <div className="space-y-2">
-                      {getActions().map((action, i) => (
-                        <Button
-                          key={i}
-                          variant={action.variant}
-                          className="w-full rounded-xl"
-                          onClick={action.action}
-                        >
-                          {'icon' in action && action.icon && <action.icon className="w-4 h-4 mr-2" />}
-                          {action.label}
-                        </Button>
-                      ))}
-                    </div>
+                    <TooltipProvider>
+                      <div className="space-y-2">
+                        {getActions().map((action, i) => (
+                          <Tooltip key={i}>
+                            <TooltipTrigger asChild>
+                              <Button
+                                variant={action.variant}
+                                className="w-full rounded-xl"
+                                onClick={action.action}
+                              >
+                                {'icon' in action && action.icon && <action.icon className="w-4 h-4 mr-2" />}
+                                {action.label}
+                              </Button>
+                            </TooltipTrigger>
+                            {'tooltip' in action && action.tooltip && (
+                              <TooltipContent>{action.tooltip}</TooltipContent>
+                            )}
+                          </Tooltip>
+                        ))}
+                      </div>
+                    </TooltipProvider>
                   </div>
 
                   {room.notes && (
