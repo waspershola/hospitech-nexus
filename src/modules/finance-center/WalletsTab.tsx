@@ -1,10 +1,15 @@
+import { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Wallet, TrendingUp, TrendingDown } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Wallet, TrendingUp, TrendingDown, History } from 'lucide-react';
 import { useWallets } from '@/hooks/useWallets';
+import { WalletTransactionsDrawer } from './WalletTransactionsDrawer';
 
 export function WalletsTab() {
   const { wallets, isLoading } = useWallets();
+  const [selectedWalletId, setSelectedWalletId] = useState<string | null>(null);
+  const [transactionsOpen, setTransactionsOpen] = useState(false);
 
   if (isLoading) {
     return <div>Loading wallets...</div>;
@@ -40,7 +45,7 @@ export function WalletsTab() {
               </div>
             </CardHeader>
             <CardContent>
-              <div className="space-y-2">
+              <div className="space-y-3">
                 <div className="text-3xl font-display font-bold">
                   {wallet.currency} {wallet.balance.toLocaleString('en-NG', { minimumFractionDigits: 2 })}
                 </div>
@@ -49,6 +54,18 @@ export function WalletsTab() {
                     Last transaction: {new Date(wallet.last_transaction_at).toLocaleDateString()}
                   </div>
                 )}
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="w-full"
+                  onClick={() => {
+                    setSelectedWalletId(wallet.id);
+                    setTransactionsOpen(true);
+                  }}
+                >
+                  <History className="w-4 h-4 mr-2" />
+                  View Transactions
+                </Button>
               </div>
             </CardContent>
           </Card>
@@ -60,6 +77,12 @@ export function WalletsTab() {
           </div>
         )}
       </div>
+
+      <WalletTransactionsDrawer
+        open={transactionsOpen}
+        onClose={() => setTransactionsOpen(false)}
+        walletId={selectedWalletId}
+      />
     </div>
   );
 }

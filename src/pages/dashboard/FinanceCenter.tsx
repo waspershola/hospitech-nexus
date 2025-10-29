@@ -1,7 +1,9 @@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ProvidersTab } from '@/modules/finance-center/ProvidersTab';
 import { WalletsTab } from '@/modules/finance-center/WalletsTab';
-import { Wallet, Building2, TrendingUp } from 'lucide-react';
+import { OrganizationsTab } from '@/modules/finance-center/OrganizationsTab';
+import { AnalyticsTab } from '@/modules/finance-center/AnalyticsTab';
+import { Wallet, Building2, TrendingUp, Building } from 'lucide-react';
 
 export default function FinanceCenter() {
   return (
@@ -12,7 +14,7 @@ export default function FinanceCenter() {
       </div>
 
       <Tabs defaultValue="providers" className="flex-1">
-        <TabsList className="grid w-full grid-cols-3 mb-6">
+        <TabsList className="grid w-full grid-cols-4 mb-6">
           <TabsTrigger value="providers" className="flex items-center gap-2">
             <Building2 className="w-4 h-4" />
             Providers
@@ -20,6 +22,10 @@ export default function FinanceCenter() {
           <TabsTrigger value="wallets" className="flex items-center gap-2">
             <Wallet className="w-4 h-4" />
             Wallets
+          </TabsTrigger>
+          <TabsTrigger value="organizations" className="flex items-center gap-2">
+            <Building className="w-4 h-4" />
+            Organizations
           </TabsTrigger>
           <TabsTrigger value="analytics" className="flex items-center gap-2">
             <TrendingUp className="w-4 h-4" />
@@ -35,10 +41,12 @@ export default function FinanceCenter() {
           <WalletsTab />
         </TabsContent>
 
+        <TabsContent value="organizations">
+          <OrganizationsTab />
+        </TabsContent>
+
         <TabsContent value="analytics">
-          <div className="text-center py-12 text-muted-foreground">
-            Analytics coming soon
-          </div>
+          <AnalyticsTab />
         </TabsContent>
       </Tabs>
     </div>
