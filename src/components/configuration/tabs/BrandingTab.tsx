@@ -4,7 +4,6 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Palette, Image as ImageIcon, Type, FileText } from 'lucide-react';
-import { useAutoSave } from '@/hooks/useAutoSave';
 import { LogoUploader } from '../branding/LogoUploader';
 import { FaviconUploader } from '../branding/FaviconUploader';
 import { HeroImageUploader } from '../branding/HeroImageUploader';
@@ -13,13 +12,11 @@ import { BrandingPreview } from '../branding/BrandingPreview';
 import { PortalPreview } from '../shared/PortalPreview';
 
 export function BrandingTab() {
-  const { branding, updateBranding, saveBranding } = useConfigStore();
+  const { branding, updateBranding, saveBranding, unsavedChanges } = useConfigStore();
 
   const handleChange = (field: string, value: any) => {
     updateBranding({ [field]: value });
   };
-
-  useAutoSave(saveBranding, branding);
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -30,6 +27,8 @@ export function BrandingTab() {
           title="Hotel Identity"
           description="Upload your hotel's visual brand assets"
           icon={ImageIcon}
+          onSave={saveBranding}
+          hasUnsavedChanges={unsavedChanges.has('branding')}
         >
           <div className="space-y-6">
             <LogoUploader
@@ -50,6 +49,8 @@ export function BrandingTab() {
           title="Hero Banner"
           description="Large banner image for guest portal homepage"
           icon={ImageIcon}
+          onSave={saveBranding}
+          hasUnsavedChanges={unsavedChanges.has('branding')}
         >
           <HeroImageUploader
             imageUrl={branding.hero_image}
@@ -63,6 +64,8 @@ export function BrandingTab() {
           title="Brand Colors"
           description="Define your hotel's color identity"
           icon={Palette}
+          onSave={saveBranding}
+          hasUnsavedChanges={unsavedChanges.has('branding')}
         >
           <div className="grid grid-cols-3 gap-6">
             <div className="space-y-2">
@@ -125,6 +128,8 @@ export function BrandingTab() {
           title="Typography"
           description="Font selections for headings and body text"
           icon={Type}
+          onSave={saveBranding}
+          hasUnsavedChanges={unsavedChanges.has('branding')}
         >
           <FontSelector
             headingFont={branding.font_heading || 'Playfair Display'}
@@ -138,6 +143,8 @@ export function BrandingTab() {
           title="Receipt Customization"
           description="Header and footer text for printed documents"
           icon={FileText}
+          onSave={saveBranding}
+          hasUnsavedChanges={unsavedChanges.has('branding')}
         >
           <div className="space-y-4">
             <div className="space-y-2">

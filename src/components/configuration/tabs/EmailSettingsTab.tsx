@@ -4,16 +4,13 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Mail } from 'lucide-react';
-import { useAutoSave } from '@/hooks/useAutoSave';
 
 export function EmailSettingsTab() {
-  const { emailSettings, updateEmailSettings, saveEmailSettings } = useConfigStore();
+  const { emailSettings, updateEmailSettings, saveEmailSettings, unsavedChanges } = useConfigStore();
 
   const handleChange = (field: string, value: any) => {
     updateEmailSettings({ [field]: value });
   };
-
-  useAutoSave(saveEmailSettings, emailSettings);
 
   return (
     <div className="space-y-6">
@@ -21,6 +18,8 @@ export function EmailSettingsTab() {
         title="Email Sender Configuration"
         description="Configure how emails appear to recipients"
         icon={Mail}
+        onSave={saveEmailSettings}
+        hasUnsavedChanges={unsavedChanges.has('email_settings')}
       >
         <div className="space-y-4">
           <div className="grid grid-cols-2 gap-4">
@@ -73,6 +72,8 @@ export function EmailSettingsTab() {
       <ConfigCard
         title="SMTP Configuration"
         description="Custom email server settings (optional)"
+        onSave={saveEmailSettings}
+        hasUnsavedChanges={unsavedChanges.has('email_settings')}
       >
         <div className="space-y-4">
           <div className="flex items-center space-x-2">

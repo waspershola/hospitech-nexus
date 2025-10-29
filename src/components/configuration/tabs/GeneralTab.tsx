@@ -6,17 +6,14 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Switch } from '@/components/ui/switch';
 import { Hotel, MapPin, Phone, ShieldCheck } from 'lucide-react';
-import { useAutoSave } from '@/hooks/useAutoSave';
 
 export function GeneralTab() {
-  const { configurations, updateConfig, saveConfig } = useConfigStore();
+  const { configurations, updateConfig, saveConfig, unsavedChanges } = useConfigStore();
   const general = configurations.general || {};
 
   const handleChange = (field: string, value: any) => {
     updateConfig('general', { ...general, [field]: value });
   };
-
-  useAutoSave(() => saveConfig('general'), general);
 
   return (
     <div className="space-y-6">
@@ -26,6 +23,8 @@ export function GeneralTab() {
         title="Hotel Information"
         description="Core details about your property"
         icon={Hotel}
+        onSave={() => saveConfig('general')}
+        hasUnsavedChanges={unsavedChanges.has('general')}
       >
         <div className="grid gap-6">
           <div className="space-y-2">
@@ -67,6 +66,8 @@ export function GeneralTab() {
         title="Contact Information"
         description="How guests can reach you"
         icon={Phone}
+        onSave={() => saveConfig('general')}
+        hasUnsavedChanges={unsavedChanges.has('general')}
       >
         <div className="grid gap-6">
           <div className="grid grid-cols-2 gap-4">
@@ -111,6 +112,8 @@ export function GeneralTab() {
         title="Address"
         description="Physical location of your property"
         icon={MapPin}
+        onSave={() => saveConfig('general')}
+        hasUnsavedChanges={unsavedChanges.has('general')}
       >
         <div className="space-y-4">
           <div className="space-y-2">
@@ -162,6 +165,8 @@ export function GeneralTab() {
         title="Checkout Settings"
         description="Configure checkout and payment policies"
         icon={ShieldCheck}
+        onSave={() => saveConfig('general')}
+        hasUnsavedChanges={unsavedChanges.has('general')}
       >
         <div className="flex items-center justify-between">
           <div className="space-y-0.5 flex-1">
