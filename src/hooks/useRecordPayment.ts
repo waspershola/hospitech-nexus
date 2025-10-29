@@ -40,11 +40,17 @@ export function useRecordPayment() {
 
       return data;
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['payments', tenantId] });
       queryClient.invalidateQueries({ queryKey: ['wallets', tenantId] });
+      queryClient.invalidateQueries({ queryKey: ['wallet-transactions', tenantId] });
+      queryClient.invalidateQueries({ queryKey: ['finance-analytics', tenantId] });
+      queryClient.invalidateQueries({ queryKey: ['reconciliation-records', tenantId] });
       queryClient.invalidateQueries({ queryKey: ['booking-folio'] });
-      toast.success('Payment recorded successfully');
+      
+      toast.success('Payment recorded successfully', {
+        description: `Transaction: ${data.payment?.transaction_ref || ''}`,
+      });
     },
     onError: (error: Error) => {
       toast.error(error.message);
