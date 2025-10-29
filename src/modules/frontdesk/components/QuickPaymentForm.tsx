@@ -5,6 +5,8 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { useRecordPayment } from '@/hooks/useRecordPayment';
+import { useFinancials } from '@/hooks/useFinancials';
+import { calculateTaxForAmount } from '@/lib/finance/tax';
 import { Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { z } from 'zod';
@@ -36,6 +38,10 @@ export function QuickPaymentForm({
   const [reference, setReference] = useState('');
   const [notes, setNotes] = useState('');
   const { mutateAsync: recordPayment, isPending: isRecording } = useRecordPayment();
+  const { data: financials } = useFinancials();
+
+  // Calculate tax breakdown
+  const taxBreakdown = amount && financials ? calculateTaxForAmount(parseFloat(amount), financials) : null;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -87,6 +93,30 @@ export function QuickPaymentForm({
           required
         />
       </div>
+
+      {taxBreakdown && (taxBreakdown.vatAmount > 0 || taxBreakdown.serviceChargeAmount > 0) && (
+        <div className="bg-muted/50 rounded-lg p-3 space-y-2 text-sm">
+          <p className="font-medium text-muted-foreground">Tax Breakdown</p>
+          <div className="space-y-1">
+            <div className="flex justify-between">
+              <span className="text-muted-foreground">Base Amount</span>
+              <span className="font-medium">₦{taxBreakdown.baseAmount.toFixed(2)}</span>
+            </div>
+            {taxBreakdown.vatAmount > 0 && (
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">VAT</span>
+                <span className="font-medium">₦{taxBreakdown.vatAmount.toFixed(2)}</span>
+              </div>
+            )}
+            {taxBreakdown.serviceChargeAmount > 0 && (
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">Service Charge</span>
+                <span className="font-medium">₦{taxBreakdown.serviceChargeAmount.toFixed(2)}</span>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
 
       <div className="space-y-2">
         <Label htmlFor="method">Payment Method</Label>

@@ -6,6 +6,8 @@ import { useFinanceProviders } from '@/hooks/useFinanceProviders';
 import { useFinanceLocations } from '@/hooks/useFinanceLocations';
 import { useWallets } from '@/hooks/useWallets';
 import { useRecordPayment } from '@/hooks/useRecordPayment';
+import { useFinancials } from '@/hooks/useFinancials';
+import { calculateTaxForAmount } from '@/lib/finance/tax';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -54,6 +56,7 @@ export function PaymentForm({
   const { providers = [] } = useFinanceProviders();
   const { locations = [] } = useFinanceLocations();
   const { wallets = [] } = useWallets();
+  const { data: financials } = useFinancials();
   const { mutate: recordPayment, isPending } = useRecordPayment();
 
   const activeProviders = providers.filter(p => p.status === 'active');
@@ -78,6 +81,9 @@ export function PaymentForm({
   const selectedLocationId = watch('location_id');
   const amount = watch('amount');
   const expectedAmount = watch('expected_amount');
+
+  // Calculate tax breakdown
+  const taxBreakdown = amount && financials ? calculateTaxForAmount(parseFloat(amount), financials) : null;
 
   // Auto-select provider based on location
   useEffect(() => {
@@ -179,6 +185,30 @@ export function PaymentForm({
             {getPaymentType() === 'overpayment' && ' - Excess will be credited to wallet'}
           </AlertDescription>
         </Alert>
+      )}
+
+      {taxBreakdown && (taxBreakdown.vatAmount > 0 || taxBreakdown.serviceChargeAmount > 0) && (
+        <div className="bg-muted/50 rounded-lg p-3 space-y-2 text-sm">
+          <p className="font-medium text-muted-foreground">Tax Breakdown</p>
+          <div className="space-y-1">
+            <div className="flex justify-between">
+              <span className="text-muted-foreground">Base Amount</span>
+              <span className="font-medium">₦{taxBreakdown.baseAmount.toFixed(2)}</span>
+            </div>
+            {taxBreakdown.vatAmount > 0 && (
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">VAT</span>
+                <span className="font-medium">₦{taxBreakdown.vatAmount.toFixed(2)}</span>
+              </div>
+            )}
+            {taxBreakdown.serviceChargeAmount > 0 && (
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">Service Charge</span>
+                <span className="font-medium">₦{taxBreakdown.serviceChargeAmount.toFixed(2)}</span>
+              </div>
+            )}
+          </div>
+        </div>
       )}
 
       <div className="space-y-2">

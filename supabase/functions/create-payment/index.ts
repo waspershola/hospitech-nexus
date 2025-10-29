@@ -74,6 +74,49 @@ serve(async (req) => {
 
     console.log('Processing payment:', { transaction_ref, amount, method, provider_id, location_id });
 
+    // Fetch hotel financials for tax calculations
+    const { data: financials } = await supabase
+      .from('hotel_financials')
+      .select('vat_rate, vat_inclusive, service_charge, service_charge_inclusive, currency')
+      .eq('tenant_id', tenant_id)
+      .maybeSingle();
+
+    const vatRate = financials?.vat_rate || 0;
+    const vatInclusive = financials?.vat_inclusive || false;
+    const serviceCharge = financials?.service_charge || 0;
+    const serviceChargeInclusive = financials?.service_charge_inclusive || false;
+
+    // Calculate tax breakdown
+    let baseAmount = amount;
+    let vatAmount = 0;
+    let serviceChargeAmount = 0;
+
+    if (vatInclusive) {
+      baseAmount = amount / (1 + vatRate / 100);
+      vatAmount = amount - baseAmount;
+    } else {
+      vatAmount = baseAmount * (vatRate / 100);
+    }
+
+    if (serviceChargeInclusive) {
+      const tempBase = baseAmount / (1 + serviceCharge / 100);
+      serviceChargeAmount = baseAmount - tempBase;
+      baseAmount = tempBase;
+    } else {
+      serviceChargeAmount = baseAmount * (serviceCharge / 100);
+    }
+
+    const taxBreakdown = {
+      baseAmount: Math.round(baseAmount * 100) / 100,
+      vatAmount: Math.round(vatAmount * 100) / 100,
+      serviceChargeAmount: Math.round(serviceChargeAmount * 100) / 100,
+      totalAmount: amount,
+      vatRate,
+      serviceCharge,
+    };
+
+    console.log('Tax breakdown calculated:', taxBreakdown);
+
     // Check for idempotency
     const { data: existing } = await supabase
       .from('payments')
@@ -242,6 +285,7 @@ serve(async (req) => {
           location_id,
           provider_fee: providerFee,
           net_amount: amount - (amount * providerFee / 100),
+          tax_breakdown: taxBreakdown,
         },
       }])
       .select()

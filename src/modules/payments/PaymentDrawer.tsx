@@ -113,6 +113,36 @@ export function PaymentDrawer({ paymentId, open, onClose }: PaymentDrawerProps) 
                   {payment.currency} {Number(payment.amount).toFixed(2)}
                 </span>
               </div>
+              
+              {/* Tax Breakdown */}
+              {payment.metadata?.tax_breakdown && (
+                <div className="bg-muted/30 rounded-lg p-3 space-y-2 text-sm">
+                  <p className="font-medium text-muted-foreground">Tax Breakdown</p>
+                  <div className="space-y-1">
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">Base Amount</span>
+                      <span>{payment.currency} {Number((payment.metadata.tax_breakdown as any).baseAmount || 0).toFixed(2)}</span>
+                    </div>
+                    {Number((payment.metadata.tax_breakdown as any).vatAmount || 0) > 0 && (
+                      <div className="flex justify-between">
+                        <span className="text-muted-foreground">
+                          VAT ({(payment.metadata.tax_breakdown as any).vatRate}%)
+                        </span>
+                        <span>{payment.currency} {Number((payment.metadata.tax_breakdown as any).vatAmount || 0).toFixed(2)}</span>
+                      </div>
+                    )}
+                    {Number((payment.metadata.tax_breakdown as any).serviceChargeAmount || 0) > 0 && (
+                      <div className="flex justify-between">
+                        <span className="text-muted-foreground">
+                          Service ({(payment.metadata.tax_breakdown as any).serviceCharge}%)
+                        </span>
+                        <span>{payment.currency} {Number((payment.metadata.tax_breakdown as any).serviceChargeAmount || 0).toFixed(2)}</span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+              
               <div className="flex justify-between">
                 <span className="text-muted-foreground">Method</span>
                 <span className="capitalize">{payment.method || 'N/A'}</span>
