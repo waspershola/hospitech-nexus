@@ -17,7 +17,7 @@ interface BookingConfirmationProps {
 }
 
 export function BookingConfirmation({ bookingData, onComplete }: BookingConfirmationProps) {
-  const { tenantId } = useAuth();
+  const { tenantId, user } = useAuth();
   const queryClient = useQueryClient();
   
   // Fetch organization wallet if booking for org
@@ -109,6 +109,7 @@ export function BookingConfirmation({ bookingData, onComplete }: BookingConfirma
           total_amount: bookingData.totalAmount || 0,
           action_id: actionId,
           department: 'front_desk',
+          created_by: user?.id,
         },
       });
 

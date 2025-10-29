@@ -46,7 +46,7 @@ export function WalletTransactionsDrawer({ open, onClose, walletId }: WalletTran
             const guestName = txn.payment?.booking?.guest?.name;
             const createdByName = txn.created_by_name;
             
-            let displayDescription = txn.description;
+            let displayDescription = txn.description || 'Transaction';
             if (roomNumber && guestName) {
               displayDescription = `Booking charge - Room ${roomNumber} - ${guestName}`;
             }

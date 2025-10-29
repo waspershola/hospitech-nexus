@@ -17,7 +17,7 @@ serve(async (req) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
     );
 
-    const { action_id, tenant_id, guest_id, room_id, check_in, check_out, total_amount, organization_id, department } = await req.json();
+    const { action_id, tenant_id, guest_id, room_id, check_in, check_out, total_amount, organization_id, department, created_by } = await req.json();
 
     console.log('Creating booking with action_id:', action_id);
 
@@ -138,6 +138,7 @@ serve(async (req) => {
             charged_to_organization: true,
             department: department || 'front_desk',
             transaction_ref: `ORG-${newBooking.id.substring(0, 8)}`,
+            recorded_by: created_by,
             metadata: {
               booking_id: newBooking.id,
               auto_created: true,
@@ -162,7 +163,7 @@ serve(async (req) => {
               amount: total_amount,
               payment_id: newPayment.id,
               description: `Booking charge - Room ${room_id} - Guest ${guest_id}`,
-              created_by: guest_id,
+              created_by: created_by || guest_id,
               department: department || 'front_desk',
               metadata: {
                 booking_id: newBooking.id,
