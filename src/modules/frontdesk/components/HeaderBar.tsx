@@ -3,6 +3,7 @@ import { Input } from '@/components/ui/input';
 import { useAuth } from '@/contexts/AuthContext';
 import { useEffect, useState } from 'react';
 import { OfflineIndicator } from './OfflineIndicator';
+import { FrontDeskAlerts } from './FrontDeskAlerts';
 
 interface HeaderBarProps {
   searchQuery?: string;
@@ -42,6 +43,7 @@ export function HeaderBar({ searchQuery = '', onSearchChange }: HeaderBarProps) 
 
         <div className="flex items-center gap-6">
           <OfflineIndicator />
+          <FrontDeskAlerts />
           <div className="text-sm">
             <p className="font-medium text-foreground">{tenantName}</p>
           </div>
