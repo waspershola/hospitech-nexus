@@ -18,10 +18,11 @@ import { AddChargeModal } from './AddChargeModal';
 import { ChargeToOrgModal } from './ChargeToOrgModal';
 import { RoomAuditTrail } from './RoomAuditTrail';
 import { QuickPaymentForm } from './QuickPaymentForm';
+import { PaymentHistory } from '@/modules/payments/PaymentHistory';
 import { toast } from '@/hooks/use-toast';
 import { 
   Loader2, User, CreditCard, Calendar, AlertCircle, Clock, Building2, AlertTriangle, 
-  Wallet, Zap, Coffee, BellOff, UserPlus, LogIn, LogOut, Wrench, Sparkles, FileText 
+  Wallet, Zap, Coffee, BellOff, UserPlus, LogIn, LogOut, Wrench, Sparkles, FileText, Receipt
 } from 'lucide-react';
 
 interface RoomActionDrawerProps {
@@ -39,6 +40,7 @@ export function RoomActionDrawer({ roomId, open, onClose }: RoomActionDrawerProp
   const [chargeModalOpen, setChargeModalOpen] = useState(false);
   const [chargeToOrgModalOpen, setChargeToOrgModalOpen] = useState(false);
   const [quickPaymentOpen, setQuickPaymentOpen] = useState(false);
+  const [paymentHistoryOpen, setPaymentHistoryOpen] = useState(false);
 
   const { data: room, isLoading } = useQuery({
     queryKey: ['room-detail', roomId],
@@ -398,15 +400,33 @@ export function RoomActionDrawer({ roomId, open, onClose }: RoomActionDrawerProp
                                 variant="default"
                                 size="sm"
                                 onClick={() => setQuickPaymentOpen(true)}
-                                className="mt-2 w-full"
+                                className="w-full"
                               >
                                 <CreditCard className="w-4 h-4 mr-2" />
-                                Take Payment
+                                Collect Payment
                               </Button>
                             )}
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => setPaymentHistoryOpen(true)}
+                              className="w-full"
+                            >
+                              <Receipt className="w-4 h-4 mr-2" />
+                              View Payment History
+                            </Button>
                           </>
                         )}
                       </div>
+
+                      {paymentHistoryOpen && (
+                        <div className="mt-4">
+                          <PaymentHistory 
+                            bookingId={currentBooking.id}
+                            onClose={() => setPaymentHistoryOpen(false)}
+                          />
+                        </div>
+                      )}
 
                       <Separator />
                     </>
