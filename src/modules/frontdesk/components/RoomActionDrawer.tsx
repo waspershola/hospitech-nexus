@@ -4,18 +4,20 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useRoomActions } from '../hooks/useRoomActions';
 import { useBookingFolio } from '@/hooks/useBookingFolio';
+import { useOrganizationWallet } from '@/hooks/useOrganizationWallet';
 import { AssignRoomModal } from './AssignRoomModal';
 import { ExtendStayModal } from './ExtendStayModal';
 import { AddChargeModal } from './AddChargeModal';
 import { ChargeToOrgModal } from './ChargeToOrgModal';
 import { RoomAuditTrail } from './RoomAuditTrail';
 import { QuickPaymentForm } from './QuickPaymentForm';
-import { Loader2, User, CreditCard, Calendar, AlertCircle, Clock, Building2 } from 'lucide-react';
+import { Loader2, User, CreditCard, Calendar, AlertCircle, Clock, Building2, AlertTriangle, Wallet } from 'lucide-react';
 
 interface RoomActionDrawerProps {
   roomId: string | null;
@@ -68,6 +70,9 @@ export function RoomActionDrawer({ roomId, open, onClose }: RoomActionDrawerProp
   
   // Fetch folio balance for active booking
   const { data: folio } = useBookingFolio(activeBooking?.id || null);
+  
+  // Fetch organization wallet info if organization exists
+  const { data: orgWallet } = useOrganizationWallet(activeBooking?.organization_id);
 
   const currentBooking = room?.bookings?.find((b: any) => 
     b.status === 'checked_in' || b.status === 'reserved'
@@ -149,11 +154,54 @@ export function RoomActionDrawer({ roomId, open, onClose }: RoomActionDrawerProp
                               <Building2 className="w-4 h-4" />
                               Organization
                             </h3>
-                            <div className="text-sm space-y-1">
+                            
+                            {orgWallet?.overLimit && (
+                              <Alert variant="destructive" className="mb-3">
+                                <AlertTriangle className="h-4 w-4" />
+                                <AlertDescription>
+                                  Credit limit exceeded! Balance: ₦{orgWallet.balance.toLocaleString()} / ₦{orgWallet.credit_limit.toLocaleString()}
+                                </AlertDescription>
+                              </Alert>
+                            )}
+                            
+                            {orgWallet?.nearLimit && !orgWallet?.overLimit && (
+                              <Alert className="mb-3 border-yellow-500 text-yellow-700">
+                                <AlertTriangle className="h-4 w-4" />
+                                <AlertDescription>
+                                  Near credit limit: {orgWallet.percentUsed.toFixed(0)}% used
+                                </AlertDescription>
+                              </Alert>
+                            )}
+                            
+                            <div className="text-sm space-y-2">
                               <p className="font-medium">{currentBooking.organization.name}</p>
-                              <p className="text-muted-foreground">
-                                Credit Limit: ₦{currentBooking.organization.credit_limit?.toLocaleString() || '0'}
-                              </p>
+                              
+                              {orgWallet && (
+                                <>
+                                  <div className="flex items-center justify-between py-2 px-3 bg-muted/30 rounded-lg">
+                                    <div className="flex items-center gap-2">
+                                      <Wallet className="w-4 h-4 text-primary" />
+                                      <span className="text-xs font-medium">Wallet Balance</span>
+                                    </div>
+                                    <span className={`font-semibold ${orgWallet.overLimit ? 'text-destructive' : orgWallet.nearLimit ? 'text-yellow-600' : 'text-foreground'}`}>
+                                      ₦{orgWallet.balance.toLocaleString()}
+                                    </span>
+                                  </div>
+                                  
+                                  <div className="flex items-center justify-between text-xs">
+                                    <span className="text-muted-foreground">Credit Limit</span>
+                                    <span className="font-medium">₦{orgWallet.credit_limit.toLocaleString()}</span>
+                                  </div>
+                                  
+                                  <div className="w-full bg-muted rounded-full h-2 overflow-hidden">
+                                    <div 
+                                      className={`h-full transition-all ${orgWallet.overLimit ? 'bg-destructive' : orgWallet.nearLimit ? 'bg-yellow-500' : 'bg-primary'}`}
+                                      style={{ width: `${Math.min(orgWallet.percentUsed, 100)}%` }}
+                                    />
+                                  </div>
+                                </>
+                              )}
+                              
                               {currentBooking.organization.allow_negative_balance && (
                                 <Badge variant="outline" className="text-xs">
                                   Negative Balance Allowed

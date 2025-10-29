@@ -11,6 +11,7 @@ import { BookingFlow } from '@/modules/bookings/BookingFlow';
 import { MobileBottomNav } from '@/modules/frontdesk/components/MobileBottomNav';
 import { useOverstayRooms } from '@/hooks/useOverstayRooms';
 import { useRoomActions } from '@/modules/frontdesk/hooks/useRoomActions';
+import { useRoomRealtime, useBookingRealtime, usePaymentRealtime } from '@/hooks/useRoomRealtime';
 
 export default function FrontDesk() {
   const [selectedRoomId, setSelectedRoomId] = useState<string | null>(null);
@@ -22,6 +23,11 @@ export default function FrontDesk() {
   
   const { data: overstayRooms = [] } = useOverstayRooms();
   const { checkOut } = useRoomActions();
+  
+  // Enable real-time updates
+  useRoomRealtime();
+  useBookingRealtime();
+  usePaymentRealtime();
 
   // Show overstay alert on page load if there are overstays
   useEffect(() => {
@@ -30,6 +36,25 @@ export default function FrontDesk() {
       setHasShownOverstayAlert(true);
     }
   }, [overstayRooms.length, hasShownOverstayAlert]);
+  
+  // Keyboard shortcuts
+  useEffect(() => {
+    const handleKeyPress = (e: KeyboardEvent) => {
+      // Ctrl/Cmd + N for new booking
+      if ((e.ctrlKey || e.metaKey) && e.key === 'n') {
+        e.preventDefault();
+        setIsBookingFlowOpen(true);
+      }
+      // Escape to close drawers/modals
+      if (e.key === 'Escape') {
+        setSelectedRoomId(null);
+        setIsBookingFlowOpen(false);
+      }
+    };
+    
+    window.addEventListener('keydown', handleKeyPress);
+    return () => window.removeEventListener('keydown', handleKeyPress);
+  }, []);
 
   return (
     <div className="h-full flex flex-col bg-background">

@@ -1,8 +1,9 @@
 import { Card, CardHeader } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Sparkles, CreditCard, IdCard, Wrench, Building2 } from 'lucide-react';
+import { Sparkles, CreditCard, IdCard, Wrench, Building2, AlertTriangle } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { useOrganizationWallet } from '@/hooks/useOrganizationWallet';
 
 interface RoomTileProps {
   room: any;
@@ -47,6 +48,9 @@ export function RoomTile({ room, onClick, isSelectionMode, isSelected, onSelecti
   // Calculate folio balance (total amount - payments made)
   // This is a simplified calculation - in real scenarios would need to fetch payments
   const totalAmount = activeBooking?.total_amount ?? 0;
+  
+  // Fetch organization wallet info if organization exists
+  const { data: orgWallet } = useOrganizationWallet(organization?.id);
 
   const handleClick = (e: React.MouseEvent) => {
     if (isSelectionMode) {
@@ -113,9 +117,24 @@ export function RoomTile({ room, onClick, isSelectionMode, isSelected, onSelecti
         {(room.status === 'occupied' || room.status === 'overstay') && (
           <div className="mt-3 pt-3 border-t border-border">
             {organization && (
-              <div className="flex items-center gap-1 mb-2">
-                <Building2 className="w-3 h-3 text-primary" />
-                <span className="text-xs font-medium text-primary">{organization.name}</span>
+              <div className="mb-2">
+                <div className="flex items-center justify-between gap-1 mb-1">
+                  <div className="flex items-center gap-1">
+                    <Building2 className="w-3 h-3 text-primary" />
+                    <span className="text-xs font-medium text-primary">{organization.name}</span>
+                  </div>
+                  {orgWallet?.nearLimit && (
+                    <AlertTriangle className="w-3 h-3 text-yellow-500" />
+                  )}
+                  {orgWallet?.overLimit && (
+                    <AlertTriangle className="w-3 h-3 text-destructive" />
+                  )}
+                </div>
+                {orgWallet && (
+                  <p className="text-[10px] text-muted-foreground">
+                    Wallet: ₦{orgWallet.balance.toLocaleString()} / ₦{orgWallet.credit_limit.toLocaleString()}
+                  </p>
+                )}
               </div>
             )}
             <p className="text-sm font-medium text-foreground">
