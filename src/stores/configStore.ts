@@ -8,6 +8,7 @@ interface ConfigStore {
   financials: any;
   emailSettings: any;
   hotelMeta: any;
+  documentTemplates: any[];
   unsavedChanges: Set<string>;
   lastSyncTime: Date | null;
   isLoading: boolean;
@@ -21,11 +22,13 @@ interface ConfigStore {
   updateFinancials: (data: any) => void;
   updateEmailSettings: (data: any) => void;
   updateHotelMeta: (data: any) => void;
+  updateDocumentTemplate: (templateType: string, data: any) => void;
   saveConfig: (key: string) => Promise<void>;
   saveBranding: () => Promise<void>;
   saveFinancials: () => Promise<void>;
   saveEmailSettings: () => Promise<void>;
   saveHotelMeta: () => Promise<void>;
+  saveDocumentTemplate: (templateType: string) => Promise<void>;
   saveAllChanges: () => Promise<void>;
   resetChanges: () => void;
   markSaved: (key: string) => void;
@@ -38,6 +41,7 @@ export const useConfigStore = create<ConfigStore>((set, get) => ({
   financials: {},
   emailSettings: {},
   hotelMeta: {},
+  documentTemplates: [],
   unsavedChanges: new Set(),
   lastSyncTime: null,
   isLoading: false,
@@ -86,12 +90,19 @@ export const useConfigStore = create<ConfigStore>((set, get) => ({
         .eq('tenant_id', tenantId)
         .maybeSingle();
 
+      // Load document templates
+      const { data: documentTemplates } = await supabase
+        .from('document_templates')
+        .select('*')
+        .eq('tenant_id', tenantId);
+
       set({
         configurations: configurationsMap,
         branding: branding || {},
         financials: financials || {},
         emailSettings: emailSettings || {},
         hotelMeta: hotelMeta || {},
+        documentTemplates: documentTemplates || [],
         lastSyncTime: new Date(),
         isLoading: false,
       });
@@ -136,6 +147,24 @@ export const useConfigStore = create<ConfigStore>((set, get) => ({
     }));
   },
 
+  updateDocumentTemplate: (templateType, data) => {
+    set(state => {
+      const templates = [...state.documentTemplates];
+      const existingIndex = templates.findIndex(t => t.template_type === templateType);
+      
+      if (existingIndex >= 0) {
+        templates[existingIndex] = { ...templates[existingIndex], ...data };
+      } else {
+        templates.push({ template_type: templateType, ...data });
+      }
+      
+      return {
+        documentTemplates: templates,
+        unsavedChanges: new Set(state.unsavedChanges).add(`template_${templateType}`),
+      };
+    });
+  },
+
   loadHotelMeta: async () => {
     const { tenantId } = get();
     if (!tenantId) return;
@@ -155,13 +184,14 @@ export const useConfigStore = create<ConfigStore>((set, get) => ({
 
     const { data: { user } } = await supabase.auth.getUser();
     
-    await supabase.from('hotel_configurations').upsert({
+    const { error } = await supabase.from('hotel_configurations').upsert({
       tenant_id: tenantId,
       key,
       value: configurations[key],
       updated_by: user?.id,
     });
 
+    if (error) throw error;
     get().markSaved(key);
   },
 
@@ -169,11 +199,12 @@ export const useConfigStore = create<ConfigStore>((set, get) => ({
     const { tenantId, branding } = get();
     if (!tenantId) return;
 
-    await supabase.from('hotel_branding').upsert({
+    const { error } = await supabase.from('hotel_branding').upsert({
       tenant_id: tenantId,
       ...branding,
     });
 
+    if (error) throw error;
     get().markSaved('branding');
   },
 
@@ -181,11 +212,12 @@ export const useConfigStore = create<ConfigStore>((set, get) => ({
     const { tenantId, financials } = get();
     if (!tenantId) return;
 
-    await supabase.from('hotel_financials').upsert({
+    const { error } = await supabase.from('hotel_financials').upsert({
       tenant_id: tenantId,
       ...financials,
     });
 
+    if (error) throw error;
     get().markSaved('financials');
   },
 
@@ -193,11 +225,12 @@ export const useConfigStore = create<ConfigStore>((set, get) => ({
     const { tenantId, emailSettings } = get();
     if (!tenantId) return;
 
-    await supabase.from('email_settings').upsert({
+    const { error } = await supabase.from('email_settings').upsert({
       tenant_id: tenantId,
       ...emailSettings,
     });
 
+    if (error) throw error;
     get().markSaved('emailSettings');
   },
 
@@ -205,12 +238,30 @@ export const useConfigStore = create<ConfigStore>((set, get) => ({
     const { tenantId, hotelMeta } = get();
     if (!tenantId) return;
 
-    await supabase.from('hotel_meta').upsert({
+    const { error } = await supabase.from('hotel_meta').upsert({
       tenant_id: tenantId,
       ...hotelMeta,
     });
 
+    if (error) throw error;
     get().markSaved('hotelMeta');
+  },
+
+  saveDocumentTemplate: async (templateType: string) => {
+    const { tenantId, documentTemplates } = get();
+    if (!tenantId) return;
+
+    const template = documentTemplates.find(t => t.template_type === templateType);
+    if (!template) return;
+
+    const { error } = await supabase.from('document_templates').upsert({
+      tenant_id: tenantId,
+      template_type: templateType,
+      ...template,
+    });
+
+    if (error) throw error;
+    get().markSaved(`template_${templateType}`);
   },
 
   saveAllChanges: async () => {
@@ -222,9 +273,17 @@ export const useConfigStore = create<ConfigStore>((set, get) => ({
     if (unsavedChanges.has('emailSettings')) savePromises.push(get().saveEmailSettings());
     if (unsavedChanges.has('hotelMeta')) savePromises.push(get().saveHotelMeta());
 
+    // Save document templates
+    unsavedChanges.forEach(key => {
+      if (key.startsWith('template_')) {
+        const templateType = key.replace('template_', '');
+        savePromises.push(get().saveDocumentTemplate(templateType));
+      }
+    });
+
     // Save all other config keys
     unsavedChanges.forEach(key => {
-      if (!['branding', 'financials', 'emailSettings', 'hotelMeta'].includes(key)) {
+      if (!['branding', 'financials', 'emailSettings', 'hotelMeta'].includes(key) && !key.startsWith('template_')) {
         savePromises.push(get().saveConfig(key));
       }
     });

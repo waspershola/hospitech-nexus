@@ -1,66 +1,31 @@
-import { useEffect, useState } from 'react';
-import { useAuth } from '@/contexts/AuthContext';
-import { supabase } from '@/integrations/supabase/client';
+import { useConfigStore } from '@/stores/configStore';
 import { ConfigCard } from '../shared/ConfigCard';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { FileText } from 'lucide-react';
-import { toast } from 'sonner';
+import { useAutoSave } from '@/hooks/useAutoSave';
 
 export function DocumentsTab() {
-  const { tenantId } = useAuth();
-  const [templates, setTemplates] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    loadTemplates();
-  }, [tenantId]);
-
-  const loadTemplates = async () => {
-    if (!tenantId) return;
-    
-    setLoading(true);
-    const { data, error } = await supabase
-      .from('document_templates')
-      .select('*')
-      .eq('tenant_id', tenantId);
-
-    if (error) {
-      console.error('Failed to load templates:', error);
-    } else {
-      setTemplates(data || []);
-    }
-    setLoading(false);
-  };
-
-  const updateTemplate = async (templateType: string, updates: any) => {
-    if (!tenantId) return;
-
-    const { error } = await supabase
-      .from('document_templates')
-      .upsert({
-        tenant_id: tenantId,
-        template_type: templateType,
-        ...updates,
-      });
-
-    if (error) {
-      toast.error('Failed to update template');
-    } else {
-      toast.success('Template updated');
-      loadTemplates();
-    }
-  };
+  const { documentTemplates, updateDocumentTemplate, saveDocumentTemplate } = useConfigStore();
 
   const getTemplate = (type: string) => {
-    return templates.find(t => t.template_type === type) || {};
+    return documentTemplates.find(t => t.template_type === type) || {};
   };
 
-  if (loading) {
-    return <div className="text-center py-8">Loading templates...</div>;
-  }
+  const handleTemplateChange = (templateType: string, field: string, value: any) => {
+    const template = getTemplate(templateType);
+    updateDocumentTemplate(templateType, { ...template, [field]: value });
+  };
+
+  // Auto-save for invoice template
+  const invoiceTemplate = getTemplate('invoice');
+  useAutoSave(() => saveDocumentTemplate('invoice'), invoiceTemplate, 1500);
+
+  // Auto-save for receipt template
+  const receiptTemplate = getTemplate('receipt');
+  useAutoSave(() => saveDocumentTemplate('receipt'), receiptTemplate, 1500);
 
   return (
     <div className="space-y-6">
@@ -74,8 +39,8 @@ export function DocumentsTab() {
             <div className="space-y-2">
               <Label>Prefix</Label>
               <Input
-                value={getTemplate('invoice').prefix || 'INV-'}
-                onChange={(e) => updateTemplate('invoice', { prefix: e.target.value })}
+                value={invoiceTemplate.prefix || 'INV-'}
+                onChange={(e) => handleTemplateChange('invoice', 'prefix', e.target.value)}
                 placeholder="INV-"
               />
             </div>
@@ -85,8 +50,8 @@ export function DocumentsTab() {
               <Input
                 type="number"
                 min="1"
-                value={getTemplate('invoice').next_number || 1}
-                onChange={(e) => updateTemplate('invoice', { next_number: parseInt(e.target.value) })}
+                value={invoiceTemplate.next_number || 1}
+                onChange={(e) => handleTemplateChange('invoice', 'next_number', parseInt(e.target.value))}
               />
             </div>
 
@@ -96,8 +61,8 @@ export function DocumentsTab() {
                 type="number"
                 min="4"
                 max="10"
-                value={getTemplate('invoice').number_length || 6}
-                onChange={(e) => updateTemplate('invoice', { number_length: parseInt(e.target.value) })}
+                value={invoiceTemplate.number_length || 6}
+                onChange={(e) => handleTemplateChange('invoice', 'number_length', parseInt(e.target.value))}
               />
             </div>
           </div>
@@ -106,8 +71,8 @@ export function DocumentsTab() {
             <div className="flex items-center space-x-2">
               <Switch
                 id="invoice_qr"
-                checked={getTemplate('invoice').include_qr !== false}
-                onCheckedChange={(checked) => updateTemplate('invoice', { include_qr: checked })}
+                checked={invoiceTemplate.include_qr !== false}
+                onCheckedChange={(checked) => handleTemplateChange('invoice', 'include_qr', checked)}
               />
               <Label htmlFor="invoice_qr" className="cursor-pointer">Include QR Code</Label>
             </div>
@@ -115,8 +80,8 @@ export function DocumentsTab() {
             <div className="flex items-center space-x-2">
               <Switch
                 id="invoice_signature"
-                checked={getTemplate('invoice').include_signature || false}
-                onCheckedChange={(checked) => updateTemplate('invoice', { include_signature: checked })}
+                checked={invoiceTemplate.include_signature || false}
+                onCheckedChange={(checked) => handleTemplateChange('invoice', 'include_signature', checked)}
               />
               <Label htmlFor="invoice_signature" className="cursor-pointer">Include Signature Line</Label>
             </div>
@@ -134,8 +99,8 @@ export function DocumentsTab() {
             <div className="space-y-2">
               <Label>Prefix</Label>
               <Input
-                value={getTemplate('receipt').prefix || 'RCP-'}
-                onChange={(e) => updateTemplate('receipt', { prefix: e.target.value })}
+                value={receiptTemplate.prefix || 'RCP-'}
+                onChange={(e) => handleTemplateChange('receipt', 'prefix', e.target.value)}
                 placeholder="RCP-"
               />
             </div>
@@ -143,8 +108,8 @@ export function DocumentsTab() {
             <div className="space-y-2">
               <Label>Format</Label>
               <Select
-                value={getTemplate('receipt').format || 'A4'}
-                onValueChange={(value) => updateTemplate('receipt', { format: value })}
+                value={receiptTemplate.format || 'A4'}
+                onValueChange={(value) => handleTemplateChange('receipt', 'format', value)}
               >
                 <SelectTrigger>
                   <SelectValue />
@@ -160,8 +125,8 @@ export function DocumentsTab() {
             <div className="flex items-center space-x-2 self-end">
               <Switch
                 id="receipt_qr"
-                checked={getTemplate('receipt').include_qr !== false}
-                onCheckedChange={(checked) => updateTemplate('receipt', { include_qr: checked })}
+                checked={receiptTemplate.include_qr !== false}
+                onCheckedChange={(checked) => handleTemplateChange('receipt', 'include_qr', checked)}
               />
               <Label htmlFor="receipt_qr" className="cursor-pointer">QR Code</Label>
             </div>
