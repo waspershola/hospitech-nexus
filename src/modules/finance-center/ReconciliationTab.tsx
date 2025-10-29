@@ -10,13 +10,16 @@ import {
   Search,
   Link2,
   Unlink,
-  Upload
+  Upload,
+  RefreshCw,
+  Zap
 } from 'lucide-react';
 import { useReconciliation } from '@/hooks/useReconciliation';
 import { usePayments } from '@/hooks/usePayments';
 import { useFinanceProviders } from '@/hooks/useFinanceProviders';
+import { useAutoSyncReconciliation } from '@/hooks/useAutoSyncReconciliation';
 import { CSVImportDialog } from './CSVImportDialog';
-import { format } from 'date-fns';
+import { format, subDays } from 'date-fns';
 import { toast } from 'sonner';
 import {
   Select,
@@ -30,6 +33,7 @@ export function ReconciliationTab() {
   const { records, isLoading, matchTransaction, unmatchTransaction } = useReconciliation();
   const { payments } = usePayments();
   const { providers } = useFinanceProviders();
+  const { autoSync, isSyncing } = useAutoSyncReconciliation();
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [selectedRecord, setSelectedRecord] = useState<string | null>(null);
@@ -72,28 +76,83 @@ export function ReconciliationTab() {
     setSelectedRecord(null);
   };
 
+  const handleAutoSync = (providerId: string) => {
+    const startDate = subDays(new Date(), 30).toISOString();
+    const endDate = new Date().toISOString();
+    
+    autoSync({
+      provider_id: providerId,
+      start_date: startDate,
+      end_date: endDate,
+    });
+  };
+
+  const activeProviders = providers.filter(p => p.status === 'active');
+
   if (isLoading) {
     return <div className="text-center py-8 text-muted-foreground">Loading reconciliation records...</div>;
   }
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between flex-wrap gap-4">
         <div>
-          <h2 className="text-2xl font-semibold">Reconciliation</h2>
+          <h2 className="text-2xl font-display font-semibold">Reconciliation</h2>
           <p className="text-muted-foreground">Match external transactions with internal payments</p>
         </div>
-        <Button onClick={() => {
-          if (providers.length > 0) {
-            setSelectedProviderId(providers[0].id);
-            setCsvImportOpen(true);
-          } else {
-            toast.error('Please add a provider first');
-          }
-        }}>
-          <Upload className="w-4 h-4 mr-2" />
-          Import CSV
-        </Button>
+        <div className="flex gap-2">
+          {activeProviders.length > 0 && (
+            <Select
+              value={selectedProviderId}
+              onValueChange={(value) => {
+                setSelectedProviderId(value);
+                handleAutoSync(value);
+              }}
+            >
+              <SelectTrigger className="w-48">
+                <SelectValue placeholder="Auto-sync provider" />
+              </SelectTrigger>
+              <SelectContent>
+                {activeProviders.map((provider) => (
+                  <SelectItem key={provider.id} value={provider.id}>
+                    <div className="flex items-center gap-2">
+                      <Zap className="w-4 h-4" />
+                      {provider.name}
+                    </div>
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          )}
+          <Button
+            variant="outline"
+            onClick={() => {
+              if (selectedProviderId) {
+                handleAutoSync(selectedProviderId);
+              } else if (activeProviders.length > 0) {
+                setSelectedProviderId(activeProviders[0].id);
+                handleAutoSync(activeProviders[0].id);
+              } else {
+                toast.error('Please add an active provider first');
+              }
+            }}
+            disabled={isSyncing || activeProviders.length === 0}
+          >
+            <RefreshCw className={`w-4 h-4 mr-2 ${isSyncing ? 'animate-spin' : ''}`} />
+            {isSyncing ? 'Syncing...' : 'Auto-Sync'}
+          </Button>
+          <Button onClick={() => {
+            if (providers.length > 0) {
+              setSelectedProviderId(providers[0].id);
+              setCsvImportOpen(true);
+            } else {
+              toast.error('Please add a provider first');
+            }
+          }}>
+            <Upload className="w-4 h-4 mr-2" />
+            Import CSV
+          </Button>
+        </div>
       </div>
 
       <div className="flex gap-4">
@@ -120,38 +179,48 @@ export function ReconciliationTab() {
         </Select>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-        <Card className="p-4">
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+        <Card className="p-4 rounded-2xl shadow-card">
           <div className="flex items-center gap-2 text-sm text-muted-foreground mb-1">
-            <CheckCircle2 className="w-4 h-4 text-green-500" />
+            <CheckCircle2 className="w-4 h-4 text-semantic-success" />
             Matched
           </div>
           <div className="text-2xl font-bold">
             {records.filter(r => r.status === 'matched').length}
           </div>
         </Card>
-        <Card className="p-4">
+        <Card className="p-4 rounded-2xl shadow-card">
           <div className="flex items-center gap-2 text-sm text-muted-foreground mb-1">
-            <XCircle className="w-4 h-4 text-red-500" />
+            <XCircle className="w-4 h-4 text-semantic-error" />
             Unmatched
           </div>
           <div className="text-2xl font-bold">
             {records.filter(r => r.status === 'unmatched').length}
           </div>
         </Card>
-        <Card className="p-4">
+        <Card className="p-4 rounded-2xl shadow-card">
           <div className="flex items-center gap-2 text-sm text-muted-foreground mb-1">
-            <AlertCircle className="w-4 h-4 text-yellow-500" />
+            <AlertCircle className="w-4 h-4 text-semantic-warning" />
             Requires Attention
           </div>
           <div className="text-2xl font-bold">
             {records.filter(r => r.status === 'partial' || r.status === 'overpaid').length}
           </div>
         </Card>
+        <Card className="p-4 rounded-2xl shadow-card">
+          <div className="flex items-center gap-2 text-sm text-muted-foreground mb-1">
+            <Zap className="w-4 h-4 text-primary" />
+            Auto-Reconcile Ready
+          </div>
+          <div className="text-2xl font-bold">
+            {activeProviders.length}
+          </div>
+        </Card>
       </div>
 
       <div className="space-y-4">
-        {filteredRecords.map((record) => (
+        {filteredRecords.length > 0 ? (
+          filteredRecords.map((record) => (
           <Card key={record.id} className="p-6">
             <div className="flex items-start justify-between">
               <div className="flex-1">
@@ -226,17 +295,22 @@ export function ReconciliationTab() {
               </div>
             </div>
           </Card>
-        ))}
-
-        {filteredRecords.length === 0 && (
-          <Card className="p-12 text-center">
+          ))
+        ) : (
+          <Card className="p-12 text-center rounded-2xl">
             <Search className="w-12 h-12 mx-auto mb-4 text-muted-foreground" />
             <h3 className="text-lg font-semibold mb-2">No Records Found</h3>
-            <p className="text-muted-foreground">
+            <p className="text-muted-foreground mb-4">
               {searchTerm || statusFilter !== 'all'
                 ? 'Try adjusting your filters'
-                : 'Reconciliation records will appear here'}
+                : 'Click Auto-Sync or Import CSV to start reconciliation'}
             </p>
+            {activeProviders.length > 0 && (
+              <Button onClick={() => handleAutoSync(activeProviders[0].id)} disabled={isSyncing}>
+                <Zap className="w-4 h-4 mr-2" />
+                {isSyncing ? 'Syncing...' : 'Start Auto-Sync'}
+              </Button>
+            )}
           </Card>
         )}
       </div>
