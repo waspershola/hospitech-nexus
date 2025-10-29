@@ -20,6 +20,7 @@ import { RoomAuditTrail } from './RoomAuditTrail';
 import { QuickPaymentForm } from './QuickPaymentForm';
 import { PaymentHistory } from '@/modules/payments/PaymentHistory';
 import { BookingAmendmentDrawer } from '@/modules/bookings/components/BookingAmendmentDrawer';
+import { CancelBookingModal } from '@/modules/bookings/components/CancelBookingModal';
 import { toast } from '@/hooks/use-toast';
 import { 
   Loader2, User, CreditCard, Calendar, AlertCircle, Clock, Building2, AlertTriangle, 
@@ -43,6 +44,7 @@ export function RoomActionDrawer({ roomId, open, onClose }: RoomActionDrawerProp
   const [quickPaymentOpen, setQuickPaymentOpen] = useState(false);
   const [paymentHistoryOpen, setPaymentHistoryOpen] = useState(false);
   const [amendmentDrawerOpen, setAmendmentDrawerOpen] = useState(false);
+  const [cancelModalOpen, setCancelModalOpen] = useState(false);
 
   const { data: room, isLoading } = useQuery({
     queryKey: ['room-detail', roomId],
@@ -221,8 +223,8 @@ export function RoomActionDrawer({ roomId, open, onClose }: RoomActionDrawerProp
       case 'reserved':
         return [
           { label: 'Check-In', action: handleCheckIn, variant: 'default' as const, icon: LogIn, tooltip: 'Complete guest check-in' },
-          { label: 'Cancel Reservation', action: () => toast({ title: 'Cancel', description: 'Cancellation feature coming soon', variant: 'destructive' }), variant: 'destructive' as const, icon: AlertTriangle, tooltip: 'Cancel this reservation' },
-          { label: 'Modify Reservation', action: () => toast({ title: 'Modify', description: 'Modification feature coming soon' }), variant: 'outline' as const, icon: FileText, tooltip: 'Modify reservation details' },
+          { label: 'Cancel Reservation', action: () => setCancelModalOpen(true), variant: 'destructive' as const, icon: AlertTriangle, tooltip: 'Cancel this reservation' },
+          { label: 'Modify Reservation', action: () => setAmendmentDrawerOpen(true), variant: 'outline' as const, icon: FileText, tooltip: 'Modify reservation details' },
           { label: 'Assign Different Room', action: () => setAssignModalOpen(true), variant: 'outline' as const, icon: UserPlus, tooltip: 'Move to different room' },
         ];
       case 'overstay':
@@ -539,6 +541,11 @@ export function RoomActionDrawer({ roomId, open, onClose }: RoomActionDrawerProp
               <BookingAmendmentDrawer
                 open={amendmentDrawerOpen}
                 onClose={() => setAmendmentDrawerOpen(false)}
+                bookingId={currentBooking.id}
+              />
+              <CancelBookingModal
+                open={cancelModalOpen}
+                onClose={() => setCancelModalOpen(false)}
                 bookingId={currentBooking.id}
               />
             </>
