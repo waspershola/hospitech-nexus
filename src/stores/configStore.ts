@@ -192,7 +192,13 @@ export const useConfigStore = create<ConfigStore>((set, get) => ({
     });
 
     if (error) throw error;
-    get().markSaved(key);
+    
+    // Mark saved immediately in the same function
+    set(state => {
+      const newUnsaved = new Set(state.unsavedChanges);
+      newUnsaved.delete(key);
+      return { unsavedChanges: newUnsaved, lastSyncTime: new Date() };
+    });
   },
 
   saveBranding: async () => {
@@ -205,7 +211,13 @@ export const useConfigStore = create<ConfigStore>((set, get) => ({
     });
 
     if (error) throw error;
-    get().markSaved('branding');
+    
+    // Mark saved immediately in the same function
+    set(state => {
+      const newUnsaved = new Set(state.unsavedChanges);
+      newUnsaved.delete('branding');
+      return { unsavedChanges: newUnsaved, lastSyncTime: new Date() };
+    });
   },
 
   saveFinancials: async () => {
@@ -218,7 +230,13 @@ export const useConfigStore = create<ConfigStore>((set, get) => ({
     });
 
     if (error) throw error;
-    get().markSaved('financials');
+    
+    // Mark saved immediately in the same function
+    set(state => {
+      const newUnsaved = new Set(state.unsavedChanges);
+      newUnsaved.delete('financials');
+      return { unsavedChanges: newUnsaved, lastSyncTime: new Date() };
+    });
   },
 
   saveEmailSettings: async () => {
@@ -231,7 +249,13 @@ export const useConfigStore = create<ConfigStore>((set, get) => ({
     });
 
     if (error) throw error;
-    get().markSaved('email_settings');
+    
+    // Mark saved immediately in the same function
+    set(state => {
+      const newUnsaved = new Set(state.unsavedChanges);
+      newUnsaved.delete('email_settings');
+      return { unsavedChanges: newUnsaved, lastSyncTime: new Date() };
+    });
   },
 
   saveHotelMeta: async () => {
@@ -244,7 +268,13 @@ export const useConfigStore = create<ConfigStore>((set, get) => ({
     });
 
     if (error) throw error;
-    get().markSaved('hotel_meta');
+    
+    // Mark saved immediately in the same function
+    set(state => {
+      const newUnsaved = new Set(state.unsavedChanges);
+      newUnsaved.delete('hotel_meta');
+      return { unsavedChanges: newUnsaved, lastSyncTime: new Date() };
+    });
   },
 
   saveDocumentTemplate: async (templateType: string) => {
@@ -261,7 +291,13 @@ export const useConfigStore = create<ConfigStore>((set, get) => ({
     });
 
     if (error) throw error;
-    get().markSaved(`template_${templateType}`);
+    
+    // Mark saved immediately in the same function
+    set(state => {
+      const newUnsaved = new Set(state.unsavedChanges);
+      newUnsaved.delete(`template_${templateType}`);
+      return { unsavedChanges: newUnsaved, lastSyncTime: new Date() };
+    });
   },
 
   saveAllChanges: async () => {
