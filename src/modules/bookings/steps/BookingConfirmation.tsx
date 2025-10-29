@@ -1,4 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useFinancials } from '@/hooks/useFinancials';
@@ -8,9 +9,10 @@ import { Card } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Loader2, Check, Building2, AlertCircle, Users } from 'lucide-react';
+import { Loader2, Check, Building2, AlertCircle, Users, CheckCircle } from 'lucide-react';
 import { toast } from 'sonner';
 import { useOrganizationWallet } from '@/hooks/useOrganizationWallet';
+import { PaymentStep } from '../components/PaymentStep';
 import type { BookingData } from '../BookingFlow';
 
 interface BookingConfirmationProps {
@@ -24,6 +26,8 @@ export function BookingConfirmation({ bookingData, onComplete }: BookingConfirma
   const queryClient = useQueryClient();
   const { data: financials } = useFinancials();
   const isGroupBooking = bookingData.isGroupBooking && (bookingData.selectedRoomIds?.length || 0) > 1;
+  const [showPayment, setShowPayment] = useState(false);
+  const [createdBookings, setCreatedBookings] = useState<Array<{ id: string; guestId: string; amount: number }>>([]);
   
   // Fetch organization wallet if booking for org
   const { data: orgWallet } = useOrganizationWallet(bookingData.organizationId);
@@ -187,7 +191,7 @@ export function BookingConfirmation({ bookingData, onComplete }: BookingConfirma
 
       return createResult.booking;
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['bookings'] });
       queryClient.invalidateQueries({ queryKey: ['rooms-grid'] });
       queryClient.invalidateQueries({ queryKey: ['frontdesk-kpis'] });
@@ -195,13 +199,38 @@ export function BookingConfirmation({ bookingData, onComplete }: BookingConfirma
       queryClient.invalidateQueries({ queryKey: ['wallet-transactions'] });
       queryClient.invalidateQueries({ queryKey: ['payments'] });
       
-      if (isGroupBooking) {
-        toast.success(`Group booking created successfully! ${bookingData.selectedRoomIds?.length} rooms reserved.`);
+      // For organization bookings, complete immediately (auto-charged to wallet)
+      if (bookingData.organizationId) {
+        if (isGroupBooking) {
+          toast.success(`Group booking created and charged to organization! ${bookingData.selectedRoomIds?.length} rooms reserved.`);
+        } else {
+          toast.success('Booking created and charged to organization!');
+        }
+        onComplete();
+        return;
+      }
+
+      // For non-organization bookings, show payment step
+      if (Array.isArray(data)) {
+        // Group booking
+        const bookingsForPayment = data.map((b: any) => ({
+          id: b.id,
+          guestId: b.guest_id,
+          amount: b.total_amount,
+        }));
+        setCreatedBookings(bookingsForPayment);
+        toast.success(`Group booking created! ${data.length} rooms reserved. Proceed to payment.`);
       } else {
-        toast.success('Booking created successfully!');
+        // Single booking
+        setCreatedBookings([{
+          id: data.id,
+          guestId: data.guest_id,
+          amount: data.total_amount,
+        }]);
+        toast.success('Booking created successfully! Proceed to payment.');
       }
       
-      onComplete();
+      setShowPayment(true);
     },
     onError: (error: Error) => {
       toast.error(error.message);
@@ -217,6 +246,49 @@ export function BookingConfirmation({ bookingData, onComplete }: BookingConfirma
   const taxBreakdown = financials 
     ? calculateBookingTotal(selectedRate, nights, financials)
     : { baseAmount: selectedRate * nights, vatAmount: 0, serviceChargeAmount: 0, totalAmount: selectedRate * nights };
+
+  // Handle payment completion
+  const handlePaymentComplete = () => {
+    queryClient.invalidateQueries({ queryKey: ['payments'] });
+    queryClient.invalidateQueries({ queryKey: ['bookings'] });
+    toast.success('Payment recorded successfully!');
+    setTimeout(() => {
+      onComplete();
+    }, 1500);
+  };
+
+  const handleSkipPayment = () => {
+    toast.info('Payment skipped. Booking recorded as accounts receivable.');
+    setTimeout(() => {
+      onComplete();
+    }, 1500);
+  };
+
+  // Show payment step after booking creation (for non-org bookings)
+  if (showPayment && createdBookings.length > 0) {
+    const totalPaymentAmount = createdBookings.reduce((sum, b) => sum + b.amount, 0);
+    return (
+      <div className="space-y-6">
+        <Alert className="bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800">
+          <CheckCircle className="h-4 w-4 text-green-600 dark:text-green-400" />
+          <AlertDescription className="text-green-800 dark:text-green-300">
+            {isGroupBooking 
+              ? `${createdBookings.length} bookings created successfully!` 
+              : 'Booking created successfully!'
+            } Now collect payment from the guest.
+          </AlertDescription>
+        </Alert>
+
+        <PaymentStep
+          bookingId={createdBookings[0].id}
+          guestId={createdBookings[0].guestId}
+          totalAmount={totalPaymentAmount}
+          onPaymentComplete={handlePaymentComplete}
+          onSkip={handleSkipPayment}
+        />
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
