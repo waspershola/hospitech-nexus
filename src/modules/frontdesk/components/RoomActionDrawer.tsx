@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -19,7 +19,10 @@ import { ChargeToOrgModal } from './ChargeToOrgModal';
 import { RoomAuditTrail } from './RoomAuditTrail';
 import { QuickPaymentForm } from './QuickPaymentForm';
 import { toast } from '@/hooks/use-toast';
-import { Loader2, User, CreditCard, Calendar, AlertCircle, Clock, Building2, AlertTriangle, Wallet, Zap, Coffee, BellOff } from 'lucide-react';
+import { 
+  Loader2, User, CreditCard, Calendar, AlertCircle, Clock, Building2, AlertTriangle, 
+  Wallet, Zap, Coffee, BellOff, UserPlus, LogIn, LogOut, Wrench, Sparkles, FileText 
+} from 'lucide-react';
 
 interface RoomActionDrawerProps {
   roomId: string | null;
@@ -66,7 +69,33 @@ export function RoomActionDrawer({ roomId, open, onClose }: RoomActionDrawerProp
       return data;
     },
     enabled: !!roomId && !!tenantId,
+    refetchInterval: 5000, // Refetch every 5 seconds for realtime updates
   });
+
+  // Realtime subscription for room changes
+  useEffect(() => {
+    if (!roomId || !tenantId) return;
+
+    const channel = supabase
+      .channel('room-changes')
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'rooms',
+          filter: `id=eq.${roomId}`,
+        },
+        () => {
+          queryClient.invalidateQueries({ queryKey: ['room-detail', roomId] });
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [roomId, tenantId, queryClient]);
 
   // Get current active booking
   const activeBooking = room?.bookings?.find((b: any) => b.status !== 'cancelled' && b.status !== 'completed');
@@ -99,9 +128,38 @@ export function RoomActionDrawer({ roomId, open, onClose }: RoomActionDrawerProp
       return;
     }
 
-    checkOut(room.id);
+    await checkOut(room.id);
     toast({ title: 'Express Checkout', description: 'Guest checked out successfully' });
-    onClose();
+    
+    // Auto-close after 600ms
+    setTimeout(() => onClose(), 600);
+  };
+
+  const handleCheckIn = async () => {
+    if (!room) return;
+    await checkIn(room.id);
+    toast({ title: 'Check-In Complete', description: 'Guest checked in successfully' });
+    
+    // Auto-close after 600ms
+    setTimeout(() => onClose(), 600);
+  };
+
+  const handleMarkClean = async () => {
+    if (!room) return;
+    await markClean(room.id);
+    toast({ title: 'Room Cleaned', description: 'Room marked as clean and ready' });
+    
+    // Auto-close after 1000ms
+    setTimeout(() => onClose(), 1000);
+  };
+
+  const handleMarkMaintenance = async () => {
+    if (!room) return;
+    await markMaintenance(room.id);
+    toast({ title: 'Maintenance Mode', description: 'Room marked for maintenance' });
+    
+    // Auto-close after 1000ms
+    setTimeout(() => onClose(), 1000);
   };
 
   const handleRoomService = () => {
@@ -143,32 +201,42 @@ export function RoomActionDrawer({ roomId, open, onClose }: RoomActionDrawerProp
     switch (room.status) {
       case 'available':
         return [
-          { label: 'Assign Room', action: () => setAssignModalOpen(true), variant: 'default' as const, tooltip: 'Full booking with all details' },
-          { label: 'Quick Check-In', action: handleQuickCheckIn, variant: 'secondary' as const, icon: Zap, tooltip: 'Express walk-in check-in' },
-          { label: 'Mark OOS', action: () => markMaintenance(room.id), variant: 'outline' as const, tooltip: 'Mark as Out of Service' },
+          { label: 'Assign Room', action: () => setAssignModalOpen(true), variant: 'default' as const, icon: UserPlus, tooltip: 'Full booking with guest details' },
+          { label: 'Walk-in Check-In', action: handleQuickCheckIn, variant: 'outline' as const, icon: LogIn, tooltip: 'Express walk-in check-in' },
+          { label: 'Set Out of Service', action: handleMarkMaintenance, variant: 'outline' as const, icon: Wrench, tooltip: 'Mark as out of service' },
         ];
       case 'occupied':
-      case 'overstay':
         return [
-          { label: 'Express Checkout', action: handleExpressCheckout, variant: 'default' as const, icon: Zap, tooltip: 'Quick checkout if balance settled' },
-          { label: 'Take Payment', action: () => setQuickPaymentOpen(true), variant: 'secondary' as const, icon: CreditCard, tooltip: 'Record payment' },
-          { label: 'Room Service', action: handleRoomService, variant: 'outline' as const, icon: Coffee, tooltip: 'Add service charge' },
-          { label: 'Extend Stay', action: () => setExtendModalOpen(true), variant: 'outline' as const, tooltip: 'Extend checkout date' },
-          { label: hasDND ? 'Remove DND' : 'Do Not Disturb', action: handleToggleDND, variant: hasDND ? 'default' : 'ghost' as const, icon: BellOff, tooltip: 'Toggle guest DND status' },
+          { label: 'Check-Out', action: handleExpressCheckout, variant: 'default' as const, icon: LogOut, tooltip: 'Complete guest checkout' },
+          { label: 'Extend Stay', action: () => setExtendModalOpen(true), variant: 'outline' as const, icon: Calendar, tooltip: 'Extend checkout date' },
+          { label: 'Transfer Room', action: () => toast({ title: 'Transfer Room', description: 'Feature coming soon' }), variant: 'outline' as const, icon: UserPlus, tooltip: 'Transfer to different room' },
+          { label: 'Add Service', action: handleRoomService, variant: 'outline' as const, icon: Sparkles, tooltip: 'Add room service charge' },
+          { label: 'Post Payment', action: () => setQuickPaymentOpen(true), variant: 'outline' as const, icon: CreditCard, tooltip: 'Record payment' },
+          { label: hasDND ? 'Remove DND' : 'Do Not Disturb', action: handleToggleDND, variant: hasDND ? 'secondary' : 'ghost' as const, icon: BellOff, tooltip: 'Toggle Do Not Disturb' },
         ];
       case 'reserved':
         return [
-          { label: 'Check In', action: () => checkIn(room.id), variant: 'default' as const, tooltip: 'Complete guest check-in' },
-          { label: 'Take Payment', action: () => setQuickPaymentOpen(true), variant: 'secondary' as const, icon: CreditCard, tooltip: 'Record payment' },
-          { label: 'Cancel', action: () => {}, variant: 'destructive' as const, tooltip: 'Cancel reservation' },
+          { label: 'Check-In', action: handleCheckIn, variant: 'default' as const, icon: LogIn, tooltip: 'Complete guest check-in' },
+          { label: 'Cancel Reservation', action: () => toast({ title: 'Cancel', description: 'Cancellation feature coming soon', variant: 'destructive' }), variant: 'destructive' as const, icon: AlertTriangle, tooltip: 'Cancel this reservation' },
+          { label: 'Modify Reservation', action: () => toast({ title: 'Modify', description: 'Modification feature coming soon' }), variant: 'outline' as const, icon: FileText, tooltip: 'Modify reservation details' },
+          { label: 'Assign Different Room', action: () => setAssignModalOpen(true), variant: 'outline' as const, icon: UserPlus, tooltip: 'Move to different room' },
+        ];
+      case 'overstay':
+        return [
+          { label: 'Extend Stay', action: () => setExtendModalOpen(true), variant: 'default' as const, icon: Calendar, tooltip: 'Extend guest stay' },
+          { label: 'Apply Overstay Charge', action: handleRoomService, variant: 'outline' as const, icon: CreditCard, tooltip: 'Apply overstay fees' },
+          { label: 'Check-Out', action: handleExpressCheckout, variant: 'destructive' as const, icon: LogOut, tooltip: 'Force checkout' },
+          { label: 'Transfer Room', action: () => toast({ title: 'Transfer Room', description: 'Feature coming soon' }), variant: 'outline' as const, icon: UserPlus, tooltip: 'Transfer to different room' },
         ];
       case 'cleaning':
         return [
-          { label: 'Mark Clean', action: () => markClean(room.id), variant: 'default' as const, tooltip: 'Mark room as ready' },
+          { label: 'Mark Clean', action: handleMarkClean, variant: 'default' as const, icon: Sparkles, tooltip: 'Mark as clean and ready' },
         ];
       case 'maintenance':
         return [
-          { label: 'Complete Maintenance', action: () => markClean(room.id), variant: 'default' as const, tooltip: 'Mark maintenance complete' },
+          { label: 'Mark as Available', action: handleMarkClean, variant: 'default' as const, icon: Sparkles, tooltip: 'Complete maintenance' },
+          { label: 'Create Work Order', action: () => toast({ title: 'Work Order', description: 'Feature coming soon' }), variant: 'outline' as const, icon: Wrench, tooltip: 'Create maintenance work order' },
+          { label: 'Assign to Housekeeping', action: () => toast({ title: 'Assign Staff', description: 'Feature coming soon' }), variant: 'outline' as const, icon: Sparkles, tooltip: 'Assign housekeeping staff' },
         ];
       default:
         return [];

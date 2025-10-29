@@ -1,6 +1,8 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
+import { useFinancials } from '@/hooks/useFinancials';
+import { calculateBookingTotal } from '@/lib/finance/tax';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
@@ -19,6 +21,7 @@ interface BookingConfirmationProps {
 export function BookingConfirmation({ bookingData, onComplete }: BookingConfirmationProps) {
   const { tenantId, user } = useAuth();
   const queryClient = useQueryClient();
+  const { data: financials } = useFinancials();
   
   // Fetch organization wallet if booking for org
   const { data: orgWallet } = useOrganizationWallet(bookingData.organizationId);
@@ -144,6 +147,12 @@ export function BookingConfirmation({ bookingData, onComplete }: BookingConfirma
     ? Math.ceil((bookingData.checkOut.getTime() - bookingData.checkIn.getTime()) / (1000 * 60 * 60 * 24))
     : 0;
 
+  // Calculate tax breakdown
+  const selectedRate = room?.category?.base_rate || room?.rate || 0;
+  const taxBreakdown = financials 
+    ? calculateBookingTotal(selectedRate, nights, financials)
+    : { baseAmount: selectedRate * nights, vatAmount: 0, serviceChargeAmount: 0, totalAmount: selectedRate * nights };
+
   return (
     <div className="space-y-6">
       {/* Organization Credit Warning */}
@@ -240,10 +249,42 @@ export function BookingConfirmation({ bookingData, onComplete }: BookingConfirma
 
         <Separator />
 
+        <div>
+          <h3 className="font-semibold text-lg mb-3">Pricing</h3>
+          <div className="space-y-2">
+            <div className="flex items-center justify-between text-sm">
+              <span className="text-muted-foreground">Room Rate ({nights} {nights === 1 ? 'night' : 'nights'})</span>
+              <span className="font-medium">₦{taxBreakdown.baseAmount.toLocaleString()}</span>
+            </div>
+            
+            {taxBreakdown.vatAmount > 0 && financials && (
+              <div className="flex items-center justify-between text-sm">
+                <span className="text-muted-foreground">
+                  VAT ({financials.vat_rate}%)
+                  {financials.vat_inclusive && <span className="text-xs ml-1">(inclusive)</span>}
+                </span>
+                <span className="font-medium">₦{taxBreakdown.vatAmount.toFixed(2)}</span>
+              </div>
+            )}
+            
+            {taxBreakdown.serviceChargeAmount > 0 && financials && (
+              <div className="flex items-center justify-between text-sm">
+                <span className="text-muted-foreground">
+                  Service Charge ({financials.service_charge}%)
+                  {financials.service_charge_inclusive && <span className="text-xs ml-1">(inclusive)</span>}
+                </span>
+                <span className="font-medium">₦{taxBreakdown.serviceChargeAmount.toFixed(2)}</span>
+              </div>
+            )}
+          </div>
+        </div>
+
+        <Separator />
+
         <div className="flex items-center justify-between">
           <span className="text-lg font-semibold">Total Amount:</span>
           <span className="text-2xl font-bold text-primary">
-            ₦{bookingData.totalAmount?.toFixed(2) || '0.00'}
+            ₦{taxBreakdown.totalAmount.toFixed(2)}
           </span>
         </div>
       </Card>

@@ -3,10 +3,13 @@ import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useAvailability } from '@/hooks/useAvailability';
+import { useFinancials } from '@/hooks/useFinancials';
+import { calculateBookingTotal } from '@/lib/finance/tax';
 import { Card } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
+import { Separator } from '@/components/ui/separator';
 import { Calendar, Check, AlertCircle } from 'lucide-react';
 import type { BookingData } from '../BookingFlow';
 
@@ -18,6 +21,7 @@ interface RoomSelectionProps {
 
 export function RoomSelection({ bookingData, onChange, onNext }: RoomSelectionProps) {
   const { tenantId } = useAuth();
+  const { data: financials } = useFinancials();
   const [checkIn, setCheckIn] = useState(bookingData.checkIn || new Date());
   const [checkOut, setCheckOut] = useState(
     bookingData.checkOut || new Date(Date.now() + 86400000)
@@ -49,23 +53,31 @@ export function RoomSelection({ bookingData, onChange, onNext }: RoomSelectionPr
   );
 
   useEffect(() => {
-    if (checkIn && checkOut) {
+    if (checkIn && checkOut && financials) {
       const nights = Math.ceil((checkOut.getTime() - checkIn.getTime()) / (1000 * 60 * 60 * 24));
       const room = rooms?.find(r => r.id === bookingData.roomId);
       const rate = room?.category?.base_rate || room?.rate || 0;
+      
+      // Calculate total with taxes
+      const taxBreakdown = calculateBookingTotal(rate, nights, financials);
+      
       onChange({
         ...bookingData,
         checkIn,
         checkOut,
-        totalAmount: rate * nights,
+        totalAmount: taxBreakdown.totalAmount,
       });
     }
-  }, [checkIn, checkOut, bookingData.roomId, rooms]);
+  }, [checkIn, checkOut, bookingData.roomId, rooms, financials]);
 
   const nights = Math.ceil((checkOut.getTime() - checkIn.getTime()) / (1000 * 60 * 60 * 24));
   const selectedRoom = rooms?.find(r => r.id === bookingData.roomId);
   const selectedRate = selectedRoom?.category?.base_rate || selectedRoom?.rate || 0;
-  const totalAmount = selectedRate * nights;
+  
+  // Calculate tax breakdown for display
+  const taxBreakdown = financials 
+    ? calculateBookingTotal(selectedRate, nights, financials)
+    : { baseAmount: selectedRate * nights, vatAmount: 0, serviceChargeAmount: 0, totalAmount: selectedRate * nights };
 
   return (
     <div className="space-y-6">
@@ -94,14 +106,45 @@ export function RoomSelection({ bookingData, onChange, onNext }: RoomSelectionPr
 
       {bookingData.roomId && (
         <Card className="p-4 bg-primary/5 border-primary">
-          <div className="space-y-2">
-            <p className="text-sm text-muted-foreground">Stay Duration & Cost</p>
-            <div className="flex items-baseline gap-2">
-              <span className="text-2xl font-bold">₦{totalAmount.toLocaleString()}</span>
-              <span className="text-sm text-muted-foreground">total</span>
+          <div className="space-y-3">
+            <p className="text-sm font-medium text-muted-foreground">Stay Duration & Cost</p>
+            
+            <div className="space-y-2">
+              <div className="flex items-center justify-between text-sm">
+                <span className="text-muted-foreground">Room Rate ({nights} {nights === 1 ? 'night' : 'nights'})</span>
+                <span className="font-medium">₦{taxBreakdown.baseAmount.toLocaleString()}</span>
+              </div>
+              
+              {taxBreakdown.vatAmount > 0 && financials && (
+                <div className="flex items-center justify-between text-sm">
+                  <span className="text-muted-foreground">
+                    VAT ({financials.vat_rate}%)
+                    {financials.vat_inclusive && <span className="text-xs ml-1">(inclusive)</span>}
+                  </span>
+                  <span className="font-medium">₦{taxBreakdown.vatAmount.toFixed(2)}</span>
+                </div>
+              )}
+              
+              {taxBreakdown.serviceChargeAmount > 0 && financials && (
+                <div className="flex items-center justify-between text-sm">
+                  <span className="text-muted-foreground">
+                    Service Charge ({financials.service_charge}%)
+                    {financials.service_charge_inclusive && <span className="text-xs ml-1">(inclusive)</span>}
+                  </span>
+                  <span className="font-medium">₦{taxBreakdown.serviceChargeAmount.toFixed(2)}</span>
+                </div>
+              )}
             </div>
-            <p className="text-sm text-muted-foreground">
-              {nights} {nights === 1 ? 'night' : 'nights'} × ₦{selectedRate.toLocaleString()}/night
+            
+            <Separator />
+            
+            <div className="flex items-baseline justify-between">
+              <span className="text-lg font-semibold">Total</span>
+              <span className="text-2xl font-bold text-primary">₦{taxBreakdown.totalAmount.toLocaleString()}</span>
+            </div>
+            
+            <p className="text-xs text-muted-foreground">
+              ₦{selectedRate.toLocaleString()}/night × {nights} {nights === 1 ? 'night' : 'nights'}
             </p>
           </div>
         </Card>

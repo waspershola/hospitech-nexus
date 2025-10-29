@@ -21,6 +21,55 @@ serve(async (req) => {
 
     console.log('Creating booking with action_id:', action_id);
 
+    // Fetch hotel financials for tax calculations
+    const { data: financials } = await supabaseClient
+      .from('hotel_financials')
+      .select('vat_rate, vat_inclusive, service_charge, service_charge_inclusive, currency')
+      .eq('tenant_id', tenant_id)
+      .single();
+
+    // Fetch room details for rate calculation
+    const { data: room } = await supabaseClient
+      .from('rooms')
+      .select('*, category:room_categories(base_rate)')
+      .eq('id', room_id)
+      .single();
+
+    // Calculate nights and tax breakdown
+    const checkInDate = new Date(check_in);
+    const checkOutDate = new Date(check_out);
+    const nights = Math.ceil((checkOutDate.getTime() - checkInDate.getTime()) / (1000 * 60 * 60 * 24));
+    const baseRate = room?.category?.base_rate || room?.rate || 0;
+    const baseAmount = baseRate * nights;
+
+    let vatAmount = 0;
+    let serviceChargeAmount = 0;
+    let calculatedTotal = baseAmount;
+
+    if (financials) {
+      // Calculate VAT
+      if (financials.vat_rate > 0) {
+        if (financials.vat_inclusive) {
+          vatAmount = baseAmount - (baseAmount / (1 + financials.vat_rate / 100));
+        } else {
+          vatAmount = baseAmount * (financials.vat_rate / 100);
+          calculatedTotal += vatAmount;
+        }
+      }
+
+      // Calculate Service Charge
+      if (financials.service_charge > 0) {
+        if (financials.service_charge_inclusive) {
+          serviceChargeAmount = baseAmount - (baseAmount / (1 + financials.service_charge / 100));
+        } else {
+          serviceChargeAmount = baseAmount * (financials.service_charge / 100);
+          calculatedTotal += serviceChargeAmount;
+        }
+      }
+    }
+
+    console.log('Tax breakdown:', { baseAmount, vatAmount, serviceChargeAmount, calculatedTotal });
+
     // Check for existing booking with same action_id (idempotency)
     const { data: existingBooking, error: existingError } = await supabaseClient
       .from('bookings')
@@ -40,10 +89,7 @@ serve(async (req) => {
       );
     }
 
-    // Check room availability
-    const checkInDate = new Date(check_in);
-    const checkOutDate = new Date(check_out);
-
+    // Check room availability (dates already defined above)
     const { data: overlappingBookings, error: availabilityError } = await supabaseClient
       .from('bookings')
       .select('id, guest_id')
@@ -70,7 +116,7 @@ serve(async (req) => {
       );
     }
 
-    // Create booking
+    // Create booking with tax breakdown in metadata
     const { data: newBooking, error: createError } = await supabaseClient
       .from('bookings')
       .insert([{
@@ -79,13 +125,25 @@ serve(async (req) => {
         room_id,
         check_in: checkInDate.toISOString(),
         check_out: checkOutDate.toISOString(),
-        total_amount,
+        total_amount: calculatedTotal,
         organization_id: organization_id || null,
         status: 'reserved',
         action_id,
         metadata: {
           created_via: 'edge_function',
           created_at: new Date().toISOString(),
+          nights,
+          base_rate: baseRate,
+          tax_breakdown: {
+            base_amount: baseAmount,
+            vat_amount: vatAmount,
+            service_charge_amount: serviceChargeAmount,
+            total_amount: calculatedTotal,
+            vat_rate: financials?.vat_rate || 0,
+            service_charge_rate: financials?.service_charge || 0,
+            vat_inclusive: financials?.vat_inclusive || false,
+            service_charge_inclusive: financials?.service_charge_inclusive || false,
+          }
         }
       }])
       .select()
@@ -121,7 +179,7 @@ serve(async (req) => {
         console.error('Organization wallet not found:', walletError);
         // Don't fail the booking, just log the error
       } else {
-        // Create payment record
+        // Create payment record with calculated total
         const { data: newPayment, error: paymentError } = await supabaseClient
           .from('payments')
           .insert({
@@ -130,8 +188,8 @@ serve(async (req) => {
             guest_id,
             organization_id,
             wallet_id: wallet.id,
-            amount: total_amount,
-            expected_amount: total_amount,
+            amount: calculatedTotal,
+            expected_amount: calculatedTotal,
             payment_type: 'full',
             method: 'organization_wallet',
             status: 'completed',
@@ -153,14 +211,14 @@ serve(async (req) => {
         } else {
           payment = newPayment;
           
-          // Create wallet transaction (debit) with department and metadata
+          // Create wallet transaction (debit) with calculated total, department and metadata
           const { error: txnError } = await supabaseClient
             .from('wallet_transactions')
             .insert({
               tenant_id,
               wallet_id: wallet.id,
               type: 'debit',
-              amount: total_amount,
+              amount: calculatedTotal,
               payment_id: newPayment.id,
               description: `Booking charge - Room ${room_id} - Guest ${guest_id}`,
               created_by: created_by || guest_id,
