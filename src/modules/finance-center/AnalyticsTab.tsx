@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
@@ -10,6 +11,12 @@ import { Calendar as CalendarComponent } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { StatCardSkeleton } from '@/components/ui/skeleton-loaders';
 import { cn } from '@/lib/utils';
+import { useFinanceAnalytics } from '@/hooks/useFinanceAnalytics';
+import { RevenueTrendsChart } from './charts/RevenueTrendsChart';
+import { PaymentMethodStats } from './charts/PaymentMethodStats';
+import { DepartmentOverview } from './charts/DepartmentOverview';
+import { DiscrepancyHeatmap } from './charts/DiscrepancyHeatmap';
+import { WalletFlowGraph } from './charts/WalletFlowGraph';
 
 export function AnalyticsTab() {
   const { tenantId } = useAuth();
@@ -18,6 +25,12 @@ export function AnalyticsTab() {
     end: endOfDay(new Date()) 
   });
   const [calendarOpen, setCalendarOpen] = useState(false);
+  const [granularity, setGranularity] = useState<'daily' | 'weekly' | 'monthly'>('daily');
+
+  const analytics = useFinanceAnalytics({
+    startDate: dateRange.start,
+    endDate: dateRange.end,
+  });
 
   const setQuickRange = (days: number) => {
     setDateRange({
@@ -107,6 +120,17 @@ export function AnalyticsTab() {
         </div>
 
         <div className="flex items-center gap-2">
+          <Select value={granularity} onValueChange={(value: any) => setGranularity(value)}>
+            <SelectTrigger className="w-[120px]">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="daily">Daily</SelectItem>
+              <SelectItem value="weekly">Weekly</SelectItem>
+              <SelectItem value="monthly">Monthly</SelectItem>
+            </SelectContent>
+          </Select>
+
           <div className="flex gap-1">
             <Button
               variant={dateRange.start >= startOfDay(subDays(new Date(), 7)) ? "default" : "outline"}
@@ -195,52 +219,19 @@ export function AnalyticsTab() {
         )}
       </div>
 
-      <Card className="p-6 rounded-2xl shadow-card">
-        <h3 className="text-lg font-display font-semibold mb-4">Payment Methods Breakdown</h3>
-        {paymentsLoading ? (
-          <div className="space-y-4">
-            {[1, 2, 3].map((i) => (
-              <div key={i} className="flex items-center justify-between">
-                <div className="h-4 w-20 bg-muted rounded animate-pulse" />
-                <div className="flex items-center gap-4">
-                  <div className="w-48 h-2 bg-muted rounded-full animate-pulse" />
-                  <div className="h-4 w-16 bg-muted rounded animate-pulse" />
-                </div>
-              </div>
-            ))}
-          </div>
-        ) : payments && payments.length > 0 ? (
-          <div className="space-y-4">
-            {Object.entries(
-              payments.reduce((acc, p) => {
-                const method = p.method || 'Unknown';
-                acc[method] = (acc[method] || 0) + 1;
-                return acc;
-              }, {} as Record<string, number>)
-            ).map(([method, count]) => (
-              <div key={method} className="flex items-center justify-between">
-                <span className="text-sm font-medium capitalize">{method}</span>
-                <div className="flex items-center gap-4">
-                  <div className="w-48 h-2 bg-muted rounded-full overflow-hidden">
-                    <div
-                      className="h-full bg-primary transition-all"
-                      style={{ width: `${(count / payments.length) * 100}%` }}
-                    />
-                  </div>
-                  <span className="text-sm text-muted-foreground w-16 text-right">
-                    {count} ({((count / payments.length) * 100).toFixed(1)}%)
-                  </span>
-                </div>
-              </div>
-            ))}
-          </div>
-        ) : (
-          <div className="text-center py-8 text-muted-foreground">
-            <DollarSign className="w-12 h-12 mx-auto mb-3 opacity-50" />
-            <p>No payment data available for this period</p>
-          </div>
-        )}
-      </Card>
+      {/* Charts */}
+      <div className="space-y-6">
+        <RevenueTrendsChart data={analytics.revenueTrends} granularity={granularity} />
+        
+        <div className="grid lg:grid-cols-2 gap-6">
+          <PaymentMethodStats data={analytics.paymentMethods} />
+          <WalletFlowGraph data={analytics.walletFlow} />
+        </div>
+
+        <DepartmentOverview data={analytics.departments} />
+        
+        <DiscrepancyHeatmap data={analytics.discrepancies} />
+      </div>
     </div>
   );
 }
