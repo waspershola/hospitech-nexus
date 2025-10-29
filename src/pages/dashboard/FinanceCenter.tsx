@@ -1,10 +1,12 @@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ProvidersTab } from '@/modules/finance-center/ProvidersTab';
+import { LocationsTab } from '@/modules/finance-center/LocationsTab';
+import { RulesTab } from '@/modules/finance-center/RulesTab';
 import { WalletsTab } from '@/modules/finance-center/WalletsTab';
 import { OrganizationsTab } from '@/modules/finance-center/OrganizationsTab';
 import { AnalyticsTab } from '@/modules/finance-center/AnalyticsTab';
 import { ReconciliationTab } from '@/modules/finance-center/ReconciliationTab';
-import { Wallet, Building2, TrendingUp, Building, RefreshCcw } from 'lucide-react';
+import { Wallet, Building2, TrendingUp, Building, RefreshCcw, MapPin, Shield } from 'lucide-react';
 
 export default function FinanceCenter() {
   return (
@@ -15,10 +17,18 @@ export default function FinanceCenter() {
       </div>
 
       <Tabs defaultValue="providers" className="flex-1">
-        <TabsList className="grid w-full grid-cols-5 mb-6">
+        <TabsList className="grid w-full grid-cols-7 mb-6">
           <TabsTrigger value="providers" className="flex items-center gap-2">
             <Building2 className="w-4 h-4" />
             Providers
+          </TabsTrigger>
+          <TabsTrigger value="locations" className="flex items-center gap-2">
+            <MapPin className="w-4 h-4" />
+            Locations
+          </TabsTrigger>
+          <TabsTrigger value="rules" className="flex items-center gap-2">
+            <Shield className="w-4 h-4" />
+            Rules
           </TabsTrigger>
           <TabsTrigger value="wallets" className="flex items-center gap-2">
             <Wallet className="w-4 h-4" />
@@ -40,6 +50,14 @@ export default function FinanceCenter() {
 
         <TabsContent value="providers">
           <ProvidersTab />
+        </TabsContent>
+
+        <TabsContent value="locations">
+          <LocationsTab />
+        </TabsContent>
+
+        <TabsContent value="rules">
+          <RulesTab />
         </TabsContent>
 
         <TabsContent value="wallets">
