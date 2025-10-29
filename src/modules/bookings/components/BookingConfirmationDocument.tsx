@@ -1,0 +1,331 @@
+import { useQuery } from '@tanstack/react-query';
+import { supabase } from '@/integrations/supabase/client';
+import { Card } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Separator } from '@/components/ui/separator';
+import { FileText, Download, Mail, Loader2, CheckCircle } from 'lucide-react';
+import { format } from 'date-fns';
+import { QRCodeSVG } from 'qrcode.react';
+import { toast } from 'sonner';
+
+interface BookingConfirmationDocumentProps {
+  bookingId: string;
+}
+
+export function BookingConfirmationDocument({ bookingId }: BookingConfirmationDocumentProps) {
+  // Fetch booking details
+  const { data: booking, isLoading: bookingLoading } = useQuery({
+    queryKey: ['booking-document', bookingId],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('bookings')
+        .select(`
+          *,
+          guest:guests(*),
+          room:rooms(*, category:room_categories(*)),
+          organization:organizations(*)
+        `)
+        .eq('id', bookingId)
+        .single();
+
+      if (error) throw error;
+      return data;
+    },
+  });
+
+  // Fetch branding
+  const { data: branding } = useQuery({
+    queryKey: ['branding', booking?.tenant_id],
+    queryFn: async () => {
+      if (!booking?.tenant_id) return null;
+      
+      const { data, error } = await supabase
+        .from('hotel_branding')
+        .select('*')
+        .eq('tenant_id', booking.tenant_id)
+        .single();
+
+      if (error) return null;
+      return data;
+    },
+    enabled: !!booking?.tenant_id,
+  });
+
+  // Fetch hotel meta
+  const { data: hotelMeta } = useQuery({
+    queryKey: ['hotel-meta', booking?.tenant_id],
+    queryFn: async () => {
+      if (!booking?.tenant_id) return null;
+      
+      const { data, error } = await supabase
+        .from('hotel_meta')
+        .select('*')
+        .eq('tenant_id', booking.tenant_id)
+        .single();
+
+      if (error) return null;
+      return data;
+    },
+    enabled: !!booking?.tenant_id,
+  });
+
+  // Fetch payments
+  const { data: payments } = useQuery({
+    queryKey: ['booking-payments-doc', bookingId],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('payments')
+        .select('*')
+        .eq('booking_id', bookingId)
+        .eq('status', 'completed');
+
+      if (error) throw error;
+      return data || [];
+    },
+  });
+
+  const handleDownloadPDF = () => {
+    toast.info('PDF download feature coming soon');
+  };
+
+  const handleEmailConfirmation = () => {
+    toast.info('Email confirmation feature coming soon');
+  };
+
+  const handlePrint = () => {
+    window.print();
+  };
+
+  if (bookingLoading) {
+    return (
+      <Card className="p-6">
+        <div className="flex items-center justify-center py-8">
+          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        </div>
+      </Card>
+    );
+  }
+
+  if (!booking) {
+    return (
+      <Card className="p-6">
+        <p className="text-center text-muted-foreground">Booking not found</p>
+      </Card>
+    );
+  }
+
+  const metadata = booking.metadata as any;
+  const totalPaid = payments?.reduce((sum, p) => sum + Number(p.amount), 0) || 0;
+  const balance = Number(booking.total_amount) - totalPaid;
+  const nights = Math.ceil(
+    (new Date(booking.check_out).getTime() - new Date(booking.check_in).getTime()) / (1000 * 60 * 60 * 24)
+  );
+
+  return (
+    <div className="space-y-4">
+      {/* Action Buttons */}
+      <div className="flex gap-2 print:hidden">
+        <Button variant="outline" onClick={handlePrint}>
+          <FileText className="mr-2 h-4 w-4" />
+          Print
+        </Button>
+        <Button variant="outline" onClick={handleDownloadPDF}>
+          <Download className="mr-2 h-4 w-4" />
+          Download PDF
+        </Button>
+        <Button variant="outline" onClick={handleEmailConfirmation}>
+          <Mail className="mr-2 h-4 w-4" />
+          Email to Guest
+        </Button>
+      </div>
+
+      {/* Document */}
+      <Card className="p-8 print:shadow-none">
+        {/* Header */}
+        <div className="flex items-start justify-between mb-6">
+          <div>
+            {branding?.logo_url && (
+              <img src={branding.logo_url} alt="Logo" className="h-16 mb-4" />
+            )}
+            <h1 className="text-2xl font-bold">{hotelMeta?.hotel_name || 'Hotel'}</h1>
+            {hotelMeta?.tagline && (
+              <p className="text-muted-foreground">{hotelMeta.tagline}</p>
+            )}
+            {hotelMeta?.contact_email && (
+              <p className="text-sm text-muted-foreground">{hotelMeta.contact_email}</p>
+            )}
+            {hotelMeta?.contact_phone && (
+              <p className="text-sm text-muted-foreground">{hotelMeta.contact_phone}</p>
+            )}
+          </div>
+          
+          <div className="text-right">
+            <div className="inline-flex items-center gap-2 bg-primary/10 px-4 py-2 rounded-lg mb-4">
+              <CheckCircle className="h-5 w-5 text-primary" />
+              <span className="font-semibold text-primary">CONFIRMED</span>
+            </div>
+            <p className="text-sm text-muted-foreground">Booking Reference</p>
+            <p className="text-xl font-mono font-bold">{booking.id.slice(0, 8).toUpperCase()}</p>
+            <div className="mt-4">
+              <QRCodeSVG value={booking.id} size={80} />
+            </div>
+          </div>
+        </div>
+
+        <Separator className="my-6" />
+
+        {/* Guest Information */}
+        <div className="mb-6">
+          <h2 className="text-lg font-semibold mb-3">Guest Information</h2>
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <p className="text-sm text-muted-foreground">Guest Name</p>
+              <p className="font-medium">{booking.guest?.name}</p>
+            </div>
+            {booking.guest?.email && (
+              <div>
+                <p className="text-sm text-muted-foreground">Email</p>
+                <p className="font-medium">{booking.guest.email}</p>
+              </div>
+            )}
+            {booking.guest?.phone && (
+              <div>
+                <p className="text-sm text-muted-foreground">Phone</p>
+                <p className="font-medium">{booking.guest.phone}</p>
+              </div>
+            )}
+            {booking.organization && (
+              <div>
+                <p className="text-sm text-muted-foreground">Organization</p>
+                <p className="font-medium">{booking.organization.name}</p>
+              </div>
+            )}
+          </div>
+        </div>
+
+        <Separator className="my-6" />
+
+        {/* Booking Details */}
+        <div className="mb-6">
+          <h2 className="text-lg font-semibold mb-3">Booking Details</h2>
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <p className="text-sm text-muted-foreground">Check-in Date</p>
+              <p className="font-medium">{format(new Date(booking.check_in), 'PPP')}</p>
+              <p className="text-xs text-muted-foreground">From 2:00 PM</p>
+            </div>
+            <div>
+              <p className="text-sm text-muted-foreground">Check-out Date</p>
+              <p className="font-medium">{format(new Date(booking.check_out), 'PPP')}</p>
+              <p className="text-xs text-muted-foreground">Until 12:00 PM</p>
+            </div>
+            <div>
+              <p className="text-sm text-muted-foreground">Room Number</p>
+              <p className="font-medium">{booking.room?.number}</p>
+            </div>
+            <div>
+              <p className="text-sm text-muted-foreground">Room Type</p>
+              <p className="font-medium">{booking.room?.category?.name || booking.room?.type}</p>
+            </div>
+            <div>
+              <p className="text-sm text-muted-foreground">Number of Nights</p>
+              <p className="font-medium">{nights} {nights === 1 ? 'night' : 'nights'}</p>
+            </div>
+            <div>
+              <p className="text-sm text-muted-foreground">Booking Date</p>
+              <p className="font-medium">{format(new Date(booking.created_at), 'PPP')}</p>
+            </div>
+          </div>
+        </div>
+
+        {/* Special Requests */}
+        {metadata?.special_requests && (
+          <>
+            <Separator className="my-6" />
+            <div className="mb-6">
+              <h2 className="text-lg font-semibold mb-3">Special Requests</h2>
+              <p className="text-sm">{metadata.special_requests}</p>
+            </div>
+          </>
+        )}
+
+        <Separator className="my-6" />
+
+        {/* Pricing Breakdown */}
+        <div className="mb-6">
+          <h2 className="text-lg font-semibold mb-3">Pricing Summary</h2>
+          <div className="space-y-2">
+            <div className="flex justify-between">
+              <span>Room Rate ({nights} {nights === 1 ? 'night' : 'nights'} × ₦{Number(metadata?.rate_override || booking.room?.rate || 0).toLocaleString()})</span>
+              <span>₦{(nights * Number(metadata?.rate_override || booking.room?.rate || 0)).toLocaleString()}</span>
+            </div>
+            
+            {metadata?.addons && Array.isArray(metadata.addons) && metadata.addons.length > 0 && (
+              <>
+                {metadata.addons.map((addon: any, idx: number) => (
+                  <div key={idx} className="flex justify-between text-sm">
+                    <span>{addon.name}</span>
+                    <span>₦{Number(addon.price).toLocaleString()}</span>
+                  </div>
+                ))}
+              </>
+            )}
+            
+            <Separator className="my-2" />
+            
+            <div className="flex justify-between font-semibold text-lg">
+              <span>Total Amount</span>
+              <span>₦{Number(booking.total_amount).toLocaleString()}</span>
+            </div>
+            
+            {totalPaid > 0 && (
+              <div className="flex justify-between text-green-600">
+                <span>Amount Paid</span>
+                <span>₦{totalPaid.toLocaleString()}</span>
+              </div>
+            )}
+            
+            {balance > 0 && (
+              <div className="flex justify-between text-destructive font-semibold">
+                <span>Balance Due</span>
+                <span>₦{balance.toLocaleString()}</span>
+              </div>
+            )}
+            
+            {metadata?.deposit_amount > 0 && (
+              <div className="flex justify-between text-sm text-muted-foreground">
+                <span>Deposit Required</span>
+                <span>₦{Number(metadata.deposit_amount).toLocaleString()}</span>
+              </div>
+            )}
+          </div>
+        </div>
+
+        <Separator className="my-6" />
+
+        {/* Policies */}
+        <div className="mb-6">
+          <h2 className="text-lg font-semibold mb-3">Hotel Policies</h2>
+          <div className="space-y-2 text-sm text-muted-foreground">
+            <p>• Check-in time: 2:00 PM | Check-out time: 12:00 PM</p>
+            <p>• Valid government-issued ID required at check-in</p>
+            <p>• Cancellation policy: Contact hotel for details</p>
+            <p>• Smoking is prohibited in all rooms</p>
+            <p>• Pets are not allowed unless specified</p>
+          </div>
+        </div>
+
+        {/* Footer */}
+        <div className="mt-8 pt-6 border-t text-center text-sm text-muted-foreground">
+          <p>Thank you for choosing {hotelMeta?.hotel_name || 'our hotel'}!</p>
+          <p className="mt-2">
+            If you have any questions, please contact us at {hotelMeta?.contact_email || 'info@hotel.com'}
+          </p>
+          <p className="mt-4 text-xs">
+            This is a computer-generated document and does not require a signature.
+          </p>
+        </div>
+      </Card>
+    </div>
+  );
+}

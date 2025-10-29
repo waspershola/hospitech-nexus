@@ -21,6 +21,7 @@ import { QuickPaymentForm } from './QuickPaymentForm';
 import { PaymentHistory } from '@/modules/payments/PaymentHistory';
 import { BookingAmendmentDrawer } from '@/modules/bookings/components/BookingAmendmentDrawer';
 import { CancelBookingModal } from '@/modules/bookings/components/CancelBookingModal';
+import { BookingConfirmationDocument } from '@/modules/bookings/components/BookingConfirmationDocument';
 import { toast } from '@/hooks/use-toast';
 import { 
   Loader2, User, CreditCard, Calendar, AlertCircle, Clock, Building2, AlertTriangle, 
@@ -45,6 +46,7 @@ export function RoomActionDrawer({ roomId, open, onClose }: RoomActionDrawerProp
   const [paymentHistoryOpen, setPaymentHistoryOpen] = useState(false);
   const [amendmentDrawerOpen, setAmendmentDrawerOpen] = useState(false);
   const [cancelModalOpen, setCancelModalOpen] = useState(false);
+  const [showConfirmationDoc, setShowConfirmationDoc] = useState(false);
 
   const { data: room, isLoading } = useQuery({
     queryKey: ['room-detail', roomId],
@@ -269,9 +271,13 @@ export function RoomActionDrawer({ roomId, open, onClose }: RoomActionDrawerProp
                 </div>
               </SheetHeader>
 
-              <Tabs defaultValue="details" className="mt-6">
-                <TabsList className="grid w-full grid-cols-2">
+              <Tabs defaultValue={showConfirmationDoc ? "confirmation" : "details"} className="mt-6">
+                <TabsList className="grid w-full grid-cols-3">
                   <TabsTrigger value="details">Details</TabsTrigger>
+                  <TabsTrigger value="confirmation">
+                    <FileText className="w-4 h-4 mr-2" />
+                    Confirmation
+                  </TabsTrigger>
                   <TabsTrigger value="history">
                     <Clock className="w-4 h-4 mr-2" />
                     History
@@ -428,6 +434,15 @@ export function RoomActionDrawer({ roomId, open, onClose }: RoomActionDrawerProp
                               <Edit className="w-4 h-4 mr-2" />
                               Amend Booking
                             </Button>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => setShowConfirmationDoc(true)}
+                              className="w-full"
+                            >
+                              <FileText className="w-4 h-4 mr-2" />
+                              Booking Confirmation
+                            </Button>
                           </>
                         )}
                       </div>
@@ -481,6 +496,17 @@ export function RoomActionDrawer({ roomId, open, onClose }: RoomActionDrawerProp
                         <p className="text-sm text-muted-foreground">{room.notes}</p>
                       </div>
                     </>
+                  )}
+                </TabsContent>
+
+                <TabsContent value="confirmation" className="mt-6">
+                  {currentBooking ? (
+                    <BookingConfirmationDocument bookingId={currentBooking.id} />
+                  ) : (
+                    <div className="text-center py-8 text-muted-foreground">
+                      <FileText className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                      <p>No active booking for this room</p>
+                    </div>
                   )}
                 </TabsContent>
 
