@@ -68,7 +68,28 @@ export function RulesTab() {
   };
 
   if (isLoading) {
-    return <div>Loading rules...</div>;
+    return (
+      <div className="space-y-6">
+        <div className="flex justify-between items-center">
+          <div>
+            <h2 className="text-2xl font-display font-semibold">Provider Rules</h2>
+            <p className="text-muted-foreground">Configure routing rules and reconciliation settings</p>
+          </div>
+        </div>
+        <Card className="rounded-2xl p-6">
+          <div className="space-y-4">
+            {[1, 2, 3].map((i) => (
+              <div key={i} className="flex items-center gap-4 animate-pulse">
+                <div className="h-4 w-32 bg-muted rounded" />
+                <div className="h-4 w-24 bg-muted rounded" />
+                <div className="h-4 w-20 bg-muted rounded" />
+                <div className="h-4 w-16 bg-muted rounded ml-auto" />
+              </div>
+            ))}
+          </div>
+        </Card>
+      </div>
+    );
   }
 
   return (

@@ -6,6 +6,7 @@ import { Wallet, TrendingUp, TrendingDown, History, Plus } from 'lucide-react';
 import { useWallets } from '@/hooks/useWallets';
 import { WalletTransactionsDrawer } from './WalletTransactionsDrawer';
 import { WalletOperationDialog } from './WalletOperationDialog';
+import { WalletSkeleton } from '@/components/ui/skeleton-loaders';
 
 export function WalletsTab() {
   const { wallets, isLoading } = useWallets();
@@ -14,9 +15,6 @@ export function WalletsTab() {
   const [transactionsOpen, setTransactionsOpen] = useState(false);
   const [operationOpen, setOperationOpen] = useState(false);
 
-  if (isLoading) {
-    return <div>Loading wallets...</div>;
-  }
 
   return (
     <div className="space-y-6">
@@ -25,8 +23,15 @@ export function WalletsTab() {
         <p className="text-muted-foreground">View and manage department, guest, and organization wallets</p>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        {wallets.map((wallet) => (
+      {isLoading ? (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          <WalletSkeleton />
+          <WalletSkeleton />
+          <WalletSkeleton />
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          {wallets.map((wallet) => (
           <Card key={wallet.id} className="rounded-2xl shadow-card hover:shadow-luxury transition-all">
             <CardHeader>
               <div className="flex justify-between items-start">
@@ -87,12 +92,19 @@ export function WalletsTab() {
           </Card>
         ))}
 
-        {wallets.length === 0 && (
-          <div className="col-span-full text-center py-12 text-muted-foreground">
-            No wallets found. Wallets are automatically created when needed.
-          </div>
-        )}
-      </div>
+          {wallets.length === 0 && (
+            <Card className="col-span-full rounded-2xl">
+              <CardContent className="flex flex-col items-center justify-center py-12">
+                <Wallet className="w-12 h-12 text-muted-foreground mb-4" />
+                <h3 className="text-lg font-semibold mb-2">No wallets yet</h3>
+                <p className="text-muted-foreground text-center">
+                  Wallets are automatically created when organizations or guests make transactions
+                </p>
+              </CardContent>
+            </Card>
+          )}
+        </div>
+      )}
 
       <WalletTransactionsDrawer
         open={transactionsOpen}

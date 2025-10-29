@@ -7,6 +7,7 @@ import { useFinanceLocations } from '@/hooks/useFinanceLocations';
 import { useFinanceProviders } from '@/hooks/useFinanceProviders';
 import { useWallets } from '@/hooks/useWallets';
 import { LocationDrawer } from './LocationDrawer';
+import { LocationSkeleton } from '@/components/ui/skeleton-loaders';
 
 export function LocationsTab() {
   const { locations, isLoading } = useFinanceLocations();
@@ -36,9 +37,6 @@ export function LocationsTab() {
     return wallet?.name || wallet?.department || 'Unknown';
   };
 
-  if (isLoading) {
-    return <div>Loading locations...</div>;
-  }
 
   return (
     <div className="space-y-6">
@@ -53,7 +51,13 @@ export function LocationsTab() {
         </Button>
       </div>
 
-      {locations.length === 0 ? (
+      {isLoading ? (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          <LocationSkeleton />
+          <LocationSkeleton />
+          <LocationSkeleton />
+        </div>
+      ) : locations.length === 0 ? (
         <Card className="rounded-2xl">
           <CardContent className="flex flex-col items-center justify-center py-12">
             <MapPin className="w-12 h-12 text-muted-foreground mb-4" />
