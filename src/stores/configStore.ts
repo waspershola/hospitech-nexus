@@ -136,14 +136,14 @@ export const useConfigStore = create<ConfigStore>((set, get) => ({
   updateEmailSettings: (data) => {
     set(state => ({
       emailSettings: { ...state.emailSettings, ...data },
-      unsavedChanges: new Set(state.unsavedChanges).add('emailSettings'),
+      unsavedChanges: new Set(state.unsavedChanges).add('email_settings'),
     }));
   },
 
   updateHotelMeta: (data) => {
     set(state => ({
       hotelMeta: { ...state.hotelMeta, ...data },
-      unsavedChanges: new Set(state.unsavedChanges).add('hotelMeta'),
+      unsavedChanges: new Set(state.unsavedChanges).add('hotel_meta'),
     }));
   },
 
@@ -231,7 +231,7 @@ export const useConfigStore = create<ConfigStore>((set, get) => ({
     });
 
     if (error) throw error;
-    get().markSaved('emailSettings');
+    get().markSaved('email_settings');
   },
 
   saveHotelMeta: async () => {
@@ -244,7 +244,7 @@ export const useConfigStore = create<ConfigStore>((set, get) => ({
     });
 
     if (error) throw error;
-    get().markSaved('hotelMeta');
+    get().markSaved('hotel_meta');
   },
 
   saveDocumentTemplate: async (templateType: string) => {
@@ -270,8 +270,8 @@ export const useConfigStore = create<ConfigStore>((set, get) => ({
 
     if (unsavedChanges.has('branding')) savePromises.push(get().saveBranding());
     if (unsavedChanges.has('financials')) savePromises.push(get().saveFinancials());
-    if (unsavedChanges.has('emailSettings')) savePromises.push(get().saveEmailSettings());
-    if (unsavedChanges.has('hotelMeta')) savePromises.push(get().saveHotelMeta());
+    if (unsavedChanges.has('email_settings')) savePromises.push(get().saveEmailSettings());
+    if (unsavedChanges.has('hotel_meta')) savePromises.push(get().saveHotelMeta());
 
     // Save document templates
     unsavedChanges.forEach(key => {
@@ -283,7 +283,7 @@ export const useConfigStore = create<ConfigStore>((set, get) => ({
 
     // Save all other config keys
     unsavedChanges.forEach(key => {
-      if (!['branding', 'financials', 'emailSettings', 'hotelMeta'].includes(key) && !key.startsWith('template_')) {
+      if (!['branding', 'financials', 'email_settings', 'hotel_meta'].includes(key) && !key.startsWith('template_')) {
         savePromises.push(get().saveConfig(key));
       }
     });
