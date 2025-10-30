@@ -10,6 +10,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useRoomActions } from '../hooks/useRoomActions';
+import { useCheckout } from '@/hooks/useCheckout';
 import { useBookingFolio } from '@/hooks/useBookingFolio';
 import { useOrganizationWallet } from '@/hooks/useOrganizationWallet';
 import { AssignRoomDrawer } from './AssignRoomDrawer';
@@ -39,6 +40,7 @@ export function RoomActionDrawer({ roomId, open, onClose }: RoomActionDrawerProp
   const { tenantId } = useAuth();
   const queryClient = useQueryClient();
   const { checkIn, checkOut, markClean, markMaintenance } = useRoomActions();
+  const { mutate: completeCheckout, isPending: isCheckingOut } = useCheckout();
   const [assignModalOpen, setAssignModalOpen] = useState(false);
   const [extendModalOpen, setExtendModalOpen] = useState(false);
   const [chargeModalOpen, setChargeModalOpen] = useState(false);
@@ -110,18 +112,11 @@ export function RoomActionDrawer({ roomId, open, onClose }: RoomActionDrawerProp
     };
   }, [roomId, tenantId, queryClient]);
 
-  // Get current active booking (date-aware filter)
-  const activeBooking = room?.bookings?.find((b: any) => {
-    if (b.status === 'cancelled' || b.status === 'completed') return false;
-    
-    // Check if booking is still within stay period or future
-    const checkOut = new Date(b.check_out);
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    checkOut.setHours(0, 0, 0, 0);
-    
-    return checkOut > today; // Only show if checkout is AFTER today (tomorrow or later)
-  });
+  // Use canonical fields for active booking
+  const bookingsArray = Array.isArray(room?.bookings) ? room.bookings : room?.bookings ? [room.bookings] : [];
+  const activeBooking = room?.current_reservation_id
+    ? bookingsArray.find((b: any) => b.id === room.current_reservation_id)
+    : null;
   
   // Fetch folio balance for active booking
   const { data: folio } = useBookingFolio(activeBooking?.id || null);
@@ -129,7 +124,7 @@ export function RoomActionDrawer({ roomId, open, onClose }: RoomActionDrawerProp
   // Fetch organization wallet info if organization exists
   const { data: orgWallet } = useOrganizationWallet(activeBooking?.organization_id);
 
-  const currentBooking = room?.bookings?.find((b: any) => 
+  const currentBooking = bookingsArray.find((b: any) => 
     b.status === 'checked_in' || b.status === 'reserved'
   );
 
@@ -151,11 +146,10 @@ export function RoomActionDrawer({ roomId, open, onClose }: RoomActionDrawerProp
       return;
     }
 
-    await checkOut(room.id);
-    toast({ title: 'Express Checkout', description: 'Guest checked out successfully' });
+    completeCheckout({ bookingId: activeBooking.id });
     
-    // Auto-close after 600ms
-    setTimeout(() => onClose(), 600);
+    // Auto-close after realtime update (or timeout)
+    setTimeout(() => onClose(), 1000);
   };
 
   const handleCheckIn = async () => {

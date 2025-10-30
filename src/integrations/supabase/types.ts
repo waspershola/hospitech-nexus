@@ -1444,7 +1444,10 @@ export type Database = {
           capacity: number | null
           category_id: string | null
           created_at: string | null
+          current_guest_id: string | null
+          current_reservation_id: string | null
           floor: number | null
+          housekeeping_status: string | null
           id: string
           notes: string | null
           number: string
@@ -1457,7 +1460,10 @@ export type Database = {
           capacity?: number | null
           category_id?: string | null
           created_at?: string | null
+          current_guest_id?: string | null
+          current_reservation_id?: string | null
           floor?: number | null
+          housekeeping_status?: string | null
           id?: string
           notes?: string | null
           number: string
@@ -1470,7 +1476,10 @@ export type Database = {
           capacity?: number | null
           category_id?: string | null
           created_at?: string | null
+          current_guest_id?: string | null
+          current_reservation_id?: string | null
           floor?: number | null
+          housekeeping_status?: string | null
           id?: string
           notes?: string | null
           number?: string
@@ -1485,6 +1494,20 @@ export type Database = {
             columns: ["category_id"]
             isOneToOne: false
             referencedRelation: "room_categories"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "rooms_current_guest_id_fkey"
+            columns: ["current_guest_id"]
+            isOneToOne: false
+            referencedRelation: "guests"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "rooms_current_reservation_id_fkey"
+            columns: ["current_reservation_id"]
+            isOneToOne: false
+            referencedRelation: "bookings"
             referencedColumns: ["id"]
           },
           {
