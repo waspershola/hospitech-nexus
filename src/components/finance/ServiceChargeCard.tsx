@@ -51,8 +51,31 @@ export function ServiceChargeCard() {
     setHasChanges(false);
   };
 
+  // Helper function to apply rounding
+  const roundMoney = (value: number, method: 'round' | 'floor' | 'ceil') => {
+    const cents = value * 100;
+    if (method === 'round') return Math.round(cents) / 100;
+    if (method === 'floor') return Math.floor(cents) / 100;
+    return Math.ceil(cents) / 100;
+  };
+
   const sampleAmount = 10000;
-  const serviceAmount = sampleAmount * (localSettings.service_charge / 100);
+
+  // Calculate based on inclusive/exclusive setting
+  let baseAmount: number;
+  let serviceAmount: number;
+
+  if (localSettings.service_charge_inclusive) {
+    // INCLUSIVE: Extract service charge from sampleAmount
+    serviceAmount = roundMoney(sampleAmount * (localSettings.service_charge / (100 + localSettings.service_charge)), localSettings.rounding);
+    baseAmount = roundMoney(sampleAmount - serviceAmount, localSettings.rounding);
+  } else {
+    // EXCLUSIVE: Add service charge to sampleAmount
+    baseAmount = sampleAmount;
+    serviceAmount = roundMoney(sampleAmount * (localSettings.service_charge / 100), localSettings.rounding);
+  }
+
+  const totalAmount = roundMoney(baseAmount + serviceAmount, localSettings.rounding);
 
   return (
     <Card>
@@ -139,24 +162,24 @@ export function ServiceChargeCard() {
           <h4 className="text-sm font-medium">Calculation Preview</h4>
           <div className="space-y-1 text-sm">
             <div className="flex justify-between">
-              <span className="text-muted-foreground">Base Amount:</span>
-              <span className="font-medium">₦{sampleAmount.toLocaleString()}</span>
+              <span className="text-muted-foreground">
+                {localSettings.service_charge_inclusive ? 'Base Amount (before service charge):' : 'Base Amount:'}
+              </span>
+              <span className="font-medium">₦{baseAmount.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</span>
             </div>
             <div className="flex justify-between">
               <span className="text-muted-foreground">Service Charge ({localSettings.service_charge}%):</span>
-              <span className="font-medium">₦{serviceAmount.toLocaleString()}</span>
+              <span className="font-medium">₦{serviceAmount.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</span>
             </div>
             <div className="flex justify-between pt-2 border-t">
               <span className="font-semibold">Total:</span>
-              <span className="font-semibold">
-                ₦{(localSettings.service_charge_inclusive ? sampleAmount : sampleAmount + serviceAmount).toLocaleString()}
-              </span>
+              <span className="font-semibold">₦{totalAmount.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</span>
             </div>
           </div>
           <p className="text-xs text-muted-foreground">
             {localSettings.service_charge_inclusive 
-              ? `Customer pays ₦${sampleAmount.toLocaleString()} (Service charge of ₦${serviceAmount.toLocaleString()} included)`
-              : `Customer pays ₦${(sampleAmount + serviceAmount).toLocaleString()} (₦${sampleAmount.toLocaleString()} + ₦${serviceAmount.toLocaleString()} service charge)`
+              ? `If customer pays ₦${sampleAmount.toLocaleString()}, service charge of ₦${serviceAmount.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})} is already included (base was ₦${baseAmount.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})})`
+              : `For a base of ₦${baseAmount.toLocaleString()}, customer pays ₦${totalAmount.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})} (₦${baseAmount.toLocaleString()} + ₦${serviceAmount.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})} service charge)`
             }
           </p>
         </div>

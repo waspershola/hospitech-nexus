@@ -55,8 +55,31 @@ export function TaxSettingsCard() {
     setHasChanges(false);
   };
 
+  // Helper function to apply rounding
+  const roundMoney = (value: number, method: 'round' | 'floor' | 'ceil') => {
+    const cents = value * 100;
+    if (method === 'round') return Math.round(cents) / 100;
+    if (method === 'floor') return Math.floor(cents) / 100;
+    return Math.ceil(cents) / 100;
+  };
+
   const sampleAmount = 10000;
-  const taxAmount = sampleAmount * (localSettings.vat_rate / 100);
+
+  // Calculate based on inclusive/exclusive setting
+  let baseAmount: number;
+  let taxAmount: number;
+
+  if (localSettings.vat_inclusive) {
+    // INCLUSIVE: Extract VAT from sampleAmount
+    taxAmount = roundMoney(sampleAmount * (localSettings.vat_rate / (100 + localSettings.vat_rate)), localSettings.rounding);
+    baseAmount = roundMoney(sampleAmount - taxAmount, localSettings.rounding);
+  } else {
+    // EXCLUSIVE: Add VAT to sampleAmount
+    baseAmount = sampleAmount;
+    taxAmount = roundMoney(sampleAmount * (localSettings.vat_rate / 100), localSettings.rounding);
+  }
+
+  const totalAmount = roundMoney(baseAmount + taxAmount, localSettings.rounding);
 
   return (
     <Card>
@@ -169,24 +192,24 @@ export function TaxSettingsCard() {
           <h4 className="text-sm font-medium">Calculation Preview</h4>
           <div className="space-y-1 text-sm">
             <div className="flex justify-between">
-              <span className="text-muted-foreground">Base Amount:</span>
-              <span className="font-medium">₦{sampleAmount.toLocaleString()}</span>
+              <span className="text-muted-foreground">
+                {localSettings.vat_inclusive ? 'Base Amount (before VAT):' : 'Base Amount:'}
+              </span>
+              <span className="font-medium">₦{baseAmount.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</span>
             </div>
             <div className="flex justify-between">
               <span className="text-muted-foreground">VAT ({localSettings.vat_rate}%):</span>
-              <span className="font-medium">₦{taxAmount.toLocaleString()}</span>
+              <span className="font-medium">₦{taxAmount.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</span>
             </div>
             <div className="flex justify-between pt-2 border-t">
               <span className="font-semibold">Total:</span>
-              <span className="font-semibold">
-                ₦{(localSettings.vat_inclusive ? sampleAmount : sampleAmount + taxAmount).toLocaleString()}
-              </span>
+              <span className="font-semibold">₦{totalAmount.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</span>
             </div>
           </div>
           <p className="text-xs text-muted-foreground">
             {localSettings.vat_inclusive 
-              ? `Customer pays ₦${sampleAmount.toLocaleString()} (VAT of ₦${taxAmount.toLocaleString()} included)`
-              : `Customer pays ₦${(sampleAmount + taxAmount).toLocaleString()} (₦${sampleAmount.toLocaleString()} + ₦${taxAmount.toLocaleString()} VAT)`
+              ? `If customer pays ₦${sampleAmount.toLocaleString()}, VAT of ₦${taxAmount.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})} is already included (base was ₦${baseAmount.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})})`
+              : `For a base of ₦${baseAmount.toLocaleString()}, customer pays ₦${totalAmount.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})} (₦${baseAmount.toLocaleString()} + ₦${taxAmount.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})} VAT)`
             }
           </p>
         </div>
