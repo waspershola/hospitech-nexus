@@ -49,24 +49,34 @@ export function useRoomActions() {
 
   const checkOutMutation = useMutation({
     mutationFn: async (roomId: string) => {
-      // First update room status
+      // First get the active booking to update its metadata
+      const { data: booking } = await supabase
+        .from('bookings')
+        .select('id, metadata')
+        .eq('room_id', roomId)
+        .in('status', ['checked_in', 'reserved'])
+        .single();
+
+      // Update room status
       await updateRoomStatus(roomId, 'cleaning', 'Guest checked out');
       
-      // Then complete the active booking
-      const { error } = await supabase
-        .from('bookings')
-        .update({ 
-          status: 'completed',
-          metadata: supabase.rpc('jsonb_set', {
-            target: 'metadata',
-            path: '{actual_checkout}',
-            value: JSON.stringify(new Date().toISOString())
-          })
-        })
-        .eq('room_id', roomId)
-        .in('status', ['checked_in', 'reserved']);
+      // Complete the active booking with updated metadata
+      if (booking) {
+        const updatedMetadata = {
+          ...(booking.metadata as object || {}),
+          actual_checkout: new Date().toISOString()
+        };
 
-      if (error) throw error;
+        const { error } = await supabase
+          .from('bookings')
+          .update({ 
+            status: 'completed',
+            metadata: updatedMetadata
+          })
+          .eq('id', booking.id);
+
+        if (error) throw error;
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['rooms-grid'] });
