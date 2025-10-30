@@ -104,10 +104,17 @@ export function PaymentForm({
     if (!amount || !expectedAmount) return undefined;
     const amountNum = parseFloat(amount);
     const expectedNum = parseFloat(expectedAmount);
-    if (amountNum < expectedNum) return 'partial';
-    if (amountNum > expectedNum) return 'overpayment';
+    if (amountNum < expectedNum - 0.01) return 'partial';
+    if (amountNum > expectedNum + 0.01) return 'overpayment';
     return 'full';
   };
+
+  // Calculate difference amounts for validation
+  const paymentDifference = amount && expectedAmount 
+    ? parseFloat(amount) - parseFloat(expectedAmount)
+    : 0;
+  
+  const isLargeOverpayment = paymentDifference > 50000;
 
   const onSubmit = (data: PaymentFormData) => {
     setValidationError(null);
@@ -214,11 +221,30 @@ export function PaymentForm({
       )}
 
       {!payLater && expectedAmount && amount && getPaymentType() && (
-        <Alert>
+        <Alert variant={isLargeOverpayment ? 'destructive' : 'default'}>
           <AlertDescription>
-            Payment Type: <strong className="capitalize">{getPaymentType()}</strong>
-            {getPaymentType() === 'partial' && ' - Balance will remain due'}
-            {getPaymentType() === 'overpayment' && ' - Excess will be credited to wallet'}
+            <div className="space-y-1">
+              <div>
+                Payment Type: <strong className="capitalize">{getPaymentType()}</strong>
+              </div>
+              {getPaymentType() === 'partial' && (
+                <p className="text-sm">
+                  Balance due: <strong>₦{Math.abs(paymentDifference).toLocaleString()}</strong> will be tracked as receivable
+                </p>
+              )}
+              {getPaymentType() === 'overpayment' && (
+                <>
+                  <p className="text-sm">
+                    Excess amount: <strong>₦{paymentDifference.toLocaleString()}</strong> will be credited to guest wallet
+                  </p>
+                  {isLargeOverpayment && (
+                    <p className="text-sm font-semibold mt-2">
+                      ⚠️ Large overpayment detected. Please confirm with guest before proceeding.
+                    </p>
+                  )}
+                </>
+              )}
+            </div>
           </AlertDescription>
         </Alert>
       )}

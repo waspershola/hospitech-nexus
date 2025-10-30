@@ -245,18 +245,22 @@ serve(async (req) => {
       return newWallet.id;
     }
 
-    // Get location details if provided
+    // Get location details if provided (includes department wallet for auto-linking)
     let locationName = null;
+    let locationWalletId = null;
+    let locationDepartment = null;
     if (location_id) {
       const { data: location } = await supabase
         .from('finance_locations')
-        .select('name, status')
+        .select('name, status, wallet_id, department')
         .eq('id', location_id)
         .eq('tenant_id', tenant_id)
         .single();
 
       if (location && location.status === 'active') {
         locationName = location.name;
+        locationWalletId = location.wallet_id;
+        locationDepartment = location.department;
       }
     }
 
@@ -298,7 +302,7 @@ serve(async (req) => {
 
     console.log('Payment created:', payment.id);
 
-    // Auto-create wallet transaction for organization or provided wallet
+    // Phase 1: Auto-create wallet transaction for organization or provided wallet
     const finalWalletId = payment.wallet_id;
     if (finalWalletId) {
       const netAmount = amount - (amount * providerFee / 100);
@@ -318,6 +322,7 @@ serve(async (req) => {
             ? `Charged to organization - ${method}${providerName ? ` (${providerName})` : ''} - ${metadata?.notes || transaction_ref}`
             : `Payment via ${method}${providerName ? ` (${providerName})` : ''} - ${metadata?.notes || transaction_ref}`,
           created_by: recorded_by,
+          department: locationDepartment,
         }]);
 
       if (walletError) {
@@ -325,6 +330,38 @@ serve(async (req) => {
         // Don't throw here, payment is already created
       } else {
         console.log('Wallet transaction created for wallet:', finalWalletId, 'type:', txnType, 'amount:', netAmount);
+      }
+    }
+
+    // Phase 2: Auto-create department wallet transaction if location has a wallet
+    if (locationWalletId && !organization_id) {
+      const netAmount = amount - (amount * providerFee / 100);
+      
+      console.log('Auto-linking to department wallet:', locationWalletId, 'for location:', locationName);
+      
+      const { error: deptWalletError } = await supabase
+        .from('wallet_transactions')
+        .insert([{
+          wallet_id: locationWalletId,
+          payment_id: payment.id,
+          tenant_id,
+          type: 'credit',
+          amount: netAmount,
+          description: `Payment collected at ${locationName} - ${method}${providerName ? ` via ${providerName}` : ''}`,
+          created_by: recorded_by,
+          department: locationDepartment,
+          metadata: {
+            auto_linked: true,
+            location_id,
+            location_name: locationName,
+          },
+        }]);
+
+      if (deptWalletError) {
+        console.error('Error creating department wallet transaction:', deptWalletError);
+        // Don't throw - this is a nice-to-have feature
+      } else {
+        console.log('Department wallet transaction created:', locationWalletId, 'amount:', netAmount);
       }
     }
 
