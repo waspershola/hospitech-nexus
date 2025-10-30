@@ -25,8 +25,8 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 const paymentSchema = z.object({
   amount: z.string().min(1, 'Amount is required'),
   expected_amount: z.string().optional(),
-  method: z.string().min(1, 'Payment method is required'),
-  provider_id: z.string().optional(),
+  method: z.string().optional(),
+  provider_id: z.string().min(1, 'Payment provider is required'),
   location_id: z.string().optional(),
   wallet_id: z.string().optional(),
   department: z.string().optional(),
@@ -54,7 +54,7 @@ export function PaymentForm({
   onCancel,
 }: PaymentFormProps) {
   const [validationError, setValidationError] = useState<string | null>(null);
-  const { providers = [] } = useFinanceProviders();
+  const { providers = [], isLoading: providersLoading } = useFinanceProviders();
   const { locations = [] } = useFinanceLocations();
   const { wallets = [] } = useWallets();
   const { data: financials } = useFinancials();
@@ -74,13 +74,12 @@ export function PaymentForm({
     resolver: zodResolver(paymentSchema),
     defaultValues: {
       amount: prefilledAmount?.toString() || '',
-      method: '',
+      provider_id: '',
       notes: '',
       pay_later: false,
     },
   });
 
-  const selectedMethod = watch('method');
   const selectedLocationId = watch('location_id');
   const selectedProviderId = watch('provider_id');
   const amount = watch('amount');
@@ -100,10 +99,22 @@ export function PaymentForm({
       const location = locations.find(l => l.id === selectedLocationId);
       if (location?.provider_id) {
         setValue('provider_id', location.provider_id);
+        const provider = activeProviders.find(p => p.id === location.provider_id);
+        if (provider) {
+          setValue('method', provider.type);
+        }
         setValue('department', location.department || '');
       }
     }
-  }, [selectedLocationId, locations, setValue]);
+  }, [selectedLocationId, locations, activeProviders, setValue]);
+
+  // Auto-select provider when Pay Later checkbox is checked
+  useEffect(() => {
+    if (payLater && payLaterProvider) {
+      setValue('provider_id', payLaterProvider.id);
+      setValue('method', 'credit_deferred');
+    }
+  }, [payLater, payLaterProvider, setValue]);
 
   // Determine payment type
   const getPaymentType = (): 'partial' | 'full' | 'overpayment' | undefined => {
@@ -128,16 +139,21 @@ export function PaymentForm({
     const transactionRef = `PAY-${Date.now()}-${Math.random().toString(36).substring(7).toUpperCase()}`;
     const paymentType = getPaymentType();
 
-    // Find Pay Later provider if pay_later is checked
-    let finalProviderId = data.provider_id;
-    let finalMethod = data.method;
+    // Find selected provider
+    const selectedProvider = activeProviders.find(p => p.id === data.provider_id);
     
-    if (data.pay_later) {
-      const payLaterProvider = providers.find(p => p.type === 'credit_deferred');
-      if (payLaterProvider) {
-        finalProviderId = payLaterProvider.id;
-        finalMethod = 'pay_later';
-      }
+    if (!selectedProvider) {
+      setValidationError('Please select a valid payment provider');
+      return;
+    }
+
+    // Override provider if pay_later checkbox is used
+    let finalProviderId = data.provider_id;
+    let finalMethod = selectedProvider.type;
+    
+    if (data.pay_later && payLaterProvider) {
+      finalProviderId = payLaterProvider.id;
+      finalMethod = 'credit_deferred';
     }
 
     recordPayment(
@@ -157,6 +173,8 @@ export function PaymentForm({
         metadata: {
           notes: data.notes,
           pay_later: data.pay_later,
+          provider_name: selectedProvider.name,
+          provider_fee: selectedProvider.fee_percent,
         },
       },
       {
@@ -212,9 +230,11 @@ export function PaymentForm({
           id="pay_later"
           {...register('pay_later')}
           className="h-4 w-4 rounded border-input"
+          disabled={!payLaterProvider}
         />
         <Label htmlFor="pay_later" className="text-sm font-normal cursor-pointer">
           Pay Later (Create debt record / Accounts Receivable)
+          {!payLaterProvider && ' (Not configured)'}
         </Label>
       </div>
 
@@ -282,20 +302,42 @@ export function PaymentForm({
       )}
 
       <div className="space-y-2">
-        <Label htmlFor="method">Payment Method *</Label>
-        <Select onValueChange={(value) => setValue('method', value)}>
+        <Label htmlFor="provider_id">Payment Method *</Label>
+        <Select 
+          onValueChange={(value) => {
+            setValue('provider_id', value);
+            const selectedProv = activeProviders.find(p => p.id === value);
+            if (selectedProv) {
+              setValue('method', selectedProv.type);
+            }
+          }}
+          value={watch('provider_id')}
+        >
           <SelectTrigger>
             <SelectValue placeholder="Select payment method" />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="pos">POS</SelectItem>
-            <SelectItem value="online">Online</SelectItem>
-            <SelectItem value="transfer">Bank Transfer</SelectItem>
-            <SelectItem value="cash">Cash</SelectItem>
+            {providersLoading ? (
+              <SelectItem value="loading" disabled>
+                Loading providers...
+              </SelectItem>
+            ) : activeProviders.length === 0 ? (
+              <SelectItem value="none" disabled>
+                No active providers configured
+              </SelectItem>
+            ) : (
+              activeProviders.map((provider) => (
+                <SelectItem key={provider.id} value={provider.id}>
+                  {provider.type === 'credit_deferred' && '🕐 '}
+                  {provider.name}
+                  {provider.fee_percent > 0 && ` (${provider.fee_percent}% fee)`}
+                </SelectItem>
+              ))
+            )}
           </SelectContent>
         </Select>
-        {errors.method && (
-          <p className="text-sm text-destructive">{errors.method.message}</p>
+        {errors.provider_id && (
+          <p className="text-sm text-destructive">{errors.provider_id.message}</p>
         )}
       </div>
 
@@ -312,30 +354,6 @@ export function PaymentForm({
                   {location.name} {location.department && `(${location.department})`}
                 </SelectItem>
               ))}
-            </SelectContent>
-          </Select>
-        </div>
-      )}
-
-      {selectedMethod && activeProviders.length > 0 && (
-        <div className="space-y-2">
-          <Label htmlFor="provider_id">Provider</Label>
-          <Select 
-            onValueChange={(value) => setValue('provider_id', value)}
-            value={watch('provider_id')}
-            disabled={!!selectedLocationId}
-          >
-            <SelectTrigger>
-              <SelectValue placeholder="Select provider" />
-            </SelectTrigger>
-            <SelectContent>
-              {activeProviders
-                .filter(p => p.type === selectedMethod || selectedMethod === 'cash')
-                .map((provider) => (
-                  <SelectItem key={provider.id} value={provider.id}>
-                    {provider.name}
-                  </SelectItem>
-                ))}
             </SelectContent>
           </Select>
           {selectedLocationId && (
