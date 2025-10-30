@@ -12,6 +12,9 @@ verify_jwt = true
 [functions.charge-to-organization]
 verify_jwt = true
 
+[functions.complete-checkout]
+verify_jwt = true
+
 [functions.manage-domain]
 verify_jwt = true
 
