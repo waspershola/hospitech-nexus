@@ -55,14 +55,19 @@ export function RoomActionDrawer({ roomId, open, onClose }: RoomActionDrawerProp
   const { data: room, isLoading } = useQuery({
     queryKey: ['room-detail', roomId],
     queryFn: async () => {
-      if (!roomId || !tenantId) return null;
+      if (!roomId || !tenantId) {
+        console.log('❌ Room query skipped - missing roomId or tenantId:', { roomId, tenantId });
+        return null;
+      }
+      
+      console.log('🔍 Fetching room details for:', roomId);
       
       const { data, error } = await supabase
         .from('rooms')
         .select(`
           *,
           category:room_categories(name, short_code, base_rate),
-          bookings(
+          bookings!bookings_room_id_fkey(
             id,
             check_in,
             check_out,
@@ -78,7 +83,12 @@ export function RoomActionDrawer({ roomId, open, onClose }: RoomActionDrawerProp
         .eq('tenant_id', tenantId)
         .maybeSingle();
 
-      if (error) throw error;
+      if (error) {
+        console.error('❌ Room query error:', error);
+        throw error;
+      }
+      
+      console.log('✅ Room data fetched:', data);
       return data;
     },
     enabled: !!roomId && !!tenantId, // Phase 1: Remove 'open' for instant loading
