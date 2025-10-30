@@ -241,7 +241,7 @@ export const useConfigStore = create<ConfigStore>((set, get) => ({
     const { tenantId, configurations } = get();
     if (!tenantId) return;
 
-    set({ isSaving: true, lastError: null });
+    set({ isSaving: true, lastError: null, sectionErrors: { ...get().sectionErrors, [key]: '' } });
 
     try {
       const { data: { user } } = await supabase.auth.getUser();
@@ -255,20 +255,26 @@ export const useConfigStore = create<ConfigStore>((set, get) => ({
 
       if (error) throw error;
       
+      const now = new Date();
       set(state => ({
         unsavedChanges: state.unsavedChanges.filter(k => k !== key),
-        lastSyncTime: new Date(),
+        lastSyncTime: now,
+        sectionLastSaved: { ...state.sectionLastSaved, [key]: now },
         version: state.version + 1,
         saveCounter: state.saveCounter + 1,
-        isSaving: false,
       }));
 
       toast.success('Configuration saved');
     } catch (error: any) {
       console.error('Failed to save config:', error);
-      set({ lastError: error.message, isSaving: false });
+      set({ 
+        lastError: error.message,
+        sectionErrors: { ...get().sectionErrors, [key]: error.message }
+      });
       toast.error('Failed to save configuration');
       throw error;
+    } finally {
+      set({ isSaving: false });
     }
   },
 
@@ -315,11 +321,12 @@ export const useConfigStore = create<ConfigStore>((set, get) => ({
       console.error('Failed to save branding:', error);
       set({ 
         lastError: error.message, 
-        sectionErrors: { ...get().sectionErrors, branding: error.message },
-        isSaving: false 
+        sectionErrors: { ...get().sectionErrors, branding: error.message }
       });
       toast.error('Failed to save branding');
       throw error;
+    } finally {
+      set({ isSaving: false });
     }
   },
 
@@ -366,11 +373,12 @@ export const useConfigStore = create<ConfigStore>((set, get) => ({
       console.error('Failed to save financials:', error);
       set({ 
         lastError: error.message,
-        sectionErrors: { ...get().sectionErrors, financials: error.message },
-        isSaving: false 
+        sectionErrors: { ...get().sectionErrors, financials: error.message }
       });
       toast.error('Failed to save financial settings');
       throw error;
+    } finally {
+      set({ isSaving: false });
     }
   },
 
@@ -417,11 +425,12 @@ export const useConfigStore = create<ConfigStore>((set, get) => ({
       console.error('Failed to save email settings:', error);
       set({ 
         lastError: error.message,
-        sectionErrors: { ...get().sectionErrors, email_settings: error.message },
-        isSaving: false 
+        sectionErrors: { ...get().sectionErrors, email_settings: error.message }
       });
       toast.error('Failed to save email settings');
       throw error;
+    } finally {
+      set({ isSaving: false });
     }
   },
 
@@ -468,11 +477,12 @@ export const useConfigStore = create<ConfigStore>((set, get) => ({
       console.error('Failed to save hotel meta:', error);
       set({ 
         lastError: error.message,
-        sectionErrors: { ...get().sectionErrors, hotel_meta: error.message },
-        isSaving: false 
+        sectionErrors: { ...get().sectionErrors, hotel_meta: error.message }
       });
       toast.error('Failed to save hotel information');
       throw error;
+    } finally {
+      set({ isSaving: false });
     }
   },
 
@@ -527,11 +537,12 @@ export const useConfigStore = create<ConfigStore>((set, get) => ({
       console.error('Failed to save document template:', error);
       set({ 
         lastError: error.message,
-        sectionErrors: { ...get().sectionErrors, [key]: error.message },
-        isSaving: false 
+        sectionErrors: { ...get().sectionErrors, [key]: error.message }
       });
       toast.error('Failed to save document template');
       throw error;
+    } finally {
+      set({ isSaving: false });
     }
   },
 

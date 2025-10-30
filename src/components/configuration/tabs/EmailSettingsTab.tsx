@@ -9,8 +9,9 @@ export function EmailSettingsTab() {
   const emailSettings = useConfigStore(state => state.emailSettings);
   const updateEmailSettings = useConfigStore(state => state.updateEmailSettings);
   const saveEmailSettings = useConfigStore(state => state.saveEmailSettings);
-  const saveCounter = useConfigStore(state => state.saveCounter);
   const hasEmailSettingsUnsaved = useConfigStore(state => state.unsavedChanges.includes('email_settings'));
+  const sectionError = useConfigStore(state => state.sectionErrors.email_settings);
+  const lastSaved = useConfigStore(state => state.sectionLastSaved.email_settings);
 
   const handleChange = (field: string, value: any) => {
     updateEmailSettings({ [field]: value });
@@ -24,6 +25,9 @@ export function EmailSettingsTab() {
         icon={Mail}
         onSave={saveEmailSettings}
         hasUnsavedChanges={hasEmailSettingsUnsaved}
+        lastSaved={lastSaved}
+        error={sectionError}
+        sectionKey="email_settings"
       >
         <div className="space-y-4">
           <div className="grid grid-cols-2 gap-4">
@@ -78,6 +82,9 @@ export function EmailSettingsTab() {
         description="Custom email server settings (optional)"
         onSave={saveEmailSettings}
         hasUnsavedChanges={hasEmailSettingsUnsaved}
+        lastSaved={lastSaved}
+        error={sectionError}
+        sectionKey="email_settings"
       >
         <div className="space-y-4">
           <div className="flex items-center space-x-2">

@@ -17,20 +17,12 @@ export function FinancialsTab() {
   const financials = useConfigStore(state => state.financials);
   const updateFinancials = useConfigStore(state => state.updateFinancials);
   const saveFinancials = useConfigStore(state => state.saveFinancials);
-  const saveCounter = useConfigStore(state => state.saveCounter);
   const hasFinancialsUnsaved = useConfigStore(state => state.unsavedChanges.includes('financials'));
+  const sectionError = useConfigStore(state => state.sectionErrors.financials);
+  const lastSaved = useConfigStore(state => state.sectionLastSaved.financials);
 
   const handleChange = (field: string, value: any) => {
     updateFinancials({ [field]: value });
-  };
-
-  const handleSave = async () => {
-    try {
-      await saveFinancials();
-      toast.success('Currency settings saved');
-    } catch (error) {
-      toast.error('Failed to save currency settings');
-    }
   };
 
   const selectedCurrency = currencies.find(c => c.code === financials.currency) || currencies[0];
@@ -40,8 +32,11 @@ export function FinancialsTab() {
       title="Currency & Display Settings"
       description="Configure how monetary values are displayed"
       icon={DollarSign}
-      onSave={handleSave}
+      onSave={saveFinancials}
       hasUnsavedChanges={hasFinancialsUnsaved}
+      lastSaved={lastSaved}
+      error={sectionError}
+      sectionKey="financials"
     >
       <div className="space-y-6">
         <div className="grid grid-cols-2 gap-4">

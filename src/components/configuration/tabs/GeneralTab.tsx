@@ -11,8 +11,9 @@ export function GeneralTab() {
   const configurations = useConfigStore(state => state.configurations);
   const updateConfig = useConfigStore(state => state.updateConfig);
   const saveConfig = useConfigStore(state => state.saveConfig);
-  const saveCounter = useConfigStore(state => state.saveCounter);
   const hasGeneralUnsaved = useConfigStore(state => state.unsavedChanges.includes('general'));
+  const sectionError = useConfigStore(state => state.sectionErrors.general);
+  const lastSaved = useConfigStore(state => state.sectionLastSaved.general);
   const general = configurations.general || {};
 
   const handleChange = (field: string, value: any) => {
@@ -29,6 +30,9 @@ export function GeneralTab() {
         icon={Hotel}
         onSave={() => saveConfig('general')}
         hasUnsavedChanges={hasGeneralUnsaved}
+        lastSaved={lastSaved}
+        error={sectionError}
+        sectionKey="general"
       >
         <div className="grid gap-6">
           <div className="space-y-2">
@@ -72,6 +76,9 @@ export function GeneralTab() {
         icon={Phone}
         onSave={() => saveConfig('general')}
         hasUnsavedChanges={hasGeneralUnsaved}
+        lastSaved={lastSaved}
+        error={sectionError}
+        sectionKey="general"
       >
         <div className="grid gap-6">
           <div className="grid grid-cols-2 gap-4">
@@ -118,6 +125,9 @@ export function GeneralTab() {
         icon={MapPin}
         onSave={() => saveConfig('general')}
         hasUnsavedChanges={hasGeneralUnsaved}
+        lastSaved={lastSaved}
+        error={sectionError}
+        sectionKey="general"
       >
         <div className="space-y-4">
           <div className="space-y-2">
@@ -171,6 +181,9 @@ export function GeneralTab() {
         icon={ShieldCheck}
         onSave={() => saveConfig('general')}
         hasUnsavedChanges={hasGeneralUnsaved}
+        lastSaved={lastSaved}
+        error={sectionError}
+        sectionKey="general"
       >
         <div className="flex items-center justify-between">
           <div className="space-y-0.5 flex-1">

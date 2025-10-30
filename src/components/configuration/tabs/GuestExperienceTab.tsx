@@ -20,21 +20,13 @@ export function GuestExperienceTab() {
   const configurations = useConfigStore(state => state.configurations);
   const updateConfig = useConfigStore(state => state.updateConfig);
   const saveConfig = useConfigStore(state => state.saveConfig);
-  const saveCounter = useConfigStore(state => state.saveCounter);
   const hasGuestExperienceUnsaved = useConfigStore(state => state.unsavedChanges.includes('guestExperience'));
+  const sectionError = useConfigStore(state => state.sectionErrors.guestExperience);
+  const lastSaved = useConfigStore(state => state.sectionLastSaved.guestExperience);
   const guestExp = configurations.guestExperience || {};
 
   const handleChange = (field: string, value: any) => {
     updateConfig('guestExperience', { ...guestExp, [field]: value });
-  };
-
-  const handleSave = async () => {
-    try {
-      await saveConfig('guestExperience');
-      toast.success('Guest experience settings saved');
-    } catch (error) {
-      toast.error('Failed to save guest experience settings');
-    }
   };
 
   const toggleField = (fieldId: string) => {
@@ -51,8 +43,11 @@ export function GuestExperienceTab() {
         title="Check-In Requirements"
         description="Mandatory fields during guest registration"
         icon={Users}
-        onSave={handleSave}
+        onSave={() => saveConfig('guestExperience')}
         hasUnsavedChanges={hasGuestExperienceUnsaved}
+        lastSaved={lastSaved}
+        error={sectionError}
+        sectionKey="guestExperience"
       >
         <div className="space-y-3">
           {checkInFields.map((field) => (
@@ -78,8 +73,11 @@ export function GuestExperienceTab() {
       <ConfigCard
         title="Default Services"
         description="Auto-enable services for new bookings"
-        onSave={handleSave}
+        onSave={() => saveConfig('guestExperience')}
         hasUnsavedChanges={hasGuestExperienceUnsaved}
+        lastSaved={lastSaved}
+        error={sectionError}
+        sectionKey="guestExperience"
       >
         <div className="space-y-3">
           <div className="flex items-center justify-between">
@@ -120,8 +118,11 @@ export function GuestExperienceTab() {
       <ConfigCard
         title="QR Code Settings"
         description="Guest portal access configuration"
-        onSave={handleSave}
+        onSave={() => saveConfig('guestExperience')}
         hasUnsavedChanges={hasGuestExperienceUnsaved}
+        lastSaved={lastSaved}
+        error={sectionError}
+        sectionKey="guestExperience"
       >
         <div className="space-y-3">
           <div className="flex items-center justify-between">

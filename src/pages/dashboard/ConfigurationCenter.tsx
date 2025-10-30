@@ -69,9 +69,9 @@ export default function ConfigurationCenter() {
   const handleSaveAll = async () => {
     try {
       await saveAllChanges();
-      toast.success('All changes saved successfully');
     } catch (error) {
-      toast.error('Failed to save changes');
+      console.error('Save all failed:', error);
+      // Error handling is done in the store
     }
   };
 

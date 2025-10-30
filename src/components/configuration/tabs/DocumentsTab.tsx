@@ -11,9 +11,12 @@ export function DocumentsTab() {
   const documentTemplates = useConfigStore(state => state.documentTemplates);
   const updateDocumentTemplate = useConfigStore(state => state.updateDocumentTemplate);
   const saveDocumentTemplate = useConfigStore(state => state.saveDocumentTemplate);
-  const saveCounter = useConfigStore(state => state.saveCounter);
   const hasInvoiceUnsaved = useConfigStore(state => state.unsavedChanges.includes('template_invoice'));
   const hasReceiptUnsaved = useConfigStore(state => state.unsavedChanges.includes('template_receipt'));
+  const invoiceError = useConfigStore(state => state.sectionErrors.template_invoice);
+  const invoiceLastSaved = useConfigStore(state => state.sectionLastSaved.template_invoice);
+  const receiptError = useConfigStore(state => state.sectionErrors.template_receipt);
+  const receiptLastSaved = useConfigStore(state => state.sectionLastSaved.template_receipt);
 
   const getTemplate = (type: string) => {
     return documentTemplates.find(t => t.template_type === type) || {};
@@ -24,23 +27,6 @@ export function DocumentsTab() {
     updateDocumentTemplate(templateType, { ...template, [field]: value });
   };
 
-  const handleSaveInvoice = async () => {
-    try {
-      await saveDocumentTemplate('invoice');
-      toast.success('Invoice template saved');
-    } catch (error) {
-      toast.error('Failed to save invoice template');
-    }
-  };
-
-  const handleSaveReceipt = async () => {
-    try {
-      await saveDocumentTemplate('receipt');
-      toast.success('Receipt template saved');
-    } catch (error) {
-      toast.error('Failed to save receipt template');
-    }
-  };
 
   const invoiceTemplate = getTemplate('invoice');
   const receiptTemplate = getTemplate('receipt');
@@ -51,8 +37,11 @@ export function DocumentsTab() {
         title="Invoice Configuration"
         description="Customize invoice numbering and format"
         icon={FileText}
-        onSave={handleSaveInvoice}
+        onSave={() => saveDocumentTemplate('invoice')}
         hasUnsavedChanges={hasInvoiceUnsaved}
+        lastSaved={invoiceLastSaved}
+        error={invoiceError}
+        sectionKey="template_invoice"
       >
         <div className="space-y-4">
           <div className="grid grid-cols-3 gap-4">
@@ -113,8 +102,11 @@ export function DocumentsTab() {
         title="Receipt Configuration"
         description="Customize receipt numbering and format"
         icon={FileText}
-        onSave={handleSaveReceipt}
+        onSave={() => saveDocumentTemplate('receipt')}
         hasUnsavedChanges={hasReceiptUnsaved}
+        lastSaved={receiptLastSaved}
+        error={receiptError}
+        sectionKey="template_receipt"
       >
         <div className="space-y-4">
           <div className="grid grid-cols-3 gap-4">

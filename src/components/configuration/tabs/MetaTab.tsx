@@ -11,8 +11,9 @@ export function MetaTab() {
   const updateHotelMeta = useConfigStore(state => state.updateHotelMeta);
   const saveHotelMeta = useConfigStore(state => state.saveHotelMeta);
   const loadHotelMeta = useConfigStore(state => state.loadHotelMeta);
-  const saveCounter = useConfigStore(state => state.saveCounter);
   const hasHotelMetaUnsaved = useConfigStore(state => state.unsavedChanges.includes('hotel_meta'));
+  const sectionError = useConfigStore(state => state.sectionErrors.hotel_meta);
+  const lastSaved = useConfigStore(state => state.sectionLastSaved.hotel_meta);
 
   useEffect(() => {
     loadHotelMeta();
@@ -37,6 +38,9 @@ export function MetaTab() {
         icon={Building2}
         onSave={saveHotelMeta}
         hasUnsavedChanges={hasHotelMetaUnsaved}
+        lastSaved={lastSaved}
+        error={sectionError}
+        sectionKey="hotel_meta"
       >
         <div className="space-y-4">
           <div className="space-y-2">
@@ -78,6 +82,9 @@ export function MetaTab() {
         icon={Mail}
         onSave={saveHotelMeta}
         hasUnsavedChanges={hasHotelMetaUnsaved}
+        lastSaved={lastSaved}
+        error={sectionError}
+        sectionKey="hotel_meta"
       >
         <div className="grid grid-cols-2 gap-4">
           <div className="space-y-2">
@@ -116,6 +123,9 @@ export function MetaTab() {
         icon={Share2}
         onSave={saveHotelMeta}
         hasUnsavedChanges={hasHotelMetaUnsaved}
+        lastSaved={lastSaved}
+        error={sectionError}
+        sectionKey="hotel_meta"
       >
         <div className="space-y-4">
           <div className="space-y-2">

@@ -24,14 +24,6 @@ export function TaxServiceTab() {
     updateFinancials({ [field]: value });
   };
 
-  const handleSave = async () => {
-    try {
-      await saveFinancials();
-    } catch (error) {
-      // Error is already handled by the store
-      console.error('Save failed:', error);
-    }
-  };
 
   return (
     <div className="space-y-6">
@@ -39,7 +31,7 @@ export function TaxServiceTab() {
         title="VAT Configuration"
         description="Value Added Tax settings"
         icon={Percent}
-        onSave={handleSave}
+        onSave={saveFinancials}
         hasUnsavedChanges={hasFinancialsUnsaved}
         lastSaved={lastSaved}
         error={sectionError}
@@ -91,7 +83,7 @@ export function TaxServiceTab() {
         title="Service Charge Configuration"
         description="Additional service fees"
         icon={Percent}
-        onSave={handleSave}
+        onSave={saveFinancials}
         hasUnsavedChanges={hasFinancialsUnsaved}
         lastSaved={lastSaved}
         error={sectionError}
