@@ -64,34 +64,126 @@ serve(async (req) => {
     // 2. Calculate outstanding balance
     const { data: payments } = await supabaseClient
       .from('payments')
-      .select('amount, status')
-      .eq('booking_id', bookingId)
-      .eq('status', 'success');
+      .select('amount, status, charged_to_organization')
+      .eq('booking_id', bookingId);
 
-    const totalPaid = payments?.reduce((sum, p) => sum + Number(p.amount), 0) || 0;
+    const successfulPayments = payments?.filter(p => p.status === 'completed' || p.status === 'success') || [];
+    const totalPaid = successfulPayments.reduce((sum, p) => sum + Number(p.amount), 0);
     const balanceDue = Number(booking.total_amount || 0) - totalPaid;
+    const hasOrgPayment = successfulPayments.some(p => p.charged_to_organization);
 
     console.log('[complete-checkout] Balance calculation:', {
       total: booking.total_amount,
       paid: totalPaid,
-      due: balanceDue
+      due: balanceDue,
+      has_org_payment: hasOrgPayment,
+      payments_count: successfulPayments.length
     });
 
     // 3. Handle outstanding balance
-    if (balanceDue > 0 && !autoChargeToWallet) {
-      console.log('[complete-checkout] Outstanding balance detected');
-      return new Response(
-        JSON.stringify({ 
-          success: false, 
-          error: 'BALANCE_DUE', 
-          balanceDue,
-          message: 'Outstanding balance must be settled before checkout'
-        }),
-        { 
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' }, 
-          status: 400 
+    // CRITICAL: Organization bookings with successful org payments should be allowed to checkout
+    if (balanceDue > 0.01) { // Use 0.01 threshold for floating point precision
+      if (hasOrgPayment && booking.organization_id) {
+        // Organization booking with existing payment - allow checkout
+        console.log('[complete-checkout] Organization booking with payment - proceeding with checkout');
+      } else if (autoChargeToWallet && booking.organization_id) {
+        // Auto-charge remaining balance to organization wallet
+        console.log('[complete-checkout] Auto-charging balance to organization wallet');
+        
+        const { data: wallet } = await supabaseClient
+          .from('wallets')
+          .select('id')
+          .eq('owner_id', booking.organization_id)
+          .eq('wallet_type', 'organization')
+          .single();
+        
+        if (!wallet) {
+          return new Response(
+            JSON.stringify({ 
+              success: false, 
+              error: 'WALLET_NOT_FOUND', 
+              balanceDue,
+              message: 'Organization wallet not found'
+            }),
+            { 
+              headers: { ...corsHeaders, 'Content-Type': 'application/json' }, 
+              status: 400 
+            }
+          );
         }
-      );
+        
+        // Create payment for remaining balance
+        const { data: balancePayment, error: paymentError } = await supabaseClient
+          .from('payments')
+          .insert({
+            tenant_id: booking.tenant_id,
+            booking_id: bookingId,
+            guest_id: booking.guest_id,
+            organization_id: booking.organization_id,
+            wallet_id: wallet.id,
+            amount: balanceDue,
+            expected_amount: balanceDue,
+            payment_type: 'full',
+            method: 'organization_wallet',
+            status: 'completed',
+            charged_to_organization: true,
+            department: 'front_desk',
+            transaction_ref: `CHK-${Date.now()}-${bookingId.substring(0, 8)}`,
+            recorded_by: staffId,
+            metadata: {
+              booking_id: bookingId,
+              auto_checkout_charge: true,
+              created_at: new Date().toISOString()
+            }
+          })
+          .select()
+          .single();
+        
+        if (paymentError) {
+          console.error('[complete-checkout] Failed to create balance payment:', paymentError);
+          throw paymentError;
+        }
+        
+        // Create wallet transaction
+        const { error: txnError } = await supabaseClient
+          .from('wallet_transactions')
+          .insert({
+            tenant_id: booking.tenant_id,
+            wallet_id: wallet.id,
+            type: 'debit',
+            amount: balanceDue,
+            payment_id: balancePayment.id,
+            description: `Checkout balance charge - Booking ${bookingId.substring(0, 8)}`,
+            created_by: staffId,
+            department: 'front_desk',
+            metadata: {
+              booking_id: bookingId,
+              auto_checkout_charge: true,
+            }
+          });
+        
+        if (txnError) {
+          console.error('[complete-checkout] Failed to create wallet transaction:', txnError);
+          throw txnError;
+        }
+        
+        console.log('[complete-checkout] Balance charged to organization wallet');
+      } else {
+        // Regular guest booking with outstanding balance - block checkout
+        console.log('[complete-checkout] Outstanding balance detected - blocking checkout');
+        return new Response(
+          JSON.stringify({ 
+            success: false, 
+            error: 'BALANCE_DUE', 
+            balanceDue,
+            message: 'Outstanding balance must be settled before checkout'
+          }),
+          { 
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' }, 
+            status: 400 
+          }
+        );
+      }
     }
 
     // 4. Update booking status to completed

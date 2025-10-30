@@ -246,80 +246,158 @@ serve(async (req) => {
 
     // If organization booking, create payment and debit wallet
     let payment = null;
-    if (organization_id && total_amount > 0) {
+    if (organization_id && taxBreakdown.totalAmount > 0) {
       console.log('Creating organization payment for booking:', newBooking.id);
       
-      // Get organization wallet
+      // Get organization wallet - NOW REQUIRED
       const { data: wallet, error: walletError } = await supabaseClient
         .from('wallets')
-        .select('id')
+        .select('id, balance, owner_id')
         .eq('owner_id', organization_id)
         .eq('wallet_type', 'organization')
         .single();
 
+      // CRITICAL CHANGE: Fail booking if wallet doesn't exist
       if (walletError || !wallet) {
         console.error('Organization wallet not found:', walletError);
-        // Don't fail the booking, just log the error
-      } else {
-        // Create payment record with calculated total
-        const { data: newPayment, error: paymentError } = await supabaseClient
-          .from('payments')
-          .insert({
-            tenant_id,
-            booking_id: newBooking.id,
-            guest_id,
-            organization_id,
-            wallet_id: wallet.id,
-            amount: taxBreakdown.totalAmount,
-            expected_amount: taxBreakdown.totalAmount,
-            payment_type: 'full',
-            method: 'organization_wallet',
-            status: 'completed',
-            charged_to_organization: true,
-            department: department || 'front_desk',
-            transaction_ref: `ORG-${newBooking.id.substring(0, 8)}`,
-            recorded_by: created_by,
-            metadata: {
-              booking_id: newBooking.id,
-              auto_created: true,
-              created_at: new Date().toISOString()
-            }
-          })
-          .select()
-          .single();
-
-        if (paymentError) {
-          console.error('Error creating organization payment:', paymentError);
-        } else {
-          payment = newPayment;
-          
-          // Create wallet transaction (debit) with calculated total, department and metadata
-          const { error: txnError } = await supabaseClient
-            .from('wallet_transactions')
-            .insert({
-              tenant_id,
-              wallet_id: wallet.id,
-              type: 'debit',
-              amount: taxBreakdown.totalAmount,
-              payment_id: newPayment.id,
-              description: `Booking charge - Room ${room_id} - Guest ${guest_id}`,
-              created_by: created_by || guest_id,
-              department: department || 'front_desk',
-              metadata: {
-                booking_id: newBooking.id,
-                guest_id: guest_id,
-                room_id: room_id,
-                organization_id: organization_id,
-              }
-            });
-
-          if (txnError) {
-            console.error('Error creating wallet transaction:', txnError);
-          } else {
-            console.log('Organization wallet debited successfully');
-          }
-        }
+        
+        // Delete the booking we just created
+        await supabaseClient
+          .from('bookings')
+          .delete()
+          .eq('id', newBooking.id);
+        
+        // Return error response
+        return new Response(
+          JSON.stringify({ 
+            success: false, 
+            error: 'WALLET_NOT_FOUND',
+            message: 'Organization does not have a wallet configured. Please contact administrator.',
+            organization_id: organization_id
+          }),
+          { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 400 }
+        );
       }
+      
+      // Validate organization has sufficient credit/balance
+      const { data: org } = await supabaseClient
+        .from('organizations')
+        .select('credit_limit, allow_negative_balance')
+        .eq('id', organization_id)
+        .single();
+      
+      const availableCredit = Number(org?.credit_limit || 0);
+      const currentBalance = Number(wallet.balance);
+      const effectiveLimit = org?.allow_negative_balance 
+        ? availableCredit - currentBalance  // Can go negative
+        : Math.max(0, availableCredit - Math.abs(currentBalance)); // Cannot go negative
+      
+      if (taxBreakdown.totalAmount > effectiveLimit) {
+        // Delete the booking
+        await supabaseClient
+          .from('bookings')
+          .delete()
+          .eq('id', newBooking.id);
+        
+        return new Response(
+          JSON.stringify({ 
+            success: false, 
+            error: 'INSUFFICIENT_CREDIT',
+            message: `Organization has insufficient credit. Available: ₦${effectiveLimit.toLocaleString()}, Required: ₦${taxBreakdown.totalAmount.toLocaleString()}`,
+            available_credit: effectiveLimit,
+            required_amount: taxBreakdown.totalAmount
+          }),
+          { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 400 }
+        );
+      }
+      
+      // Create payment record with calculated total
+      const { data: newPayment, error: paymentError } = await supabaseClient
+        .from('payments')
+        .insert({
+          tenant_id,
+          booking_id: newBooking.id,
+          guest_id,
+          organization_id,
+          wallet_id: wallet.id,
+          amount: taxBreakdown.totalAmount,
+          expected_amount: taxBreakdown.totalAmount,
+          payment_type: 'full',
+          method: 'organization_wallet',
+          status: 'completed',
+          charged_to_organization: true,
+          department: department || 'front_desk',
+          transaction_ref: `ORG-${Date.now()}-${newBooking.id.substring(0, 8)}`,
+          recorded_by: created_by,
+          metadata: {
+            booking_id: newBooking.id,
+            auto_created: true,
+            tax_breakdown: {
+              base_amount: taxBreakdown.baseAmount,
+              vat_amount: taxBreakdown.vatAmount,
+              service_charge_amount: taxBreakdown.serviceAmount,
+              total_amount: taxBreakdown.totalAmount,
+            },
+            created_at: new Date().toISOString()
+          }
+        })
+        .select()
+        .single();
+
+      if (paymentError) {
+        console.error('Error creating organization payment:', paymentError);
+        
+        // Delete the booking
+        await supabaseClient
+          .from('bookings')
+          .delete()
+          .eq('id', newBooking.id);
+        
+        throw new Error(`Failed to create payment: ${paymentError.message}`);
+      }
+      
+      payment = newPayment;
+      
+      // Create wallet transaction (debit)
+      const { error: txnError } = await supabaseClient
+        .from('wallet_transactions')
+        .insert({
+          tenant_id,
+          wallet_id: wallet.id,
+          type: 'debit',
+          amount: taxBreakdown.totalAmount,
+          payment_id: newPayment.id,
+          description: `Booking charge - Room ${room?.number || room_id}`,
+          created_by: created_by || guest_id,
+          department: department || 'front_desk',
+          metadata: {
+            booking_id: newBooking.id,
+            guest_id: guest_id,
+            room_id: room_id,
+            organization_id: organization_id,
+            tax_breakdown: {
+              base_amount: taxBreakdown.baseAmount,
+              vat_amount: taxBreakdown.vatAmount,
+              service_charge_amount: taxBreakdown.serviceAmount,
+            }
+          }
+        });
+
+      if (txnError) {
+        console.error('Error creating wallet transaction:', txnError);
+        
+        // Delete payment and booking
+        await supabaseClient.from('payments').delete().eq('id', newPayment.id);
+        await supabaseClient.from('bookings').delete().eq('id', newBooking.id);
+        
+        throw new Error(`Failed to create wallet transaction: ${txnError.message}`);
+      }
+      
+      console.log('Organization wallet debited successfully:', {
+        wallet_id: wallet.id,
+        amount: taxBreakdown.totalAmount,
+        payment_id: newPayment.id
+      });
     }
 
     return new Response(

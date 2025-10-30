@@ -39,6 +39,7 @@ import { toast } from 'sonner';
 import { GuestQuickForm } from '@/modules/bookings/components/GuestQuickForm';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { cn } from '@/lib/utils';
+import { OrganizationWalletStatus } from '@/components/shared/OrganizationWalletStatus';
 
 interface AssignRoomDrawerProps {
   open: boolean;
@@ -184,8 +185,22 @@ export function AssignRoomDrawer({ open, onClose, roomId, roomNumber }: AssignRo
       setOrganizationBooking(false);
       setActionType('reserve');
     },
-    onError: (error: Error) => {
-      toast.error(`Failed: ${error.message}`);
+    onError: (error: any) => {
+      const errorData = error?.response?.data || error;
+      
+      if (errorData.error === 'WALLET_NOT_FOUND') {
+        toast.error('Organization Setup Required', {
+          description: 'This organization does not have a wallet configured. Please contact your administrator to set up the organization wallet before creating bookings.',
+          duration: 8000,
+        });
+      } else if (errorData.error === 'INSUFFICIENT_CREDIT') {
+        toast.error('Insufficient Credit', {
+          description: errorData.message || 'Organization has exceeded its credit limit.',
+          duration: 6000,
+        });
+      } else {
+        toast.error(`Failed: ${error.message || 'Unknown error'}`);
+      }
     },
   });
 
@@ -354,6 +369,14 @@ export function AssignRoomDrawer({ open, onClose, roomId, roomNumber }: AssignRo
                     </Command>
                   </PopoverContent>
                 </Popover>
+
+                {/* Organization Wallet Status */}
+                {organizationId && (
+                  <OrganizationWalletStatus 
+                    organizationId={organizationId}
+                    requiredAmount={pricing?.totalAmount}
+                  />
+                )}
 
                 {/* Organization Limit Warning */}
                 {validationResult.isLoading && <p className="text-sm text-muted-foreground">Validating limits...</p>}

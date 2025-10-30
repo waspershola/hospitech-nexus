@@ -38,10 +38,16 @@ export function useCheckout() {
       toast.success('Guest checked out successfully');
     },
     onError: (error: any) => {
-      if (error.message?.includes('BALANCE_DUE')) {
-        toast.error('Outstanding balance must be settled before checkout');
+      const errorMessage = error.message || 'Unknown error';
+      
+      if (errorMessage.includes('BALANCE_DUE')) {
+        toast.error('Outstanding Balance', {
+          description: 'Please settle the outstanding balance before checkout. For organization bookings, ensure the payment was recorded correctly.',
+        });
+      } else if (errorMessage.includes('WALLET_NOT_FOUND')) {
+        toast.error('Organization wallet not configured. Contact administrator.');
       } else {
-        toast.error(`Checkout failed: ${error.message}`);
+        toast.error(`Checkout failed: ${errorMessage}`);
       }
     },
   });
