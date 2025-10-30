@@ -95,7 +95,8 @@ export function PaymentForm({
 
   // Auto-select provider based on location
   useEffect(() => {
-    if (selectedLocationId) {
+    // Don't auto-select from location if Pay Later is checked
+    if (selectedLocationId && !payLater) {
       const location = locations.find(l => l.id === selectedLocationId);
       if (location?.provider_id) {
         setValue('provider_id', location.provider_id);
@@ -106,7 +107,7 @@ export function PaymentForm({
         setValue('department', location.department || '');
       }
     }
-  }, [selectedLocationId, locations, activeProviders, setValue]);
+  }, [selectedLocationId, locations, activeProviders, setValue, payLater]);
 
   // Auto-select provider when Pay Later checkbox is checked
   useEffect(() => {
@@ -356,9 +357,14 @@ export function PaymentForm({
               ))}
             </SelectContent>
           </Select>
-          {selectedLocationId && (
+          {selectedLocationId && !payLater && (
             <p className="text-xs text-muted-foreground">
               Provider auto-selected from location
+            </p>
+          )}
+          {selectedLocationId && payLater && (
+            <p className="text-xs text-orange-600">
+              Location selected, but "Pay Later" overrides provider selection
             </p>
           )}
         </div>
