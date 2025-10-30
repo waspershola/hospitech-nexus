@@ -13,6 +13,8 @@ import { useRoomActions } from '../hooks/useRoomActions';
 import { useCheckout } from '@/hooks/useCheckout';
 import { useBookingFolio } from '@/hooks/useBookingFolio';
 import { useOrganizationWallet } from '@/hooks/useOrganizationWallet';
+import { useForceCheckout } from '@/hooks/useForceCheckout';
+import { usePaymentPreferences } from '@/hooks/usePaymentPreferences';
 import { ExtendStayModal } from './ExtendStayModal';
 import { AddChargeModal } from './AddChargeModal';
 import { ChargeToOrgModal } from './ChargeToOrgModal';
@@ -41,6 +43,8 @@ export function RoomActionDrawer({ roomId, open, onClose, onOpenAssignDrawer }: 
   const queryClient = useQueryClient();
   const { checkIn, checkOut, markClean, markMaintenance } = useRoomActions();
   const { mutate: completeCheckout, isPending: isCheckingOut } = useCheckout();
+  const { mutate: forceCheckout, isPending: isForcingCheckout } = useForceCheckout();
+  const { preferences } = usePaymentPreferences();
   const [extendModalOpen, setExtendModalOpen] = useState(false);
   const [chargeModalOpen, setChargeModalOpen] = useState(false);
   const [chargeToOrgModalOpen, setChargeToOrgModalOpen] = useState(false);
@@ -151,10 +155,13 @@ export function RoomActionDrawer({ roomId, open, onClose, onOpenAssignDrawer }: 
   const handleExpressCheckout = async () => {
     if (!room || !activeBooking) return;
     
-    if (folio && folio.balance > 0) {
+    const hasDebt = folio && folio.balance > 0;
+    const allowDebt = preferences?.allow_checkout_with_debt ?? false;
+
+    if (hasDebt && !allowDebt) {
       toast({ 
         title: 'Outstanding Balance', 
-        description: 'Please settle balance before express checkout',
+        description: 'Please settle balance before checkout or use Force Checkout',
         variant: 'destructive'
       });
       return;
@@ -165,6 +172,18 @@ export function RoomActionDrawer({ roomId, open, onClose, onOpenAssignDrawer }: 
     
     // Then complete checkout in background
     completeCheckout({ bookingId: activeBooking.id });
+  };
+
+  const handleForceCheckout = async () => {
+    if (!room || !activeBooking) return;
+    
+    onClose();
+    
+    forceCheckout({
+      bookingId: activeBooking.id,
+      reason: 'Manager override - guest checkout with outstanding balance',
+      createReceivable: true,
+    });
   };
 
   const handleCheckIn = async () => {
@@ -238,7 +257,8 @@ export function RoomActionDrawer({ roomId, open, onClose, onOpenAssignDrawer }: 
           { label: 'Set Out of Service', action: handleMarkMaintenance, variant: 'outline' as const, icon: Wrench, tooltip: 'Mark as out of service' },
         ];
       case 'occupied':
-        return [
+        const hasOutstandingBalance = folio && folio.balance > 0;
+        const actions = [
           { label: 'Check-Out', action: handleExpressCheckout, variant: 'default' as const, icon: LogOut, tooltip: 'Complete guest checkout' },
           { label: 'Extend Stay', action: () => setExtendModalOpen(true), variant: 'outline' as const, icon: Calendar, tooltip: 'Extend checkout date' },
           { label: 'Transfer Room', action: () => toast({ title: 'Transfer Room', description: 'Feature coming soon' }), variant: 'outline' as const, icon: UserPlus, tooltip: 'Transfer to different room' },
@@ -246,6 +266,19 @@ export function RoomActionDrawer({ roomId, open, onClose, onOpenAssignDrawer }: 
           { label: 'Post Payment', action: () => setQuickPaymentOpen(true), variant: 'outline' as const, icon: CreditCard, tooltip: 'Record payment' },
           { label: hasDND ? 'Remove DND' : 'Do Not Disturb', action: handleToggleDND, variant: hasDND ? 'secondary' : 'ghost' as const, icon: BellOff, tooltip: 'Toggle Do Not Disturb' },
         ];
+        
+        // Add Force Checkout if there's debt
+        if (hasOutstandingBalance) {
+          actions.splice(1, 0, { 
+            label: 'Force Checkout', 
+            action: handleForceCheckout, 
+            variant: 'destructive' as const, 
+            icon: AlertTriangle, 
+            tooltip: 'Manager override - checkout with debt' 
+          });
+        }
+        
+        return actions;
       case 'reserved':
         return [
           { label: 'Check-In', action: handleCheckIn, variant: 'default' as const, icon: LogIn, tooltip: 'Complete guest check-in' },

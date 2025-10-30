@@ -80,7 +80,16 @@ serve(async (req) => {
       payments_count: successfulPayments.length
     });
 
-    // 3. Handle outstanding balance
+    // 3. Get payment preferences
+    const { data: preferences } = await supabaseClient
+      .from('hotel_payment_preferences')
+      .select('*')
+      .eq('tenant_id', booking.tenant_id)
+      .maybeSingle();
+
+    const allowCheckoutWithDebt = preferences?.allow_checkout_with_debt ?? false;
+
+    // 4. Handle outstanding balance
     // CRITICAL: Organization bookings with successful org payments should be allowed to checkout
     if (balanceDue > 0.01) { // Use 0.01 threshold for floating point precision
       if (hasOrgPayment && booking.organization_id) {
@@ -168,6 +177,35 @@ serve(async (req) => {
         }
         
         console.log('[complete-checkout] Balance charged to organization wallet');
+      } else if (allowCheckoutWithDebt) {
+        // Create receivable for outstanding balance
+        console.log('[complete-checkout] Creating receivable for outstanding balance');
+        
+        const { error: receivableError } = await supabaseClient
+          .from('receivables')
+          .insert({
+            tenant_id: booking.tenant_id,
+            guest_id: booking.guest_id,
+            organization_id: booking.organization_id,
+            booking_id: bookingId,
+            amount: balanceDue,
+            status: 'open',
+            due_date: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+            created_by: staffId,
+            metadata: {
+              booking_id: bookingId,
+              checkout_balance: true,
+              original_total: booking.total_amount,
+              total_paid: totalPaid,
+            }
+          });
+        
+        if (receivableError) {
+          console.error('[complete-checkout] Failed to create receivable:', receivableError);
+          throw receivableError;
+        }
+        
+        console.log('[complete-checkout] Receivable created, allowing checkout with debt');
       } else {
         // Regular guest booking with outstanding balance - block checkout
         console.log('[complete-checkout] Outstanding balance detected - blocking checkout');
@@ -186,7 +224,7 @@ serve(async (req) => {
       }
     }
 
-    // 4. Update booking status to completed
+    // 5. Update booking status to completed
     const { error: updateBookingError } = await supabaseClient
       .from('bookings')
       .update({
@@ -206,7 +244,7 @@ serve(async (req) => {
 
     console.log('[complete-checkout] Booking marked as completed');
 
-    // 5. Update room - set to cleaning and clear guest references
+    // 6. Update room - set to cleaning and clear guest references
     const { error: updateRoomError } = await supabaseClient
       .from('rooms')
       .update({
@@ -224,7 +262,7 @@ serve(async (req) => {
 
     console.log('[complete-checkout] Room status updated to cleaning');
 
-    // 6. Create audit log
+    // 7. Create audit log
     await supabaseClient.from('hotel_audit_logs').insert({
       tenant_id: booking.tenant_id,
       user_id: staffId,

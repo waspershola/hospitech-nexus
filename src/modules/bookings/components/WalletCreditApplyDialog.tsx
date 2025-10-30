@@ -1,35 +1,42 @@
-import { useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
-import { supabase } from '@/integrations/supabase/client';
-import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Wallet } from 'lucide-react';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Wallet, Info } from 'lucide-react';
+import { useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
+import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/contexts/AuthContext';
 
 interface WalletCreditApplyDialogProps {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
   guestId: string;
   bookingTotal: number;
-  onApply: (amountApplied: number) => void;
+  onApply: (amount: number) => void;
 }
 
-export function WalletCreditApplyDialog({ 
-  guestId, 
-  bookingTotal, 
-  onApply 
-}: WalletCreditApplyDialogProps) {
+export function WalletCreditApplyDialog({ open, onOpenChange, guestId, bookingTotal, onApply }: WalletCreditApplyDialogProps) {
+  const { tenantId } = useAuth();
+
   const { data: wallet } = useQuery({
-    queryKey: ['guest-wallet', guestId],
+    queryKey: ['guest-wallet', guestId, tenantId],
     queryFn: async () => {
-      const { data } = await supabase
+      if (!tenantId || !guestId) return null;
+      
+      const { data, error } = await supabase
         .from('wallets')
         .select('*')
-        .eq('wallet_type', 'guest')
+        .eq('tenant_id', tenantId)
         .eq('owner_id', guestId)
+        .eq('wallet_type', 'guest')
         .maybeSingle();
+      
+      if (error) throw error;
       return data;
     },
-    enabled: !!guestId,
+    enabled: !!tenantId && !!guestId,
   });
 
   const availableBalance = wallet?.balance ? Number(wallet.balance) : 0;
@@ -37,53 +44,74 @@ export function WalletCreditApplyDialog({
 
   const [amountToApply, setAmountToApply] = useState(maxApplicable);
 
-  if (availableBalance <= 0) return null;
-
   return (
-    <Alert className="border-success bg-success/5">
-      <Wallet className="h-4 w-4" />
-      <AlertTitle>Wallet Balance Available</AlertTitle>
-      <AlertDescription className="mt-2 space-y-4">
-        <p className="text-sm">
-          Guest has <strong>₦{availableBalance.toLocaleString()}</strong> in wallet credit available.
-        </p>
-        
-        <div className="space-y-2">
-          <Label htmlFor="apply-amount">Amount to Apply</Label>
-          <Input
-            id="apply-amount"
-            type="number"
-            value={amountToApply}
-            onChange={(e) => {
-              const val = Number(e.target.value);
-              setAmountToApply(Math.min(Math.max(0, val), maxApplicable));
-            }}
-            max={maxApplicable}
-            min={0}
-            step="0.01"
-          />
-          <p className="text-xs text-muted-foreground">
-            Maximum applicable: ₦{maxApplicable.toLocaleString()}
-          </p>
+    <Dialog open={open && availableBalance > 0} onOpenChange={onOpenChange}>
+      <DialogContent className="sm:max-w-md">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <Wallet className="w-5 h-5 text-primary" />
+            Apply Wallet Credit
+          </DialogTitle>
+          <DialogDescription>
+            Guest has ₦{availableBalance.toLocaleString()} available in wallet credit. Would you like to apply some or all of it to this booking?
+          </DialogDescription>
+        </DialogHeader>
+
+        <Alert>
+          <Info className="h-4 w-4" />
+          <AlertDescription>
+            <strong>Booking Total:</strong> ₦{bookingTotal.toLocaleString()}
+            <br />
+            <strong>Available Credit:</strong> ₦{availableBalance.toLocaleString()}
+            <br />
+            <strong>Max Applicable:</strong> ₦{maxApplicable.toLocaleString()}
+          </AlertDescription>
+        </Alert>
+
+        <div className="space-y-4">
+          <div className="space-y-2">
+            <Label htmlFor="apply-amount">Amount to Apply</Label>
+            <Input
+              id="apply-amount"
+              type="number"
+              value={amountToApply}
+              onChange={(e) => {
+                const val = Number(e.target.value);
+                setAmountToApply(Math.min(Math.max(0, val), maxApplicable));
+              }}
+              max={maxApplicable}
+              min={0}
+              step="0.01"
+            />
+            <p className="text-xs text-muted-foreground">
+              Maximum applicable: ₦{maxApplicable.toLocaleString()}
+            </p>
+          </div>
         </div>
 
-        <div className="flex gap-2">
+        <DialogFooter className="flex-row gap-2">
           <Button 
-            size="sm" 
+            variant="outline"
+            onClick={() => {
+              onApply(0);
+              onOpenChange(false);
+            }}
+          >
+            Don't Apply
+          </Button>
+          <Button 
             onClick={() => {
               if (amountToApply > 0) {
                 onApply(amountToApply);
               }
+              onOpenChange(false);
             }}
             disabled={amountToApply <= 0}
           >
             Apply ₦{amountToApply.toLocaleString()}
           </Button>
-          <Button size="sm" variant="outline" onClick={() => onApply(0)}>
-            Don't Apply
-          </Button>
-        </div>
-      </AlertDescription>
-    </Alert>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }
