@@ -15,8 +15,9 @@ export function BrandingTab() {
   const branding = useConfigStore(state => state.branding);
   const updateBranding = useConfigStore(state => state.updateBranding);
   const saveBranding = useConfigStore(state => state.saveBranding);
-  const saveCounter = useConfigStore(state => state.saveCounter);
   const hasBrandingUnsaved = useConfigStore(state => state.unsavedChanges.includes('branding'));
+  const sectionError = useConfigStore(state => state.sectionErrors.branding);
+  const lastSaved = useConfigStore(state => state.sectionLastSaved.branding);
 
   const handleChange = (field: string, value: any) => {
     updateBranding({ [field]: value });
@@ -33,6 +34,9 @@ export function BrandingTab() {
           icon={ImageIcon}
           onSave={saveBranding}
           hasUnsavedChanges={hasBrandingUnsaved}
+          lastSaved={lastSaved}
+          error={sectionError}
+          sectionKey="branding"
         >
           <div className="space-y-6">
             <LogoUploader
@@ -55,6 +59,9 @@ export function BrandingTab() {
           icon={ImageIcon}
           onSave={saveBranding}
           hasUnsavedChanges={hasBrandingUnsaved}
+          lastSaved={lastSaved}
+          error={sectionError}
+          sectionKey="branding"
         >
           <HeroImageUploader
             imageUrl={branding.hero_image}
@@ -70,6 +77,9 @@ export function BrandingTab() {
           icon={Palette}
           onSave={saveBranding}
           hasUnsavedChanges={hasBrandingUnsaved}
+          lastSaved={lastSaved}
+          error={sectionError}
+          sectionKey="branding"
         >
           <div className="grid grid-cols-3 gap-6">
             <div className="space-y-2">
@@ -134,6 +144,9 @@ export function BrandingTab() {
           icon={Type}
           onSave={saveBranding}
           hasUnsavedChanges={hasBrandingUnsaved}
+          lastSaved={lastSaved}
+          error={sectionError}
+          sectionKey="branding"
         >
           <FontSelector
             headingFont={branding.font_heading || 'Playfair Display'}
@@ -149,6 +162,9 @@ export function BrandingTab() {
           icon={FileText}
           onSave={saveBranding}
           hasUnsavedChanges={hasBrandingUnsaved}
+          lastSaved={lastSaved}
+          error={sectionError}
+          sectionKey="branding"
         >
           <div className="space-y-4">
             <div className="space-y-2">

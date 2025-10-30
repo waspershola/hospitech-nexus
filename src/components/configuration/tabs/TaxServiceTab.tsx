@@ -11,8 +11,9 @@ export function TaxServiceTab() {
   const financials = useConfigStore(state => state.financials);
   const updateFinancials = useConfigStore(state => state.updateFinancials);
   const saveFinancials = useConfigStore(state => state.saveFinancials);
-  const saveCounter = useConfigStore(state => state.saveCounter);
   const hasFinancialsUnsaved = useConfigStore(state => state.unsavedChanges.includes('financials'));
+  const sectionError = useConfigStore(state => state.sectionErrors.financials);
+  const lastSaved = useConfigStore(state => state.sectionLastSaved.financials);
 
   const handleChange = (field: string, value: any) => {
     // Validate percentage values
@@ -26,9 +27,9 @@ export function TaxServiceTab() {
   const handleSave = async () => {
     try {
       await saveFinancials();
-      toast.success('Tax & service settings saved');
     } catch (error) {
-      toast.error('Failed to save tax & service settings');
+      // Error is already handled by the store
+      console.error('Save failed:', error);
     }
   };
 
@@ -40,6 +41,9 @@ export function TaxServiceTab() {
         icon={Percent}
         onSave={handleSave}
         hasUnsavedChanges={hasFinancialsUnsaved}
+        lastSaved={lastSaved}
+        error={sectionError}
+        sectionKey="financials"
       >
         <div className="space-y-4">
           <div className="grid grid-cols-2 gap-4">
@@ -89,6 +93,9 @@ export function TaxServiceTab() {
         icon={Percent}
         onSave={handleSave}
         hasUnsavedChanges={hasFinancialsUnsaved}
+        lastSaved={lastSaved}
+        error={sectionError}
+        sectionKey="financials"
       >
         <div className="space-y-4">
           <div className="grid grid-cols-2 gap-4">
