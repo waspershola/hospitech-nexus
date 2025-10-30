@@ -125,6 +125,34 @@ export function FinancialsTab() {
             }
           </p>
         </div>
+
+        {/* Live Calculation Example */}
+        <div className="p-4 bg-primary/5 border border-primary/20 rounded-lg">
+          <Label className="text-sm font-medium mb-2 block">Amount Formatting Example</Label>
+          <p className="text-sm text-muted-foreground mb-1">
+            This shows how amounts will appear throughout the system with your current settings.
+          </p>
+          <div className="space-y-1 mt-2">
+            <div className="flex justify-between text-sm">
+              <span className="text-muted-foreground">Room Rate (1 night):</span>
+              <span className="font-medium">
+                {financials.symbol_position === 'after'
+                  ? `10${financials.thousand_separator}000${financials.decimal_separator}00 ${selectedCurrency.symbol}`
+                  : `${selectedCurrency.symbol}10${financials.thousand_separator}000${financials.decimal_separator}00`
+                }
+              </span>
+            </div>
+            <div className="flex justify-between text-sm">
+              <span className="text-muted-foreground">Payment Amount:</span>
+              <span className="font-medium">
+                {financials.symbol_position === 'after'
+                  ? `5${financials.thousand_separator}500${financials.decimal_separator}00 ${selectedCurrency.symbol}`
+                  : `${selectedCurrency.symbol}5${financials.thousand_separator}500${financials.decimal_separator}00`
+                }
+              </span>
+            </div>
+          </div>
+        </div>
       </div>
     </ConfigCard>
   );

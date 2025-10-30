@@ -23,6 +23,10 @@ import { ProvidersTab } from '@/modules/finance-center/ProvidersTab';
 import { LocationsTab } from '@/modules/finance-center/LocationsTab';
 import { OrganizationsTab } from '@/modules/finance-center/OrganizationsTab';
 import { FinancialOverviewTab } from '@/components/configuration/tabs/FinancialOverviewTab';
+import { useConfigCompleteness } from '@/hooks/useConfigCompleteness';
+import { Progress } from '@/components/ui/progress';
+import { Badge } from '@/components/ui/badge';
+import { CheckCircle2, AlertCircle } from 'lucide-react';
 
 const tabs = [
   { id: 'general', label: 'General', icon: Settings },
@@ -52,6 +56,7 @@ export default function ConfigurationCenter() {
   const lastSyncTime = useConfigStore(state => state.lastSyncTime);
   const isLoading = useConfigStore(state => state.isLoading);
   const [activeTab, setActiveTab] = useState('general');
+  const { percentage, checks, isComplete } = useConfigCompleteness();
 
   useEffect(() => {
     if (tenantId) {
@@ -95,13 +100,41 @@ export default function ConfigurationCenter() {
       <div className="bg-card border-b sticky top-0 z-10">
         <div className="max-w-7xl mx-auto px-6 py-4">
           <div className="flex items-center justify-between">
-            <div>
+            <div className="flex-1">
               <h1 className="text-3xl font-display font-semibold text-foreground">
                 Configuration Center
               </h1>
               <p className="text-sm text-muted-foreground mt-1">
                 Manage hotel-wide identity, policy, and service standards
               </p>
+              
+              {/* Setup Completeness Meter */}
+              <div className="mt-3 space-y-2">
+                <div className="flex items-center gap-3">
+                  <Progress value={percentage} className="h-2 flex-1 max-w-xs" />
+                  <div className="flex items-center gap-2">
+                    {isComplete ? (
+                      <Badge variant="default" className="gap-1">
+                        <CheckCircle2 className="h-3 w-3" />
+                        Complete
+                      </Badge>
+                    ) : (
+                      <Badge variant="outline" className="gap-1">
+                        <AlertCircle className="h-3 w-3" />
+                        {percentage}% Setup
+                      </Badge>
+                    )}
+                  </div>
+                </div>
+                {!isComplete && (
+                  <div className="flex gap-2 text-xs text-muted-foreground">
+                    {!checks.financials && <span>• Financials</span>}
+                    {!checks.branding && <span>• Branding</span>}
+                    {!checks.email && <span>• Email</span>}
+                    {!checks.meta && <span>• Hotel Profile</span>}
+                  </div>
+                )}
+              </div>
             </div>
 
             <div className="flex items-center gap-4">

@@ -27,3 +27,6 @@ verify_jwt = true
 [functions.verify-payment]
 verify_jwt = true
 
+[functions.recalculate-financials]
+verify_jwt = true
+
