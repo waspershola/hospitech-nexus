@@ -4,6 +4,7 @@ import { OpayProvider } from './opay';
 import { ZenithProvider } from './zenith';
 import { BankTransferProvider } from './bankTransfer';
 import { CashProvider } from './cash';
+import { PayLaterProvider } from './payLater';
 
 export const AVAILABLE_PROVIDERS: Record<string, PaymentProvider> = {
   moniepoint: MoniepointProvider,
@@ -11,6 +12,7 @@ export const AVAILABLE_PROVIDERS: Record<string, PaymentProvider> = {
   zenith: ZenithProvider,
   bank_transfer: BankTransferProvider,
   cash: CashProvider,
+  pay_later: PayLaterProvider,
 };
 
 export function getProvider(providerId: string): PaymentProvider | null {
