@@ -53,12 +53,16 @@ export function RoomActionDrawer({ roomId, open, onClose }: RoomActionDrawerProp
     queryKey: ['room-detail', roomId],
     queryFn: async () => {
       if (!roomId || !tenantId) return null;
+      
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      
       const { data, error } = await supabase
         .from('rooms')
         .select(`
           *,
           category:room_categories(name, short_code, base_rate),
-          bookings(
+          bookings!inner(
             id,
             check_in,
             check_out,
@@ -72,6 +76,9 @@ export function RoomActionDrawer({ roomId, open, onClose }: RoomActionDrawerProp
         `)
         .eq('id', roomId)
         .eq('tenant_id', tenantId)
+        .neq('bookings.status', 'completed')
+        .neq('bookings.status', 'cancelled')
+        .gte('bookings.check_out', today.toISOString())
         .single();
 
       if (error) throw error;
@@ -106,8 +113,18 @@ export function RoomActionDrawer({ roomId, open, onClose }: RoomActionDrawerProp
     };
   }, [roomId, tenantId, queryClient]);
 
-  // Get current active booking
-  const activeBooking = room?.bookings?.find((b: any) => b.status !== 'cancelled' && b.status !== 'completed');
+  // Get current active booking (date-aware filter)
+  const activeBooking = room?.bookings?.find((b: any) => {
+    if (b.status === 'cancelled' || b.status === 'completed') return false;
+    
+    // Check if booking is still within stay period or future
+    const checkOut = new Date(b.check_out);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    checkOut.setHours(0, 0, 0, 0);
+    
+    return checkOut >= today; // Only show if checkout is today or future
+  });
   
   // Fetch folio balance for active booking
   const { data: folio } = useBookingFolio(activeBooking?.id || null);

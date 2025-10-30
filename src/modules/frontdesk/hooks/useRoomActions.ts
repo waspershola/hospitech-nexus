@@ -48,7 +48,26 @@ export function useRoomActions() {
   });
 
   const checkOutMutation = useMutation({
-    mutationFn: (roomId: string) => updateRoomStatus(roomId, 'cleaning', 'Guest checked out'),
+    mutationFn: async (roomId: string) => {
+      // First update room status
+      await updateRoomStatus(roomId, 'cleaning', 'Guest checked out');
+      
+      // Then complete the active booking
+      const { error } = await supabase
+        .from('bookings')
+        .update({ 
+          status: 'completed',
+          metadata: supabase.rpc('jsonb_set', {
+            target: 'metadata',
+            path: '{actual_checkout}',
+            value: JSON.stringify(new Date().toISOString())
+          })
+        })
+        .eq('room_id', roomId)
+        .in('status', ['checked_in', 'reserved']);
+
+      if (error) throw error;
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['rooms-grid'] });
       queryClient.invalidateQueries({ queryKey: ['frontdesk-kpis'] });
