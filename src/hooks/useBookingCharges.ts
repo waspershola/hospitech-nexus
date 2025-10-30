@@ -41,13 +41,13 @@ export function useBookingCharges(bookingId?: string): BookingChargesSummary & {
       if (!bookingId) return [];
       
       const { data, error } = await supabase
-        .from('booking_charges')
+        .from('booking_charges' as any)
         .select('*')
         .eq('booking_id', bookingId)
         .order('charged_at', { ascending: false });
 
       if (error) throw error;
-      return data as BookingCharge[];
+      return (data as unknown) as BookingCharge[];
     },
     enabled: !!bookingId && !!tenantId,
   });
@@ -81,7 +81,7 @@ export function useBookingCharges(bookingId?: string): BookingChargesSummary & {
       if (!tenantId) throw new Error('No tenant ID');
 
       const { error } = await supabase
-        .from('booking_charges')
+        .from('booking_charges' as any)
         .insert([{
           ...charge,
           tenant_id: tenantId,

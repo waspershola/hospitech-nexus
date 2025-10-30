@@ -206,6 +206,45 @@ serve(async (req) => {
       return org?.wallet_id || null;
     }
 
+    // Helper function to get or create guest wallet
+    async function getOrCreateGuestWallet(supabase: any, guestId: string, tenantId: string): Promise<string> {
+      // Try to find existing wallet
+      const { data: existingWallet } = await supabase
+        .from('wallets')
+        .select('id')
+        .eq('wallet_type', 'guest')
+        .eq('owner_id', guestId)
+        .eq('tenant_id', tenantId)
+        .maybeSingle();
+
+      if (existingWallet) {
+        return existingWallet.id;
+      }
+
+      // Create new wallet
+      const { data: guest } = await supabase
+        .from('guests')
+        .select('name')
+        .eq('id', guestId)
+        .single();
+
+      const { data: newWallet, error } = await supabase
+        .from('wallets')
+        .insert([{
+          tenant_id: tenantId,
+          wallet_type: 'guest',
+          owner_id: guestId,
+          name: `${guest?.name || 'Guest'}'s Wallet`,
+          currency: 'NGN',
+          balance: 0,
+        }])
+        .select('id')
+        .single();
+
+      if (error) throw error;
+      return newWallet.id;
+    }
+
     // Get location details if provided
     let locationName = null;
     if (location_id) {
@@ -287,6 +326,85 @@ serve(async (req) => {
       } else {
         console.log('Wallet transaction created for wallet:', finalWalletId, 'type:', txnType, 'amount:', netAmount);
       }
+    }
+
+    // Phase 3: Handle underpayment/overpayment logic
+    if (expected_amount && guest_id) {
+      const actualAmount = amount;
+      const difference = actualAmount - expected_amount;
+      
+      if (difference > 0.01) {
+        // OVERPAYMENT: Credit guest wallet
+        console.log('Overpayment detected:', difference, '- crediting guest wallet');
+        const guestWalletId = await getOrCreateGuestWallet(supabase, guest_id, tenant_id);
+        
+        await supabase.from('wallet_transactions').insert([{
+          wallet_id: guestWalletId,
+          tenant_id,
+          type: 'credit',
+          amount: difference,
+          payment_id: payment.id,
+          description: `Overpayment credit from ${transaction_ref}`,
+          created_by: recorded_by,
+          metadata: {
+            payment_type: 'overpayment',
+            original_payment: payment.id,
+            expected: expected_amount,
+            paid: actualAmount,
+          },
+        }]);
+        
+        console.log('Guest wallet credited with overpayment:', difference);
+      } else if (difference < -0.01) {
+        // UNDERPAYMENT: Create accounts receivable entry
+        const balanceDue = Math.abs(difference);
+        console.log('Underpayment detected:', balanceDue, '- creating AR entry');
+        
+        await supabase.from('booking_charges').insert([{
+          tenant_id,
+          booking_id: booking_id,
+          guest_id: guest_id,
+          charge_type: 'balance_due',
+          description: `Outstanding balance from ${transaction_ref}`,
+          amount: balanceDue,
+          department: 'accounts_receivable',
+          charged_by: recorded_by,
+          metadata: {
+            payment_type: 'partial',
+            original_payment: payment.id,
+            expected: expected_amount,
+            paid: actualAmount,
+          },
+        }]);
+        
+        console.log('AR entry created for underpayment:', balanceDue);
+      }
+    }
+
+    // Phase 5: Auto-create reconciliation record for non-cash/non-pay-later payments
+    if (provider_id && providerName && providerName !== 'Cash' && providerName !== 'Pay Later') {
+      console.log('Creating reconciliation record for provider:', providerName);
+      
+      await supabase.from('finance_reconciliation_records').insert([{
+        tenant_id,
+        source: 'internal_payment',
+        provider_id,
+        reference: transaction_ref,
+        amount: amount,
+        status: 'unmatched',
+        internal_txn_id: payment.id,
+        raw_data: {
+          payment_method: method,
+          provider_name: providerName,
+          location: locationName,
+          department,
+          recorded_at: new Date().toISOString(),
+          booking_id,
+          guest_id,
+        },
+      }]);
+      
+      console.log('Reconciliation record created');
     }
 
     // Create audit log

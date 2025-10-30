@@ -14,6 +14,93 @@ export type Database = {
   }
   public: {
     Tables: {
+      booking_charges: {
+        Row: {
+          amount: number
+          booking_id: string
+          charge_type: string
+          charged_at: string | null
+          charged_by: string | null
+          created_at: string | null
+          department: string | null
+          description: string
+          guest_id: string
+          id: string
+          location_id: string | null
+          metadata: Json | null
+          provider_id: string | null
+          tenant_id: string
+        }
+        Insert: {
+          amount: number
+          booking_id: string
+          charge_type: string
+          charged_at?: string | null
+          charged_by?: string | null
+          created_at?: string | null
+          department?: string | null
+          description: string
+          guest_id: string
+          id?: string
+          location_id?: string | null
+          metadata?: Json | null
+          provider_id?: string | null
+          tenant_id: string
+        }
+        Update: {
+          amount?: number
+          booking_id?: string
+          charge_type?: string
+          charged_at?: string | null
+          charged_by?: string | null
+          created_at?: string | null
+          department?: string | null
+          description?: string
+          guest_id?: string
+          id?: string
+          location_id?: string | null
+          metadata?: Json | null
+          provider_id?: string | null
+          tenant_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "booking_charges_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: false
+            referencedRelation: "bookings"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "booking_charges_guest_id_fkey"
+            columns: ["guest_id"]
+            isOneToOne: false
+            referencedRelation: "guests"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "booking_charges_location_id_fkey"
+            columns: ["location_id"]
+            isOneToOne: false
+            referencedRelation: "finance_locations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "booking_charges_provider_id_fkey"
+            columns: ["provider_id"]
+            isOneToOne: false
+            referencedRelation: "finance_providers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "booking_charges_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       bookings: {
         Row: {
           action_id: string | null
