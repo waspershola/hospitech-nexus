@@ -426,7 +426,7 @@ export function AssignRoomDrawer({ open, onClose, roomId, roomNumber }: AssignRo
                   </div>
                   {pricing.vatAmount > 0 && (
                     <div className="flex justify-between">
-                      <span className="text-muted-foreground">VAT ({(financials?.vat_rate || 0) * 100}%)</span>
+                      <span className="text-muted-foreground">VAT ({financials?.vat_rate || 0}%)</span>
                       <span>₦{pricing.vatAmount.toLocaleString()}</span>
                     </div>
                   )}

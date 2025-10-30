@@ -821,12 +821,14 @@ export type Database = {
           decimal_places: number
           decimal_separator: string
           id: string
+          rounding: string | null
           service_charge: number
           service_charge_inclusive: boolean
           symbol_position: string
           tenant_id: string
           thousand_separator: string
           updated_at: string
+          vat_applied_on: string | null
           vat_inclusive: boolean
           vat_rate: number
         }
@@ -837,12 +839,14 @@ export type Database = {
           decimal_places?: number
           decimal_separator?: string
           id?: string
+          rounding?: string | null
           service_charge?: number
           service_charge_inclusive?: boolean
           symbol_position?: string
           tenant_id: string
           thousand_separator?: string
           updated_at?: string
+          vat_applied_on?: string | null
           vat_inclusive?: boolean
           vat_rate?: number
         }
@@ -853,12 +857,14 @@ export type Database = {
           decimal_places?: number
           decimal_separator?: string
           id?: string
+          rounding?: string | null
           service_charge?: number
           service_charge_inclusive?: boolean
           symbol_position?: string
           tenant_id?: string
           thousand_separator?: string
           updated_at?: string
+          vat_applied_on?: string | null
           vat_inclusive?: boolean
           vat_rate?: number
         }

@@ -6,14 +6,20 @@ import { Input } from '@/components/ui/input';
 import { Switch } from '@/components/ui/switch';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Utensils, Save } from 'lucide-react';
 import { calculateTaxForAmount } from '@/lib/finance/tax';
 
 export function ServiceChargeCard() {
   const { settings, updateSettings, isUpdating } = useFinanceSettings();
-  const [localSettings, setLocalSettings] = useState({
+  const [localSettings, setLocalSettings] = useState<{
+    service_charge: number;
+    service_charge_inclusive: boolean;
+    rounding: 'round' | 'floor' | 'ceil';
+  }>({
     service_charge: settings?.service_charge || 0,
     service_charge_inclusive: settings?.service_charge_inclusive || false,
+    rounding: (settings?.rounding as 'round' | 'floor' | 'ceil') || 'round',
   });
   const [hasChanges, setHasChanges] = useState(false);
 
@@ -22,6 +28,7 @@ export function ServiceChargeCard() {
       setLocalSettings({
         service_charge: settings.service_charge || 0,
         service_charge_inclusive: settings.service_charge_inclusive || false,
+        rounding: (settings.rounding as 'round' | 'floor' | 'ceil') || 'round',
       });
     }
   }, [settings]);
@@ -103,6 +110,26 @@ export function ServiceChargeCard() {
               {localSettings.service_charge_inclusive 
                 ? 'Service charge is included in displayed prices' 
                 : 'Service charge will be added on top of displayed prices'}
+            </p>
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="rounding_service">Rounding Method</Label>
+            <Select
+              value={localSettings.rounding}
+              onValueChange={(value) => handleChange('rounding', value)}
+            >
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="round">Round (Default)</SelectItem>
+                <SelectItem value="floor">Round Down (Floor)</SelectItem>
+                <SelectItem value="ceil">Round Up (Ceil)</SelectItem>
+              </SelectContent>
+            </Select>
+            <p className="text-xs text-muted-foreground">
+              How to handle decimal amounts in calculations
             </p>
           </div>
         </div>

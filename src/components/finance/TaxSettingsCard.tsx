@@ -6,14 +6,23 @@ import { Input } from '@/components/ui/input';
 import { Switch } from '@/components/ui/switch';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Percent, Save } from 'lucide-react';
 import { calculateTaxForAmount } from '@/lib/finance/tax';
 
 export function TaxSettingsCard() {
   const { settings, updateSettings, isUpdating } = useFinanceSettings();
-  const [localSettings, setLocalSettings] = useState({
+  const [localSettings, setLocalSettings] = useState<{
+    vat_rate: number;
+    vat_inclusive: boolean;
+    vat_applied_on: 'base' | 'subtotal';
+    rounding: 'round' | 'floor' | 'ceil';
+  }>({
     vat_rate: settings?.vat_rate || 0,
     vat_inclusive: settings?.vat_inclusive || false,
+    vat_applied_on: (settings?.vat_applied_on as 'base' | 'subtotal') || 'subtotal',
+    rounding: (settings?.rounding as 'round' | 'floor' | 'ceil') || 'round',
   });
   const [hasChanges, setHasChanges] = useState(false);
 
@@ -22,6 +31,8 @@ export function TaxSettingsCard() {
       setLocalSettings({
         vat_rate: settings.vat_rate || 0,
         vat_inclusive: settings.vat_inclusive || false,
+        vat_applied_on: (settings.vat_applied_on as 'base' | 'subtotal') || 'subtotal',
+        rounding: (settings.rounding as 'round' | 'floor' | 'ceil') || 'round',
       });
     }
   }, [settings]);
@@ -103,6 +114,52 @@ export function TaxSettingsCard() {
               {localSettings.vat_inclusive 
                 ? 'VAT is included in displayed prices' 
                 : 'VAT will be added on top of displayed prices'}
+            </p>
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="vat_applied_on">VAT Applied On</Label>
+            <RadioGroup
+              value={localSettings.vat_applied_on}
+              onValueChange={(value) => handleChange('vat_applied_on', value)}
+            >
+              <div className="flex items-center space-x-2">
+                <RadioGroupItem value="base" id="vat-base" />
+                <Label htmlFor="vat-base" className="font-normal cursor-pointer">
+                  Base Amount Only
+                </Label>
+              </div>
+              <div className="flex items-center space-x-2">
+                <RadioGroupItem value="subtotal" id="vat-subtotal" />
+                <Label htmlFor="vat-subtotal" className="font-normal cursor-pointer">
+                  Subtotal (Base + Service Charge)
+                </Label>
+              </div>
+            </RadioGroup>
+            <p className="text-xs text-muted-foreground">
+              {localSettings.vat_applied_on === 'base' 
+                ? 'VAT calculated on room rate only' 
+                : 'VAT calculated on room rate + service charge'}
+            </p>
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="rounding">Rounding Method</Label>
+            <Select
+              value={localSettings.rounding}
+              onValueChange={(value) => handleChange('rounding', value)}
+            >
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="round">Round (Default)</SelectItem>
+                <SelectItem value="floor">Round Down (Floor)</SelectItem>
+                <SelectItem value="ceil">Round Up (Ceil)</SelectItem>
+              </SelectContent>
+            </Select>
+            <p className="text-xs text-muted-foreground">
+              How to handle decimal amounts in calculations
             </p>
           </div>
         </div>
