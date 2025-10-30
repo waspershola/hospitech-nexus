@@ -16,6 +16,8 @@ interface RecordPaymentParams {
   location_id?: string;
   department?: string;
   wallet_id?: string;
+  overpayment_action?: 'wallet' | 'refund';
+  force_approve?: boolean;
   metadata?: Record<string, any>;
 }
 

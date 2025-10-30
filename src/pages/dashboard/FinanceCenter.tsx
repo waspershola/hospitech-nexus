@@ -8,8 +8,10 @@ import { OrganizationsTab } from '@/modules/finance-center/OrganizationsTab';
 import { OrganizationAnalyticsTab } from '@/modules/finance-center/OrganizationAnalyticsTab';
 import { AnalyticsTab } from '@/modules/finance-center/AnalyticsTab';
 import { ReconciliationTab } from '@/modules/finance-center/ReconciliationTab';
+import { ReceivablesTab } from '@/modules/finance-center/ReceivablesTab';
+import { WalletCreditsTab } from '@/modules/finance-center/WalletCreditsTab';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
-import { Wallet, Building2, TrendingUp, Building, RefreshCcw, MapPin, Shield, BarChart3, Settings } from 'lucide-react';
+import { Wallet, Building2, TrendingUp, Building, RefreshCcw, MapPin, Shield, BarChart3, Settings, Receipt, CreditCard } from 'lucide-react';
 
 export default function FinanceCenter() {
   return (
@@ -21,10 +23,18 @@ export default function FinanceCenter() {
       </div>
 
       <Tabs defaultValue="settings" className="flex-1">
-        <TabsList className="grid w-full grid-cols-9 mb-6">
+        <TabsList className="grid w-full grid-cols-11 mb-6">
           <TabsTrigger value="settings" className="flex items-center gap-2">
             <Settings className="w-4 h-4" />
             Settings
+          </TabsTrigger>
+          <TabsTrigger value="receivables" className="flex items-center gap-2">
+            <Receipt className="w-4 h-4" />
+            Receivables
+          </TabsTrigger>
+          <TabsTrigger value="credits" className="flex items-center gap-2">
+            <CreditCard className="w-4 h-4" />
+            Credits
           </TabsTrigger>
           <TabsTrigger value="organizations" className="flex items-center gap-2">
             <Building className="w-4 h-4" />
@@ -62,6 +72,14 @@ export default function FinanceCenter() {
 
         <TabsContent value="settings">
           <FinanceSettingsTab />
+        </TabsContent>
+
+        <TabsContent value="receivables">
+          <ReceivablesTab />
+        </TabsContent>
+
+        <TabsContent value="credits">
+          <WalletCreditsTab />
         </TabsContent>
 
         <TabsContent value="organizations">

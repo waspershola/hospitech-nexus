@@ -23,6 +23,8 @@ const paymentSchema = z.object({
   department: z.string().max(100, 'Department name too long').optional().nullable(),
   wallet_id: z.string().uuid('Invalid wallet ID format').optional().nullable(),
   recorded_by: z.string().uuid('Invalid user ID format').optional().nullable(),
+  overpayment_action: z.enum(['wallet', 'refund']).optional().nullable(),
+  force_approve: z.boolean().optional().nullable(),
   metadata: z.record(z.any()).optional().nullable(),
 });
 
@@ -69,6 +71,8 @@ serve(async (req) => {
       department,
       wallet_id,
       recorded_by,
+      overpayment_action,
+      force_approve,
       metadata,
     } = validationResult.data;
 
@@ -384,33 +388,123 @@ serve(async (req) => {
       const actualAmount = amount;
       const difference = actualAmount - expected_amount;
       
+      // Get payment preferences
+      const { data: prefs } = await supabase
+        .from('hotel_payment_preferences')
+        .select('large_overpayment_threshold, manager_approval_threshold, overpayment_default_action')
+        .eq('tenant_id', tenant_id)
+        .maybeSingle();
+      
+      const overpaymentThreshold = prefs?.large_overpayment_threshold || 50000;
+      const underpaymentThreshold = prefs?.manager_approval_threshold || 50000;
+      
       if (difference > 0.01) {
-        // OVERPAYMENT: Credit guest wallet
-        console.log('Overpayment detected:', difference, '- crediting guest wallet');
-        const guestWalletId = await getOrCreateGuestWallet(supabase, guest_id, tenant_id);
+        // OVERPAYMENT: Check if needs manager approval
+        if (difference > overpaymentThreshold && !force_approve) {
+          return new Response(
+            JSON.stringify({
+              success: false,
+              code: 'MANAGER_APPROVAL_REQUIRED',
+              error: `Overpayment of ₦${difference.toLocaleString()} exceeds threshold. Manager approval required.`,
+              requires_approval: true,
+              overpayment_amount: difference,
+            }),
+            { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
         
-        await supabase.from('wallet_transactions').insert([{
-          wallet_id: guestWalletId,
+        // Handle overpayment based on user choice or default
+        const action = overpayment_action || prefs?.overpayment_default_action || 'wallet';
+        
+        if (action === 'wallet') {
+          console.log('Overpayment detected:', difference, '- crediting guest wallet');
+          const guestWalletId = await getOrCreateGuestWallet(supabase, guest_id, tenant_id);
+          
+          // Get current wallet balance
+          const { data: currentWallet } = await supabase
+            .from('wallets')
+            .select('balance')
+            .eq('id', guestWalletId)
+            .single();
+          
+          const balanceAfter = Number(currentWallet?.balance || 0) + difference;
+          
+          await supabase.from('wallet_transactions').insert([{
+            wallet_id: guestWalletId,
+            tenant_id,
+            type: 'credit',
+            amount: difference,
+            balance_after: balanceAfter,
+            source: 'overpayment',
+            payment_id: payment.id,
+            description: `Overpayment credit from ${transaction_ref}`,
+            created_by: recorded_by,
+            metadata: {
+              payment_type: 'overpayment',
+              original_payment: payment.id,
+              expected: expected_amount,
+              paid: actualAmount,
+            },
+          }]);
+          
+          console.log('Guest wallet credited with overpayment:', difference);
+        } else if (action === 'refund') {
+          // Mark payment for refund processing
+          console.log('Overpayment refund requested:', difference);
+          await supabase.from('finance_reconciliation_records').insert([{
+            tenant_id,
+            source: 'refund_pending',
+            provider_id,
+            reference: `REFUND-${transaction_ref}`,
+            amount: difference,
+            status: 'pending_refund',
+            raw_data: {
+              original_payment: payment.id,
+              refund_reason: 'overpayment',
+              guest_id,
+              booking_id,
+            },
+          }]);
+        }
+      } else if (difference < -0.01) {
+        // UNDERPAYMENT: Check if needs manager approval
+        const balanceDue = Math.abs(difference);
+        
+        if (balanceDue > underpaymentThreshold && !force_approve) {
+          return new Response(
+            JSON.stringify({
+              success: false,
+              code: 'MANAGER_APPROVAL_REQUIRED',
+              error: `Balance due of ₦${balanceDue.toLocaleString()} exceeds threshold. Manager must approve partial payment.`,
+              requires_approval: true,
+              balance_due: balanceDue,
+            }),
+            { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+        
+        console.log('Underpayment detected:', balanceDue, '- creating receivable entry');
+        
+        // Create receivable entry (preferred method)
+        await supabase.from('receivables').insert([{
           tenant_id,
-          type: 'credit',
-          amount: difference,
-          payment_id: payment.id,
-          description: `Overpayment credit from ${transaction_ref}`,
+          guest_id: guest_id,
+          organization_id: organization_id,
+          booking_id: booking_id,
+          amount: balanceDue,
+          status: 'open',
           created_by: recorded_by,
+          approved_by: force_approve ? recorded_by : null,
           metadata: {
-            payment_type: 'overpayment',
+            payment_type: 'partial',
             original_payment: payment.id,
             expected: expected_amount,
             paid: actualAmount,
+            transaction_ref,
           },
         }]);
         
-        console.log('Guest wallet credited with overpayment:', difference);
-      } else if (difference < -0.01) {
-        // UNDERPAYMENT: Create accounts receivable entry
-        const balanceDue = Math.abs(difference);
-        console.log('Underpayment detected:', balanceDue, '- creating AR entry');
-        
+        // Also create booking_charges for folio display (backward compatibility)
         await supabase.from('booking_charges').insert([{
           tenant_id,
           booking_id: booking_id,
@@ -428,7 +522,7 @@ serve(async (req) => {
           },
         }]);
         
-        console.log('AR entry created for underpayment:', balanceDue);
+        console.log('Receivable and AR entry created for underpayment:', balanceDue);
       }
     }
 

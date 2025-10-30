@@ -19,8 +19,17 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { AlertCircle, Loader2 } from 'lucide-react';
+import {
+  AlertDialog,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
+import { AlertCircle, Loader2, Wallet, RefreshCcw } from 'lucide-react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import { ManagerApprovalModal } from './ManagerApprovalModal';
 
 const paymentSchema = z.object({
   amount: z.string().min(1, 'Amount is required'),
@@ -53,6 +62,12 @@ export function PaymentForm({
   onCancel,
 }: PaymentFormProps) {
   const [validationError, setValidationError] = useState<string | null>(null);
+  const [showOverpaymentDialog, setShowOverpaymentDialog] = useState(false);
+  const [overpaymentAction, setOverpaymentAction] = useState<'wallet' | 'refund'>('wallet');
+  const [showManagerApproval, setShowManagerApproval] = useState(false);
+  const [managerApprovalType, setManagerApprovalType] = useState<'overpayment' | 'underpayment'>('overpayment');
+  const [requiresApprovalAmount, setRequiresApprovalAmount] = useState(0);
+  
   const { providers = [], isLoading: providersLoading } = useFinanceProviders();
   const { locations = [] } = useFinanceLocations();
   const { wallets = [] } = useWallets();
@@ -133,6 +148,39 @@ export function PaymentForm({
       return;
     }
 
+    // Handle overpayment - show dialog for user choice
+    if (paymentType === 'overpayment' && paymentDifference > 0 && !showOverpaymentDialog) {
+      // Check if requires manager approval
+      if (paymentDifference > 50000) {
+        setManagerApprovalType('overpayment');
+        setRequiresApprovalAmount(paymentDifference);
+        setShowManagerApproval(true);
+        return;
+      }
+      
+      setShowOverpaymentDialog(true);
+      return; // Don't submit yet
+    }
+    
+    // Handle underpayment - check if requires manager approval
+    if (paymentType === 'partial' && Math.abs(paymentDifference) > 50000) {
+      setManagerApprovalType('underpayment');
+      setRequiresApprovalAmount(Math.abs(paymentDifference));
+      setShowManagerApproval(true);
+      return;
+    }
+
+    // Submit payment
+    submitPayment(data, selectedProvider, transactionRef, paymentType, false);
+  };
+  
+  const submitPayment = (
+    data: PaymentFormData, 
+    selectedProvider: any, 
+    transactionRef: string, 
+    paymentType: any,
+    forceApprove: boolean
+  ) => {
     recordPayment(
       {
         transaction_ref: transactionRef,
@@ -147,6 +195,8 @@ export function PaymentForm({
         location_id: data.location_id,
         department: data.department,
         wallet_id: data.wallet_id,
+        overpayment_action: paymentType === 'overpayment' ? overpaymentAction : undefined,
+        force_approve: forceApprove,
         metadata: {
           notes: data.notes,
           provider_name: selectedProvider.name,
@@ -155,6 +205,8 @@ export function PaymentForm({
       },
       {
         onSuccess: () => {
+          setShowOverpaymentDialog(false);
+          setShowManagerApproval(false);
           onSuccess?.();
         },
         onError: (error: Error) => {
@@ -355,6 +407,85 @@ export function PaymentForm({
           Record Payment
         </Button>
       </div>
+
+      {/* Overpayment Choice Dialog */}
+      <AlertDialog open={showOverpaymentDialog} onOpenChange={setShowOverpaymentDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Overpayment Detected</AlertDialogTitle>
+            <AlertDialogDescription>
+              Guest paid ₦{Math.abs(paymentDifference).toLocaleString()} more than expected.
+              <br />How would you like to handle the excess amount?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <div className="space-y-4 py-4">
+            <div 
+              className={`p-4 border-2 rounded-lg cursor-pointer transition-colors ${
+                overpaymentAction === 'wallet' ? 'border-primary bg-primary/5' : 'border-border hover:bg-muted/50'
+              }`}
+              onClick={() => setOverpaymentAction('wallet')}
+            >
+              <div className="flex items-center gap-3">
+                <Wallet className="h-5 w-5" />
+                <div>
+                  <p className="font-medium">Credit to Guest Wallet</p>
+                  <p className="text-sm text-muted-foreground">Guest can use for future bookings</p>
+                </div>
+              </div>
+            </div>
+            <div 
+              className={`p-4 border-2 rounded-lg cursor-pointer transition-colors ${
+                overpaymentAction === 'refund' ? 'border-primary bg-primary/5' : 'border-border hover:bg-muted/50'
+              }`}
+              onClick={() => setOverpaymentAction('refund')}
+            >
+              <div className="flex items-center gap-3">
+                <RefreshCcw className="h-5 w-5" />
+                <div>
+                  <p className="font-medium">Process Refund</p>
+                  <p className="text-sm text-muted-foreground">Return excess to original payment method</p>
+                </div>
+              </div>
+            </div>
+          </div>
+          <AlertDialogFooter>
+            <Button variant="outline" onClick={() => setShowOverpaymentDialog(false)}>
+              Cancel
+            </Button>
+            <Button onClick={() => {
+              setShowOverpaymentDialog(false);
+              const data = watch();
+              const selectedProvider = activeProviders.find(p => p.id === data.provider_id);
+              if (selectedProvider) {
+                const transactionRef = `PAY-${Date.now()}-${Math.random().toString(36).substring(7).toUpperCase()}`;
+                submitPayment(data, selectedProvider, transactionRef, getPaymentType(), false);
+              }
+            }}>
+              Continue Payment
+            </Button>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Manager Approval Modal */}
+      <ManagerApprovalModal
+        open={showManagerApproval}
+        amount={requiresApprovalAmount}
+        type={managerApprovalType}
+        onApprove={(reason) => {
+          console.log('Manager approved with reason:', reason);
+          const data = watch();
+          const selectedProvider = activeProviders.find(p => p.id === data.provider_id);
+          if (selectedProvider) {
+            const transactionRef = `PAY-${Date.now()}-${Math.random().toString(36).substring(7).toUpperCase()}`;
+            submitPayment(data, selectedProvider, transactionRef, getPaymentType(), true);
+          }
+        }}
+        onReject={() => {
+          setShowManagerApproval(false);
+          setValidationError('Transaction cancelled - manager approval required');
+        }}
+      />
     </form>
   );
 }

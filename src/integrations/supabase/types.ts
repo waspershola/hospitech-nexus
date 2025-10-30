@@ -337,6 +337,44 @@ export type Database = {
           },
         ]
       }
+      finance_audit_events: {
+        Row: {
+          created_at: string | null
+          event_type: string
+          id: string
+          payload: Json | null
+          target_id: string | null
+          tenant_id: string
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          event_type: string
+          id?: string
+          payload?: Json | null
+          target_id?: string | null
+          tenant_id: string
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          event_type?: string
+          id?: string
+          payload?: Json | null
+          target_id?: string | null
+          tenant_id?: string
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "finance_audit_events_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       finance_locations: {
         Row: {
           created_at: string | null
@@ -1012,6 +1050,53 @@ export type Database = {
           },
         ]
       }
+      hotel_payment_preferences: {
+        Row: {
+          allow_checkout_with_debt: boolean | null
+          auto_apply_wallet_on_booking: boolean | null
+          created_at: string | null
+          id: string
+          large_overpayment_threshold: number | null
+          manager_approval_threshold: number | null
+          overpayment_default_action: string | null
+          receivable_aging_days: number | null
+          tenant_id: string
+          updated_at: string | null
+        }
+        Insert: {
+          allow_checkout_with_debt?: boolean | null
+          auto_apply_wallet_on_booking?: boolean | null
+          created_at?: string | null
+          id?: string
+          large_overpayment_threshold?: number | null
+          manager_approval_threshold?: number | null
+          overpayment_default_action?: string | null
+          receivable_aging_days?: number | null
+          tenant_id: string
+          updated_at?: string | null
+        }
+        Update: {
+          allow_checkout_with_debt?: boolean | null
+          auto_apply_wallet_on_booking?: boolean | null
+          created_at?: string | null
+          id?: string
+          large_overpayment_threshold?: number | null
+          manager_approval_threshold?: number | null
+          overpayment_default_action?: string | null
+          receivable_aging_days?: number | null
+          tenant_id?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "hotel_payment_preferences_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: true
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       hotel_permissions: {
         Row: {
           allowed: boolean | null
@@ -1376,6 +1461,86 @@ export type Database = {
         }
         Relationships: []
       }
+      receivables: {
+        Row: {
+          amount: number
+          approved_by: string | null
+          booking_id: string | null
+          created_at: string | null
+          created_by: string | null
+          due_date: string | null
+          guest_id: string | null
+          id: string
+          metadata: Json | null
+          organization_id: string | null
+          paid_at: string | null
+          status: string
+          tenant_id: string
+          updated_at: string | null
+        }
+        Insert: {
+          amount: number
+          approved_by?: string | null
+          booking_id?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          due_date?: string | null
+          guest_id?: string | null
+          id?: string
+          metadata?: Json | null
+          organization_id?: string | null
+          paid_at?: string | null
+          status?: string
+          tenant_id: string
+          updated_at?: string | null
+        }
+        Update: {
+          amount?: number
+          approved_by?: string | null
+          booking_id?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          due_date?: string | null
+          guest_id?: string | null
+          id?: string
+          metadata?: Json | null
+          organization_id?: string | null
+          paid_at?: string | null
+          status?: string
+          tenant_id?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "receivables_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: false
+            referencedRelation: "bookings"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "receivables_guest_id_fkey"
+            columns: ["guest_id"]
+            isOneToOne: false
+            referencedRelation: "guests"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "receivables_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "receivables_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       requests: {
         Row: {
           created_at: string | null
@@ -1671,6 +1836,7 @@ export type Database = {
       wallet_transactions: {
         Row: {
           amount: number
+          balance_after: number | null
           created_at: string | null
           created_by: string | null
           department: string | null
@@ -1678,12 +1844,14 @@ export type Database = {
           id: string
           metadata: Json | null
           payment_id: string | null
+          source: string | null
           tenant_id: string
           type: string
           wallet_id: string
         }
         Insert: {
           amount: number
+          balance_after?: number | null
           created_at?: string | null
           created_by?: string | null
           department?: string | null
@@ -1691,12 +1859,14 @@ export type Database = {
           id?: string
           metadata?: Json | null
           payment_id?: string | null
+          source?: string | null
           tenant_id: string
           type: string
           wallet_id: string
         }
         Update: {
           amount?: number
+          balance_after?: number | null
           created_at?: string | null
           created_by?: string | null
           department?: string | null
@@ -1704,6 +1874,7 @@ export type Database = {
           id?: string
           metadata?: Json | null
           payment_id?: string | null
+          source?: string | null
           tenant_id?: string
           type?: string
           wallet_id?: string
