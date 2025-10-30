@@ -7,6 +7,7 @@ import { QuickKPIs } from '@/modules/frontdesk/components/QuickKPIs';
 import { RoomStatusOverview } from '@/modules/frontdesk/components/RoomStatusOverview';
 import { RoomLegend } from '@/modules/frontdesk/components/RoomLegend';
 import { RoomActionDrawer } from '@/modules/frontdesk/components/RoomActionDrawer';
+import { AssignRoomDrawer } from '@/modules/frontdesk/components/AssignRoomDrawer';
 import { OverstayAlertModal } from '@/modules/frontdesk/components/OverstayAlertModal';
 import { BookingFlow } from '@/modules/bookings/BookingFlow';
 import { MobileBottomNav } from '@/modules/frontdesk/components/MobileBottomNav';
@@ -21,6 +22,8 @@ export default function FrontDesk() {
   const [isBookingFlowOpen, setIsBookingFlowOpen] = useState(false);
   const [overstayModalOpen, setOverstayModalOpen] = useState(false);
   const [hasShownOverstayAlert, setHasShownOverstayAlert] = useState(false);
+  const [assignDrawerOpen, setAssignDrawerOpen] = useState(false);
+  const [assignRoomData, setAssignRoomData] = useState<{ roomId: string; roomNumber: string } | null>(null);
   
   const { data: overstayRooms = [] } = useOverstayRooms();
   const { checkOut } = useRoomActions();
@@ -29,6 +32,13 @@ export default function FrontDesk() {
   useRoomRealtime();
   useBookingRealtime();
   usePaymentRealtime();
+
+  // Handle opening AssignRoomDrawer from RoomActionDrawer
+  const handleOpenAssignDrawer = (roomId: string, roomNumber: string) => {
+    setAssignRoomData({ roomId, roomNumber });
+    setAssignDrawerOpen(true);
+    setSelectedRoomId(null); // Close RoomActionDrawer
+  };
 
   // Show overstay alert on page load if there are overstays
   useEffect(() => {
@@ -108,7 +118,20 @@ export default function FrontDesk() {
         roomId={selectedRoomId}
         open={!!selectedRoomId}
         onClose={() => setSelectedRoomId(null)}
+        onOpenAssignDrawer={handleOpenAssignDrawer}
       />
+
+      {assignDrawerOpen && assignRoomData && (
+        <AssignRoomDrawer
+          open={assignDrawerOpen}
+          onClose={() => {
+            setAssignDrawerOpen(false);
+            setAssignRoomData(null);
+          }}
+          roomId={assignRoomData.roomId}
+          roomNumber={assignRoomData.roomNumber}
+        />
+      )}
 
       <OverstayAlertModal
         open={overstayModalOpen}

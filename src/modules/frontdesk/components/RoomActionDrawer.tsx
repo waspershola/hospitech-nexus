@@ -13,7 +13,6 @@ import { useRoomActions } from '../hooks/useRoomActions';
 import { useCheckout } from '@/hooks/useCheckout';
 import { useBookingFolio } from '@/hooks/useBookingFolio';
 import { useOrganizationWallet } from '@/hooks/useOrganizationWallet';
-import { AssignRoomDrawer } from './AssignRoomDrawer';
 import { ExtendStayModal } from './ExtendStayModal';
 import { AddChargeModal } from './AddChargeModal';
 import { ChargeToOrgModal } from './ChargeToOrgModal';
@@ -34,14 +33,14 @@ interface RoomActionDrawerProps {
   roomId: string | null;
   open: boolean;
   onClose: () => void;
+  onOpenAssignDrawer?: (roomId: string, roomNumber: string) => void;
 }
 
-export function RoomActionDrawer({ roomId, open, onClose }: RoomActionDrawerProps) {
+export function RoomActionDrawer({ roomId, open, onClose, onOpenAssignDrawer }: RoomActionDrawerProps) {
   const { tenantId } = useAuth();
   const queryClient = useQueryClient();
   const { checkIn, checkOut, markClean, markMaintenance } = useRoomActions();
   const { mutate: completeCheckout, isPending: isCheckingOut } = useCheckout();
-  const [assignModalOpen, setAssignModalOpen] = useState(false);
   const [extendModalOpen, setExtendModalOpen] = useState(false);
   const [chargeModalOpen, setChargeModalOpen] = useState(false);
   const [chargeToOrgModalOpen, setChargeToOrgModalOpen] = useState(false);
@@ -138,9 +137,15 @@ export function RoomActionDrawer({ roomId, open, onClose }: RoomActionDrawerProp
   const currentBooking = activeBooking;
 
   const handleQuickCheckIn = () => {
-    toast({ title: 'Quick Check-In', description: 'Opening simplified booking flow...' });
-    onClose();
-    setAssignModalOpen(true);
+    if (!room || !onOpenAssignDrawer) return;
+    
+    toast({ 
+      title: 'Quick Check-In', 
+      description: 'Opening booking form...' 
+    });
+    
+    // Call parent callback to open AssignRoomDrawer
+    onOpenAssignDrawer(room.id, room.number);
   };
 
   const handleExpressCheckout = async () => {
@@ -228,7 +233,7 @@ export function RoomActionDrawer({ roomId, open, onClose }: RoomActionDrawerProp
     switch (room.status) {
       case 'available':
         return [
-          { label: 'Assign Room', action: () => setAssignModalOpen(true), variant: 'default' as const, icon: UserPlus, tooltip: 'Full booking with guest details' },
+          { label: 'Assign Room', action: () => room && onOpenAssignDrawer?.(room.id, room.number), variant: 'default' as const, icon: UserPlus, tooltip: 'Full booking with guest details' },
           { label: 'Walk-in Check-In', action: handleQuickCheckIn, variant: 'outline' as const, icon: LogIn, tooltip: 'Express walk-in check-in' },
           { label: 'Set Out of Service', action: handleMarkMaintenance, variant: 'outline' as const, icon: Wrench, tooltip: 'Mark as out of service' },
         ];
@@ -246,7 +251,7 @@ export function RoomActionDrawer({ roomId, open, onClose }: RoomActionDrawerProp
           { label: 'Check-In', action: handleCheckIn, variant: 'default' as const, icon: LogIn, tooltip: 'Complete guest check-in' },
           { label: 'Cancel Reservation', action: () => setCancelModalOpen(true), variant: 'destructive' as const, icon: AlertTriangle, tooltip: 'Cancel this reservation' },
           { label: 'Modify Reservation', action: () => setAmendmentDrawerOpen(true), variant: 'outline' as const, icon: FileText, tooltip: 'Modify reservation details' },
-          { label: 'Assign Different Room', action: () => setAssignModalOpen(true), variant: 'outline' as const, icon: UserPlus, tooltip: 'Move to different room' },
+          { label: 'Assign Different Room', action: () => room && onOpenAssignDrawer?.(room.id, room.number), variant: 'outline' as const, icon: UserPlus, tooltip: 'Move to different room' },
         ];
       case 'overstay':
         return [
@@ -562,12 +567,6 @@ export function RoomActionDrawer({ roomId, open, onClose }: RoomActionDrawerProp
 
       {room && (
         <>
-          <AssignRoomDrawer
-            open={assignModalOpen}
-            onClose={() => setAssignModalOpen(false)}
-            roomId={room.id}
-            roomNumber={room.number}
-          />
           {currentBooking && (
             <>
               <ExtendStayModal
