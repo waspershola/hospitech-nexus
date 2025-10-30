@@ -36,13 +36,14 @@ export function RoomTile({ room, onClick, isSelectionMode, isSelected, onSelecti
   const statusColor = statusColors[room.status as keyof typeof statusColors] || statusColors.available;
   const borderColor = statusBorderColors[room.status as keyof typeof statusBorderColors] || statusBorderColors.available;
 
-  // Use canonical fields for active booking
+  // Phase 5: Use canonical fields for active booking with strict null checks
   const bookingsArray = Array.isArray(room.bookings) ? room.bookings : room.bookings ? [room.bookings] : [];
   const activeBooking = room.current_reservation_id 
     ? bookingsArray.find((b: any) => b.id === room.current_reservation_id)
     : null;
   const organization = activeBooking?.organization;
-  const guest = room.current_guest_id && activeBooking ? activeBooking.guest : null;
+  // Only show guest if both current_guest_id exists AND booking has guest data
+  const guest = (room.current_guest_id && activeBooking?.guest) ? activeBooking.guest : null;
   
   // Calculate rate: room-specific rate or category base rate
   const displayRate = room.rate ?? room.category?.base_rate ?? 0;
@@ -127,7 +128,7 @@ export function RoomTile({ room, onClick, isSelectionMode, isSelected, onSelecti
           </Badge>
         </div>
 
-        {(room.status === 'occupied' || room.status === 'overstay') && (
+        {(room.status === 'occupied' || room.status === 'overstay') && guest && (
           <div className="mt-2 pt-2 border-t border-border">
             {organization && (
               <div className="mb-1.5">

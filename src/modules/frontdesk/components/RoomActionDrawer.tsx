@@ -50,6 +50,7 @@ export function RoomActionDrawer({ roomId, open, onClose }: RoomActionDrawerProp
   const [amendmentDrawerOpen, setAmendmentDrawerOpen] = useState(false);
   const [cancelModalOpen, setCancelModalOpen] = useState(false);
   const [showConfirmationDoc, setShowConfirmationDoc] = useState(false);
+  const [realtimeDebounceTimer, setRealtimeDebounceTimer] = useState<NodeJS.Timeout | null>(null);
 
   const { data: room, isLoading } = useQuery({
     queryKey: ['room-detail', roomId],
@@ -80,15 +81,15 @@ export function RoomActionDrawer({ roomId, open, onClose }: RoomActionDrawerProp
       if (error) throw error;
       return data;
     },
-    enabled: !!roomId && !!tenantId && open,
+    enabled: !!roomId && !!tenantId, // Phase 1: Remove 'open' for instant loading
   });
 
-  // Realtime subscription for room changes
+  // Phase 2: Debounced realtime subscription for room changes
   useEffect(() => {
     if (!roomId || !tenantId) return;
 
     const channel = supabase
-      .channel('room-changes')
+      .channel(`room-changes-${roomId}`) // Unique channel per room
       .on(
         'postgres_changes',
         {
@@ -98,21 +99,34 @@ export function RoomActionDrawer({ roomId, open, onClose }: RoomActionDrawerProp
           filter: `id=eq.${roomId}`,
         },
         () => {
-          queryClient.invalidateQueries({ queryKey: ['room-detail', roomId] });
+          // Debounce invalidation to prevent rapid refetches
+          if (realtimeDebounceTimer) clearTimeout(realtimeDebounceTimer);
+          
+          const timer = setTimeout(() => {
+            queryClient.invalidateQueries({ queryKey: ['room-detail', roomId] });
+          }, 300); // Wait 300ms before refetching
+          
+          setRealtimeDebounceTimer(timer);
         }
       )
       .subscribe();
 
     return () => {
+      if (realtimeDebounceTimer) clearTimeout(realtimeDebounceTimer);
       supabase.removeChannel(channel);
     };
   }, [roomId, tenantId, queryClient]);
 
-  // Use canonical fields for active booking
+  // Phase 7: Use canonical fields for active booking (single source of truth)
   const bookingsArray = Array.isArray(room?.bookings) ? room.bookings : room?.bookings ? [room.bookings] : [];
   const activeBooking = room?.current_reservation_id
     ? bookingsArray.find((b: any) => b.id === room.current_reservation_id)
     : null;
+  
+  // Phase 4: Detect transition state (room shows occupied/reserved but no booking data)
+  const isTransitioning = (room?.status === 'occupied' || room?.status === 'reserved') 
+    && !activeBooking 
+    && room?.current_reservation_id;
   
   // Fetch folio balance for active booking
   const { data: folio } = useBookingFolio(activeBooking?.id || null);
@@ -120,9 +134,8 @@ export function RoomActionDrawer({ roomId, open, onClose }: RoomActionDrawerProp
   // Fetch organization wallet info if organization exists
   const { data: orgWallet } = useOrganizationWallet(activeBooking?.organization_id);
 
-  const currentBooking = bookingsArray.find((b: any) => 
-    b.status === 'checked_in' || b.status === 'reserved'
-  );
+  // Use activeBooking consistently throughout component
+  const currentBooking = activeBooking;
 
   const handleQuickCheckIn = () => {
     toast({ title: 'Quick Check-In', description: 'Opening simplified booking flow...' });
@@ -142,10 +155,11 @@ export function RoomActionDrawer({ roomId, open, onClose }: RoomActionDrawerProp
       return;
     }
 
-    completeCheckout({ bookingId: activeBooking.id });
+    // Phase 3: Close drawer BEFORE checkout to prevent "Room not found" flash
+    onClose();
     
-    // Auto-close after realtime update (or timeout)
-    setTimeout(() => onClose(), 1000);
+    // Then complete checkout in background
+    completeCheckout({ bookingId: activeBooking.id });
   };
 
   const handleCheckIn = async () => {
@@ -153,7 +167,7 @@ export function RoomActionDrawer({ roomId, open, onClose }: RoomActionDrawerProp
     await checkIn(room.id);
     toast({ title: 'Check-In Complete', description: 'Guest checked in successfully' });
     
-    // Auto-close after 600ms
+    // Phase 6: Keep 600ms for check-in (allows user to see success)
     setTimeout(() => onClose(), 600);
   };
 
@@ -162,8 +176,8 @@ export function RoomActionDrawer({ roomId, open, onClose }: RoomActionDrawerProp
     await markClean(room.id);
     toast({ title: 'Room Cleaned', description: 'Room marked as clean and ready' });
     
-    // Auto-close after 1000ms
-    setTimeout(() => onClose(), 1000);
+    // Phase 6: Reduce to 400ms for faster feedback
+    setTimeout(() => onClose(), 400);
   };
 
   const handleMarkMaintenance = async () => {
@@ -171,8 +185,8 @@ export function RoomActionDrawer({ roomId, open, onClose }: RoomActionDrawerProp
     await markMaintenance(room.id);
     toast({ title: 'Maintenance Mode', description: 'Room marked for maintenance' });
     
-    // Auto-close after 1000ms
-    setTimeout(() => onClose(), 1000);
+    // Phase 6: Reduce to 400ms for faster feedback
+    setTimeout(() => onClose(), 400);
   };
 
   const handleRoomService = () => {
@@ -260,9 +274,12 @@ export function RoomActionDrawer({ roomId, open, onClose }: RoomActionDrawerProp
     <>
       <Sheet open={open} onOpenChange={onClose}>
         <SheetContent className="w-full sm:max-w-lg overflow-y-auto">
-          {isLoading ? (
-            <div className="flex items-center justify-center h-full">
+          {isLoading || isTransitioning ? (
+            <div className="flex flex-col items-center justify-center h-full gap-2">
               <Loader2 className="w-8 h-8 animate-spin text-primary" />
+              <p className="text-sm text-muted-foreground">
+                {isTransitioning ? 'Processing room transition...' : 'Loading...'}
+              </p>
             </div>
           ) : room ? (
             <>
