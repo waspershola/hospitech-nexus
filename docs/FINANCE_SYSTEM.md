@@ -2,7 +2,7 @@
 
 ## Overview
 
-The Finance System is a comprehensive payment and wallet management solution for the hotel platform. It handles payment processing, provider integration, wallet management, reconciliation, and financial analytics.
+The Finance System is a comprehensive payment, wallet, and receivables management solution for the hotel platform. It handles payment processing, provider integration, wallet management, accounts receivable tracking, reconciliation, and financial analytics with built-in manager approval workflows.
 
 ## Architecture
 
@@ -27,6 +27,20 @@ The Finance System is a comprehensive payment and wallet management solution for
    - Provider rule validation
    - Organization limit enforcement
    - Automatic wallet transactions
+   - Overpayment/underpayment handling
+   - Manager approval for large amounts
+   - Receivables creation for partial payments
+
+5. **Receivables Management** (`src/modules/finance-center/ReceivablesTab.tsx`)
+   - Dedicated accounts receivable tracking
+   - AR aging analysis
+   - Payment status management
+   - Write-off and escalation workflows
+
+6. **Force Checkout** (`supabase/functions/force-checkout/`)
+   - Manager-approved checkout with outstanding balance
+   - Automatic receivable creation
+   - Complete audit trail
 
 ## Key Features
 
@@ -56,11 +70,15 @@ interface PaymentProvider {
 1. **User initiates payment** - Via booking, front desk, or direct payment entry
 2. **Location selection** - Choose where the payment is being made
 3. **Provider selection** - Auto-selected based on location or manually chosen
-4. **Wallet assignment** - Optionally assign to a wallet for tracking
-5. **Validation** - Provider rules and organization limits checked
-6. **Processing** - Payment charged via provider
-7. **Recording** - Payment and wallet transactions stored
-8. **Audit** - All actions logged for compliance
+4. **Amount validation** - Check if amount matches expected amount
+5. **Overpayment handling** - If overpaid, prompt for wallet credit or refund
+6. **Underpayment handling** - If underpaid, create receivable entry
+7. **Manager approval** - Required for amounts exceeding configured thresholds
+8. **Wallet assignment** - Optionally assign to a wallet for tracking
+9. **Validation** - Provider rules and organization limits checked
+10. **Processing** - Payment charged via provider
+11. **Recording** - Payment, wallet transactions, and receivables stored
+12. **Audit** - All actions logged for compliance
 
 ### Wallets
 
@@ -122,26 +140,40 @@ Real-time financial insights:
 - **Department Overview** - Revenue by department
 - **Discrepancy Heatmap** - Visual reconciliation status
 - **Wallet Flow** - Track wallet transaction patterns
+- **AR Aging Analysis** - Receivables aging buckets (0-7, 8-30, 31-60, 60+ days)
+- **Credit Balance Report** - Guests/orgs with wallet credits
+
+### Payment Preferences
+
+Configurable payment behavior:
+- **Checkout with Debt** - Allow/prevent checkout with outstanding balance
+- **Auto-Apply Wallet** - Automatically suggest wallet credit on bookings
+- **Overpayment Action** - Default to wallet credit, prompt, or refund
+- **Manager Thresholds** - Configure amounts requiring approval
+- **AR Aging Alerts** - Set days for receivable escalation
 
 ## Usage Examples
 
-### Recording a Payment
+### Recording a Payment with Overpayment Handling
 
 ```typescript
 import { useRecordPayment } from '@/hooks/useRecordPayment';
 
 const { mutate: recordPayment } = useRecordPayment();
 
+// Record payment with expected amount for overpayment/underpayment handling
 recordPayment({
   transaction_ref: 'TXN-123',
   guest_id: 'guest-uuid',
-  amount: 25000,
+  amount: 30000, // Amount paid
+  expected_amount: 25000, // Expected amount
+  overpayment_action: 'wallet', // 'wallet' | 'refund'
   method: 'pos',
   provider_id: 'moniepoint-uuid',
   location_id: 'frontdesk-uuid',
-  wallet_id: 'wallet-uuid',
   metadata: { notes: 'Room payment' }
 });
+// Result: ₦5,000 credited to guest wallet automatically
 ```
 
 ### Creating a Wallet
@@ -159,26 +191,35 @@ createWallet({
 });
 ```
 
-### Wallet Operations
+### Force Checkout with Outstanding Balance
 
 ```typescript
-// Top up a wallet
-await supabase.from('wallet_transactions').insert({
-  wallet_id: 'wallet-uuid',
-  type: 'credit',
-  amount: 50000,
-  description: 'Deposit',
-  created_by: 'user-uuid'
-});
+import { useForceCheckout } from '@/hooks/useForceCheckout';
 
-// Withdraw from wallet
-await supabase.from('wallet_transactions').insert({
-  wallet_id: 'wallet-uuid',
-  type: 'debit',
-  amount: 10000,
-  description: 'Service charge',
-  created_by: 'user-uuid'
+const { mutate: forceCheckout } = useForceCheckout();
+
+// Manager-approved checkout with debt
+forceCheckout({
+  bookingId: 'booking-uuid',
+  reason: 'Guest emergency - approved to leave with outstanding balance',
+  createReceivable: true
 });
+// Creates receivable entry and audit log
+```
+
+### Apply Wallet Credit to Booking
+
+```typescript
+import { useApplyWalletCredit } from '@/hooks/useApplyWalletCredit';
+
+const { mutate: applyCredit } = useApplyWalletCredit();
+
+applyCredit({
+  guestId: 'guest-uuid',
+  bookingId: 'booking-uuid',
+  amountToApply: 10000 // Optional, defaults to full wallet balance
+});
+// Debits guest wallet and creates payment record
 ```
 
 ## Database Schema
@@ -189,22 +230,35 @@ await supabase.from('wallet_transactions').insert({
 - `finance_locations` - Point of sale locations
 - `finance_provider_rules` - Provider behavior rules
 - `wallets` - Wallet balances and metadata
-- `wallet_transactions` - All wallet movements
+- `wallet_transactions` - All wallet movements (with balance_after and source)
 - `payments` - Payment records
 - `organizations` - Corporate clients
 - `organization_wallet_rules` - Organization spending limits
 - `finance_reconciliation_records` - Provider statement matching
 - `finance_analytics_snapshots` - Pre-computed analytics
+- `receivables` - Accounts receivable tracking
+- `hotel_payment_preferences` - Payment behavior configuration
+- `finance_audit_events` - Financial operation audit trail
 
 ### Triggers
 
 - `update_wallet_balance` - Automatically updates wallet balance on transaction
 - `log_config_change` - Audits all configuration changes
+- `receivable_audit_trigger` - Logs all receivable status changes
+- `update_receivables_updated_at` - Auto-update timestamp on changes
 
 ### Functions
 
 - `validate_org_limits` - Validates organization spending rules
 - `update_wallet_balance()` - Updates wallet balances on transactions
+- `log_receivable_change()` - Audit trigger for receivables
+
+### Edge Functions
+
+- `create-payment` - Process payments with overpayment/underpayment handling
+- `force-checkout` - Manager-approved checkout with outstanding balance
+- `apply-wallet-credit` - Apply guest wallet balance to bookings
+- `complete-checkout` - Standard checkout with balance validation
 
 ## Security
 
@@ -229,6 +283,58 @@ Test payment providers in development:
 - Configurable success/failure rates
 - Realistic timing and responses
 
+## Manager Approval Workflow
+
+Large transactions require manager approval:
+
+1. **Detection** - System checks if amount exceeds configured thresholds
+2. **Blocking** - Payment/checkout blocked until approval
+3. **Manager Modal** - Manager enters PIN and reason for approval
+4. **Validation** - System validates manager role and credentials
+5. **Execution** - Transaction proceeds with `force_approve` flag
+6. **Audit** - Approval logged in `finance_audit_events`
+
+Configurable thresholds:
+- `manager_approval_threshold` - For underpayments (partial payments)
+- `large_overpayment_threshold` - For overpayments
+
+## Receivables (AR) Management
+
+Complete accounts receivable tracking:
+
+**Features:**
+- Automatic creation on underpayments
+- AR aging analysis (0-7, 8-30, 31-60, 60+ days)
+- Status tracking (open, paid, written_off, escalated)
+- Manual actions (mark paid, escalate, write-off)
+- Integration with booking folio display
+
+**Workflows:**
+1. **Underpayment** → Creates receivable + booking_charges entry
+2. **Force Checkout** → Creates receivable for outstanding balance
+3. **Aging Alert** → Flags receivables older than configured days
+4. **Payment** → Marks receivable as paid
+
+## Wallet Credit Features
+
+**Overpayment Handling:**
+- Choice dialog: Credit to wallet vs. Process refund
+- Default action configurable in preferences
+- Automatic wallet transaction creation
+- Manager approval for large amounts
+
+**Booking Application:**
+- Show available balance during booking
+- Optional auto-apply of wallet credit
+- Creates payment record linked to booking
+- Updates wallet balance in real-time
+
+**Credit Management:**
+- View all wallets with positive balances
+- Filter by guest/organization/department
+- Track last transaction date
+- Monitor total credits liability
+
 ## Future Enhancements
 
 - Integration with real payment gateways (Paystack, Flutterwave)
@@ -239,3 +345,6 @@ Test payment providers in development:
 - Receipt generation and email delivery
 - Tax calculation and reporting
 - Budget management and forecasting
+- Automated AR collection reminders
+- Credit limit management for organizations
+- Wallet expiry dates and policies

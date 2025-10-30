@@ -1,5 +1,6 @@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { FinanceSettingsTab } from '@/modules/finance-center/FinanceSettingsTab';
+import { PaymentPreferencesTab } from '@/modules/finance-center/PaymentPreferencesTab';
 import { ProvidersTab } from '@/modules/finance-center/ProvidersTab';
 import { LocationsTab } from '@/modules/finance-center/LocationsTab';
 import { RulesTab } from '@/modules/finance-center/RulesTab';
@@ -11,7 +12,7 @@ import { ReconciliationTab } from '@/modules/finance-center/ReconciliationTab';
 import { ReceivablesTab } from '@/modules/finance-center/ReceivablesTab';
 import { WalletCreditsTab } from '@/modules/finance-center/WalletCreditsTab';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
-import { Wallet, Building2, TrendingUp, Building, RefreshCcw, MapPin, Shield, BarChart3, Settings, Receipt, CreditCard } from 'lucide-react';
+import { Wallet, Building2, TrendingUp, Building, RefreshCcw, MapPin, Shield, BarChart3, Settings, Receipt, CreditCard, Sliders } from 'lucide-react';
 
 export default function FinanceCenter() {
   return (
@@ -23,10 +24,14 @@ export default function FinanceCenter() {
       </div>
 
       <Tabs defaultValue="settings" className="flex-1">
-        <TabsList className="grid w-full grid-cols-11 mb-6">
+        <TabsList className="grid w-full grid-cols-12 mb-6">
           <TabsTrigger value="settings" className="flex items-center gap-2">
             <Settings className="w-4 h-4" />
             Settings
+          </TabsTrigger>
+          <TabsTrigger value="preferences" className="flex items-center gap-2">
+            <Sliders className="w-4 h-4" />
+            Preferences
           </TabsTrigger>
           <TabsTrigger value="receivables" className="flex items-center gap-2">
             <Receipt className="w-4 h-4" />
@@ -72,6 +77,10 @@ export default function FinanceCenter() {
 
         <TabsContent value="settings">
           <FinanceSettingsTab />
+        </TabsContent>
+
+        <TabsContent value="preferences">
+          <PaymentPreferencesTab />
         </TabsContent>
 
         <TabsContent value="receivables">
