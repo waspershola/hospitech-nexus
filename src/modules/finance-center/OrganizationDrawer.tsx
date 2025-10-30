@@ -9,6 +9,18 @@ import {
   SheetHeader,
   SheetTitle,
 } from '@/components/ui/sheet';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from '@/components/ui/alert-dialog';
+import { Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -33,7 +45,7 @@ interface OrganizationDrawerProps {
 }
 
 export function OrganizationDrawer({ open, onClose, organizationId }: OrganizationDrawerProps) {
-  const { organizations, createOrganization } = useOrganizations();
+  const { organizations, createOrganization, updateOrganization, deleteOrganization } = useOrganizations();
   const isEditing = !!organizationId;
   const organization = organizations.find((o) => o.id === organizationId);
 
@@ -72,17 +84,39 @@ export function OrganizationDrawer({ open, onClose, organizationId }: Organizati
   }, [organization, form]);
 
   const onSubmit = (data: OrgForm) => {
-    createOrganization({
-      name: data.name,
-      contact_person: data.contact_person || null,
-      contact_email: data.contact_email || null,
-      wallet_id: null,
-      credit_limit: data.credit_limit,
-      allow_negative_balance: data.allow_negative_balance,
-      active: data.active,
-    });
+    if (isEditing && organizationId) {
+      updateOrganization({
+        id: organizationId,
+        data: {
+          name: data.name,
+          contact_person: data.contact_person || null,
+          contact_email: data.contact_email || null,
+          credit_limit: data.credit_limit,
+          allow_negative_balance: data.allow_negative_balance,
+          active: data.active,
+        },
+      });
+    } else {
+      createOrganization({
+        name: data.name,
+        contact_person: data.contact_person || null,
+        contact_email: data.contact_email || null,
+        wallet_id: null,
+        credit_limit: data.credit_limit,
+        allow_negative_balance: data.allow_negative_balance,
+        active: data.active,
+      });
+    }
     onClose();
     form.reset();
+  };
+
+  const handleDelete = () => {
+    if (organizationId && confirm('Are you sure you want to delete this organization? This will also delete the associated wallet.')) {
+      deleteOrganization(organizationId);
+      onClose();
+      form.reset();
+    }
   };
 
   return (
@@ -167,6 +201,29 @@ export function OrganizationDrawer({ open, onClose, organizationId }: Organizati
           </div>
 
           <div className="flex gap-3 pt-4">
+            {isEditing && (
+              <AlertDialog>
+                <AlertDialogTrigger asChild>
+                  <Button type="button" variant="destructive" size="icon">
+                    <Trash2 className="w-4 h-4" />
+                  </Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>Delete Organization</AlertDialogTitle>
+                    <AlertDialogDescription>
+                      Are you sure you want to delete this organization? This will also delete the associated wallet and all related data. This action cannot be undone.
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                    <AlertDialogAction onClick={handleDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+                      Delete
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
+            )}
             <Button type="button" variant="outline" onClick={onClose} className="flex-1">
               Cancel
             </Button>

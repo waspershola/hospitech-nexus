@@ -85,9 +85,54 @@ export function useOrganizations() {
     },
   });
 
+  const updateMutation = useMutation({
+    mutationFn: async ({ id, data }: { id: string; data: Partial<Omit<Organization, 'id' | 'tenant_id' | 'created_at'>> }) => {
+      if (!tenantId) throw new Error('No tenant ID');
+      
+      const { error } = await supabase
+        .from('organizations')
+        .update(data)
+        .eq('id', id)
+        .eq('tenant_id', tenantId);
+      
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['organizations', tenantId] });
+      toast.success('Organization updated successfully');
+    },
+    onError: (error: Error) => {
+      toast.error(`Failed to update organization: ${error.message}`);
+    },
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: async (id: string) => {
+      if (!tenantId) throw new Error('No tenant ID');
+      
+      const { error } = await supabase
+        .from('organizations')
+        .delete()
+        .eq('id', id)
+        .eq('tenant_id', tenantId);
+      
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['organizations', tenantId] });
+      queryClient.invalidateQueries({ queryKey: ['wallets', tenantId] });
+      toast.success('Organization deleted successfully');
+    },
+    onError: (error: Error) => {
+      toast.error(`Failed to delete organization: ${error.message}`);
+    },
+  });
+
   return {
     organizations: query.data ?? [],
     isLoading: query.isLoading,
     createOrganization: createMutation.mutate,
+    updateOrganization: updateMutation.mutate,
+    deleteOrganization: deleteMutation.mutate,
   };
 }
