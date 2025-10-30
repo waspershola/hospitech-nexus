@@ -56,9 +56,6 @@ export function RoomActionDrawer({ roomId, open, onClose }: RoomActionDrawerProp
     queryFn: async () => {
       if (!roomId || !tenantId) return null;
       
-      const today = new Date();
-      today.setHours(0, 0, 0, 0);
-      
       const { data, error } = await supabase
         .from('rooms')
         .select(`
@@ -83,8 +80,7 @@ export function RoomActionDrawer({ roomId, open, onClose }: RoomActionDrawerProp
       if (error) throw error;
       return data;
     },
-    enabled: !!roomId && !!tenantId,
-    refetchInterval: 5000, // Refetch every 5 seconds for realtime updates
+    enabled: !!roomId && !!tenantId && open,
   });
 
   // Realtime subscription for room changes
