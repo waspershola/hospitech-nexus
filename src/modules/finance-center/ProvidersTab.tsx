@@ -64,11 +64,10 @@ export function ProvidersTab() {
                 <div className="flex justify-between items-start">
                   <div>
                     <CardTitle className="text-lg flex items-center gap-2">
-                      {provider.type === 'credit_deferred' && <Clock className="w-4 h-4 text-orange-500" />}
                       {provider.name}
                     </CardTitle>
                     <CardDescription className="capitalize">
-                      {provider.type === 'credit_deferred' ? 'Credit Deferred (Receivables)' : provider.type.replace('_', ' ')}
+                      {provider.type.replace('_', ' ')}
                     </CardDescription>
                   </div>
                   {provider.status === 'active' ? (

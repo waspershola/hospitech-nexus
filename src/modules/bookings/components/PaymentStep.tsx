@@ -15,7 +15,6 @@ interface PaymentStepProps {
  * Uses the canonical PaymentForm with full support for:
  * - Partial payments (underpayment tracking)
  * - Overpayments (wallet credits)
- * - Pay Later (deferred payment)
  * - Provider selection and reconciliation
  */
 export function PaymentStep({

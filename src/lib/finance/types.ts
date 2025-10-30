@@ -31,7 +31,7 @@ export interface TaxBreakdown {
 }
 
 export interface PaymentType {
-  type: 'full' | 'partial' | 'overpayment' | 'pay_later';
+  type: 'full' | 'partial' | 'overpayment';
   amount: number;
   balance: number;
 }

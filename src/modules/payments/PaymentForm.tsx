@@ -31,7 +31,6 @@ const paymentSchema = z.object({
   wallet_id: z.string().optional(),
   department: z.string().optional(),
   notes: z.string().optional(),
-  pay_later: z.boolean().optional(),
 });
 
 type PaymentFormData = z.infer<typeof paymentSchema>;
@@ -62,7 +61,6 @@ export function PaymentForm({
 
   const activeProviders = providers.filter(p => p.status === 'active');
   const activeLocations = locations.filter(l => l.status === 'active');
-  const payLaterProvider = activeProviders.find(p => p.type === 'credit_deferred');
 
   const {
     register,
@@ -76,7 +74,6 @@ export function PaymentForm({
       amount: prefilledAmount?.toString() || '',
       provider_id: '',
       notes: '',
-      pay_later: false,
     },
   });
 
@@ -84,19 +81,15 @@ export function PaymentForm({
   const selectedProviderId = watch('provider_id');
   const amount = watch('amount');
   const expectedAmount = watch('expected_amount');
-  const payLater = watch('pay_later');
   
   // Check if selected provider is credit_deferred
   const selectedProvider = activeProviders.find(p => p.id === selectedProviderId);
-  const isCreditDeferredSelected = selectedProvider?.type === 'credit_deferred';
-
   // Calculate tax breakdown for standalone amount (not a booking)
   const taxBreakdown = amount && financials ? calculateBookingTotal(parseFloat(amount), financials) : null;
 
   // Auto-select provider based on location
   useEffect(() => {
-    // Don't auto-select from location if Pay Later is checked
-    if (selectedLocationId && !payLater) {
+    if (selectedLocationId) {
       const location = locations.find(l => l.id === selectedLocationId);
       if (location?.provider_id) {
         setValue('provider_id', location.provider_id);
@@ -107,15 +100,7 @@ export function PaymentForm({
         setValue('department', location.department || '');
       }
     }
-  }, [selectedLocationId, locations, activeProviders, setValue, payLater]);
-
-  // Auto-select provider when Pay Later checkbox is checked
-  useEffect(() => {
-    if (payLater && payLaterProvider) {
-      setValue('provider_id', payLaterProvider.id);
-      setValue('method', 'credit_deferred');
-    }
-  }, [payLater, payLaterProvider, setValue]);
+  }, [selectedLocationId, locations, activeProviders, setValue]);
 
   // Determine payment type
   const getPaymentType = (): 'partial' | 'full' | 'overpayment' | undefined => {
@@ -148,15 +133,6 @@ export function PaymentForm({
       return;
     }
 
-    // Override provider if pay_later checkbox is used
-    let finalProviderId = data.provider_id;
-    let finalMethod = selectedProvider.type;
-    
-    if (data.pay_later && payLaterProvider) {
-      finalProviderId = payLaterProvider.id;
-      finalMethod = 'credit_deferred';
-    }
-
     recordPayment(
       {
         transaction_ref: transactionRef,
@@ -166,14 +142,13 @@ export function PaymentForm({
         amount: parseFloat(data.amount),
         expected_amount: data.expected_amount ? parseFloat(data.expected_amount) : undefined,
         payment_type: paymentType,
-        method: finalMethod,
-        provider_id: finalProviderId,
+        method: selectedProvider.type,
+        provider_id: data.provider_id,
         location_id: data.location_id,
         department: data.department,
         wallet_id: data.wallet_id,
         metadata: {
           notes: data.notes,
-          pay_later: data.pay_later,
           provider_name: selectedProvider.name,
           provider_fee: selectedProvider.fee_percent,
         },
@@ -225,31 +200,7 @@ export function PaymentForm({
         </div>
       </div>
 
-      <div className="flex items-center space-x-2">
-        <input
-          type="checkbox"
-          id="pay_later"
-          {...register('pay_later')}
-          className="h-4 w-4 rounded border-input"
-          disabled={!payLaterProvider}
-        />
-        <Label htmlFor="pay_later" className="text-sm font-normal cursor-pointer">
-          Pay Later (Create debt record / Accounts Receivable)
-          {!payLaterProvider && ' (Not configured)'}
-        </Label>
-      </div>
-
-      {(payLater || isCreditDeferredSelected) && (
-        <Alert className="border-orange-500 bg-orange-50 dark:bg-orange-950">
-          <AlertCircle className="h-4 w-4 text-orange-600" />
-          <AlertDescription className="text-orange-900 dark:text-orange-100">
-            <strong>Payment Deferred:</strong> This transaction will be recorded as an outstanding balance (Accounts Receivable). 
-            Guest owes: ₦{parseFloat(amount || '0').toLocaleString()}
-          </AlertDescription>
-        </Alert>
-      )}
-
-      {!payLater && !isCreditDeferredSelected && expectedAmount && amount && getPaymentType() && (
+      {expectedAmount && amount && getPaymentType() && (
         <Alert variant={isLargeOverpayment ? 'destructive' : 'default'}>
           <AlertDescription>
             <div className="space-y-1">
@@ -357,14 +308,9 @@ export function PaymentForm({
               ))}
             </SelectContent>
           </Select>
-          {selectedLocationId && !payLater && (
+          {selectedLocationId && (
             <p className="text-xs text-muted-foreground">
               Provider auto-selected from location
-            </p>
-          )}
-          {selectedLocationId && payLater && (
-            <p className="text-xs text-orange-600">
-              Location selected, but "Pay Later" overrides provider selection
             </p>
           )}
         </div>

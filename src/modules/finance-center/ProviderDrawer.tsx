@@ -27,7 +27,7 @@ import { useQueryClient } from '@tanstack/react-query';
 
 const providerSchema = z.object({
   name: z.string().min(1, 'Name is required'),
-  type: z.enum(['pos', 'online', 'transfer', 'cash', 'credit_deferred']),
+  type: z.enum(['pos', 'online', 'transfer', 'cash']),
   status: z.enum(['active', 'inactive']),
   fee_percent: z.number().min(0).max(100),
   api_key: z.string().optional(),
@@ -72,7 +72,7 @@ export function ProviderDrawer({ open, onClose, providerId }: ProviderDrawerProp
             setProvider(data);
             form.reset({
               name: data.name,
-              type: data.type as 'pos' | 'online' | 'transfer' | 'cash' | 'credit_deferred',
+              type: data.type as 'pos' | 'online' | 'transfer' | 'cash',
               status: data.status as 'active' | 'inactive',
               fee_percent: data.fee_percent,
               api_key: data.api_key || '',
@@ -175,7 +175,6 @@ export function ProviderDrawer({ open, onClose, providerId }: ProviderDrawerProp
                 <SelectItem value="pos">POS Terminal</SelectItem>
                 <SelectItem value="transfer">Bank Transfer</SelectItem>
                 <SelectItem value="online">Online Payment</SelectItem>
-                <SelectItem value="credit_deferred">Credit Deferred (Pay Later)</SelectItem>
               </SelectContent>
             </Select>
           </div>
