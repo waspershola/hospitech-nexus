@@ -26,7 +26,7 @@ import { FinancialOverviewTab } from '@/components/configuration/tabs/FinancialO
 import { useConfigCompleteness } from '@/hooks/useConfigCompleteness';
 import { Progress } from '@/components/ui/progress';
 import { Badge } from '@/components/ui/badge';
-import { CheckCircle2, AlertCircle } from 'lucide-react';
+import { CheckCircle2, AlertCircle, Loader2 } from 'lucide-react';
 
 const tabs = [
   { id: 'general', label: 'General', icon: Settings },
@@ -53,6 +53,8 @@ export default function ConfigurationCenter() {
   const saveAllChanges = useConfigStore(state => state.saveAllChanges);
   const resetChanges = useConfigStore(state => state.resetChanges);
   const unsavedCount = useConfigStore(state => state.unsavedChanges.length);
+  const isSaving = useConfigStore(state => state.isSaving);
+  const savingProgress = useConfigStore(state => state.savingProgress);
   const lastSyncTime = useConfigStore(state => state.lastSyncTime);
   const isLoading = useConfigStore(state => state.isLoading);
   const [activeTab, setActiveTab] = useState('general');
@@ -139,25 +141,35 @@ export default function ConfigurationCenter() {
 
             <div className="flex items-center gap-4">
               {unsavedCount > 0 && (
-                <div className="flex items-center gap-2 px-3 py-1.5 bg-amber-50 dark:bg-amber-950 border border-amber-200 dark:border-amber-800 rounded-lg">
-                  <div className="w-2 h-2 bg-amber-500 rounded-full animate-pulse" />
-                  <span className="text-sm font-medium text-amber-700 dark:text-amber-300">
+                <div className="flex items-center gap-2 px-3 py-1.5 bg-warning/10 border border-warning/20 rounded-lg">
+                  <div className="w-2 h-2 bg-warning rounded-full animate-pulse" />
+                  <span className="text-sm font-medium text-warning">
                     {unsavedCount} unsaved change{unsavedCount !== 1 ? 's' : ''}
                   </span>
                 </div>
               )}
 
-              {lastSyncTime && (
-                <span className="text-xs text-muted-foreground">
-                  Last synced: {lastSyncTime.toLocaleTimeString()}
-                </span>
+              {lastSyncTime && unsavedCount === 0 && !isSaving && (
+                <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                  <CheckCircle2 className="h-3 w-3 text-success" />
+                  <span>Last saved: {lastSyncTime.toLocaleTimeString()}</span>
+                </div>
+              )}
+
+              {isSaving && savingProgress.length > 0 && (
+                <div className="flex items-center gap-2 px-3 py-1.5 bg-primary/10 border border-primary/20 rounded-lg">
+                  <Loader2 className="h-3 w-3 text-primary animate-spin" />
+                  <span className="text-sm font-medium text-primary">
+                    Saving {savingProgress.filter(p => p.status === 'saving').length} of {savingProgress.length}...
+                  </span>
+                </div>
               )}
 
               <Button
                 variant="outline"
                 size="sm"
             onClick={handleReset}
-            disabled={unsavedCount === 0 || isLoading}
+            disabled={unsavedCount === 0 || isSaving}
               >
                 <RotateCcw className="h-4 w-4 mr-2" />
                 Reset All
@@ -166,11 +178,20 @@ export default function ConfigurationCenter() {
               <Button
                 size="sm"
             onClick={handleSaveAll}
-            disabled={unsavedCount === 0 || isLoading}
+            disabled={unsavedCount === 0 || isSaving}
                 className="bg-primary hover:bg-primary/90"
               >
-                <Save className="h-4 w-4 mr-2" />
-                Save All Changes
+                {isSaving ? (
+                  <>
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    Saving...
+                  </>
+                ) : (
+                  <>
+                    <Save className="h-4 w-4 mr-2" />
+                    Save All Changes
+                  </>
+                )}
               </Button>
             </div>
           </div>

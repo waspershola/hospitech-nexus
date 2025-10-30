@@ -12,9 +12,12 @@ interface ConfigStore {
   documentTemplates: any[];
   unsavedChanges: string[];
   lastSyncTime: Date | null;
+  sectionLastSaved: Record<string, Date>;
   isLoading: boolean;
   isSaving: boolean;
+  savingProgress: { section: string; status: 'saving' | 'success' | 'error' }[];
   lastError: string | null;
+  sectionErrors: Record<string, string>;
   version: number;
   saveCounter: number;
   
@@ -37,6 +40,8 @@ interface ConfigStore {
   saveAllChanges: () => Promise<void>;
   resetChanges: () => void;
   markSaved: (key: string) => void;
+  clearAllUnsaved: () => void;
+  hasUnsaved: (key: string) => boolean;
 }
 
 export const useConfigStore = create<ConfigStore>((set, get) => ({
@@ -49,16 +54,19 @@ export const useConfigStore = create<ConfigStore>((set, get) => ({
   documentTemplates: [],
   unsavedChanges: [],
   lastSyncTime: null,
+  sectionLastSaved: {},
   isLoading: false,
   isSaving: false,
+  savingProgress: [],
   lastError: null,
+  sectionErrors: {},
   version: 0,
   saveCounter: 0,
 
   setTenantId: (tenantId) => set({ tenantId }),
 
   loadAllConfig: async (tenantId: string) => {
-    set({ isLoading: true });
+    set({ isLoading: true, unsavedChanges: [], sectionErrors: {} });
     try {
       // Load general configurations
       const { data: configs } = await supabase
@@ -266,21 +274,37 @@ export const useConfigStore = create<ConfigStore>((set, get) => ({
 
   saveBranding: async () => {
     const { tenantId, branding } = get();
-    if (!tenantId) return;
+    if (!tenantId) throw new Error('No tenant ID');
 
-    set({ isSaving: true, lastError: null });
+    set({ isSaving: true, lastError: null, sectionErrors: { ...get().sectionErrors, branding: '' } });
 
     try {
-      const { error } = await supabase.from('hotel_branding').upsert({
-        tenant_id: tenantId,
-        ...branding,
-      });
+      // Get existing record to obtain ID
+      const { data: existing } = await supabase
+        .from('hotel_branding')
+        .select('id')
+        .eq('tenant_id', tenantId)
+        .maybeSingle();
+
+      // Upsert with ID for proper update
+      const { data, error } = await supabase
+        .from('hotel_branding')
+        .upsert({
+          ...(existing?.id && { id: existing.id }),
+          tenant_id: tenantId,
+          ...branding,
+        })
+        .select()
+        .single();
 
       if (error) throw error;
       
+      const now = new Date();
       set(state => ({
+        branding: data,
         unsavedChanges: state.unsavedChanges.filter(k => k !== 'branding'),
-        lastSyncTime: new Date(),
+        lastSyncTime: now,
+        sectionLastSaved: { ...state.sectionLastSaved, branding: now },
         version: state.version + 1,
         saveCounter: state.saveCounter + 1,
         isSaving: false,
@@ -289,7 +313,11 @@ export const useConfigStore = create<ConfigStore>((set, get) => ({
       toast.success('Branding saved');
     } catch (error: any) {
       console.error('Failed to save branding:', error);
-      set({ lastError: error.message, isSaving: false });
+      set({ 
+        lastError: error.message, 
+        sectionErrors: { ...get().sectionErrors, branding: error.message },
+        isSaving: false 
+      });
       toast.error('Failed to save branding');
       throw error;
     }
@@ -297,21 +325,37 @@ export const useConfigStore = create<ConfigStore>((set, get) => ({
 
   saveFinancials: async () => {
     const { tenantId, financials } = get();
-    if (!tenantId) return;
+    if (!tenantId) throw new Error('No tenant ID');
 
-    set({ isSaving: true, lastError: null });
+    set({ isSaving: true, lastError: null, sectionErrors: { ...get().sectionErrors, financials: '' } });
 
     try {
-      const { error } = await supabase.from('hotel_financials').upsert({
-        tenant_id: tenantId,
-        ...financials,
-      });
+      // Get existing record to obtain ID
+      const { data: existing } = await supabase
+        .from('hotel_financials')
+        .select('id')
+        .eq('tenant_id', tenantId)
+        .maybeSingle();
+
+      // Upsert with ID for proper update
+      const { data, error } = await supabase
+        .from('hotel_financials')
+        .upsert({
+          ...(existing?.id && { id: existing.id }),
+          tenant_id: tenantId,
+          ...financials,
+        })
+        .select()
+        .single();
 
       if (error) throw error;
       
+      const now = new Date();
       set(state => ({
+        financials: data,
         unsavedChanges: state.unsavedChanges.filter(k => k !== 'financials'),
-        lastSyncTime: new Date(),
+        lastSyncTime: now,
+        sectionLastSaved: { ...state.sectionLastSaved, financials: now },
         version: state.version + 1,
         saveCounter: state.saveCounter + 1,
         isSaving: false,
@@ -320,7 +364,11 @@ export const useConfigStore = create<ConfigStore>((set, get) => ({
       toast.success('Financial settings saved');
     } catch (error: any) {
       console.error('Failed to save financials:', error);
-      set({ lastError: error.message, isSaving: false });
+      set({ 
+        lastError: error.message,
+        sectionErrors: { ...get().sectionErrors, financials: error.message },
+        isSaving: false 
+      });
       toast.error('Failed to save financial settings');
       throw error;
     }
@@ -328,21 +376,37 @@ export const useConfigStore = create<ConfigStore>((set, get) => ({
 
   saveEmailSettings: async () => {
     const { tenantId, emailSettings } = get();
-    if (!tenantId) return;
+    if (!tenantId) throw new Error('No tenant ID');
 
-    set({ isSaving: true, lastError: null });
+    set({ isSaving: true, lastError: null, sectionErrors: { ...get().sectionErrors, email_settings: '' } });
 
     try {
-      const { error } = await supabase.from('email_settings').upsert({
-        tenant_id: tenantId,
-        ...emailSettings,
-      });
+      // Get existing record to obtain ID
+      const { data: existing } = await supabase
+        .from('email_settings')
+        .select('id')
+        .eq('tenant_id', tenantId)
+        .maybeSingle();
+
+      // Upsert with ID for proper update
+      const { data, error } = await supabase
+        .from('email_settings')
+        .upsert({
+          ...(existing?.id && { id: existing.id }),
+          tenant_id: tenantId,
+          ...emailSettings,
+        })
+        .select()
+        .single();
 
       if (error) throw error;
       
+      const now = new Date();
       set(state => ({
+        emailSettings: data,
         unsavedChanges: state.unsavedChanges.filter(k => k !== 'email_settings'),
-        lastSyncTime: new Date(),
+        lastSyncTime: now,
+        sectionLastSaved: { ...state.sectionLastSaved, email_settings: now },
         version: state.version + 1,
         saveCounter: state.saveCounter + 1,
         isSaving: false,
@@ -351,7 +415,11 @@ export const useConfigStore = create<ConfigStore>((set, get) => ({
       toast.success('Email settings saved');
     } catch (error: any) {
       console.error('Failed to save email settings:', error);
-      set({ lastError: error.message, isSaving: false });
+      set({ 
+        lastError: error.message,
+        sectionErrors: { ...get().sectionErrors, email_settings: error.message },
+        isSaving: false 
+      });
       toast.error('Failed to save email settings');
       throw error;
     }
@@ -359,21 +427,37 @@ export const useConfigStore = create<ConfigStore>((set, get) => ({
 
   saveHotelMeta: async () => {
     const { tenantId, hotelMeta } = get();
-    if (!tenantId) return;
+    if (!tenantId) throw new Error('No tenant ID');
 
-    set({ isSaving: true, lastError: null });
+    set({ isSaving: true, lastError: null, sectionErrors: { ...get().sectionErrors, hotel_meta: '' } });
 
     try {
-      const { error } = await supabase.from('hotel_meta').upsert({
-        tenant_id: tenantId,
-        ...hotelMeta,
-      });
+      // Get existing record to obtain ID
+      const { data: existing } = await supabase
+        .from('hotel_meta')
+        .select('id')
+        .eq('tenant_id', tenantId)
+        .maybeSingle();
+
+      // Upsert with ID for proper update
+      const { data, error } = await supabase
+        .from('hotel_meta')
+        .upsert({
+          ...(existing?.id && { id: existing.id }),
+          tenant_id: tenantId,
+          ...hotelMeta,
+        })
+        .select()
+        .single();
 
       if (error) throw error;
       
+      const now = new Date();
       set(state => ({
+        hotelMeta: data,
         unsavedChanges: state.unsavedChanges.filter(k => k !== 'hotel_meta'),
-        lastSyncTime: new Date(),
+        lastSyncTime: now,
+        sectionLastSaved: { ...state.sectionLastSaved, hotel_meta: now },
         version: state.version + 1,
         saveCounter: state.saveCounter + 1,
         isSaving: false,
@@ -382,7 +466,11 @@ export const useConfigStore = create<ConfigStore>((set, get) => ({
       toast.success('Hotel information saved');
     } catch (error: any) {
       console.error('Failed to save hotel meta:', error);
-      set({ lastError: error.message, isSaving: false });
+      set({ 
+        lastError: error.message,
+        sectionErrors: { ...get().sectionErrors, hotel_meta: error.message },
+        isSaving: false 
+      });
       toast.error('Failed to save hotel information');
       throw error;
     }
@@ -390,25 +478,45 @@ export const useConfigStore = create<ConfigStore>((set, get) => ({
 
   saveDocumentTemplate: async (templateType: string) => {
     const { tenantId, documentTemplates } = get();
-    if (!tenantId) return;
+    if (!tenantId) throw new Error('No tenant ID');
 
-    set({ isSaving: true, lastError: null });
+    const key = `template_${templateType}`;
+    set({ isSaving: true, lastError: null, sectionErrors: { ...get().sectionErrors, [key]: '' } });
 
     try {
       const template = documentTemplates.find(t => t.template_type === templateType);
-      if (!template) return;
+      if (!template) throw new Error('Template not found');
 
-      const { error } = await supabase.from('document_templates').upsert({
-        tenant_id: tenantId,
-        template_type: templateType,
-        ...template,
-      });
+      // Get existing record to obtain ID
+      const { data: existing } = await supabase
+        .from('document_templates')
+        .select('id')
+        .eq('tenant_id', tenantId)
+        .eq('template_type', templateType)
+        .maybeSingle();
+
+      // Upsert with ID for proper update
+      const { data, error } = await supabase
+        .from('document_templates')
+        .upsert({
+          ...(existing?.id && { id: existing.id }),
+          tenant_id: tenantId,
+          template_type: templateType,
+          ...template,
+        })
+        .select()
+        .single();
 
       if (error) throw error;
       
+      const now = new Date();
       set(state => ({
-        unsavedChanges: state.unsavedChanges.filter(k => k !== `template_${templateType}`),
-        lastSyncTime: new Date(),
+        documentTemplates: state.documentTemplates.map(t => 
+          t.template_type === templateType ? data : t
+        ),
+        unsavedChanges: state.unsavedChanges.filter(k => k !== key),
+        lastSyncTime: now,
+        sectionLastSaved: { ...state.sectionLastSaved, [key]: now },
         version: state.version + 1,
         saveCounter: state.saveCounter + 1,
         isSaving: false,
@@ -417,7 +525,11 @@ export const useConfigStore = create<ConfigStore>((set, get) => ({
       toast.success('Document template saved');
     } catch (error: any) {
       console.error('Failed to save document template:', error);
-      set({ lastError: error.message, isSaving: false });
+      set({ 
+        lastError: error.message,
+        sectionErrors: { ...get().sectionErrors, [key]: error.message },
+        isSaving: false 
+      });
       toast.error('Failed to save document template');
       throw error;
     }
@@ -425,30 +537,66 @@ export const useConfigStore = create<ConfigStore>((set, get) => ({
 
   saveAllChanges: async () => {
     const { unsavedChanges } = get();
-    const savePromises: Promise<void>[] = [];
+    if (unsavedChanges.length === 0) {
+      toast.info('No changes to save');
+      return;
+    }
 
-    if (unsavedChanges.includes('branding')) savePromises.push(get().saveBranding());
-    if (unsavedChanges.includes('financials')) savePromises.push(get().saveFinancials());
-    if (unsavedChanges.includes('email_settings')) savePromises.push(get().saveEmailSettings());
-    if (unsavedChanges.includes('hotel_meta')) savePromises.push(get().saveHotelMeta());
+    set({ isSaving: true, savingProgress: [] });
+    const errors: Array<{ section: string; error: string }> = [];
+    let successCount = 0;
 
-    // Save document templates
-    unsavedChanges.forEach(key => {
-      if (key.startsWith('template_')) {
-        const templateType = key.replace('template_', '');
-        savePromises.push(get().saveDocumentTemplate(templateType));
+    // Process each section sequentially with error handling
+    for (const key of unsavedChanges) {
+      set(state => ({
+        savingProgress: [...state.savingProgress, { section: key, status: 'saving' }]
+      }));
+
+      try {
+        if (key === 'branding') {
+          await get().saveBranding();
+        } else if (key === 'financials') {
+          await get().saveFinancials();
+        } else if (key === 'email_settings') {
+          await get().saveEmailSettings();
+        } else if (key === 'hotel_meta') {
+          await get().saveHotelMeta();
+        } else if (key.startsWith('template_')) {
+          const templateType = key.replace('template_', '');
+          await get().saveDocumentTemplate(templateType);
+        } else {
+          await get().saveConfig(key);
+        }
+
+        set(state => ({
+          savingProgress: state.savingProgress.map(p =>
+            p.section === key ? { ...p, status: 'success' } : p
+          )
+        }));
+        successCount++;
+      } catch (error: any) {
+        errors.push({ section: key, error: error.message });
+        set(state => ({
+          savingProgress: state.savingProgress.map(p =>
+            p.section === key ? { ...p, status: 'error' } : p
+          )
+        }));
       }
-    });
+    }
 
-    // Save all other config keys
-    unsavedChanges.forEach(key => {
-      if (!['branding', 'financials', 'email_settings', 'hotel_meta'].includes(key) && !key.startsWith('template_')) {
-        savePromises.push(get().saveConfig(key));
-      }
-    });
+    set({ isSaving: false, lastSyncTime: new Date() });
 
-    await Promise.all(savePromises);
-    set({ lastSyncTime: new Date() });
+    // Clear progress after a delay
+    setTimeout(() => {
+      set({ savingProgress: [] });
+    }, 3000);
+
+    if (errors.length > 0) {
+      const errorMsg = errors.map(e => `${e.section}: ${e.error}`).join('; ');
+      toast.error(`Failed to save ${errors.length} section(s): ${errorMsg}`);
+    } else {
+      toast.success(`All ${successCount} section(s) saved successfully`);
+    }
   },
 
   resetChanges: () => {
@@ -465,4 +613,8 @@ export const useConfigStore = create<ConfigStore>((set, get) => ({
       lastSyncTime: new Date(),
     }));
   },
+
+  clearAllUnsaved: () => set({ unsavedChanges: [], sectionErrors: {} }),
+
+  hasUnsaved: (key: string) => get().unsavedChanges.includes(key),
 }));

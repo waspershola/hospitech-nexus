@@ -2,7 +2,8 @@ import { ReactNode } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { LucideIcon, Save } from 'lucide-react';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { LucideIcon, Save, Clock, AlertCircle } from 'lucide-react';
 
 interface ConfigCardProps {
   title: string;
@@ -11,6 +12,9 @@ interface ConfigCardProps {
   children: ReactNode;
   onSave?: () => void | Promise<void>;
   hasUnsavedChanges?: boolean;
+  lastSaved?: Date;
+  error?: string;
+  sectionKey?: string;
 }
 
 export function ConfigCard({ 
@@ -19,7 +23,10 @@ export function ConfigCard({
   icon: Icon, 
   children, 
   onSave,
-  hasUnsavedChanges = false 
+  hasUnsavedChanges = false,
+  lastSaved,
+  error,
+  sectionKey
 }: ConfigCardProps) {
   return (
     <Card className="bg-card rounded-2xl shadow-sm border transition-all hover:shadow-md hover:border-primary/20">
@@ -33,12 +40,18 @@ export function ConfigCard({
           <div className="flex-1">
             <div className="flex items-center justify-between gap-4">
               <div className="flex-1">
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 flex-wrap">
                   <CardTitle className="font-display text-xl text-foreground">{title}</CardTitle>
                   {hasUnsavedChanges && (
-                    <Badge variant="outline" className="text-xs bg-yellow-500/10 text-yellow-700 border-yellow-500/20">
+                    <Badge variant="outline" className="text-xs bg-warning/10 text-warning border-warning/20">
                       Unsaved
                     </Badge>
+                  )}
+                  {lastSaved && !hasUnsavedChanges && (
+                    <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                      <Clock className="h-3 w-3" />
+                      <span>Saved {lastSaved.toLocaleTimeString()}</span>
+                    </div>
                   )}
                 </div>
                 {description && (
@@ -60,7 +73,15 @@ export function ConfigCard({
           </div>
         </div>
       </CardHeader>
-      <CardContent>{children}</CardContent>
+      <CardContent>
+        {error && (
+          <Alert variant="destructive" className="mb-4">
+            <AlertCircle className="h-4 w-4" />
+            <AlertDescription>{error}</AlertDescription>
+          </Alert>
+        )}
+        {children}
+      </CardContent>
     </Card>
   );
 }
