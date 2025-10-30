@@ -3,6 +3,14 @@ import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { Card } from '@/components/ui/card';
 import { Bed, Calendar, Users, DollarSign } from 'lucide-react';
+import { useFinanceOverview } from '@/hooks/useFinanceOverview';
+import { useDebtorsCreditors } from '@/hooks/useDebtorsCreditors';
+import { FinanceOverviewKPIs } from '@/modules/finance-center/components/FinanceOverviewKPIs';
+import { LiveTransactionFeed } from '@/modules/finance-center/components/LiveTransactionFeed';
+import { LiveActivityStream } from '@/modules/finance-center/components/LiveActivityStream';
+import { ProviderBreakdownCard } from '@/modules/finance-center/components/ProviderBreakdownCard';
+import { DebtorsCard } from '@/modules/finance-center/components/DebtorsCard';
+import { CreditorsCard } from '@/modules/finance-center/components/CreditorsCard';
 
 export default function Overview() {
   const { tenantId } = useAuth();
@@ -12,6 +20,17 @@ export default function Overview() {
     todayCheckIns: 0,
     totalGuests: 0,
   });
+
+  const {
+    kpis,
+    kpisLoading,
+    transactionFeed,
+    transactionFeedLoading,
+    providerBreakdown,
+    providerBreakdownLoading
+  } = useFinanceOverview();
+
+  const debtorsCreditors = useDebtorsCreditors();
 
   useEffect(() => {
     if (!tenantId) return;
@@ -120,6 +139,46 @@ export default function Overview() {
           </button>
         </div>
       </Card>
+
+      {/* Finance Overview Section */}
+      <div className="space-y-6 pt-8 border-t border-border">
+        <div>
+          <h2 className="text-2xl font-display text-charcoal mb-2">Financial Overview</h2>
+          <p className="text-muted-foreground">Real-time financial metrics at a glance</p>
+        </div>
+
+        {/* Finance KPIs */}
+        <FinanceOverviewKPIs data={kpis} isLoading={kpisLoading} />
+
+        {/* Transaction Feed & Activity Stream */}
+        <div className="grid lg:grid-cols-3 gap-6">
+          <div className="lg:col-span-2">
+            <LiveTransactionFeed 
+              transactions={transactionFeed || []} 
+              isLoading={transactionFeedLoading} 
+            />
+          </div>
+          <LiveActivityStream transactions={transactionFeed || []} />
+        </div>
+
+        {/* Provider Breakdown */}
+        <ProviderBreakdownCard 
+          data={providerBreakdown} 
+          isLoading={providerBreakdownLoading} 
+        />
+
+        {/* Debtors & Creditors */}
+        <div className="grid lg:grid-cols-2 gap-6">
+          <DebtorsCard 
+            data={debtorsCreditors.data?.debtors || []} 
+            isLoading={debtorsCreditors.isLoading} 
+          />
+          <CreditorsCard 
+            data={debtorsCreditors.data?.creditors || []} 
+            isLoading={debtorsCreditors.isLoading} 
+          />
+        </div>
+      </div>
     </div>
   );
 }

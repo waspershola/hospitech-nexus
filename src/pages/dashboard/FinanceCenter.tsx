@@ -1,5 +1,4 @@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { FinanceOverviewTab } from '@/modules/finance-center/FinanceOverviewTab';
 import { FinanceSettingsTab } from '@/modules/finance-center/FinanceSettingsTab';
 import { PaymentPreferencesTab } from '@/modules/finance-center/PaymentPreferencesTab';
 import { ProvidersTab } from '@/modules/finance-center/ProvidersTab';
@@ -13,7 +12,7 @@ import { ReconciliationTab } from '@/modules/finance-center/ReconciliationTab';
 import { ReceivablesTab } from '@/modules/finance-center/ReceivablesTab';
 import { WalletCreditsTab } from '@/modules/finance-center/WalletCreditsTab';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
-import { Wallet, Building2, TrendingUp, Building, RefreshCcw, MapPin, Shield, BarChart3, Settings, Receipt, CreditCard, Sliders, LayoutDashboard } from 'lucide-react';
+import { Wallet, Building2, TrendingUp, Building, RefreshCcw, MapPin, Shield, BarChart3, Settings, Receipt, CreditCard, Sliders } from 'lucide-react';
 
 export default function FinanceCenter() {
   return (
@@ -24,12 +23,8 @@ export default function FinanceCenter() {
         <p className="text-muted-foreground">Manage payments, providers, and wallets</p>
       </div>
 
-      <Tabs defaultValue="overview" className="flex-1">
-        <TabsList className="grid w-full grid-cols-13 mb-6">
-          <TabsTrigger value="overview" className="flex items-center gap-2">
-            <LayoutDashboard className="w-4 h-4" />
-            Overview
-          </TabsTrigger>
+      <Tabs defaultValue="settings" className="flex-1">
+        <TabsList className="grid w-full grid-cols-12 mb-6">
           <TabsTrigger value="settings" className="flex items-center gap-2">
             <Settings className="w-4 h-4" />
             Settings
@@ -79,10 +74,6 @@ export default function FinanceCenter() {
             Analytics
           </TabsTrigger>
         </TabsList>
-
-        <TabsContent value="overview">
-          <FinanceOverviewTab />
-        </TabsContent>
 
         <TabsContent value="settings">
           <FinanceSettingsTab />
