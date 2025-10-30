@@ -93,6 +93,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "booking_charges_provider_id_fkey"
+            columns: ["provider_id"]
+            isOneToOne: false
+            referencedRelation: "v_finance_overview_summary"
+            referencedColumns: ["provider_id"]
+          },
+          {
             foreignKeyName: "booking_charges_tenant_id_fkey"
             columns: ["tenant_id"]
             isOneToOne: false
@@ -418,6 +425,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "finance_locations_provider_id_fkey"
+            columns: ["provider_id"]
+            isOneToOne: false
+            referencedRelation: "v_finance_overview_summary"
+            referencedColumns: ["provider_id"]
+          },
+          {
             foreignKeyName: "finance_locations_tenant_id_fkey"
             columns: ["tenant_id"]
             isOneToOne: false
@@ -481,6 +495,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "finance_providers"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "finance_provider_rules_provider_id_fkey"
+            columns: ["provider_id"]
+            isOneToOne: false
+            referencedRelation: "v_finance_overview_summary"
+            referencedColumns: ["provider_id"]
           },
           {
             foreignKeyName: "finance_provider_rules_tenant_id_fkey"
@@ -643,6 +664,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "finance_providers"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "finance_reconciliation_records_provider_id_fkey"
+            columns: ["provider_id"]
+            isOneToOne: false
+            referencedRelation: "v_finance_overview_summary"
+            referencedColumns: ["provider_id"]
           },
           {
             foreignKeyName: "finance_reconciliation_records_tenant_id_fkey"
@@ -1955,7 +1983,44 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      v_debtors_creditors: {
+        Row: {
+          entity_id: string | null
+          entity_name: string | null
+          entity_type: string | null
+          last_activity: string | null
+          tenant_id: string | null
+          total_amount: number | null
+          transaction_count: number | null
+          type: string | null
+        }
+        Relationships: []
+      }
+      v_finance_overview_summary: {
+        Row: {
+          department: string | null
+          last_transaction_at: string | null
+          net_balance: number | null
+          provider_id: string | null
+          provider_name: string | null
+          source: string | null
+          tenant_id: string | null
+          total_inflow: number | null
+          total_outflow: number | null
+          transaction_count: number | null
+          transaction_day: string | null
+          type: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "wallet_transactions_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Functions: {
       get_tenant_by_domain: { Args: { _domain: string }; Returns: string }
