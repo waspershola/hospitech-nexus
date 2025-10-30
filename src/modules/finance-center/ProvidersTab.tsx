@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Plus, Settings, CheckCircle2, XCircle, Building2 } from 'lucide-react';
+import { Plus, Settings, CheckCircle2, XCircle, Building2, Clock } from 'lucide-react';
 import { useFinanceProviders } from '@/hooks/useFinanceProviders';
 import { ProviderDrawer } from './ProviderDrawer';
 import { ProviderSkeleton } from '@/components/ui/skeleton-loaders';
@@ -63,8 +63,13 @@ export function ProvidersTab() {
               <CardHeader>
                 <div className="flex justify-between items-start">
                   <div>
-                    <CardTitle className="text-lg">{provider.name}</CardTitle>
-                    <CardDescription className="capitalize">{provider.type}</CardDescription>
+                    <CardTitle className="text-lg flex items-center gap-2">
+                      {provider.type === 'credit_deferred' && <Clock className="w-4 h-4 text-orange-500" />}
+                      {provider.name}
+                    </CardTitle>
+                    <CardDescription className="capitalize">
+                      {provider.type === 'credit_deferred' ? 'Credit Deferred (Receivables)' : provider.type.replace('_', ' ')}
+                    </CardDescription>
                   </div>
                   {provider.status === 'active' ? (
                     <Badge variant="default" className="bg-semantic-success">

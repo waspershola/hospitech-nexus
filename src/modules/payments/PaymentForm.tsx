@@ -62,6 +62,7 @@ export function PaymentForm({
 
   const activeProviders = providers.filter(p => p.status === 'active');
   const activeLocations = locations.filter(l => l.status === 'active');
+  const payLaterProvider = activeProviders.find(p => p.type === 'credit_deferred');
 
   const {
     register,
@@ -81,9 +82,14 @@ export function PaymentForm({
 
   const selectedMethod = watch('method');
   const selectedLocationId = watch('location_id');
+  const selectedProviderId = watch('provider_id');
   const amount = watch('amount');
   const expectedAmount = watch('expected_amount');
   const payLater = watch('pay_later');
+  
+  // Check if selected provider is credit_deferred
+  const selectedProvider = activeProviders.find(p => p.id === selectedProviderId);
+  const isCreditDeferredSelected = selectedProvider?.type === 'credit_deferred';
 
   // Calculate tax breakdown for standalone amount (not a booking)
   const taxBreakdown = amount && financials ? calculateBookingTotal(parseFloat(amount), financials) : null;
@@ -127,7 +133,7 @@ export function PaymentForm({
     let finalMethod = data.method;
     
     if (data.pay_later) {
-      const payLaterProvider = providers.find(p => p.name === 'Pay Later');
+      const payLaterProvider = providers.find(p => p.type === 'credit_deferred');
       if (payLaterProvider) {
         finalProviderId = payLaterProvider.id;
         finalMethod = 'pay_later';
@@ -212,15 +218,17 @@ export function PaymentForm({
         </Label>
       </div>
 
-      {payLater && (
-        <Alert>
-          <AlertDescription>
-            Payment will be recorded as <strong>Pay Later</strong>. The balance will be tracked as accounts receivable.
+      {(payLater || isCreditDeferredSelected) && (
+        <Alert className="border-orange-500 bg-orange-50 dark:bg-orange-950">
+          <AlertCircle className="h-4 w-4 text-orange-600" />
+          <AlertDescription className="text-orange-900 dark:text-orange-100">
+            <strong>Payment Deferred:</strong> This transaction will be recorded as an outstanding balance (Accounts Receivable). 
+            Guest owes: ₦{parseFloat(amount || '0').toLocaleString()}
           </AlertDescription>
         </Alert>
       )}
 
-      {!payLater && expectedAmount && amount && getPaymentType() && (
+      {!payLater && !isCreditDeferredSelected && expectedAmount && amount && getPaymentType() && (
         <Alert variant={isLargeOverpayment ? 'destructive' : 'default'}>
           <AlertDescription>
             <div className="space-y-1">
