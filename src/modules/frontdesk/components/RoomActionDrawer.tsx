@@ -62,7 +62,7 @@ export function RoomActionDrawer({ roomId, open, onClose }: RoomActionDrawerProp
         .select(`
           *,
           category:room_categories(name, short_code, base_rate),
-          bookings!inner(
+          bookings(
             id,
             check_in,
             check_out,
@@ -76,10 +76,7 @@ export function RoomActionDrawer({ roomId, open, onClose }: RoomActionDrawerProp
         `)
         .eq('id', roomId)
         .eq('tenant_id', tenantId)
-        .neq('bookings.status', 'completed')
-        .neq('bookings.status', 'cancelled')
-        .gt('bookings.check_out', today.toISOString())
-        .single();
+        .maybeSingle();
 
       if (error) throw error;
       return data;
