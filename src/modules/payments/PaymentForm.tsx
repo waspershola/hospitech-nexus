@@ -112,14 +112,20 @@ export function PaymentForm({
   const onSubmit = (data: PaymentFormData) => {
     setValidationError(null);
 
-    // If pay later, skip payment recording and just create debt record
-    if (data.pay_later) {
-      onSuccess?.();
-      return;
-    }
-
     const transactionRef = `PAY-${Date.now()}-${Math.random().toString(36).substring(7).toUpperCase()}`;
     const paymentType = getPaymentType();
+
+    // Find Pay Later provider if pay_later is checked
+    let finalProviderId = data.provider_id;
+    let finalMethod = data.method;
+    
+    if (data.pay_later) {
+      const payLaterProvider = providers.find(p => p.name === 'Pay Later');
+      if (payLaterProvider) {
+        finalProviderId = payLaterProvider.id;
+        finalMethod = 'pay_later';
+      }
+    }
 
     recordPayment(
       {
@@ -130,8 +136,8 @@ export function PaymentForm({
         amount: parseFloat(data.amount),
         expected_amount: data.expected_amount ? parseFloat(data.expected_amount) : undefined,
         payment_type: paymentType,
-        method: data.method,
-        provider_id: data.provider_id,
+        method: finalMethod,
+        provider_id: finalProviderId,
         location_id: data.location_id,
         department: data.department,
         wallet_id: data.wallet_id,
