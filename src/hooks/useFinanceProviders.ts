@@ -7,7 +7,7 @@ export interface FinanceProvider {
   id: string;
   tenant_id: string;
   name: string;
-  type: 'pos' | 'online' | 'transfer' | 'cash';
+  type: 'pos' | 'online' | 'transfer' | 'cash' | 'credit_deferred';
   status: 'active' | 'inactive';
   fee_percent: number;
   meta: Record<string, any>;

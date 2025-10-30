@@ -102,10 +102,11 @@ serve(async (req) => {
     // Get provider details if provider_id is provided
     let providerName = null;
     let providerFee = 0;
+    let isCreditDeferred = false;
     if (provider_id) {
       const { data: provider } = await supabase
         .from('finance_providers')
-        .select('name, fee_percent, status')
+        .select('name, type, fee_percent, status')
         .eq('id', provider_id)
         .eq('tenant_id', tenant_id)
         .single();
@@ -126,7 +127,14 @@ serve(async (req) => {
 
       providerName = provider.name;
       providerFee = provider.fee_percent || 0;
+      isCreditDeferred = provider.type === 'credit_deferred';
+      
       console.log('Using provider:', providerName, 'with fee:', providerFee, '%');
+      
+      if (isCreditDeferred) {
+        console.log('Processing Pay Later (credit_deferred) transaction');
+        providerFee = 0; // No fee for internal credit
+      }
     }
 
     // Check provider rules if location or department specified
@@ -282,7 +290,7 @@ serve(async (req) => {
         wallet_id: wallet_id || (organization_id ? await getOrgWalletId(supabase, organization_id, tenant_id) : null),
         location: locationName,
         recorded_by,
-        status: 'success',
+        status: isCreditDeferred ? 'pending' : 'success',
         charged_to_organization: !!organization_id,
         metadata: {
           ...metadata,
@@ -290,6 +298,12 @@ serve(async (req) => {
           location_id,
           provider_fee: providerFee,
           net_amount: amount - (amount * providerFee / 100),
+          is_credit_deferred: isCreditDeferred,
+          ...(isCreditDeferred && {
+            is_receivable: true,
+            accounting_category: 'accounts_receivable',
+            settlement_required: true,
+          }),
         },
       }])
       .select()
@@ -418,8 +432,8 @@ serve(async (req) => {
       }
     }
 
-    // Phase 5: Auto-create reconciliation record for non-cash/non-pay-later payments
-    if (provider_id && providerName && providerName !== 'Cash' && providerName !== 'Pay Later') {
+    // Phase 5: Auto-create reconciliation record for non-cash/non-credit_deferred payments
+    if (provider_id && providerName && !isCreditDeferred && providerName !== 'Cash') {
       console.log('Creating reconciliation record for provider:', providerName);
       
       await supabase.from('finance_reconciliation_records').insert([{
@@ -442,6 +456,8 @@ serve(async (req) => {
       }]);
       
       console.log('Reconciliation record created');
+    } else if (isCreditDeferred) {
+      console.log('Skipping reconciliation for credit_deferred (Pay Later) payment');
     }
 
     // Create audit log

@@ -16,7 +16,7 @@ export interface PaymentResponse {
 export interface PaymentProvider {
   id: string;
   name: string;
-  type: 'pos' | 'online' | 'transfer' | 'cash';
+  type: 'pos' | 'online' | 'transfer' | 'cash' | 'credit_deferred';
   init?(config: any): Promise<void>;
   charge(payload: PaymentPayload): Promise<PaymentResponse>;
   reconcile?(reference: string): Promise<boolean>;
