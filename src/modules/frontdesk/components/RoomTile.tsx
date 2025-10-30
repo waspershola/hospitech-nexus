@@ -37,9 +37,17 @@ export function RoomTile({ room, onClick, isSelectionMode, isSelected, onSelecti
   const borderColor = statusBorderColors[room.status as keyof typeof statusBorderColors] || statusBorderColors.available;
 
   // Get active booking with guest and organization info
-  const activeBooking = room.bookings?.find((b: any) => 
-    b.status === 'checked_in' || b.status === 'reserved'
-  );
+  const activeBooking = room.bookings?.find((b: any) => {
+    if (b.status === 'cancelled' || b.status === 'completed') return false;
+    
+    const checkOut = new Date(b.check_out);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    checkOut.setHours(0, 0, 0, 0);
+    
+    // Only consider active if checkout is tomorrow or later
+    return checkOut > today && (b.status === 'checked_in' || b.status === 'reserved');
+  });
   const organization = activeBooking?.organization;
   const guest = activeBooking?.guest;
   
