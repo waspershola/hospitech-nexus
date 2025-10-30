@@ -55,12 +55,7 @@ export function RoomActionDrawer({ roomId, open, onClose }: RoomActionDrawerProp
   const { data: room, isLoading } = useQuery({
     queryKey: ['room-detail', roomId],
     queryFn: async () => {
-      if (!roomId || !tenantId) {
-        console.log('❌ Room query skipped - missing roomId or tenantId:', { roomId, tenantId });
-        return null;
-      }
-      
-      console.log('🔍 Fetching room details for:', roomId);
+      if (!roomId || !tenantId) return null;
       
       const { data, error } = await supabase
         .from('rooms')
@@ -83,12 +78,7 @@ export function RoomActionDrawer({ roomId, open, onClose }: RoomActionDrawerProp
         .eq('tenant_id', tenantId)
         .maybeSingle();
 
-      if (error) {
-        console.error('❌ Room query error:', error);
-        throw error;
-      }
-      
-      console.log('✅ Room data fetched:', data);
+      if (error) throw error;
       return data;
     },
     enabled: !!roomId && !!tenantId, // Phase 1: Remove 'open' for instant loading

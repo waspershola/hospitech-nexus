@@ -31,7 +31,7 @@ serve(async (req) => {
       .from('bookings')
       .select(`
         *,
-        room:rooms(*),
+        room:rooms!bookings_room_id_fkey(*),
         guest:guests(*)
       `)
       .eq('id', bookingId)
