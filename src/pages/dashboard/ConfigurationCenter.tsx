@@ -48,7 +48,7 @@ export default function ConfigurationCenter() {
   const loadAllConfig = useConfigStore(state => state.loadAllConfig);
   const saveAllChanges = useConfigStore(state => state.saveAllChanges);
   const resetChanges = useConfigStore(state => state.resetChanges);
-  const unsavedCount = useConfigStore(state => state.unsavedChanges.size);
+  const unsavedCount = useConfigStore(state => state.unsavedChanges.length);
   const lastSyncTime = useConfigStore(state => state.lastSyncTime);
   const isLoading = useConfigStore(state => state.isLoading);
   const [activeTab, setActiveTab] = useState('general');

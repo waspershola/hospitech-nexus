@@ -18,7 +18,7 @@ export function FinancialsTab() {
   const updateFinancials = useConfigStore(state => state.updateFinancials);
   const saveFinancials = useConfigStore(state => state.saveFinancials);
   const saveCounter = useConfigStore(state => state.saveCounter);
-  const hasFinancialsUnsaved = useConfigStore(state => state.unsavedChanges.has('financials'));
+  const hasFinancialsUnsaved = useConfigStore(state => state.unsavedChanges.includes('financials'));
 
   const handleChange = (field: string, value: any) => {
     updateFinancials({ [field]: value });

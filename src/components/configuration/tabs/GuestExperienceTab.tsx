@@ -21,7 +21,7 @@ export function GuestExperienceTab() {
   const updateConfig = useConfigStore(state => state.updateConfig);
   const saveConfig = useConfigStore(state => state.saveConfig);
   const saveCounter = useConfigStore(state => state.saveCounter);
-  const hasGuestExperienceUnsaved = useConfigStore(state => state.unsavedChanges.has('guestExperience'));
+  const hasGuestExperienceUnsaved = useConfigStore(state => state.unsavedChanges.includes('guestExperience'));
   const guestExp = configurations.guestExperience || {};
 
   const handleChange = (field: string, value: any) => {

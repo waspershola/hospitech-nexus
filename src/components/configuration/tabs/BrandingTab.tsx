@@ -16,7 +16,7 @@ export function BrandingTab() {
   const updateBranding = useConfigStore(state => state.updateBranding);
   const saveBranding = useConfigStore(state => state.saveBranding);
   const saveCounter = useConfigStore(state => state.saveCounter);
-  const hasBrandingUnsaved = useConfigStore(state => state.unsavedChanges.has('branding'));
+  const hasBrandingUnsaved = useConfigStore(state => state.unsavedChanges.includes('branding'));
 
   const handleChange = (field: string, value: any) => {
     updateBranding({ [field]: value });

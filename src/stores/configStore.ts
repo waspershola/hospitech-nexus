@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { supabase } from '@/integrations/supabase/client';
+import { toast } from 'sonner';
 
 interface ConfigStore {
   tenantId: string | null;
@@ -9,9 +10,11 @@ interface ConfigStore {
   emailSettings: any;
   hotelMeta: any;
   documentTemplates: any[];
-  unsavedChanges: Set<string>;
+  unsavedChanges: string[];
   lastSyncTime: Date | null;
   isLoading: boolean;
+  isSaving: boolean;
+  lastError: string | null;
   version: number;
   saveCounter: number;
   
@@ -44,9 +47,11 @@ export const useConfigStore = create<ConfigStore>((set, get) => ({
   emailSettings: {},
   hotelMeta: {},
   documentTemplates: [],
-  unsavedChanges: new Set(),
+  unsavedChanges: [],
   lastSyncTime: null,
   isLoading: false,
+  isSaving: false,
+  lastError: null,
   version: 0,
   saveCounter: 0,
 
@@ -117,38 +122,73 @@ export const useConfigStore = create<ConfigStore>((set, get) => ({
   },
 
   updateConfig: (key, value) => {
-    set(state => ({
-      configurations: { ...state.configurations, [key]: value },
-      unsavedChanges: new Set(state.unsavedChanges).add(key),
-    }));
+    set(state => {
+      const newUnsaved = [...state.unsavedChanges];
+      if (!newUnsaved.includes(key)) {
+        newUnsaved.push(key);
+      }
+      return {
+        configurations: { ...state.configurations, [key]: value },
+        unsavedChanges: newUnsaved,
+        version: state.version + 1,
+      };
+    });
   },
 
   updateBranding: (data) => {
-    set(state => ({
-      branding: { ...state.branding, ...data },
-      unsavedChanges: new Set(state.unsavedChanges).add('branding'),
-    }));
+    set(state => {
+      const newUnsaved = [...state.unsavedChanges];
+      if (!newUnsaved.includes('branding')) {
+        newUnsaved.push('branding');
+      }
+      return {
+        branding: { ...state.branding, ...data },
+        unsavedChanges: newUnsaved,
+        version: state.version + 1,
+      };
+    });
   },
 
   updateFinancials: (data) => {
-    set(state => ({
-      financials: { ...state.financials, ...data },
-      unsavedChanges: new Set(state.unsavedChanges).add('financials'),
-    }));
+    set(state => {
+      const newUnsaved = [...state.unsavedChanges];
+      if (!newUnsaved.includes('financials')) {
+        newUnsaved.push('financials');
+      }
+      return {
+        financials: { ...state.financials, ...data },
+        unsavedChanges: newUnsaved,
+        version: state.version + 1,
+      };
+    });
   },
 
   updateEmailSettings: (data) => {
-    set(state => ({
-      emailSettings: { ...state.emailSettings, ...data },
-      unsavedChanges: new Set(state.unsavedChanges).add('email_settings'),
-    }));
+    set(state => {
+      const newUnsaved = [...state.unsavedChanges];
+      if (!newUnsaved.includes('email_settings')) {
+        newUnsaved.push('email_settings');
+      }
+      return {
+        emailSettings: { ...state.emailSettings, ...data },
+        unsavedChanges: newUnsaved,
+        version: state.version + 1,
+      };
+    });
   },
 
   updateHotelMeta: (data) => {
-    set(state => ({
-      hotelMeta: { ...state.hotelMeta, ...data },
-      unsavedChanges: new Set(state.unsavedChanges).add('hotel_meta'),
-    }));
+    set(state => {
+      const newUnsaved = [...state.unsavedChanges];
+      if (!newUnsaved.includes('hotel_meta')) {
+        newUnsaved.push('hotel_meta');
+      }
+      return {
+        hotelMeta: { ...state.hotelMeta, ...data },
+        unsavedChanges: newUnsaved,
+        version: state.version + 1,
+      };
+    });
   },
 
   updateDocumentTemplate: (templateType, data) => {
@@ -162,9 +202,16 @@ export const useConfigStore = create<ConfigStore>((set, get) => ({
         templates.push({ template_type: templateType, ...data });
       }
       
+      const newUnsaved = [...state.unsavedChanges];
+      const key = `template_${templateType}`;
+      if (!newUnsaved.includes(key)) {
+        newUnsaved.push(key);
+      }
+      
       return {
         documentTemplates: templates,
-        unsavedChanges: new Set(state.unsavedChanges).add(`template_${templateType}`),
+        unsavedChanges: newUnsaved,
+        version: state.version + 1,
       };
     });
   },
@@ -186,132 +233,204 @@ export const useConfigStore = create<ConfigStore>((set, get) => ({
     const { tenantId, configurations } = get();
     if (!tenantId) return;
 
-    const { data: { user } } = await supabase.auth.getUser();
-    
-    const { error } = await supabase.from('hotel_configurations').upsert({
-      tenant_id: tenantId,
-      key,
-      value: configurations[key],
-      updated_by: user?.id,
-    });
+    set({ isSaving: true, lastError: null });
 
-    if (error) throw error;
-    
-    // Mark saved immediately in the same function
-    set(state => {
-      const newUnsaved = new Set(state.unsavedChanges);
-      newUnsaved.delete(key);
-      return { unsavedChanges: newUnsaved, lastSyncTime: new Date(), version: state.version + 1, saveCounter: state.saveCounter + 1 };
-    });
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      
+      const { error } = await supabase.from('hotel_configurations').upsert({
+        tenant_id: tenantId,
+        key,
+        value: configurations[key],
+        updated_by: user?.id,
+      });
+
+      if (error) throw error;
+      
+      set(state => ({
+        unsavedChanges: state.unsavedChanges.filter(k => k !== key),
+        lastSyncTime: new Date(),
+        version: state.version + 1,
+        saveCounter: state.saveCounter + 1,
+        isSaving: false,
+      }));
+
+      toast.success('Configuration saved');
+    } catch (error: any) {
+      console.error('Failed to save config:', error);
+      set({ lastError: error.message, isSaving: false });
+      toast.error('Failed to save configuration');
+      throw error;
+    }
   },
 
   saveBranding: async () => {
     const { tenantId, branding } = get();
     if (!tenantId) return;
 
-    const { error } = await supabase.from('hotel_branding').upsert({
-      tenant_id: tenantId,
-      ...branding,
-    });
+    set({ isSaving: true, lastError: null });
 
-    if (error) throw error;
-    
-    // Mark saved immediately in the same function
-    set(state => {
-      const newUnsaved = new Set(state.unsavedChanges);
-      newUnsaved.delete('branding');
-      return { unsavedChanges: newUnsaved, lastSyncTime: new Date(), version: state.version + 1, saveCounter: state.saveCounter + 1 };
-    });
+    try {
+      const { error } = await supabase.from('hotel_branding').upsert({
+        tenant_id: tenantId,
+        ...branding,
+      });
+
+      if (error) throw error;
+      
+      set(state => ({
+        unsavedChanges: state.unsavedChanges.filter(k => k !== 'branding'),
+        lastSyncTime: new Date(),
+        version: state.version + 1,
+        saveCounter: state.saveCounter + 1,
+        isSaving: false,
+      }));
+
+      toast.success('Branding saved');
+    } catch (error: any) {
+      console.error('Failed to save branding:', error);
+      set({ lastError: error.message, isSaving: false });
+      toast.error('Failed to save branding');
+      throw error;
+    }
   },
 
   saveFinancials: async () => {
     const { tenantId, financials } = get();
     if (!tenantId) return;
 
-    const { error } = await supabase.from('hotel_financials').upsert({
-      tenant_id: tenantId,
-      ...financials,
-    });
+    set({ isSaving: true, lastError: null });
 
-    if (error) throw error;
-    
-    // Mark saved immediately in the same function
-    set(state => {
-      const newUnsaved = new Set(state.unsavedChanges);
-      newUnsaved.delete('financials');
-      return { unsavedChanges: newUnsaved, lastSyncTime: new Date(), version: state.version + 1, saveCounter: state.saveCounter + 1 };
-    });
+    try {
+      const { error } = await supabase.from('hotel_financials').upsert({
+        tenant_id: tenantId,
+        ...financials,
+      });
+
+      if (error) throw error;
+      
+      set(state => ({
+        unsavedChanges: state.unsavedChanges.filter(k => k !== 'financials'),
+        lastSyncTime: new Date(),
+        version: state.version + 1,
+        saveCounter: state.saveCounter + 1,
+        isSaving: false,
+      }));
+
+      toast.success('Financial settings saved');
+    } catch (error: any) {
+      console.error('Failed to save financials:', error);
+      set({ lastError: error.message, isSaving: false });
+      toast.error('Failed to save financial settings');
+      throw error;
+    }
   },
 
   saveEmailSettings: async () => {
     const { tenantId, emailSettings } = get();
     if (!tenantId) return;
 
-    const { error } = await supabase.from('email_settings').upsert({
-      tenant_id: tenantId,
-      ...emailSettings,
-    });
+    set({ isSaving: true, lastError: null });
 
-    if (error) throw error;
-    
-    // Mark saved immediately in the same function
-    set(state => {
-      const newUnsaved = new Set(state.unsavedChanges);
-      newUnsaved.delete('email_settings');
-      return { unsavedChanges: newUnsaved, lastSyncTime: new Date(), version: state.version + 1, saveCounter: state.saveCounter + 1 };
-    });
+    try {
+      const { error } = await supabase.from('email_settings').upsert({
+        tenant_id: tenantId,
+        ...emailSettings,
+      });
+
+      if (error) throw error;
+      
+      set(state => ({
+        unsavedChanges: state.unsavedChanges.filter(k => k !== 'email_settings'),
+        lastSyncTime: new Date(),
+        version: state.version + 1,
+        saveCounter: state.saveCounter + 1,
+        isSaving: false,
+      }));
+
+      toast.success('Email settings saved');
+    } catch (error: any) {
+      console.error('Failed to save email settings:', error);
+      set({ lastError: error.message, isSaving: false });
+      toast.error('Failed to save email settings');
+      throw error;
+    }
   },
 
   saveHotelMeta: async () => {
     const { tenantId, hotelMeta } = get();
     if (!tenantId) return;
 
-    const { error } = await supabase.from('hotel_meta').upsert({
-      tenant_id: tenantId,
-      ...hotelMeta,
-    });
+    set({ isSaving: true, lastError: null });
 
-    if (error) throw error;
-    
-    // Mark saved immediately in the same function
-    set(state => {
-      const newUnsaved = new Set(state.unsavedChanges);
-      newUnsaved.delete('hotel_meta');
-      return { unsavedChanges: newUnsaved, lastSyncTime: new Date(), version: state.version + 1, saveCounter: state.saveCounter + 1 };
-    });
+    try {
+      const { error } = await supabase.from('hotel_meta').upsert({
+        tenant_id: tenantId,
+        ...hotelMeta,
+      });
+
+      if (error) throw error;
+      
+      set(state => ({
+        unsavedChanges: state.unsavedChanges.filter(k => k !== 'hotel_meta'),
+        lastSyncTime: new Date(),
+        version: state.version + 1,
+        saveCounter: state.saveCounter + 1,
+        isSaving: false,
+      }));
+
+      toast.success('Hotel information saved');
+    } catch (error: any) {
+      console.error('Failed to save hotel meta:', error);
+      set({ lastError: error.message, isSaving: false });
+      toast.error('Failed to save hotel information');
+      throw error;
+    }
   },
 
   saveDocumentTemplate: async (templateType: string) => {
     const { tenantId, documentTemplates } = get();
     if (!tenantId) return;
 
-    const template = documentTemplates.find(t => t.template_type === templateType);
-    if (!template) return;
+    set({ isSaving: true, lastError: null });
 
-    const { error } = await supabase.from('document_templates').upsert({
-      tenant_id: tenantId,
-      template_type: templateType,
-      ...template,
-    });
+    try {
+      const template = documentTemplates.find(t => t.template_type === templateType);
+      if (!template) return;
 
-    if (error) throw error;
-    
-    // Mark saved immediately in the same function
-    set(state => {
-      const newUnsaved = new Set(state.unsavedChanges);
-      newUnsaved.delete(`template_${templateType}`);
-      return { unsavedChanges: newUnsaved, lastSyncTime: new Date(), version: state.version + 1, saveCounter: state.saveCounter + 1 };
-    });
+      const { error } = await supabase.from('document_templates').upsert({
+        tenant_id: tenantId,
+        template_type: templateType,
+        ...template,
+      });
+
+      if (error) throw error;
+      
+      set(state => ({
+        unsavedChanges: state.unsavedChanges.filter(k => k !== `template_${templateType}`),
+        lastSyncTime: new Date(),
+        version: state.version + 1,
+        saveCounter: state.saveCounter + 1,
+        isSaving: false,
+      }));
+
+      toast.success('Document template saved');
+    } catch (error: any) {
+      console.error('Failed to save document template:', error);
+      set({ lastError: error.message, isSaving: false });
+      toast.error('Failed to save document template');
+      throw error;
+    }
   },
 
   saveAllChanges: async () => {
     const { unsavedChanges } = get();
     const savePromises: Promise<void>[] = [];
 
-    if (unsavedChanges.has('branding')) savePromises.push(get().saveBranding());
-    if (unsavedChanges.has('financials')) savePromises.push(get().saveFinancials());
-    if (unsavedChanges.has('email_settings')) savePromises.push(get().saveEmailSettings());
-    if (unsavedChanges.has('hotel_meta')) savePromises.push(get().saveHotelMeta());
+    if (unsavedChanges.includes('branding')) savePromises.push(get().saveBranding());
+    if (unsavedChanges.includes('financials')) savePromises.push(get().saveFinancials());
+    if (unsavedChanges.includes('email_settings')) savePromises.push(get().saveEmailSettings());
+    if (unsavedChanges.includes('hotel_meta')) savePromises.push(get().saveHotelMeta());
 
     // Save document templates
     unsavedChanges.forEach(key => {
@@ -336,15 +455,14 @@ export const useConfigStore = create<ConfigStore>((set, get) => ({
     const { tenantId } = get();
     if (tenantId) {
       get().loadAllConfig(tenantId);
-      set({ unsavedChanges: new Set() });
+      set({ unsavedChanges: [] });
     }
   },
 
   markSaved: (key: string) => {
-    set(state => {
-      const newUnsaved = new Set(state.unsavedChanges);
-      newUnsaved.delete(key);
-      return { unsavedChanges: newUnsaved, lastSyncTime: new Date() };
-    });
+    set(state => ({
+      unsavedChanges: state.unsavedChanges.filter(k => k !== key),
+      lastSyncTime: new Date(),
+    }));
   },
 }));

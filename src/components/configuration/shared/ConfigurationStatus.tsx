@@ -64,11 +64,11 @@ export function ConfigurationStatus() {
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-3">
-        {unsavedChanges.size > 0 && (
+        {unsavedChanges.length > 0 && (
           <Alert>
             <AlertCircle className="h-4 w-4" />
             <AlertDescription>
-              You have {unsavedChanges.size} unsaved {unsavedChanges.size === 1 ? 'change' : 'changes'}. Click "Save All Changes" to persist your updates.
+              You have {unsavedChanges.length} unsaved {unsavedChanges.length === 1 ? 'change' : 'changes'}. Click "Save All Changes" to persist your updates.
             </AlertDescription>
           </Alert>
         )}

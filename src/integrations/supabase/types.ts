@@ -681,6 +681,44 @@ export type Database = {
           },
         ]
       }
+      hotel_config_snapshots: {
+        Row: {
+          created_at: string | null
+          created_by: string | null
+          id: string
+          label: string | null
+          notes: string | null
+          snapshot_data: Json
+          tenant_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          created_by?: string | null
+          id?: string
+          label?: string | null
+          notes?: string | null
+          snapshot_data: Json
+          tenant_id: string
+        }
+        Update: {
+          created_at?: string | null
+          created_by?: string | null
+          id?: string
+          label?: string | null
+          notes?: string | null
+          snapshot_data?: Json
+          tenant_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "hotel_config_snapshots_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       hotel_configurations: {
         Row: {
           created_at: string
@@ -876,6 +914,47 @@ export type Database = {
             foreignKeyName: "hotel_meta_tenant_id_fkey"
             columns: ["tenant_id"]
             isOneToOne: true
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      hotel_permissions: {
+        Row: {
+          allowed: boolean | null
+          created_at: string | null
+          id: string
+          metadata: Json | null
+          permission_key: string
+          role: Database["public"]["Enums"]["app_role"]
+          tenant_id: string
+          updated_at: string | null
+        }
+        Insert: {
+          allowed?: boolean | null
+          created_at?: string | null
+          id?: string
+          metadata?: Json | null
+          permission_key: string
+          role: Database["public"]["Enums"]["app_role"]
+          tenant_id: string
+          updated_at?: string | null
+        }
+        Update: {
+          allowed?: boolean | null
+          created_at?: string | null
+          id?: string
+          metadata?: Json | null
+          permission_key?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          tenant_id?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "hotel_permissions_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
             referencedRelation: "tenants"
             referencedColumns: ["id"]
           },

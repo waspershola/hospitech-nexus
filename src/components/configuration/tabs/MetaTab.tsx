@@ -12,7 +12,7 @@ export function MetaTab() {
   const saveHotelMeta = useConfigStore(state => state.saveHotelMeta);
   const loadHotelMeta = useConfigStore(state => state.loadHotelMeta);
   const saveCounter = useConfigStore(state => state.saveCounter);
-  const hasHotelMetaUnsaved = useConfigStore(state => state.unsavedChanges.has('hotel_meta'));
+  const hasHotelMetaUnsaved = useConfigStore(state => state.unsavedChanges.includes('hotel_meta'));
 
   useEffect(() => {
     loadHotelMeta();
