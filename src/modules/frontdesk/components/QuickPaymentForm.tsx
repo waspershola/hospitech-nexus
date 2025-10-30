@@ -40,8 +40,8 @@ export function QuickPaymentForm({
   const { mutateAsync: recordPayment, isPending: isRecording } = useRecordPayment();
   const { data: financials } = useFinancials();
 
-  // Calculate tax breakdown
-  const taxBreakdown = amount && financials ? calculateBookingTotal(parseFloat(amount), 1, financials) : null;
+  // Calculate tax breakdown for standalone amount (not a booking)
+  const taxBreakdown = amount && financials ? calculateBookingTotal(parseFloat(amount), financials) : null;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -94,7 +94,7 @@ export function QuickPaymentForm({
         />
       </div>
 
-      {taxBreakdown && (taxBreakdown.vatAmount > 0 || taxBreakdown.serviceChargeAmount > 0) && (
+      {taxBreakdown && (taxBreakdown.vatAmount > 0 || taxBreakdown.serviceAmount > 0) && (
         <div className="bg-muted/50 rounded-lg p-3 space-y-2 text-sm">
           <p className="font-medium text-muted-foreground">Tax Breakdown</p>
           <div className="space-y-1">
@@ -108,10 +108,10 @@ export function QuickPaymentForm({
                 <span className="font-medium">₦{taxBreakdown.vatAmount.toFixed(2)}</span>
               </div>
             )}
-            {taxBreakdown.serviceChargeAmount > 0 && (
+            {taxBreakdown.serviceAmount > 0 && (
               <div className="flex justify-between">
                 <span className="text-muted-foreground">Service Charge</span>
-                <span className="font-medium">₦{taxBreakdown.serviceChargeAmount.toFixed(2)}</span>
+                <span className="font-medium">₦{taxBreakdown.serviceAmount.toFixed(2)}</span>
               </div>
             )}
           </div>

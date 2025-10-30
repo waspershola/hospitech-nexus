@@ -9,6 +9,8 @@ export interface HotelFinancials {
   vat_inclusive: boolean;
   service_charge: number;
   service_charge_inclusive: boolean;
+  vat_applied_on?: 'base' | 'subtotal'; // default 'subtotal'
+  rounding?: 'round' | 'floor' | 'ceil'; // default 'round'
   currency: string;
   currency_symbol?: string;
   symbol_position?: string;
@@ -22,7 +24,7 @@ export interface HotelFinancials {
 export interface TaxBreakdown {
   baseAmount: number;
   vatAmount: number;
-  serviceChargeAmount: number;
+  serviceAmount: number;
   totalAmount: number;
   nights?: number;
   ratePerNight?: number;

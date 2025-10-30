@@ -1,71 +1,124 @@
 /**
  * Tax Calculation Helpers
  * Handles VAT and Service Charge calculations for bookings
+ * 
+ * IMPORTANT: This implementation uses mathematically correct formulas for
+ * inclusive/exclusive tax calculations with proper rounding.
  */
 
-export interface HotelFinancials {
-  vat_rate: number;
-  vat_inclusive: boolean;
-  service_charge: number;
-  service_charge_inclusive: boolean;
+import type { HotelFinancials, TaxBreakdown } from './types';
+
+function toDecimal(ratePercent: number): number {
+  return ratePercent / 100;
 }
 
-export interface TaxBreakdown {
-  baseAmount: number;
-  vatAmount: number;
-  serviceChargeAmount: number;
-  totalAmount: number;
-  nights?: number;
-  ratePerNight?: number;
+function roundMoney(value: number, rounding: 'round' | 'floor' | 'ceil' = 'round'): number {
+  // Use cents to avoid floating point issues
+  const cents = value * 100;
+  if (rounding === 'round') return Math.round(cents) / 100;
+  if (rounding === 'floor') return Math.floor(cents) / 100;
+  return Math.ceil(cents) / 100;
 }
 
 /**
  * Calculate booking total with VAT and Service Charge
  * Handles both inclusive and exclusive pricing
+ * 
+ * @param baseAmount - The base amount (e.g., room rate * nights) BEFORE taxes
+ * @param settings - Hotel financial settings including tax rates and policies
+ * @returns Tax breakdown with base, VAT, service charge, and total amounts
  */
 export function calculateBookingTotal(
-  baseRate: number,
-  nights: number,
-  financials: HotelFinancials
+  baseAmount: number,
+  settings: HotelFinancials
 ): TaxBreakdown {
-  const baseAmount = baseRate * nights;
-  let vatAmount = 0;
-  let serviceChargeAmount = 0;
-  let totalAmount = baseAmount;
-  
-  // Calculate VAT
-  if (financials.vat_rate > 0) {
-    if (financials.vat_inclusive) {
-      // VAT is included in base amount, extract it
-      vatAmount = baseAmount - (baseAmount / (1 + financials.vat_rate / 100));
+  const vat = toDecimal(settings.vat_rate || 0);
+  const service = toDecimal(settings.service_charge || 0);
+  const applyOn = settings.vat_applied_on || 'subtotal';
+  const rounding = settings.rounding || 'round';
+
+  // If neither VAT nor service charge, quick return
+  if ((!vat || vat === 0) && (!service || service === 0)) {
+    return {
+      baseAmount: roundMoney(baseAmount, rounding),
+      serviceAmount: 0,
+      vatAmount: 0,
+      totalAmount: roundMoney(baseAmount, rounding),
+    };
+  }
+
+  // Case A: Both exclusive (prices do NOT include taxes)
+  if (!settings.service_charge_inclusive && !settings.vat_inclusive) {
+    const serviceAmount = roundMoney(baseAmount * service, rounding);
+    const subtotal = roundMoney(baseAmount + serviceAmount, rounding);
+
+    const vatBase = applyOn === 'base' ? baseAmount : subtotal;
+    const vatAmount = roundMoney(vatBase * vat, rounding);
+
+    const totalAmount = roundMoney(subtotal + vatAmount, rounding);
+
+    return { 
+      baseAmount: roundMoney(baseAmount, rounding), 
+      serviceAmount, 
+      vatAmount, 
+      totalAmount 
+    };
+  }
+
+  // Case B: Both inclusive (prices include both taxes)
+  if (settings.service_charge_inclusive && settings.vat_inclusive) {
+    if (applyOn === 'subtotal') {
+      // VAT applied on subtotal (base + service)
+      const denom = (1 + service) * (1 + vat);
+      const base = roundMoney(baseAmount / denom, rounding);
+      const serviceAmount = roundMoney(base * service, rounding);
+      const vatAmount = roundMoney((base + serviceAmount) * vat, rounding);
+      const totalAmount = roundMoney(base + serviceAmount + vatAmount, rounding);
+      return { baseAmount: base, serviceAmount, vatAmount, totalAmount };
     } else {
-      // VAT is added on top
-      vatAmount = baseAmount * (financials.vat_rate / 100);
-      totalAmount += vatAmount;
+      // VAT applied on base only (rare case)
+      const denom = (1 + vat) + service;
+      const base = roundMoney(baseAmount / denom, rounding);
+      const serviceAmount = roundMoney(base * service, rounding);
+      const vatAmount = roundMoney(base * vat, rounding);
+      const totalAmount = roundMoney(base + serviceAmount + vatAmount, rounding);
+      return { baseAmount: base, serviceAmount, vatAmount, totalAmount };
     }
   }
-  
-  // Calculate Service Charge
-  if (financials.service_charge > 0) {
-    const chargeBase = financials.vat_inclusive ? baseAmount : (baseAmount + vatAmount);
-    
-    if (financials.service_charge_inclusive) {
-      // Service charge is included, extract it
-      serviceChargeAmount = chargeBase - (chargeBase / (1 + financials.service_charge / 100));
-    } else {
-      // Service charge is added on top
-      serviceChargeAmount = chargeBase * (financials.service_charge / 100);
-      totalAmount += serviceChargeAmount;
-    }
+
+  // Case C: Service inclusive, VAT exclusive
+  if (settings.service_charge_inclusive && !settings.vat_inclusive) {
+    // Extract base from inclusive service: price = base * (1 + service)
+    const base = roundMoney(baseAmount / (1 + service), rounding);
+    const serviceAmount = roundMoney(base * service, rounding);
+    const vatBase = applyOn === 'base' ? base : roundMoney(base + serviceAmount, rounding);
+    const vatAmount = roundMoney(vatBase * vat, rounding);
+    const totalAmount = roundMoney(base + serviceAmount + vatAmount, rounding);
+    return { baseAmount: base, serviceAmount, vatAmount, totalAmount };
   }
-  
-  return {
-    baseAmount,
-    vatAmount,
-    serviceChargeAmount,
-    totalAmount,
-    nights,
-    ratePerNight: baseRate,
+
+  // Case D: Service exclusive, VAT inclusive (rare)
+  if (!settings.service_charge_inclusive && settings.vat_inclusive) {
+    const denom = (1 + vat);
+    const subtotal = roundMoney(baseAmount / denom, rounding);
+    const serviceAmount = roundMoney(subtotal * service, rounding);
+    const baseApprox = roundMoney(subtotal - serviceAmount, rounding);
+    const vatAmount = roundMoney(subtotal * vat, rounding);
+    const totalAmount = roundMoney(subtotal + vatAmount, rounding);
+    return { baseAmount: baseApprox, serviceAmount, vatAmount, totalAmount };
+  }
+
+  // Fallback: treat as exclusive
+  const serviceAmount = roundMoney(baseAmount * service, rounding);
+  const subtotal = roundMoney(baseAmount + serviceAmount, rounding);
+  const vatBase = applyOn === 'base' ? baseAmount : subtotal;
+  const vatAmount = roundMoney(vatBase * vat, rounding);
+  const totalAmount = roundMoney(subtotal + vatAmount, rounding);
+  return { 
+    baseAmount: roundMoney(baseAmount, rounding), 
+    serviceAmount, 
+    vatAmount, 
+    totalAmount 
   };
 }
 

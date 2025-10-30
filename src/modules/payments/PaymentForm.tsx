@@ -85,8 +85,8 @@ export function PaymentForm({
   const expectedAmount = watch('expected_amount');
   const payLater = watch('pay_later');
 
-  // Calculate tax breakdown
-  const taxBreakdown = amount && financials ? calculateBookingTotal(parseFloat(amount), 1, financials) : null;
+  // Calculate tax breakdown for standalone amount (not a booking)
+  const taxBreakdown = amount && financials ? calculateBookingTotal(parseFloat(amount), financials) : null;
 
   // Auto-select provider based on location
   useEffect(() => {
@@ -217,7 +217,7 @@ export function PaymentForm({
         </Alert>
       )}
 
-      {taxBreakdown && (taxBreakdown.vatAmount > 0 || taxBreakdown.serviceChargeAmount > 0) && (
+      {taxBreakdown && (taxBreakdown.vatAmount > 0 || taxBreakdown.serviceAmount > 0) && (
         <div className="bg-muted/50 rounded-lg p-3 space-y-2 text-sm">
           <p className="font-medium text-muted-foreground">Tax Breakdown</p>
           <div className="space-y-1">
@@ -231,10 +231,10 @@ export function PaymentForm({
                 <span className="font-medium">₦{taxBreakdown.vatAmount.toFixed(2)}</span>
               </div>
             )}
-            {taxBreakdown.serviceChargeAmount > 0 && (
+            {taxBreakdown.serviceAmount > 0 && (
               <div className="flex justify-between">
                 <span className="text-muted-foreground">Service Charge</span>
-                <span className="font-medium">₦{taxBreakdown.serviceChargeAmount.toFixed(2)}</span>
+                <span className="font-medium">₦{taxBreakdown.serviceAmount.toFixed(2)}</span>
               </div>
             )}
           </div>

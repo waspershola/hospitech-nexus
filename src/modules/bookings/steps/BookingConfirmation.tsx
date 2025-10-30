@@ -243,9 +243,10 @@ export function BookingConfirmation({ bookingData, onComplete }: BookingConfirma
 
   // Calculate tax breakdown
   const selectedRate = room?.category?.base_rate || room?.rate || 0;
+  const baseAmount = selectedRate * nights;
   const taxBreakdown = financials 
-    ? calculateBookingTotal(selectedRate, nights, financials)
-    : { baseAmount: selectedRate * nights, vatAmount: 0, serviceChargeAmount: 0, totalAmount: selectedRate * nights };
+    ? calculateBookingTotal(baseAmount, financials)
+    : { baseAmount, vatAmount: 0, serviceAmount: 0, totalAmount: baseAmount };
 
   // Handle payment completion
   const handlePaymentComplete = () => {
@@ -491,13 +492,13 @@ export function BookingConfirmation({ bookingData, onComplete }: BookingConfirma
                 </div>
               )}
               
-              {taxBreakdown.serviceChargeAmount > 0 && financials && (
+              {taxBreakdown.serviceAmount > 0 && financials && (
                 <div className="flex items-center justify-between text-sm">
                   <span className="text-muted-foreground">
                     Service Charge ({financials.service_charge}%)
                     {financials.service_charge_inclusive && <span className="text-xs ml-1">(inclusive)</span>}
                   </span>
-                  <span className="font-medium">₦{taxBreakdown.serviceChargeAmount.toFixed(2)}</span>
+                  <span className="font-medium">₦{taxBreakdown.serviceAmount.toFixed(2)}</span>
                 </div>
               )}
             </div>

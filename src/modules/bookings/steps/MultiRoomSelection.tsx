@@ -61,7 +61,8 @@ export function MultiRoomSelection({ bookingData, onChange }: MultiRoomSelection
     selectedRoomIds.forEach(roomId => {
       const room = rooms?.find(r => r.id === roomId);
       const rate = room?.category?.base_rate || room?.rate || 0;
-      const roomTotal = calculateBookingTotal(rate, nights, financials);
+      const baseAmount = rate * nights;
+      const roomTotal = calculateBookingTotal(baseAmount, financials);
       total += roomTotal.totalAmount;
     });
     
@@ -133,9 +134,10 @@ export function MultiRoomSelection({ bookingData, onChange }: MultiRoomSelection
           {rooms?.map((room) => {
             const isSelected = selectedRoomIds.includes(room.id);
             const rate = room.category?.base_rate || room.rate || 0;
+            const baseAmount = rate * nights;
             const roomTotal = financials 
-              ? calculateBookingTotal(rate, nights, financials)
-              : { totalAmount: rate * nights };
+              ? calculateBookingTotal(baseAmount, financials)
+              : { totalAmount: baseAmount };
 
             return (
               <Card

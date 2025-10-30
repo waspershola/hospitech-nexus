@@ -104,15 +104,15 @@ export function AssignRoomDrawer({ open, onClose, roomId, roomNumber }: AssignRo
   });
 
   // Organization limit validation
+  const nights = Math.ceil((new Date(checkOut).getTime() - new Date(checkIn).getTime()) / (1000 * 60 * 60 * 24));
+  const rate = room?.category?.base_rate || room?.rate || 0;
+  const baseAmount = rate * nights;
+  
   const validationResult = useOrgLimitValidation({
     organizationId: organizationBooking ? organizationId : null,
     guestId,
     department: 'Front Desk',
-    amount: room && financials ? calculateBookingTotal(
-      room?.category?.base_rate || room?.rate || 0,
-      Math.ceil((new Date(checkOut).getTime() - new Date(checkIn).getTime()) / (1000 * 60 * 60 * 24)),
-      financials
-    ).totalAmount : 0,
+    amount: room && financials ? calculateBookingTotal(baseAmount, financials).totalAmount : 0,
     enabled: organizationBooking && !!organizationId && !!guestId,
   });
 
@@ -120,11 +120,7 @@ export function AssignRoomDrawer({ open, onClose, roomId, roomNumber }: AssignRo
   const selectedOrg = organizations.find(o => o.id === organizationId);
 
   // Calculate pricing
-  const nights = Math.ceil(
-    (new Date(checkOut).getTime() - new Date(checkIn).getTime()) / (1000 * 60 * 60 * 24)
-  );
-  const rate = room?.category?.base_rate || room?.rate || 0;
-  const pricing = financials ? calculateBookingTotal(rate, nights, financials) : null;
+  const pricing = financials ? calculateBookingTotal(baseAmount, financials) : null;
 
   const assignMutation = useMutation({
     mutationFn: async () => {
@@ -142,13 +138,13 @@ export function AssignRoomDrawer({ open, onClose, roomId, roomNumber }: AssignRo
         room_id: roomId,
         check_in: checkIn,
         check_out: checkOut,
-        total_amount: pricing?.totalAmount || (rate * nights),
+        total_amount: pricing?.totalAmount || baseAmount,
         status: actionType === 'reserve' ? 'reserved' : 'confirmed',
         metadata: {
           tax_breakdown: pricing ? {
             base_amount: pricing.baseAmount,
             vat_amount: pricing.vatAmount,
-            service_charge_amount: pricing.serviceChargeAmount,
+            service_charge_amount: pricing.serviceAmount,
           } : null,
         },
       };
@@ -434,10 +430,10 @@ export function AssignRoomDrawer({ open, onClose, roomId, roomNumber }: AssignRo
                       <span>₦{pricing.vatAmount.toLocaleString()}</span>
                     </div>
                   )}
-                  {pricing.serviceChargeAmount > 0 && (
+                  {pricing.serviceAmount > 0 && (
                     <div className="flex justify-between">
-                      <span className="text-muted-foreground">Service Charge ({(financials?.service_charge || 0) * 100}%)</span>
-                      <span>₦{pricing.serviceChargeAmount.toLocaleString()}</span>
+                      <span className="text-muted-foreground">Service Charge ({financials?.service_charge || 0}%)</span>
+                      <span>₦{pricing.serviceAmount.toLocaleString()}</span>
                     </div>
                   )}
                   <Separator />

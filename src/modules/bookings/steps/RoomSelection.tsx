@@ -58,8 +58,9 @@ export function RoomSelection({ bookingData, onChange, onNext }: RoomSelectionPr
       const room = rooms?.find(r => r.id === bookingData.roomId);
       const rate = room?.category?.base_rate || room?.rate || 0;
       
-      // Calculate total with taxes
-      const taxBreakdown = calculateBookingTotal(rate, nights, financials);
+      // Calculate total with taxes - pass baseAmount = rate * nights
+      const baseAmount = rate * nights;
+      const taxBreakdown = calculateBookingTotal(baseAmount, financials);
       
       onChange({
         ...bookingData,
@@ -74,10 +75,11 @@ export function RoomSelection({ bookingData, onChange, onNext }: RoomSelectionPr
   const selectedRoom = rooms?.find(r => r.id === bookingData.roomId);
   const selectedRate = selectedRoom?.category?.base_rate || selectedRoom?.rate || 0;
   
-  // Calculate tax breakdown for display
+  // Calculate tax breakdown for display - pass baseAmount = rate * nights
+  const baseAmount = selectedRate * nights;
   const taxBreakdown = financials 
-    ? calculateBookingTotal(selectedRate, nights, financials)
-    : { baseAmount: selectedRate * nights, vatAmount: 0, serviceChargeAmount: 0, totalAmount: selectedRate * nights };
+    ? calculateBookingTotal(baseAmount, financials)
+    : { baseAmount, vatAmount: 0, serviceAmount: 0, totalAmount: baseAmount };
 
   return (
     <div className="space-y-6">
@@ -125,13 +127,13 @@ export function RoomSelection({ bookingData, onChange, onNext }: RoomSelectionPr
                 </div>
               )}
               
-              {taxBreakdown.serviceChargeAmount > 0 && financials && (
+              {taxBreakdown.serviceAmount > 0 && financials && (
                 <div className="flex items-center justify-between text-sm">
                   <span className="text-muted-foreground">
                     Service Charge ({financials.service_charge}%)
                     {financials.service_charge_inclusive && <span className="text-xs ml-1">(inclusive)</span>}
                   </span>
-                  <span className="font-medium">₦{taxBreakdown.serviceChargeAmount.toFixed(2)}</span>
+                  <span className="font-medium">₦{taxBreakdown.serviceAmount.toFixed(2)}</span>
                 </div>
               )}
             </div>
