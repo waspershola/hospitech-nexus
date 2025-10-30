@@ -135,7 +135,7 @@ export function BookingFolioCard({ bookingId, currency = 'NGN' }: BookingFolioCa
                     <div className="space-y-1">
                       <div className="flex items-center gap-2">
                         <Badge variant="outline" className="text-xs">
-                          {payment.method}
+                          {payment.method_provider || payment.method}
                         </Badge>
                         <span className="text-xs text-muted-foreground flex items-center gap-1">
                           <Calendar className="h-3 w-3" />

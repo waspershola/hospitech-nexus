@@ -26,9 +26,8 @@ import { useState, useEffect } from 'react';
 const chargeSchema = z.object({
   service_type: z.string().min(1, 'Service type is required'),
   amount: z.number().positive('Amount must be greater than 0'),
-  method: z.string().min(1, 'Payment method is required'),
+  provider_id: z.string().min(1, 'Payment provider is required'),
   location_id: z.string().optional(),
-  provider_id: z.string().optional(),
   wallet_id: z.string().optional(),
   notes: z.string().optional(),
 });
@@ -82,7 +81,7 @@ export function AddChargeModal({
     resolver: zodResolver(chargeSchema),
   });
 
-  const selectedMethod = watch('method');
+  const selectedProviderId = watch('provider_id');
   const selectedLocationId = watch('location_id');
   const selectedServiceType = watch('service_type');
   const activeProviders = providers.filter(p => p.status === 'active');
@@ -112,15 +111,16 @@ export function AddChargeModal({
     }
 
     const transaction_ref = `CHG-${Date.now()}-${Math.random().toString(36).substring(7)}`;
+    const selectedProvider = activeProviders.find(p => p.id === data.provider_id);
 
     recordPayment(
       {
         transaction_ref,
         booking_id: bookingId || undefined,
         amount: data.amount,
-        method: data.method,
-        location_id: data.location_id,
+        method: selectedProvider?.type || 'cash',
         provider_id: data.provider_id,
+        location_id: data.location_id,
         wallet_id: data.wallet_id,
         department: 'front_desk',
         metadata: {
@@ -220,48 +220,28 @@ export function AddChargeModal({
           )}
 
           <div className="space-y-2">
-            <Label htmlFor="method">Payment Method</Label>
+            <Label htmlFor="provider_id">Payment Provider *</Label>
             <Select
-              value={selectedMethod}
-              onValueChange={(value) => setValue('method', value)}
+              value={selectedProviderId}
+              onValueChange={(value) => setValue('provider_id', value)}
             >
               <SelectTrigger>
-                <SelectValue placeholder="Select method" />
+                <SelectValue placeholder="Select provider" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="cash">Cash</SelectItem>
-                <SelectItem value="pos">POS</SelectItem>
-                <SelectItem value="transfer">Bank Transfer</SelectItem>
-                <SelectItem value="online">Online Payment</SelectItem>
+                {activeProviders.map((provider) => (
+                  <SelectItem key={provider.id} value={provider.id}>
+                    {provider.type === 'credit_deferred' && '🕐 '}
+                    {provider.name} ({provider.type})
+                    {provider.fee_percent > 0 && ` - ${provider.fee_percent}% fee`}
+                  </SelectItem>
+                ))}
               </SelectContent>
             </Select>
-            {errors.method && (
-              <p className="text-sm text-destructive">{errors.method.message}</p>
+            {errors.provider_id && (
+              <p className="text-sm text-destructive">{errors.provider_id.message}</p>
             )}
           </div>
-
-          {selectedMethod && selectedMethod !== 'cash' && !selectedLocationId && (
-            <div className="space-y-2">
-              <Label htmlFor="provider">Provider</Label>
-              <Select
-                value={watch('provider_id')}
-                onValueChange={(value) => setValue('provider_id', value)}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Select provider" />
-                </SelectTrigger>
-                <SelectContent>
-                  {activeProviders
-                    .filter(p => p.type === selectedMethod || selectedMethod === 'online')
-                    .map(provider => (
-                      <SelectItem key={provider.id} value={provider.id}>
-                        {provider.name}
-                      </SelectItem>
-                    ))}
-                </SelectContent>
-              </Select>
-            </div>
-          )}
 
           <div className="space-y-2">
             <Label htmlFor="wallet">Destination Wallet (Optional)</Label>

@@ -15,6 +15,7 @@ export interface PaymentDetail {
   id: string;
   amount: number;
   method: string;
+  method_provider?: string | null;
   transaction_ref: string;
   created_at: string;
   tax_breakdown?: TaxBreakdown;
@@ -55,7 +56,7 @@ export function useBookingFolio(bookingId: string | null) {
       // Fetch payments for this booking
       const { data: payments, error: paymentsError } = await supabase
         .from('payments')
-        .select('id, amount, currency, method, transaction_ref, created_at, metadata')
+        .select('id, amount, currency, method, method_provider, transaction_ref, created_at, metadata')
         .eq('booking_id', bookingId)
         .eq('tenant_id', tenantId)
         .order('created_at', { ascending: false });
@@ -77,6 +78,7 @@ export function useBookingFolio(bookingId: string | null) {
           id: p.id,
           amount: Number(p.amount),
           method: p.method,
+          method_provider: p.method_provider,
           transaction_ref: p.transaction_ref || '',
           created_at: p.created_at,
           tax_breakdown: paymentMeta?.tax_breakdown as TaxBreakdown | undefined,

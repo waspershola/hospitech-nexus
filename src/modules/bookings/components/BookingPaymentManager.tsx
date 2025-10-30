@@ -14,6 +14,8 @@ import { format } from 'date-fns';
 import { toast } from 'sonner';
 import { useRecordPayment } from '@/hooks/useRecordPayment';
 import { useAuth } from '@/contexts/AuthContext';
+import { useFinanceProviders } from '@/hooks/useFinanceProviders';
+import { useFinanceLocations } from '@/hooks/useFinanceLocations';
 
 interface BookingPaymentManagerProps {
   bookingId: string;
@@ -31,6 +33,11 @@ export function BookingPaymentManager({ bookingId }: BookingPaymentManagerProps)
   const { tenantId } = useAuth();
   const queryClient = useQueryClient();
   const recordPayment = useRecordPayment();
+  const { providers } = useFinanceProviders();
+  const { locations } = useFinanceLocations();
+  
+  const activeProviders = providers.filter(p => p.status === 'active');
+  const activeLocations = locations.filter(l => l.status === 'active');
   
   const [showAddCharge, setShowAddCharge] = useState(false);
   const [showAddPayment, setShowAddPayment] = useState(false);
@@ -41,7 +48,8 @@ export function BookingPaymentManager({ bookingId }: BookingPaymentManagerProps)
   });
   const [paymentForm, setPaymentForm] = useState({
     amount: '',
-    method: 'cash',
+    provider_id: '',
+    location_id: '',
     reference: '',
   });
 
@@ -155,17 +163,26 @@ export function BookingPaymentManager({ bookingId }: BookingPaymentManagerProps)
       return;
     }
     
+    if (!paymentForm.provider_id) {
+      toast.error('Please select a payment provider');
+      return;
+    }
+    
+    const selectedProvider = activeProviders.find(p => p.id === paymentForm.provider_id);
+    
     recordPayment.mutate({
       transaction_ref: paymentForm.reference || `PAY-${Date.now()}`,
       booking_id: bookingId,
       guest_id: booking?.guest_id,
       amount: Number(paymentForm.amount),
       expected_amount: Number(booking?.total_amount),
-      method: paymentForm.method,
+      method: selectedProvider?.type || 'cash',
+      provider_id: paymentForm.provider_id,
+      location_id: paymentForm.location_id || undefined,
       metadata: { source: 'booking_folio' },
     }, {
       onSuccess: () => {
-        setPaymentForm({ amount: '', method: 'cash', reference: '' });
+        setPaymentForm({ amount: '', provider_id: '', location_id: '', reference: '' });
         setShowAddPayment(false);
       },
     });
@@ -314,7 +331,7 @@ export function BookingPaymentManager({ bookingId }: BookingPaymentManagerProps)
         <CardContent className="space-y-4">
           {showAddPayment && (
             <div className="p-4 border rounded-lg space-y-4 bg-muted/50">
-              <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-4">
                 <div>
                   <Label>Amount (₦)</Label>
                   <Input
@@ -324,17 +341,45 @@ export function BookingPaymentManager({ bookingId }: BookingPaymentManagerProps)
                     placeholder={balance > 0 ? balance.toString() : '0.00'}
                   />
                 </div>
+                
+                {activeLocations.length > 0 && (
+                  <div>
+                    <Label>Payment Location (Optional)</Label>
+                    <Select 
+                      value={paymentForm.location_id} 
+                      onValueChange={(v) => setPaymentForm({ ...paymentForm, location_id: v })}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select location" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {activeLocations.map((location) => (
+                          <SelectItem key={location.id} value={location.id}>
+                            {location.name} {location.department && `(${location.department})`}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                )}
+
                 <div>
-                  <Label>Method</Label>
-                  <Select value={paymentForm.method} onValueChange={(v) => setPaymentForm({ ...paymentForm, method: v })}>
+                  <Label>Payment Provider *</Label>
+                  <Select 
+                    value={paymentForm.provider_id} 
+                    onValueChange={(v) => setPaymentForm({ ...paymentForm, provider_id: v })}
+                  >
                     <SelectTrigger>
-                      <SelectValue />
+                      <SelectValue placeholder="Select provider" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="cash">Cash</SelectItem>
-                      <SelectItem value="card">Card</SelectItem>
-                      <SelectItem value="transfer">Bank Transfer</SelectItem>
-                      <SelectItem value="pos">POS</SelectItem>
+                      {activeProviders.map((provider) => (
+                        <SelectItem key={provider.id} value={provider.id}>
+                          {provider.type === 'credit_deferred' && '🕐 '}
+                          {provider.name}
+                          {provider.fee_percent > 0 && ` (${provider.fee_percent}% fee)`}
+                        </SelectItem>
+                      ))}
                     </SelectContent>
                   </Select>
                 </div>
@@ -364,7 +409,7 @@ export function BookingPaymentManager({ bookingId }: BookingPaymentManagerProps)
               <div key={payment.id} className="flex items-center justify-between p-3 border rounded-lg">
                 <div className="flex-1">
                   <div className="flex items-center gap-2">
-                    <p className="font-medium">{payment.method}</p>
+                    <p className="font-medium">{payment.method_provider || payment.method}</p>
                     <Badge variant={payment.status === 'completed' ? 'default' : 'secondary'}>
                       {payment.status}
                     </Badge>
