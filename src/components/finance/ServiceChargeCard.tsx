@@ -45,7 +45,7 @@ export function ServiceChargeCard() {
   };
 
   const sampleAmount = 10000;
-  const serviceAmount = calculateTaxForAmount(sampleAmount, localSettings.service_charge, localSettings.service_charge_inclusive);
+  const serviceAmount = sampleAmount * (localSettings.service_charge / 100);
 
   return (
     <Card>

@@ -45,7 +45,7 @@ export function TaxSettingsCard() {
   };
 
   const sampleAmount = 10000;
-  const taxAmount = calculateTaxForAmount(sampleAmount, localSettings.vat_rate, localSettings.vat_inclusive);
+  const taxAmount = sampleAmount * (localSettings.vat_rate / 100);
 
   return (
     <Card>
