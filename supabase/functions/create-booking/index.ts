@@ -6,6 +6,98 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
+/**
+ * Tax Calculation - Duplicated from src/lib/finance/tax.ts
+ * Edge functions cannot import from src, so this logic is duplicated here
+ */
+function toDecimal(ratePercent: number): number {
+  return ratePercent / 100;
+}
+
+function roundMoney(value: number, rounding: 'round' | 'floor' | 'ceil' = 'round'): number {
+  const cents = value * 100;
+  if (rounding === 'round') return Math.round(cents) / 100;
+  if (rounding === 'floor') return Math.floor(cents) / 100;
+  return Math.ceil(cents) / 100;
+}
+
+function calculateBookingTotal(
+  baseAmount: number,
+  settings: any
+): { baseAmount: number; serviceAmount: number; vatAmount: number; totalAmount: number } {
+  const vat = toDecimal(settings.vat_rate || 0);
+  const service = toDecimal(settings.service_charge || 0);
+  const applyOn = settings.vat_applied_on || 'subtotal';
+  const rounding = settings.rounding || 'round';
+
+  if ((!vat || vat === 0) && (!service || service === 0)) {
+    return {
+      baseAmount: roundMoney(baseAmount, rounding),
+      serviceAmount: 0,
+      vatAmount: 0,
+      totalAmount: roundMoney(baseAmount, rounding),
+    };
+  }
+
+  // Both exclusive
+  if (!settings.service_charge_inclusive && !settings.vat_inclusive) {
+    const serviceAmount = roundMoney(baseAmount * service, rounding);
+    const subtotal = roundMoney(baseAmount + serviceAmount, rounding);
+    const vatBase = applyOn === 'base' ? baseAmount : subtotal;
+    const vatAmount = roundMoney(vatBase * vat, rounding);
+    const totalAmount = roundMoney(subtotal + vatAmount, rounding);
+    return { baseAmount: roundMoney(baseAmount, rounding), serviceAmount, vatAmount, totalAmount };
+  }
+
+  // Both inclusive
+  if (settings.service_charge_inclusive && settings.vat_inclusive) {
+    if (applyOn === 'subtotal') {
+      const denom = (1 + service) * (1 + vat);
+      const base = roundMoney(baseAmount / denom, rounding);
+      const serviceAmount = roundMoney(base * service, rounding);
+      const vatAmount = roundMoney((base + serviceAmount) * vat, rounding);
+      const totalAmount = roundMoney(base + serviceAmount + vatAmount, rounding);
+      return { baseAmount: base, serviceAmount, vatAmount, totalAmount };
+    } else {
+      const denom = (1 + vat) + service;
+      const base = roundMoney(baseAmount / denom, rounding);
+      const serviceAmount = roundMoney(base * service, rounding);
+      const vatAmount = roundMoney(base * vat, rounding);
+      const totalAmount = roundMoney(base + serviceAmount + vatAmount, rounding);
+      return { baseAmount: base, serviceAmount, vatAmount, totalAmount };
+    }
+  }
+
+  // Service inclusive, VAT exclusive
+  if (settings.service_charge_inclusive && !settings.vat_inclusive) {
+    const base = roundMoney(baseAmount / (1 + service), rounding);
+    const serviceAmount = roundMoney(base * service, rounding);
+    const vatBase = applyOn === 'base' ? base : roundMoney(base + serviceAmount, rounding);
+    const vatAmount = roundMoney(vatBase * vat, rounding);
+    const totalAmount = roundMoney(base + serviceAmount + vatAmount, rounding);
+    return { baseAmount: base, serviceAmount, vatAmount, totalAmount };
+  }
+
+  // Service exclusive, VAT inclusive
+  if (!settings.service_charge_inclusive && settings.vat_inclusive) {
+    const denom = (1 + vat);
+    const subtotal = roundMoney(baseAmount / denom, rounding);
+    const serviceAmount = roundMoney(subtotal * service, rounding);
+    const baseApprox = roundMoney(subtotal - serviceAmount, rounding);
+    const vatAmount = roundMoney(subtotal * vat, rounding);
+    const totalAmount = roundMoney(subtotal + vatAmount, rounding);
+    return { baseAmount: baseApprox, serviceAmount, vatAmount, totalAmount };
+  }
+
+  // Fallback
+  const serviceAmount = roundMoney(baseAmount * service, rounding);
+  const subtotal = roundMoney(baseAmount + serviceAmount, rounding);
+  const vatBase = applyOn === 'base' ? baseAmount : subtotal;
+  const vatAmount = roundMoney(vatBase * vat, rounding);
+  const totalAmount = roundMoney(subtotal + vatAmount, rounding);
+  return { baseAmount: roundMoney(baseAmount, rounding), serviceAmount, vatAmount, totalAmount };
+}
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
@@ -24,7 +116,7 @@ serve(async (req) => {
     // Fetch hotel financials for tax calculations
     const { data: financials } = await supabaseClient
       .from('hotel_financials')
-      .select('vat_rate, vat_inclusive, service_charge, service_charge_inclusive, currency')
+      .select('*')
       .eq('tenant_id', tenant_id)
       .single();
 
@@ -35,40 +127,17 @@ serve(async (req) => {
       .eq('id', room_id)
       .single();
 
-    // Calculate nights and tax breakdown
+    // Calculate nights and base amount
     const checkInDate = new Date(check_in);
     const checkOutDate = new Date(check_out);
     const nights = Math.ceil((checkOutDate.getTime() - checkInDate.getTime()) / (1000 * 60 * 60 * 24));
     const baseRate = room?.category?.base_rate || room?.rate || 0;
     const baseAmount = baseRate * nights;
 
-    let vatAmount = 0;
-    let serviceChargeAmount = 0;
-    let calculatedTotal = baseAmount;
+    // Use comprehensive tax calculation
+    const taxBreakdown = calculateBookingTotal(baseAmount, financials || {});
 
-    if (financials) {
-      // Calculate VAT
-      if (financials.vat_rate > 0) {
-        if (financials.vat_inclusive) {
-          vatAmount = baseAmount - (baseAmount / (1 + financials.vat_rate / 100));
-        } else {
-          vatAmount = baseAmount * (financials.vat_rate / 100);
-          calculatedTotal += vatAmount;
-        }
-      }
-
-      // Calculate Service Charge
-      if (financials.service_charge > 0) {
-        if (financials.service_charge_inclusive) {
-          serviceChargeAmount = baseAmount - (baseAmount / (1 + financials.service_charge / 100));
-        } else {
-          serviceChargeAmount = baseAmount * (financials.service_charge / 100);
-          calculatedTotal += serviceChargeAmount;
-        }
-      }
-    }
-
-    console.log('Tax breakdown:', { baseAmount, vatAmount, serviceChargeAmount, calculatedTotal });
+    console.log('Tax breakdown:', taxBreakdown);
 
     // Check for existing booking with same action_id (idempotency)
     const { data: existingBooking, error: existingError } = await supabaseClient
@@ -125,7 +194,7 @@ serve(async (req) => {
         room_id,
         check_in: checkInDate.toISOString(),
         check_out: checkOutDate.toISOString(),
-        total_amount: calculatedTotal,
+        total_amount: taxBreakdown.totalAmount,
         organization_id: organization_id || null,
         status: 'reserved',
         action_id,
@@ -135,14 +204,16 @@ serve(async (req) => {
           nights,
           base_rate: baseRate,
           tax_breakdown: {
-            base_amount: baseAmount,
-            vat_amount: vatAmount,
-            service_charge_amount: serviceChargeAmount,
-            total_amount: calculatedTotal,
+            base_amount: taxBreakdown.baseAmount,
+            vat_amount: taxBreakdown.vatAmount,
+            service_charge_amount: taxBreakdown.serviceAmount,
+            total_amount: taxBreakdown.totalAmount,
             vat_rate: financials?.vat_rate || 0,
             service_charge_rate: financials?.service_charge || 0,
             vat_inclusive: financials?.vat_inclusive || false,
             service_charge_inclusive: financials?.service_charge_inclusive || false,
+            vat_applied_on: financials?.vat_applied_on || 'subtotal',
+            rounding: financials?.rounding || 'round',
           },
           ...(group_booking ? {
             group_booking: true,
@@ -199,8 +270,8 @@ serve(async (req) => {
             guest_id,
             organization_id,
             wallet_id: wallet.id,
-            amount: calculatedTotal,
-            expected_amount: calculatedTotal,
+            amount: taxBreakdown.totalAmount,
+            expected_amount: taxBreakdown.totalAmount,
             payment_type: 'full',
             method: 'organization_wallet',
             status: 'completed',
@@ -229,7 +300,7 @@ serve(async (req) => {
               tenant_id,
               wallet_id: wallet.id,
               type: 'debit',
-              amount: calculatedTotal,
+              amount: taxBreakdown.totalAmount,
               payment_id: newPayment.id,
               description: `Booking charge - Room ${room_id} - Guest ${guest_id}`,
               created_by: created_by || guest_id,
