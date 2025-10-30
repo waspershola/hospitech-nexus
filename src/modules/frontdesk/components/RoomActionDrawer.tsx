@@ -78,7 +78,7 @@ export function RoomActionDrawer({ roomId, open, onClose }: RoomActionDrawerProp
         .eq('tenant_id', tenantId)
         .neq('bookings.status', 'completed')
         .neq('bookings.status', 'cancelled')
-        .gte('bookings.check_out', today.toISOString())
+        .gt('bookings.check_out', today.toISOString())
         .single();
 
       if (error) throw error;
@@ -123,7 +123,7 @@ export function RoomActionDrawer({ roomId, open, onClose }: RoomActionDrawerProp
     today.setHours(0, 0, 0, 0);
     checkOut.setHours(0, 0, 0, 0);
     
-    return checkOut >= today; // Only show if checkout is today or future
+    return checkOut > today; // Only show if checkout is AFTER today (tomorrow or later)
   });
   
   // Fetch folio balance for active booking
