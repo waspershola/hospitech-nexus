@@ -41,16 +41,17 @@ export function OrganizationAnalyticsTab() {
       // Calculate stats for each organization
       return orgs?.map(org => {
         const orgPayments = payments?.filter(p => p.organization_id === org.id) || [];
-        const totalSpent = orgPayments.reduce((sum, p) => sum + Number(p.amount), 0);
+        const totalSpent = orgPayments.reduce((sum, p) => sum + Number(p.amount || 0), 0);
         const wallet = org.wallets as any;
-        const balance = wallet?.balance || 0;
+        const balance = Number(wallet?.balance || 0);
         const creditUsed = Math.abs(balance);
-        const creditPercent = org.credit_limit > 0 ? (creditUsed / org.credit_limit) * 100 : 0;
+        const creditLimit = Number(org.credit_limit || 0);
+        const creditPercent = creditLimit > 0 ? (creditUsed / creditLimit) * 100 : 0;
 
         return {
           id: org.id,
           name: org.name,
-          creditLimit: org.credit_limit,
+          creditLimit,
           balance,
           totalSpent,
           creditUsed,
@@ -59,7 +60,7 @@ export function OrganizationAnalyticsTab() {
           nearLimit: creditPercent >= 80 && creditPercent < 100,
           overLimit: creditPercent >= 100 && !org.allow_negative_balance,
         };
-      }).sort((a, b) => b.totalSpent - a.totalSpent) || [];
+      }).sort((a, b) => (b.totalSpent || 0) - (a.totalSpent || 0)) || [];
     },
     enabled: !!tenantId,
   });
