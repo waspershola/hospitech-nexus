@@ -36,13 +36,20 @@ export function RoomTile({ room, onClick, isSelectionMode, isSelected, onSelecti
   const statusColor = statusColors[room.status as keyof typeof statusColors] || statusColors.available;
   const borderColor = statusBorderColors[room.status as keyof typeof statusBorderColors] || statusBorderColors.available;
 
-  // Use canonical fields for active booking
-  const bookingsArray = Array.isArray(room.bookings) ? room.bookings : room.bookings ? [room.bookings] : [];
-  const activeBooking = room.current_reservation_id 
-    ? bookingsArray.find((b: any) => b.id === room.current_reservation_id)
-    : null;
+  // Get active booking with guest and organization info
+  const activeBooking = room.bookings?.find((b: any) => {
+    if (b.status === 'cancelled' || b.status === 'completed') return false;
+    
+    const checkOut = new Date(b.check_out);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    checkOut.setHours(0, 0, 0, 0);
+    
+    // Only consider active if checkout is tomorrow or later
+    return checkOut > today && (b.status === 'checked_in' || b.status === 'reserved');
+  });
   const organization = activeBooking?.organization;
-  const guest = room.current_guest_id && activeBooking ? activeBooking.guest : null;
+  const guest = activeBooking?.guest;
   
   // Calculate rate: room-specific rate or category base rate
   const displayRate = room.rate ?? room.category?.base_rate ?? 0;
