@@ -42,6 +42,8 @@ export function RoomGrid({ searchQuery, statusFilter, categoryFilter, floorFilte
           )
         `)
         .eq('tenant_id', tenantId)
+        .not('bookings.status', 'in', '(completed,cancelled)')
+        .gte('bookings.check_out', new Date().toISOString().split('T')[0])
         .order('number', { ascending: true });
 
       if (statusFilter) {
