@@ -1,4 +1,5 @@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { FinanceSettingsTab } from '@/modules/finance-center/FinanceSettingsTab';
 import { ProvidersTab } from '@/modules/finance-center/ProvidersTab';
 import { LocationsTab } from '@/modules/finance-center/LocationsTab';
 import { RulesTab } from '@/modules/finance-center/RulesTab';
@@ -8,7 +9,7 @@ import { OrganizationAnalyticsTab } from '@/modules/finance-center/OrganizationA
 import { AnalyticsTab } from '@/modules/finance-center/AnalyticsTab';
 import { ReconciliationTab } from '@/modules/finance-center/ReconciliationTab';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
-import { Wallet, Building2, TrendingUp, Building, RefreshCcw, MapPin, Shield, BarChart3 } from 'lucide-react';
+import { Wallet, Building2, TrendingUp, Building, RefreshCcw, MapPin, Shield, BarChart3, Settings } from 'lucide-react';
 
 export default function FinanceCenter() {
   return (
@@ -19,8 +20,16 @@ export default function FinanceCenter() {
         <p className="text-muted-foreground">Manage payments, providers, and wallets</p>
       </div>
 
-      <Tabs defaultValue="providers" className="flex-1">
-        <TabsList className="grid w-full grid-cols-8 mb-6">
+      <Tabs defaultValue="settings" className="flex-1">
+        <TabsList className="grid w-full grid-cols-9 mb-6">
+          <TabsTrigger value="settings" className="flex items-center gap-2">
+            <Settings className="w-4 h-4" />
+            Settings
+          </TabsTrigger>
+          <TabsTrigger value="organizations" className="flex items-center gap-2">
+            <Building className="w-4 h-4" />
+            Organizations
+          </TabsTrigger>
           <TabsTrigger value="providers" className="flex items-center gap-2">
             <Building2 className="w-4 h-4" />
             Providers
@@ -37,10 +46,6 @@ export default function FinanceCenter() {
             <Wallet className="w-4 h-4" />
             Wallets
           </TabsTrigger>
-          <TabsTrigger value="organizations" className="flex items-center gap-2">
-            <Building className="w-4 h-4" />
-            Organizations
-          </TabsTrigger>
           <TabsTrigger value="reconciliation" className="flex items-center gap-2">
             <RefreshCcw className="w-4 h-4" />
             Reconciliation
@@ -54,6 +59,14 @@ export default function FinanceCenter() {
             Analytics
           </TabsTrigger>
         </TabsList>
+
+        <TabsContent value="settings">
+          <FinanceSettingsTab />
+        </TabsContent>
+
+        <TabsContent value="organizations">
+          <OrganizationsTab />
+        </TabsContent>
 
         <TabsContent value="providers">
           <ProvidersTab />
@@ -69,10 +82,6 @@ export default function FinanceCenter() {
 
         <TabsContent value="wallets">
           <WalletsTab />
-        </TabsContent>
-
-        <TabsContent value="organizations">
-          <OrganizationsTab />
         </TabsContent>
 
         <TabsContent value="reconciliation">

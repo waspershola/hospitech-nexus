@@ -58,7 +58,6 @@ export function MaintenanceTab() {
         version: state.version,
         configurations: state.configurations,
         branding: state.branding,
-        financials: state.financials,
         emailSettings: state.emailSettings,
         hotelMeta: state.hotelMeta,
         documentTemplates: state.documentTemplates,

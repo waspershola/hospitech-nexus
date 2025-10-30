@@ -74,17 +74,54 @@ export function calculateBookingTotal(
  */
 export function calculateTaxForAmount(
   amount: number,
-  financials: HotelFinancials
-): TaxBreakdown {
-  return calculateBookingTotal(amount, 1, financials);
+  rate: number,
+  inclusive: boolean = false
+): number {
+  if (rate === 0) return 0;
+  
+  if (inclusive) {
+    // Extract tax from amount
+    return amount - (amount / (1 + rate / 100));
+  } else {
+    // Add tax on top
+    return amount * (rate / 100);
+  }
 }
 
 /**
- * Format currency with Nigerian Naira symbol
+ * Format currency - supports both string (legacy) and settings object
  */
-export function formatCurrency(amount: number, currency: string = 'NGN'): string {
-  const symbol = currency === 'NGN' ? '₦' : currency;
-  return `${symbol}${amount.toLocaleString('en-NG', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+export function formatCurrency(
+  amount: number, 
+  settingsOrCurrency?: string | { 
+    currency?: string;
+    currency_symbol?: string;
+    symbol_position?: string;
+    decimal_separator?: string;
+    thousand_separator?: string;
+    decimal_places?: number;
+  }
+): string {
+  // Handle legacy string parameter
+  if (typeof settingsOrCurrency === 'string') {
+    const symbol = settingsOrCurrency === 'NGN' ? '₦' : settingsOrCurrency;
+    return `${symbol}${amount.toLocaleString('en-NG', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+  }
+  
+  // Handle settings object
+  const settings = settingsOrCurrency;
+  const symbol = settings?.currency_symbol || '₦';
+  const decimals = settings?.decimal_places ?? 2;
+  const decimalSep = settings?.decimal_separator || '.';
+  const thousandSep = settings?.thousand_separator || ',';
+  const position = settings?.symbol_position || 'before';
+  
+  // Format the number
+  const parts = amount.toFixed(decimals).split('.');
+  parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, thousandSep);
+  const formatted = parts.join(decimalSep);
+  
+  return position === 'before' ? `${symbol}${formatted}` : `${formatted}${symbol}`;
 }
 
 /**

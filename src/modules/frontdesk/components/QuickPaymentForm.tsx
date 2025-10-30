@@ -6,7 +6,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Textarea } from '@/components/ui/textarea';
 import { useRecordPayment } from '@/hooks/useRecordPayment';
 import { useFinancials } from '@/hooks/useFinancials';
-import { calculateTaxForAmount } from '@/lib/finance/tax';
+import { calculateBookingTotal } from '@/lib/finance/tax';
 import { Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { z } from 'zod';
@@ -41,7 +41,7 @@ export function QuickPaymentForm({
   const { data: financials } = useFinancials();
 
   // Calculate tax breakdown
-  const taxBreakdown = amount && financials ? calculateTaxForAmount(parseFloat(amount), financials) : null;
+  const taxBreakdown = amount && financials ? calculateBookingTotal(parseFloat(amount), 1, financials) : null;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

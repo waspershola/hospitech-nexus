@@ -7,7 +7,7 @@ import { useFinanceLocations } from '@/hooks/useFinanceLocations';
 import { useWallets } from '@/hooks/useWallets';
 import { useRecordPayment } from '@/hooks/useRecordPayment';
 import { useFinancials } from '@/hooks/useFinancials';
-import { calculateTaxForAmount } from '@/lib/finance/tax';
+import { calculateBookingTotal } from '@/lib/finance/tax';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -86,7 +86,7 @@ export function PaymentForm({
   const payLater = watch('pay_later');
 
   // Calculate tax breakdown
-  const taxBreakdown = amount && financials ? calculateTaxForAmount(parseFloat(amount), financials) : null;
+  const taxBreakdown = amount && financials ? calculateBookingTotal(parseFloat(amount), 1, financials) : null;
 
   // Auto-select provider based on location
   useEffect(() => {

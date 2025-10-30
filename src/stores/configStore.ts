@@ -6,7 +6,6 @@ interface ConfigStore {
   tenantId: string | null;
   configurations: Record<string, any>;
   branding: any;
-  financials: any;
   emailSettings: any;
   hotelMeta: any;
   documentTemplates: any[];
@@ -27,13 +26,11 @@ interface ConfigStore {
   loadHotelMeta: () => Promise<void>;
   updateConfig: (key: string, value: any) => void;
   updateBranding: (data: any) => void;
-  updateFinancials: (data: any) => void;
   updateEmailSettings: (data: any) => void;
   updateHotelMeta: (data: any) => void;
   updateDocumentTemplate: (templateType: string, data: any) => void;
   saveConfig: (key: string) => Promise<void>;
   saveBranding: () => Promise<void>;
-  saveFinancials: () => Promise<void>;
   saveEmailSettings: () => Promise<void>;
   saveHotelMeta: () => Promise<void>;
   saveDocumentTemplate: (templateType: string) => Promise<void>;
@@ -48,7 +45,6 @@ export const useConfigStore = create<ConfigStore>((set, get) => ({
   tenantId: null,
   configurations: {},
   branding: {},
-  financials: {},
   emailSettings: {},
   hotelMeta: {},
   documentTemplates: [],
@@ -86,13 +82,6 @@ export const useConfigStore = create<ConfigStore>((set, get) => ({
         .eq('tenant_id', tenantId)
         .maybeSingle();
 
-      // Load financials
-      const { data: financials } = await supabase
-        .from('hotel_financials')
-        .select('*')
-        .eq('tenant_id', tenantId)
-        .maybeSingle();
-
       // Load email settings
       const { data: emailSettings } = await supabase
         .from('email_settings')
@@ -116,12 +105,13 @@ export const useConfigStore = create<ConfigStore>((set, get) => ({
       set({
         configurations: configurationsMap,
         branding: branding || {},
-        financials: financials || {},
         emailSettings: emailSettings || {},
         hotelMeta: hotelMeta || {},
         documentTemplates: documentTemplates || [],
-        lastSyncTime: new Date(),
         isLoading: false,
+        unsavedChanges: [],
+        sectionErrors: {},
+        version: get().version + 1,
       });
     } catch (error) {
       console.error('Failed to load configuration:', error);
@@ -151,20 +141,6 @@ export const useConfigStore = create<ConfigStore>((set, get) => ({
       }
       return {
         branding: { ...state.branding, ...data },
-        unsavedChanges: newUnsaved,
-        version: state.version + 1,
-      };
-    });
-  },
-
-  updateFinancials: (data) => {
-    set(state => {
-      const newUnsaved = [...state.unsavedChanges];
-      if (!newUnsaved.includes('financials')) {
-        newUnsaved.push('financials');
-      }
-      return {
-        financials: { ...state.financials, ...data },
         unsavedChanges: newUnsaved,
         version: state.version + 1,
       };
@@ -324,58 +300,6 @@ export const useConfigStore = create<ConfigStore>((set, get) => ({
         sectionErrors: { ...get().sectionErrors, branding: error.message }
       });
       toast.error('Failed to save branding');
-      throw error;
-    } finally {
-      set({ isSaving: false });
-    }
-  },
-
-  saveFinancials: async () => {
-    const { tenantId, financials } = get();
-    if (!tenantId) throw new Error('No tenant ID');
-
-    set({ isSaving: true, lastError: null, sectionErrors: { ...get().sectionErrors, financials: '' } });
-
-    try {
-      // Get existing record to obtain ID
-      const { data: existing } = await supabase
-        .from('hotel_financials')
-        .select('id')
-        .eq('tenant_id', tenantId)
-        .maybeSingle();
-
-      // Upsert with ID for proper update
-      const { data, error } = await supabase
-        .from('hotel_financials')
-        .upsert({
-          ...(existing?.id && { id: existing.id }),
-          tenant_id: tenantId,
-          ...financials,
-        })
-        .select()
-        .single();
-
-      if (error) throw error;
-      
-      const now = new Date();
-      set(state => ({
-        financials: data,
-        unsavedChanges: state.unsavedChanges.filter(k => k !== 'financials'),
-        lastSyncTime: now,
-        sectionLastSaved: { ...state.sectionLastSaved, financials: now },
-        version: state.version + 1,
-        saveCounter: state.saveCounter + 1,
-        isSaving: false,
-      }));
-
-      toast.success('Financial settings saved');
-    } catch (error: any) {
-      console.error('Failed to save financials:', error);
-      set({ 
-        lastError: error.message,
-        sectionErrors: { ...get().sectionErrors, financials: error.message }
-      });
-      toast.error('Failed to save financial settings');
       throw error;
     } finally {
       set({ isSaving: false });
@@ -566,8 +490,6 @@ export const useConfigStore = create<ConfigStore>((set, get) => ({
       try {
         if (key === 'branding') {
           await get().saveBranding();
-        } else if (key === 'financials') {
-          await get().saveFinancials();
         } else if (key === 'email_settings') {
           await get().saveEmailSettings();
         } else if (key === 'hotel_meta') {

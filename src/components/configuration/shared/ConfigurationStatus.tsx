@@ -5,7 +5,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { CheckCircle2, AlertCircle, XCircle, Loader2 } from 'lucide-react';
 
 export function ConfigurationStatus() {
-  const { financials, branding, emailSettings, hotelMeta, isLoading, unsavedChanges } = useConfigStore();
+  const { branding, emailSettings, hotelMeta, isLoading, unsavedChanges } = useConfigStore();
 
   if (isLoading) {
     return (
@@ -18,11 +18,6 @@ export function ConfigurationStatus() {
   }
 
   const checks = [
-    {
-      name: 'Financial Settings',
-      status: financials?.currency && financials?.vat_rate !== undefined ? 'complete' : 'incomplete',
-      message: financials?.currency ? `Currency: ${financials.currency}, VAT: ${financials.vat_rate}%` : 'Missing currency or tax configuration',
-    },
     {
       name: 'Hotel Branding',
       status: branding?.primary_color && branding?.font_heading ? 'complete' : 'incomplete',

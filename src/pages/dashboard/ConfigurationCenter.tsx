@@ -4,12 +4,10 @@ import { useConfigStore } from '@/stores/configStore';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card } from '@/components/ui/card';
-import { Save, RotateCcw, Settings, DollarSign, Percent, Palette, FileText, Users, Lock, Clock, Mail, Database, Globe, Building2 } from 'lucide-react';
+import { Save, RotateCcw, Settings, DollarSign, Palette, FileText, Users, Lock, Clock, Mail, Database, Globe, Building2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { ConfigurationStatus } from '@/components/configuration/shared/ConfigurationStatus';
 import { GeneralTab } from '@/components/configuration/tabs/GeneralTab';
-import { FinancialsTab } from '@/components/configuration/tabs/FinancialsTab';
-import { TaxServiceTab } from '@/components/configuration/tabs/TaxServiceTab';
 import { BrandingTab } from '@/components/configuration/tabs/BrandingTab';
 import { MetaTab } from '@/components/configuration/tabs/MetaTab';
 import { DocumentsTab } from '@/components/configuration/tabs/DocumentsTab';
@@ -19,9 +17,6 @@ import { AuditLogsTab } from '@/components/configuration/tabs/AuditLogsTab';
 import { EmailSettingsTab } from '@/components/configuration/tabs/EmailSettingsTab';
 import { MaintenanceTab } from '@/components/configuration/tabs/MaintenanceTab';
 import { DomainsTab } from '@/components/configuration/tabs/DomainsTab';
-import { ProvidersTab } from '@/modules/finance-center/ProvidersTab';
-import { LocationsTab } from '@/modules/finance-center/LocationsTab';
-import { OrganizationsTab } from '@/modules/finance-center/OrganizationsTab';
 import { FinancialOverviewTab } from '@/components/configuration/tabs/FinancialOverviewTab';
 import { useConfigCompleteness } from '@/hooks/useConfigCompleteness';
 import { Progress } from '@/components/ui/progress';
@@ -34,11 +29,6 @@ const tabs = [
   { id: 'branding', label: 'Branding & Theme', icon: Palette },
   { id: 'meta', label: 'Hotel Profile', icon: Building2 },
   { id: 'domains', label: 'Domains', icon: Globe },
-  { id: 'financials', label: 'Currency', icon: DollarSign },
-  { id: 'tax', label: 'Tax & Service', icon: Percent },
-  { id: 'providers', label: 'Payment Providers', icon: Building2 },
-  { id: 'locations', label: 'Locations', icon: Building2 },
-  { id: 'organizations', label: 'Organizations', icon: Users },
   { id: 'documents', label: 'Documents', icon: FileText },
   { id: 'guest', label: 'Guest Experience', icon: Users },
   { id: 'permissions', label: 'Permissions', icon: Lock },
@@ -130,7 +120,6 @@ export default function ConfigurationCenter() {
                 </div>
                 {!isComplete && (
                   <div className="flex gap-2 text-xs text-muted-foreground">
-                    {!checks.financials && <span>• Financials</span>}
                     {!checks.branding && <span>• Branding</span>}
                     {!checks.email && <span>• Email</span>}
                     {!checks.meta && <span>• Hotel Profile</span>}
@@ -201,7 +190,7 @@ export default function ConfigurationCenter() {
       {/* Content */}
       <div className="max-w-7xl mx-auto px-6 py-8">
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-          <TabsList className="grid grid-cols-3 lg:grid-cols-6 xl:grid-cols-12 gap-2 h-auto p-2 bg-muted/50 overflow-x-auto">
+          <TabsList className="grid grid-cols-3 lg:grid-cols-6 xl:grid-cols-11 gap-2 h-auto p-2 bg-muted/50 overflow-x-auto">
             {tabs.map((tab) => {
               const Icon = tab.icon;
               return (
@@ -224,26 +213,6 @@ export default function ConfigurationCenter() {
 
           <TabsContent value="finance-overview" className="space-y-6 animate-fade-in">
             <FinancialOverviewTab />
-          </TabsContent>
-
-          <TabsContent value="financials" className="space-y-6 animate-fade-in">
-            <FinancialsTab />
-          </TabsContent>
-
-          <TabsContent value="tax" className="space-y-6 animate-fade-in">
-            <TaxServiceTab />
-          </TabsContent>
-
-          <TabsContent value="providers" className="space-y-6 animate-fade-in">
-            <ProvidersTab />
-          </TabsContent>
-
-          <TabsContent value="locations" className="space-y-6 animate-fade-in">
-            <LocationsTab />
-          </TabsContent>
-
-          <TabsContent value="organizations" className="space-y-6 animate-fade-in">
-            <OrganizationsTab />
           </TabsContent>
 
           <TabsContent value="branding" className="space-y-6 animate-fade-in">

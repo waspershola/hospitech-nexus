@@ -21,7 +21,7 @@ import {
   Sparkles,
   ArrowLeft,
 } from 'lucide-react';
-import { useConfigStore } from '@/stores/configStore';
+import { useFinanceSettings } from '@/hooks/useFinanceSettings';
 import { toast } from 'sonner';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
@@ -45,7 +45,7 @@ export function FinancialSetupWizard({
 }: FinancialSetupWizardProps) {
   const [activeStep, setActiveStep] = useState(currentStep);
   const [isSaving, setIsSaving] = useState(false);
-  const { updateFinancials, saveFinancials, financials } = useConfigStore();
+  const { settings: financials, updateSettings } = useFinanceSettings();
 
   const [wizardData, setWizardData] = useState({
     currency: financials.currency || 'NGN',
@@ -87,17 +87,14 @@ export function FinancialSetupWizard({
   const handleFinish = async () => {
     setIsSaving(true);
     try {
-      // Update store with wizard data
-      updateFinancials({
+      // Save to database
+      await updateSettings({
         currency: wizardData.currency,
         vat_rate: wizardData.vat_rate,
         vat_inclusive: wizardData.vat_inclusive,
         service_charge: wizardData.service_charge,
         service_charge_inclusive: wizardData.service_charge_inclusive,
       });
-
-      // Save to database
-      await saveFinancials();
 
       toast.success('Financial setup completed successfully!', {
         description: 'Your settings have been saved.',
