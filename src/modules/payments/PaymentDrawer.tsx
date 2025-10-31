@@ -19,6 +19,7 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { CheckCircle2, XCircle, Clock, Receipt } from 'lucide-react';
+import { PaymentMetadataDisplay } from '@/components/shared/PaymentMetadataDisplay';
 
 interface PaymentDrawerProps {
   paymentId: string | null;
@@ -220,17 +221,11 @@ export function PaymentDrawer({ paymentId, open, onClose }: PaymentDrawerProps) 
             </>
           )}
 
-          {payment.metadata && Object.keys(payment.metadata).length > 0 && (
-            <>
-              <Separator />
-              <div className="space-y-2">
-                <h3 className="font-display text-lg">Metadata</h3>
-                <pre className="bg-muted p-3 rounded-lg text-xs overflow-x-auto">
-                  {JSON.stringify(payment.metadata, null, 2)}
-                </pre>
-              </div>
-            </>
-          )}
+          <PaymentMetadataDisplay 
+            metadata={payment.metadata as Record<string, any>} 
+            title="Additional Information"
+            showSeparator={true}
+          />
 
           <Separator />
 

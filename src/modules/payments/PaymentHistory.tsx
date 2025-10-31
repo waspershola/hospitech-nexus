@@ -19,6 +19,7 @@ import {
 import { format } from 'date-fns';
 import { useState } from 'react';
 import { RefundModal } from './RefundModal';
+import { PaymentMetadataDisplay } from '@/components/shared/PaymentMetadataDisplay';
 
 interface PaymentHistoryProps {
   bookingId: string;
@@ -286,14 +287,7 @@ export function PaymentHistory({ bookingId, onClose }: PaymentHistoryProps) {
                         )}
                       </div>
 
-                      {payment.metadata && Object.keys(payment.metadata).length > 0 && (
-                        <div className="text-xs bg-muted/50 p-2 rounded">
-                          <p className="text-muted-foreground mb-1">Additional Info:</p>
-                          <pre className="text-xs">
-                            {JSON.stringify(payment.metadata, null, 2)}
-                          </pre>
-                        </div>
-                      )}
+                      <PaymentMetadataDisplay metadata={payment.metadata as Record<string, any>} />
                     </div>
                   </div>
 
