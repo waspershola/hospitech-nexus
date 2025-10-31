@@ -106,11 +106,12 @@ serve(async (req) => {
     // Get provider details if provider_id is provided
     let providerName = null;
     let providerFee = 0;
+    let feeBearer = 'property';
     let isCreditDeferred = false;
     if (provider_id) {
       const { data: provider } = await supabase
         .from('finance_providers')
-        .select('name, type, fee_percent, status')
+        .select('name, type, fee_percent, fee_bearer, status')
         .eq('id', provider_id)
         .eq('tenant_id', tenant_id)
         .single();
@@ -131,9 +132,10 @@ serve(async (req) => {
 
       providerName = provider.name;
       providerFee = provider.fee_percent || 0;
+      feeBearer = provider.fee_bearer || 'property';
       isCreditDeferred = provider.type === 'credit_deferred';
       
-      console.log('Using provider:', providerName, 'with fee:', providerFee, '%');
+      console.log('Using provider:', providerName, 'with fee:', providerFee, '%, Fee bearer:', feeBearer);
       
       if (isCreditDeferred) {
         console.log('Processing Pay Later (credit_deferred) transaction');
@@ -276,6 +278,33 @@ serve(async (req) => {
       }
     }
 
+    // Calculate fee amounts based on fee_bearer
+    const feeAmount = amount * providerFee / 100;
+    let netAmount: number;
+    let grossAmount: number;
+    let actualGuestCharge: number;
+
+    if (feeBearer === 'guest') {
+      // Guest pays fee - add to their charge
+      actualGuestCharge = amount + feeAmount;
+      grossAmount = amount; // Property receives full requested amount
+      netAmount = amount; // Property gets the full amount (fee paid by guest)
+    } else {
+      // Property pays fee - deduct from amount (current behavior)
+      actualGuestCharge = amount;
+      grossAmount = amount;
+      netAmount = amount - feeAmount; // Property receives less
+    }
+
+    console.log('Fee calculation:', {
+      feeBearer,
+      amount,
+      feeAmount,
+      actualGuestCharge,
+      netAmount,
+      grossAmount,
+    });
+
     // Create payment record
     const { data: payment, error: paymentError } = await supabase
       .from('payments')
@@ -285,9 +314,9 @@ serve(async (req) => {
         guest_id,
         organization_id,
         booking_id,
-        amount,
+        amount: actualGuestCharge, // The actual amount charged to guest
         expected_amount,
-        payment_type: payment_type || (expected_amount ? (amount < expected_amount ? 'partial' : amount > expected_amount ? 'overpayment' : 'full') : 'full'),
+        payment_type: payment_type || (expected_amount ? (actualGuestCharge < expected_amount ? 'partial' : actualGuestCharge > expected_amount ? 'overpayment' : 'full') : 'full'),
         method,
         method_provider: providerName,
         department,
@@ -300,8 +329,11 @@ serve(async (req) => {
           ...metadata,
           provider_id,
           location_id,
-          provider_fee: amount * providerFee / 100, // Store actual fee amount, not percentage
-          net_amount: amount - (amount * providerFee / 100),
+          provider_fee: feeAmount, // Actual fee amount
+          fee_bearer: feeBearer, // Who pays the fee
+          net_amount: netAmount, // What property receives
+          gross_amount: grossAmount, // The base amount before fees
+          guest_charged: actualGuestCharge, // What guest actually pays
           is_credit_deferred: isCreditDeferred,
           ...(isCreditDeferred && {
             is_receivable: true,
@@ -323,9 +355,7 @@ serve(async (req) => {
     // Phase 1: Auto-create wallet transaction for organization or provided wallet
     const finalWalletId = payment.wallet_id;
     if (finalWalletId) {
-      const netAmount = amount - (amount * providerFee / 100);
-      
-      // Debit organization wallet (negative transaction)
+      // Use netAmount for wallet credit (what property actually receives)
       const txnType = organization_id ? 'debit' : 'credit';
       
       const { error: walletError } = await supabase
@@ -335,19 +365,24 @@ serve(async (req) => {
           payment_id: payment.id,
           tenant_id,
           type: txnType,
-          amount: netAmount,
+          amount: netAmount, // Credit the NET amount (after fee)
           description: organization_id 
             ? `Charged to organization - ${method}${providerName ? ` (${providerName})` : ''} - ${metadata?.notes || transaction_ref}`
             : `Payment via ${method}${providerName ? ` (${providerName})` : ''} - ${metadata?.notes || transaction_ref}`,
           created_by: recorded_by,
           department: locationDepartment,
+          metadata: {
+            fee_bearer: feeBearer,
+            fee_amount: feeAmount,
+            gross_amount: grossAmount,
+          },
         }]);
 
       if (walletError) {
         console.error('Error creating wallet transaction:', walletError);
         // Don't throw here, payment is already created
       } else {
-        console.log('Wallet transaction created for wallet:', finalWalletId, 'type:', txnType, 'amount:', netAmount);
+        console.log('Wallet transaction created - Net amount:', netAmount, 'Fee bearer:', feeBearer);
       }
     }
 

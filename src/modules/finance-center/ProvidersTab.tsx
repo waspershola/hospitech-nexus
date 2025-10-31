@@ -87,7 +87,12 @@ export function ProvidersTab() {
                 <div className="space-y-2">
                   <div className="flex justify-between text-sm">
                     <span className="text-muted-foreground">Transaction Fee</span>
-                    <span className="font-semibold">{provider.fee_percent}%</span>
+                    <div className="text-right">
+                      <span className="font-semibold">{provider.fee_percent}%</span>
+                      <p className="text-xs text-muted-foreground">
+                        {provider.fee_bearer === 'guest' ? 'Guest pays' : 'Property pays'}
+                      </p>
+                    </div>
                   </div>
                   <Button
                     variant="outline"

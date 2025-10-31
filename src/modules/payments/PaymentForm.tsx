@@ -105,6 +105,22 @@ export function PaymentForm({
   // Check if selected provider is credit_deferred
   const selectedProvider = activeProviders.find(p => p.id === selectedProviderId);
   
+  // Calculate provider fee for display
+  const providerFee = selectedProvider?.fee_percent || 0;
+  const feeBearer = selectedProvider?.fee_bearer || 'property';
+  const amountNum = amount ? parseFloat(amount) : 0;
+  const calculatedFee = (amountNum * providerFee) / 100;
+
+  // If guest pays fee, the actual charge is amount + fee
+  const actualChargeToGuest = feeBearer === 'guest' 
+    ? amountNum + calculatedFee 
+    : amountNum;
+
+  // If property pays fee, the net received is amount - fee
+  const netReceivedByProperty = feeBearer === 'property'
+    ? amountNum - calculatedFee
+    : amountNum;
+  
   // Only calculate tax breakdown for ad-hoc payments, NOT for booking payments
   const taxBreakdown = !isBookingPayment && amount && financials 
     ? calculateBookingTotal(parseFloat(amount), financials) 
@@ -366,6 +382,67 @@ export function PaymentForm({
         </div>
       )}
 
+      {selectedProvider && selectedProvider.fee_percent > 0 && amount && (
+        <Alert className="bg-blue-50 dark:bg-blue-950/20 border-blue-200">
+          <AlertDescription>
+            <div className="space-y-2 text-sm">
+              <div className="font-semibold flex items-center gap-2">
+                <span>💳</span>
+                <span>Provider Fee Breakdown</span>
+              </div>
+              
+              <div className="bg-white dark:bg-slate-900 rounded p-3 space-y-1.5">
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Amount Entered:</span>
+                  <span className="font-medium">₦{amountNum.toLocaleString()}</span>
+                </div>
+                
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">
+                    Provider Fee ({selectedProvider.fee_percent}%):
+                  </span>
+                  <span className="font-medium text-orange-600">
+                    ₦{calculatedFee.toFixed(2)}
+                  </span>
+                </div>
+                
+                <div className="border-t pt-1.5 mt-1.5">
+                  {feeBearer === 'guest' ? (
+                    <>
+                      <div className="flex justify-between text-destructive font-semibold">
+                        <span>Guest Will Pay:</span>
+                        <span>₦{actualChargeToGuest.toLocaleString()}</span>
+                      </div>
+                      <div className="flex justify-between text-green-600 text-xs mt-1">
+                        <span>Property Receives:</span>
+                        <span>₦{amountNum.toLocaleString()} (full amount)</span>
+                      </div>
+                    </>
+                  ) : (
+                    <>
+                      <div className="flex justify-between text-green-600 font-semibold">
+                        <span>Property Receives:</span>
+                        <span>₦{netReceivedByProperty.toLocaleString()}</span>
+                      </div>
+                      <div className="flex justify-between text-muted-foreground text-xs mt-1">
+                        <span>Guest Pays:</span>
+                        <span>₦{amountNum.toLocaleString()} (no extra fee)</span>
+                      </div>
+                    </>
+                  )}
+                </div>
+              </div>
+              
+              <p className="text-xs text-muted-foreground italic">
+                {feeBearer === 'guest' 
+                  ? '⚠️ Fee will be added to guest\'s total charge' 
+                  : '💡 Fee is deducted from property\'s received amount'}
+              </p>
+            </div>
+          </AlertDescription>
+        </Alert>
+      )}
+
       <div className="space-y-2">
         <Label htmlFor="provider_id">Payment Method *</Label>
         <Select 
@@ -395,7 +472,11 @@ export function PaymentForm({
                 <SelectItem key={provider.id} value={provider.id}>
                   {provider.type === 'credit_deferred' && '🕐 '}
                   {provider.name}
-                  {provider.fee_percent > 0 && ` (${provider.fee_percent}% fee)`}
+                  {provider.fee_percent > 0 && (
+                    <span className="text-xs">
+                      {` (${provider.fee_percent}% fee - ${provider.fee_bearer === 'guest' ? 'Guest pays' : 'Property pays'})`}
+                    </span>
+                  )}
                 </SelectItem>
               ))
             )}

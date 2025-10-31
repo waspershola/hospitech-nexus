@@ -30,6 +30,7 @@ const providerSchema = z.object({
   type: z.enum(['pos', 'online', 'transfer', 'cash']),
   status: z.enum(['active', 'inactive']),
   fee_percent: z.number().min(0).max(100),
+  fee_bearer: z.enum(['property', 'guest']).default('property'),
   api_key: z.string().optional(),
   api_secret: z.string().optional(),
 });
@@ -55,6 +56,7 @@ export function ProviderDrawer({ open, onClose, providerId }: ProviderDrawerProp
       type: 'cash',
       status: 'active',
       fee_percent: 0,
+      fee_bearer: 'property',
       api_key: '',
       api_secret: '',
     },
@@ -75,6 +77,7 @@ export function ProviderDrawer({ open, onClose, providerId }: ProviderDrawerProp
               type: data.type as 'pos' | 'online' | 'transfer' | 'cash',
               status: data.status as 'active' | 'inactive',
               fee_percent: data.fee_percent,
+              fee_bearer: (data.fee_bearer as 'property' | 'guest') || 'property',
               api_key: data.api_key || '',
               api_secret: data.api_secret || '',
             });
@@ -87,6 +90,7 @@ export function ProviderDrawer({ open, onClose, providerId }: ProviderDrawerProp
         type: 'cash',
         status: 'active',
         fee_percent: 0,
+        fee_bearer: 'property',
         api_key: '',
         api_secret: '',
       });
@@ -105,6 +109,7 @@ export function ProviderDrawer({ open, onClose, providerId }: ProviderDrawerProp
         type: data.type,
         status: data.status,
         fee_percent: data.fee_percent,
+        fee_bearer: data.fee_bearer,
         api_key: data.api_key || null,
         api_secret: data.api_secret || null,
         tenant_id: tenantId,
@@ -191,6 +196,41 @@ export function ProviderDrawer({ open, onClose, providerId }: ProviderDrawerProp
             {form.formState.errors.fee_percent && (
               <p className="text-sm text-destructive">{form.formState.errors.fee_percent.message}</p>
             )}
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="fee_bearer">Who Pays the Transaction Fee?</Label>
+            <Select
+              value={form.watch('fee_bearer')}
+              onValueChange={(value: 'property' | 'guest') => form.setValue('fee_bearer', value)}
+            >
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="property">
+                  <div className="flex flex-col">
+                    <span className="font-medium">Property/Hotel Pays</span>
+                    <span className="text-xs text-muted-foreground">
+                      Fee deducted from amount received (current default)
+                    </span>
+                  </div>
+                </SelectItem>
+                <SelectItem value="guest">
+                  <div className="flex flex-col">
+                    <span className="font-medium">Guest Pays</span>
+                    <span className="text-xs text-muted-foreground">
+                      Fee added to guest's total payment amount
+                    </span>
+                  </div>
+                </SelectItem>
+              </SelectContent>
+            </Select>
+            <p className="text-xs text-muted-foreground">
+              {form.watch('fee_bearer') === 'property' 
+                ? '💡 Hotel receives less (gross amount - fee)' 
+                : '💡 Guest pays more (amount + fee), hotel receives full amount'}
+            </p>
           </div>
 
           {(selectedType === 'pos' || selectedType === 'online') && (

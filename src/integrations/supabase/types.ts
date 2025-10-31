@@ -518,6 +518,7 @@ export type Database = {
           api_secret: string | null
           created_at: string | null
           created_by: string | null
+          fee_bearer: string | null
           fee_percent: number | null
           id: string
           meta: Json | null
@@ -532,6 +533,7 @@ export type Database = {
           api_secret?: string | null
           created_at?: string | null
           created_by?: string | null
+          fee_bearer?: string | null
           fee_percent?: number | null
           id?: string
           meta?: Json | null
@@ -546,6 +548,7 @@ export type Database = {
           api_secret?: string | null
           created_at?: string | null
           created_by?: string | null
+          fee_bearer?: string | null
           fee_percent?: number | null
           id?: string
           meta?: Json | null

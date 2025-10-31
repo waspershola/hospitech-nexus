@@ -15,8 +15,11 @@ export function formatPaymentMetadata(metadata: Record<string, any>): FormattedM
   // Field mappings with display order
   const fieldMap: Record<string, { label: string; type: string; icon: string }> = {
     provider_name: { label: 'Payment Provider', type: 'text', icon: '🏦' },
-    net_amount: { label: 'Net Amount Received', type: 'currency', icon: '💰' },
-    provider_fee: { label: 'Provider Fee', type: 'currency', icon: '💳' },
+    fee_bearer: { label: 'Fee Paid By', type: 'text', icon: '💰' },
+    guest_charged: { label: 'Amount Guest Paid', type: 'currency', icon: '💳' },
+    gross_amount: { label: 'Base Amount', type: 'currency', icon: '💵' },
+    provider_fee: { label: 'Provider Fee', type: 'currency', icon: '💸' },
+    net_amount: { label: 'Net Received by Property', type: 'currency', icon: '✅' },
     is_credit_deferred: { label: 'Credit Deferred', type: 'boolean', icon: '⏳' },
     notes: { label: 'Notes', type: 'text', icon: '📝' },
     approval_reason: { label: 'Approval Reason', type: 'text', icon: '✅' },
@@ -55,7 +58,11 @@ export function formatPaymentMetadata(metadata: Record<string, any>): FormattedM
       
       case 'text':
       default:
-        displayValue = String(value);
+        if (key === 'fee_bearer') {
+          displayValue = value === 'guest' ? 'Guest (added to total)' : 'Property (deducted from received)';
+        } else {
+          displayValue = String(value);
+        }
         break;
     }
 

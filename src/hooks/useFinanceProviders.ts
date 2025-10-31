@@ -10,6 +10,7 @@ export interface FinanceProvider {
   type: 'pos' | 'online' | 'transfer' | 'cash' | 'credit_deferred';
   status: 'active' | 'inactive';
   fee_percent: number;
+  fee_bearer: 'property' | 'guest';
   meta: Record<string, any>;
   created_at: string;
 }
