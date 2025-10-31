@@ -8,6 +8,8 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { usePaymentPreferences } from '@/hooks/usePaymentPreferences';
 import { useApplyWalletCredit } from '@/hooks/useApplyWalletCredit';
+import { useBookingFolio } from '@/hooks/useBookingFolio';
+import { Skeleton } from '@/components/ui/skeleton';
 
 interface PaymentStepProps {
   bookingId: string;
@@ -38,6 +40,9 @@ export function PaymentStep({
   const [showWalletDialog, setShowWalletDialog] = useState(false);
   const [walletChecked, setWalletChecked] = useState(false);
 
+  // Fetch actual booking folio to get current balance
+  const { data: folio, isLoading: folioLoading } = useBookingFolio(bookingId);
+
   // Check for available wallet balance
   const { data: wallet } = useQuery({
     queryKey: ['guest-wallet', guestId, tenantId],
@@ -63,11 +68,11 @@ export function PaymentStep({
     const autoApply = preferences?.auto_apply_wallet_on_booking ?? true;
     const hasBalance = wallet && wallet.balance > 0;
     
-    if (autoApply && hasBalance && !walletChecked) {
+    if (autoApply && hasBalance && !walletChecked && folio) {
       setShowWalletDialog(true);
       setWalletChecked(true);
     }
-  }, [wallet, preferences, walletChecked]);
+  }, [wallet, preferences, walletChecked, folio]);
 
   const handleApplyWallet = (amount: number) => {
     if (amount > 0) {
@@ -78,7 +83,6 @@ export function PaymentStep({
       }, {
         onSuccess: () => {
           setShowWalletDialog(false);
-          // Continue to payment form with reduced amount
         },
       });
     } else {
@@ -86,13 +90,25 @@ export function PaymentStep({
     }
   };
 
+  if (folioLoading) {
+    return (
+      <Card className="p-6">
+        <Skeleton className="h-6 w-48 mb-4" />
+        <Skeleton className="h-32 w-full" />
+      </Card>
+    );
+  }
+
+  // Use actual folio balance if available, otherwise use totalAmount
+  const balanceDue = folio?.balance ?? totalAmount;
+
   return (
     <div className="space-y-6">
       <WalletCreditApplyDialog
         open={showWalletDialog}
         onOpenChange={setShowWalletDialog}
         guestId={guestId}
-        bookingTotal={totalAmount}
+        bookingTotal={balanceDue}
         onApply={handleApplyWallet}
       />
       
@@ -101,7 +117,8 @@ export function PaymentStep({
         <PaymentForm
           bookingId={bookingId}
           guestId={guestId}
-          prefilledAmount={totalAmount}
+          expectedAmount={balanceDue}
+          isBookingPayment={true}
           onSuccess={onPaymentComplete}
           onCancel={onSkip}
         />

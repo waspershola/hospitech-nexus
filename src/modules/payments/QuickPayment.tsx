@@ -14,6 +14,8 @@ interface QuickPaymentProps {
   organizationId?: string;
   bookingId?: string;
   prefilledAmount?: number;
+  expectedAmount?: number;
+  isBookingPayment?: boolean;
 }
 
 export function QuickPayment({
@@ -23,6 +25,8 @@ export function QuickPayment({
   organizationId,
   bookingId,
   prefilledAmount,
+  expectedAmount,
+  isBookingPayment = false,
 }: QuickPaymentProps) {
   return (
     <Dialog open={open} onOpenChange={onClose}>
@@ -30,7 +34,9 @@ export function QuickPayment({
         <DialogHeader>
           <DialogTitle className="text-2xl font-display">Record Payment</DialogTitle>
           <DialogDescription>
-            Complete payment details and select the appropriate method and location.
+            {isBookingPayment 
+              ? 'Record payment for booking. Amount already includes taxes.' 
+              : 'Complete payment details and select the appropriate method and location.'}
           </DialogDescription>
         </DialogHeader>
         <PaymentForm
@@ -38,6 +44,8 @@ export function QuickPayment({
           organizationId={organizationId}
           bookingId={bookingId}
           prefilledAmount={prefilledAmount}
+          expectedAmount={expectedAmount}
+          isBookingPayment={isBookingPayment}
           onSuccess={onClose}
           onCancel={onClose}
         />

@@ -49,6 +49,8 @@ interface PaymentFormProps {
   organizationId?: string;
   bookingId?: string;
   prefilledAmount?: number;
+  expectedAmount?: number;
+  isBookingPayment?: boolean;
   onSuccess?: () => void;
   onCancel?: () => void;
 }
@@ -58,6 +60,8 @@ export function PaymentForm({
   organizationId,
   bookingId,
   prefilledAmount,
+  expectedAmount,
+  isBookingPayment = false,
   onSuccess,
   onCancel,
 }: PaymentFormProps) {
@@ -86,7 +90,8 @@ export function PaymentForm({
   } = useForm<PaymentFormData>({
     resolver: zodResolver(paymentSchema),
     defaultValues: {
-      amount: prefilledAmount?.toString() || '',
+      amount: '',
+      expected_amount: expectedAmount?.toString() || prefilledAmount?.toString() || '',
       provider_id: '',
       notes: '',
     },
@@ -95,12 +100,15 @@ export function PaymentForm({
   const selectedLocationId = watch('location_id');
   const selectedProviderId = watch('provider_id');
   const amount = watch('amount');
-  const expectedAmount = watch('expected_amount');
+  const expectedAmountField = watch('expected_amount');
   
   // Check if selected provider is credit_deferred
   const selectedProvider = activeProviders.find(p => p.id === selectedProviderId);
-  // Calculate tax breakdown for standalone amount (not a booking)
-  const taxBreakdown = amount && financials ? calculateBookingTotal(parseFloat(amount), financials) : null;
+  
+  // Only calculate tax breakdown for ad-hoc payments, NOT for booking payments
+  const taxBreakdown = !isBookingPayment && amount && financials 
+    ? calculateBookingTotal(parseFloat(amount), financials) 
+    : null;
 
   // Auto-select provider based on location
   useEffect(() => {
@@ -117,19 +125,20 @@ export function PaymentForm({
     }
   }, [selectedLocationId, locations, activeProviders, setValue]);
 
-  // Determine payment type
+  // Determine payment type based on BALANCE DUE vs AMOUNT PAYING
   const getPaymentType = (): 'partial' | 'full' | 'overpayment' | undefined => {
-    if (!amount || !expectedAmount) return undefined;
-    const amountNum = parseFloat(amount);
-    const expectedNum = parseFloat(expectedAmount);
-    if (amountNum < expectedNum - 0.01) return 'partial';
-    if (amountNum > expectedNum + 0.01) return 'overpayment';
-    return 'full';
+    if (!amount || !expectedAmountField) return undefined;
+    const amountPaying = parseFloat(amount);
+    const balanceDue = parseFloat(expectedAmountField);
+    
+    if (amountPaying < balanceDue - 0.01) return 'partial';      // Underpayment
+    if (amountPaying > balanceDue + 0.01) return 'overpayment';  // Overpayment
+    return 'full';                                                // Exact payment
   };
 
   // Calculate difference amounts for validation
-  const paymentDifference = amount && expectedAmount 
-    ? parseFloat(amount) - parseFloat(expectedAmount)
+  const paymentDifference = amount && expectedAmountField 
+    ? parseFloat(amount) - parseFloat(expectedAmountField)
     : 0;
   
   const isLargeOverpayment = paymentDifference > 50000;
@@ -150,7 +159,7 @@ export function PaymentForm({
 
     // Handle overpayment - show dialog for user choice
     if (paymentType === 'overpayment' && paymentDifference > 0 && !showOverpaymentDialog) {
-      // Check if requires manager approval
+      // Check if requires manager approval for LARGE OVERPAYMENT
       if (paymentDifference > 50000) {
         setManagerApprovalType('overpayment');
         setRequiresApprovalAmount(paymentDifference);
@@ -162,12 +171,15 @@ export function PaymentForm({
       return; // Don't submit yet
     }
     
-    // Handle underpayment - check if requires manager approval
-    if (paymentType === 'partial' && Math.abs(paymentDifference) > 50000) {
-      setManagerApprovalType('underpayment');
-      setRequiresApprovalAmount(Math.abs(paymentDifference));
-      setShowManagerApproval(true);
-      return;
+    // Handle underpayment - check if requires manager approval for LARGE BALANCE DUE
+    if (paymentType === 'partial') {
+      const balanceDue = parseFloat(data.expected_amount || '0') - parseFloat(data.amount);
+      if (balanceDue > 50000) {
+        setManagerApprovalType('underpayment');
+        setRequiresApprovalAmount(balanceDue); // The REMAINING balance
+        setShowManagerApproval(true);
+        return;
+      }
     }
 
     // Submit payment
@@ -227,12 +239,12 @@ export function PaymentForm({
 
       <div className="grid grid-cols-2 gap-4">
         <div className="space-y-2">
-          <Label htmlFor="amount">Amount *</Label>
+          <Label htmlFor="amount">Amount Paying Now *</Label>
           <Input
             id="amount"
             type="number"
             step="0.01"
-            placeholder="0.00"
+            placeholder="Enter amount paying..."
             {...register('amount')}
           />
           {errors.amount && (
@@ -241,40 +253,89 @@ export function PaymentForm({
         </div>
 
         <div className="space-y-2">
-          <Label htmlFor="expected_amount">Expected Amount</Label>
+          <Label htmlFor="expected_amount">
+            Balance Due {isBookingPayment && '(from booking)'}
+          </Label>
           <Input
             id="expected_amount"
             type="number"
             step="0.01"
             placeholder="0.00"
             {...register('expected_amount')}
+            disabled={isBookingPayment}
           />
+          <p className="text-xs text-muted-foreground">
+            {isBookingPayment 
+              ? 'Calculated from booking folio' 
+              : 'Leave blank if no specific amount expected'}
+          </p>
         </div>
       </div>
 
-      {expectedAmount && amount && getPaymentType() && (
+      {expectedAmountField && amount && getPaymentType() && (
         <Alert variant={isLargeOverpayment ? 'destructive' : 'default'}>
           <AlertDescription>
-            <div className="space-y-1">
-              <div>
-                Payment Type: <strong className="capitalize">{getPaymentType()}</strong>
+            <div className="space-y-2">
+              <div className="flex justify-between items-center">
+                <span className="text-sm">Payment Type:</span>
+                <span className={`font-semibold px-2 py-1 rounded text-xs ${
+                  getPaymentType() === 'full' ? 'bg-green-100 text-green-700' : 
+                  getPaymentType() === 'partial' ? 'bg-yellow-100 text-yellow-700' : 
+                  'bg-blue-100 text-blue-700'
+                }`}>
+                  {getPaymentType()?.toUpperCase()}
+                </span>
               </div>
+              
               {getPaymentType() === 'partial' && (
-                <p className="text-sm">
-                  Balance due: <strong>₦{Math.abs(paymentDifference).toLocaleString()}</strong> will be tracked as receivable
-                </p>
+                <div className="mt-2 text-sm space-y-1 bg-muted/30 p-3 rounded">
+                  <div className="flex justify-between">
+                    <span>Amount Paying:</span>
+                    <strong>₦{parseFloat(amount).toLocaleString()}</strong>
+                  </div>
+                  <div className="flex justify-between text-muted-foreground">
+                    <span>Balance Due:</span>
+                    <span>₦{parseFloat(expectedAmountField).toLocaleString()}</span>
+                  </div>
+                  <div className="flex justify-between text-destructive font-semibold pt-1 border-t">
+                    <span>Remaining Balance:</span>
+                    <span>₦{Math.abs(paymentDifference).toLocaleString()}</span>
+                  </div>
+                  <p className="text-xs mt-2 text-muted-foreground">
+                    ⚠️ Remaining balance will be tracked as receivable
+                  </p>
+                </div>
               )}
+              
               {getPaymentType() === 'overpayment' && (
-                <>
-                  <p className="text-sm">
-                    Excess amount: <strong>₦{paymentDifference.toLocaleString()}</strong> will be credited to guest wallet
+                <div className="mt-2 text-sm space-y-1 bg-muted/30 p-3 rounded">
+                  <div className="flex justify-between">
+                    <span>Amount Paying:</span>
+                    <strong>₦{parseFloat(amount).toLocaleString()}</strong>
+                  </div>
+                  <div className="flex justify-between text-muted-foreground">
+                    <span>Balance Due:</span>
+                    <span>₦{parseFloat(expectedAmountField).toLocaleString()}</span>
+                  </div>
+                  <div className="flex justify-between text-primary font-semibold pt-1 border-t">
+                    <span>Excess Amount:</span>
+                    <span>₦{paymentDifference.toLocaleString()}</span>
+                  </div>
+                  <p className="text-xs mt-2 text-muted-foreground">
+                    ✓ Excess will be credited to guest wallet for future use
                   </p>
                   {isLargeOverpayment && (
-                    <p className="text-sm font-semibold mt-2">
-                      ⚠️ Large overpayment detected. Please confirm with guest before proceeding.
+                    <p className="text-xs font-semibold text-destructive mt-2">
+                      ⚠️ Large overpayment detected (&gt;₦50,000). Manager approval required.
                     </p>
                   )}
-                </>
+                </div>
+              )}
+              
+              {getPaymentType() === 'full' && (
+                <p className="text-sm text-green-600 mt-2 font-medium">
+                  ✓ Full payment - booking will be marked as paid
+                </p>
               )}
             </div>
           </AlertDescription>

@@ -36,10 +36,19 @@ export function ManagerApprovalModal({
             Manager Approval Required
           </DialogTitle>
           <DialogDescription>
-            {type === 'overpayment' 
-              ? `Guest overpaid by ₦${amount.toLocaleString()}. This exceeds the configured threshold.`
-              : `Balance due of ₦${amount.toLocaleString()} exceeds the approval threshold.`
-            }
+            {type === 'overpayment' ? (
+              <>
+                Guest is paying <strong>₦{amount.toLocaleString()} MORE</strong> than expected.
+                <br />
+                This large overpayment requires manager approval before processing.
+              </>
+            ) : (
+              <>
+                Guest is leaving with <strong>₦{amount.toLocaleString()} UNPAID</strong>.
+                <br />
+                This large outstanding balance requires manager approval before checkout.
+              </>
+            )}
           </DialogDescription>
         </DialogHeader>
         
