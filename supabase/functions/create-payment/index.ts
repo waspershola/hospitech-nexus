@@ -300,7 +300,7 @@ serve(async (req) => {
           ...metadata,
           provider_id,
           location_id,
-          provider_fee: providerFee,
+          provider_fee: amount * providerFee / 100, // Store actual fee amount, not percentage
           net_amount: amount - (amount * providerFee / 100),
           is_credit_deferred: isCreditDeferred,
           ...(isCreditDeferred && {
