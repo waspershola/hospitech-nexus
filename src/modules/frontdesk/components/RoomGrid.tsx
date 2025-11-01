@@ -96,6 +96,34 @@ export function RoomGrid({ searchQuery, statusFilter, categoryFilter, floorFilte
         });
       }
       
+      // Handle pending payments filtering
+      if (statusFilter === 'pending_payments') {
+        const roomsWithBalance = await Promise.all(
+          filteredData.map(async (room) => {
+            const bookings = Array.isArray(room.bookings) ? room.bookings : [];
+            const activeBooking = bookings.find((b: any) => 
+              ['reserved', 'checked_in', 'occupied'].includes(b.status)
+            );
+            
+            if (!activeBooking) return null;
+            
+            // Get total paid for this booking
+            const { data: payments } = await supabase
+              .from('payments')
+              .select('amount')
+              .eq('booking_id', activeBooking.id)
+              .in('status', ['paid', 'success', 'completed']);
+            
+            const totalPaid = (payments || []).reduce((sum, p) => sum + Number(p.amount), 0);
+            const balance = Number(activeBooking.total_amount) - totalPaid;
+            
+            return balance > 0 ? room : null;
+          })
+        );
+        
+        filteredData = roomsWithBalance.filter(r => r !== null);
+      }
+      
       // Additional client-side search for guest names if searchQuery exists
       if (searchQuery && filteredData) {
         const searchLower = searchQuery.toLowerCase();

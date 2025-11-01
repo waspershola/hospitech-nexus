@@ -11,6 +11,7 @@ import {
   Fuel
 } from 'lucide-react';
 import { useFrontDeskKPIs } from '../hooks/useFrontDeskKPIs';
+import { usePendingPaymentsRooms } from '@/hooks/usePendingPaymentsRooms';
 
 interface QuickKPIsProps {
   onFilterClick: (status: string | null) => void;
@@ -19,6 +20,7 @@ interface QuickKPIsProps {
 
 export function QuickKPIs({ onFilterClick, activeFilter }: QuickKPIsProps) {
   const { kpis, isLoading } = useFrontDeskKPIs();
+  const { data: pendingPaymentsData } = usePendingPaymentsRooms();
 
   const cards = [
     { 
@@ -60,10 +62,11 @@ export function QuickKPIs({ onFilterClick, activeFilter }: QuickKPIsProps) {
     },
     { 
       label: 'Pending Payments', 
-      value: kpis?.pendingPayments || 0, 
+      value: pendingPaymentsData?.count || 0, 
       icon: CreditCard, 
       color: 'text-[hsl(var(--warning))]', 
-      bg: 'bg-[hsl(var(--warning)/0.1)]'
+      bg: 'bg-[hsl(var(--warning)/0.1)]',
+      filter: 'pending_payments'
     },
     {
       label: 'Overstays',
