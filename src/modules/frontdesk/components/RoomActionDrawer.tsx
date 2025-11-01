@@ -343,7 +343,7 @@ export function RoomActionDrawer({ roomId, open, onClose, onOpenAssignDrawer }: 
                       onClick={async () => {
                         if (!activeBooking) return;
                         await printReceipt({
-                          receiptType: 'invoice',
+                          receiptType: 'payment',
                           bookingId: activeBooking.id,
                           settingsId: receiptSettings?.[0]?.id,
                         }, receiptSettings?.[0]);
