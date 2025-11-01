@@ -233,35 +233,51 @@ export function ReceiptSettingsTab() {
         </CardContent>
       </Card>
 
-      {/* Auto-Print Settings */}
+      {/* Auto-Print Settings - Legacy */}
       <Card>
         <CardHeader>
-          <CardTitle>Auto-Print Settings</CardTitle>
+          <CardTitle>Print Control</CardTitle>
+          <CardDescription>
+            💡 Print receipts are now controlled per-action with toggles in checkout and payment drawers.
+            The auto-print settings below are being phased out.
+          </CardDescription>
         </CardHeader>
         <CardContent className="space-y-3">
-          <div className="flex items-center justify-between">
+          <div className="p-4 bg-muted/50 rounded-lg space-y-2">
+            <p className="text-sm font-medium">✨ New Feature: Per-Action Print Control</p>
+            <p className="text-xs text-muted-foreground">
+              Users can now choose whether to print receipts when performing checkouts or recording payments using the toggle switches in each drawer.
+              This gives you more control and avoids unnecessary printing.
+            </p>
+          </div>
+
+          <Separator />
+
+          <div className="flex items-center justify-between opacity-60">
             <div>
-              <Label>Auto-print on Checkout</Label>
+              <Label>Auto-print on Checkout (Legacy)</Label>
               <p className="text-xs text-muted-foreground">
-                Automatically print receipt when guest checks out
+                Replaced by per-action toggle in Room Action Drawer
               </p>
             </div>
             <Switch 
               checked={currentSettings?.auto_print_on_checkout ?? false}
               onCheckedChange={(checked) => handleUpdate({ auto_print_on_checkout: checked })}
+              disabled
             />
           </div>
 
-          <div className="flex items-center justify-between">
+          <div className="flex items-center justify-between opacity-60">
             <div>
-              <Label>Auto-print on Payment</Label>
+              <Label>Auto-print on Payment (Legacy)</Label>
               <p className="text-xs text-muted-foreground">
-                Automatically print receipt after payment recorded
+                Replaced by per-action toggle in Payment Form
               </p>
             </div>
             <Switch 
               checked={currentSettings?.auto_print_on_payment ?? false}
               onCheckedChange={(checked) => handleUpdate({ auto_print_on_payment: checked })}
+              disabled
             />
           </div>
         </CardContent>

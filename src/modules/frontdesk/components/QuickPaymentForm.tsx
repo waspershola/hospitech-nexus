@@ -1,3 +1,7 @@
+import { useState } from 'react';
+import { Switch } from '@/components/ui/switch';
+import { Label } from '@/components/ui/label';
+import { Printer } from 'lucide-react';
 import { PaymentForm } from '@/modules/payments/PaymentForm';
 import { useBookingFolio } from '@/hooks/useBookingFolio';
 import { usePrintReceipt } from '@/hooks/usePrintReceipt';
@@ -24,9 +28,11 @@ export function QuickPaymentForm({
   onSuccess, 
   onCancel 
 }: QuickPaymentFormProps) {
+  const [shouldPrintReceipt, setShouldPrintReceipt] = useState(false);
+  
   // Fetch actual booking balance
   const { data: folio, isLoading } = useBookingFolio(bookingId);
-  const { print: printReceipt } = usePrintReceipt();
+  const { print: printReceiptFn } = usePrintReceipt();
   const { settings: receiptSettings } = useReceiptSettings();
   
   if (isLoading) {
@@ -42,10 +48,10 @@ export function QuickPaymentForm({
   const balanceDue = folio?.balance ?? expectedAmount ?? 0;
   
   const handlePaymentSuccess = (paymentId?: string) => {
-    // Auto-print receipt if enabled
+    // Print receipt if user toggled it on
     const defaultSettings = receiptSettings?.[0];
-    if (defaultSettings?.auto_print_on_payment && paymentId) {
-      printReceipt({
+    if (shouldPrintReceipt && defaultSettings && paymentId) {
+      printReceiptFn({
         receiptType: 'payment',
         paymentId,
         bookingId,
@@ -57,7 +63,22 @@ export function QuickPaymentForm({
   };
   
   return (
-    <div className="p-4">
+    <div className="p-4 space-y-4">
+      {/* Print Receipt Toggle */}
+      <div className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
+        <div className="flex items-center gap-2">
+          <Printer className="h-4 w-4 text-muted-foreground" />
+          <Label htmlFor="payment-print-toggle" className="cursor-pointer">
+            Print Receipt After Payment
+          </Label>
+        </div>
+        <Switch
+          id="payment-print-toggle"
+          checked={shouldPrintReceipt}
+          onCheckedChange={setShouldPrintReceipt}
+        />
+      </div>
+
       <PaymentForm
         bookingId={bookingId}
         guestId={guestId}

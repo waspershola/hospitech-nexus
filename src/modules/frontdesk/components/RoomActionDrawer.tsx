@@ -6,6 +6,7 @@ import { Separator } from '@/components/ui/separator';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { Label } from '@/components/ui/label';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
@@ -28,6 +29,7 @@ import { CancelBookingModal } from '@/modules/bookings/components/CancelBookingM
 import { BookingConfirmationDocument } from '@/modules/bookings/components/BookingConfirmationDocument';
 import { BookingPaymentManager } from '@/modules/bookings/components/BookingPaymentManager';
 import { toast } from '@/hooks/use-toast';
+import { Switch } from '@/components/ui/switch';
 import { 
   Loader2, User, CreditCard, Calendar, AlertCircle, Clock, Building2, AlertTriangle, 
   Wallet, Zap, Coffee, BellOff, UserPlus, LogIn, LogOut, Wrench, Sparkles, FileText, Receipt, Edit, Printer
@@ -47,7 +49,7 @@ export function RoomActionDrawer({ roomId, open, onClose, onOpenAssignDrawer }: 
   const { mutate: completeCheckout, isPending: isCheckingOut } = useCheckout();
   const { mutate: forceCheckout, isPending: isForcingCheckout } = useForceCheckout();
   const { preferences } = usePaymentPreferences();
-  const { print: printReceipt } = usePrintReceipt();
+  const { print: printReceiptFn } = usePrintReceipt();
   const { settings: receiptSettings } = useReceiptSettings();
   const [extendModalOpen, setExtendModalOpen] = useState(false);
   const [chargeModalOpen, setChargeModalOpen] = useState(false);
@@ -58,6 +60,7 @@ export function RoomActionDrawer({ roomId, open, onClose, onOpenAssignDrawer }: 
   const [cancelModalOpen, setCancelModalOpen] = useState(false);
   const [showConfirmationDoc, setShowConfirmationDoc] = useState(false);
   const [realtimeDebounceTimer, setRealtimeDebounceTimer] = useState<NodeJS.Timeout | null>(null);
+  const [printReceipt, setPrintReceipt] = useState(false);
 
   const { data: room, isLoading } = useQuery({
     queryKey: ['room-detail', roomId],
@@ -177,10 +180,10 @@ export function RoomActionDrawer({ roomId, open, onClose, onOpenAssignDrawer }: 
     // Then complete checkout in background
     completeCheckout({ bookingId: activeBooking.id }, {
       onSuccess: () => {
-        // Auto-print receipt if enabled
+        // Print receipt if user toggled it on
         const defaultSettings = receiptSettings?.[0];
-        if (defaultSettings?.auto_print_on_checkout) {
-          printReceipt({
+        if (printReceipt && defaultSettings) {
+          printReceiptFn({
             receiptType: 'checkout',
             bookingId: activeBooking.id,
             settingsId: defaultSettings.id,
@@ -201,10 +204,10 @@ export function RoomActionDrawer({ roomId, open, onClose, onOpenAssignDrawer }: 
       createReceivable: true,
     }, {
       onSuccess: () => {
-        // Auto-print receipt if enabled
+        // Print receipt if user toggled it on
         const defaultSettings = receiptSettings?.[0];
-        if (defaultSettings?.auto_print_on_checkout) {
-          printReceipt({
+        if (printReceipt && defaultSettings) {
+          printReceiptFn({
             receiptType: 'checkout',
             bookingId: activeBooking.id,
             settingsId: defaultSettings.id,
@@ -360,23 +363,6 @@ export function RoomActionDrawer({ roomId, open, onClose, onOpenAssignDrawer }: 
                       </span>
                     </div>
                   </div>
-                  {activeBooking && (
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={async () => {
-                        if (!activeBooking) return;
-                        await printReceipt({
-                          receiptType: 'payment',
-                          bookingId: activeBooking.id,
-                          settingsId: receiptSettings?.[0]?.id,
-                        }, receiptSettings?.[0]);
-                      }}
-                      title="Print receipt"
-                    >
-                      <Printer className="h-4 w-4" />
-                    </Button>
-                  )}
                 </div>
               </SheetHeader>
 
@@ -572,6 +558,23 @@ export function RoomActionDrawer({ roomId, open, onClose, onOpenAssignDrawer }: 
 
                       <Separator />
                     </>
+                  )}
+
+                  {/* Print Receipt Toggle */}
+                  {(room.status === 'occupied' || room.status === 'overstay') && (
+                    <div className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
+                      <div className="flex items-center gap-2">
+                        <Printer className="h-4 w-4 text-muted-foreground" />
+                        <Label htmlFor="print-receipt-toggle" className="cursor-pointer">
+                          Print Receipt After Checkout
+                        </Label>
+                      </div>
+                      <Switch
+                        id="print-receipt-toggle"
+                        checked={printReceipt}
+                        onCheckedChange={setPrintReceipt}
+                      />
+                    </div>
                   )}
 
                   <div className="space-y-3">

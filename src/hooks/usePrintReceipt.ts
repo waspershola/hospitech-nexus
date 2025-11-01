@@ -62,6 +62,9 @@ export function usePrintReceipt() {
         return;
       }
 
+      // Show loading toast while preparing receipt
+      toast.loading('Preparing receipt...', { id: 'receipt-prep' });
+
       // Generate receipt number
       const { data: receiptNumber, error: receiptError } = await supabase
         .rpc('generate_receipt_number', {
@@ -71,14 +74,23 @@ export function usePrintReceipt() {
 
       if (receiptError) {
         console.error('Receipt number generation error:', receiptError);
-        toast.error('Failed to generate receipt number');
+        toast.error('Failed to generate receipt number', { id: 'receipt-prep' });
         return;
+      }
+
+      // Wait for receipt data if not provided (prevents "Loading..." in print)
+      let receiptData = params.receiptData;
+      if (!receiptData && (params.bookingId || params.paymentId)) {
+        toast.loading('Fetching receipt data...', { id: 'receipt-prep' });
+        
+        // Give a brief moment for data to load from cache/query
+        await new Promise(resolve => setTimeout(resolve, 500));
       }
 
       // Create print window
       const printWindow = window.open('', '_blank');
       if (!printWindow) {
-        toast.error('Please allow popups to print receipts');
+        toast.error('Please allow popups to print receipts', { id: 'receipt-prep' });
         return;
       }
 
@@ -86,7 +98,7 @@ export function usePrintReceipt() {
       const receiptHtml = generateReceiptHTML(
         params, 
         receiptSettings, 
-        params.receiptData,
+        receiptData,
         receiptNumber || 'DRAFT'
       );
       
@@ -100,9 +112,9 @@ export function usePrintReceipt() {
         printMutation.mutate({ ...params, receiptNumber });
       };
 
-      toast.success('Receipt sent to printer');
+      toast.success('Receipt sent to printer', { id: 'receipt-prep' });
     } catch (error) {
-      toast.error('Failed to print receipt');
+      toast.error('Failed to print receipt', { id: 'receipt-prep' });
       console.error('Print error:', error);
     }
   };
