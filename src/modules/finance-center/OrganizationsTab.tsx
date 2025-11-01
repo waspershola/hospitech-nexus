@@ -81,7 +81,7 @@ export function OrganizationsTab() {
               )}
               <div className="flex items-center gap-2 text-muted-foreground">
                 <CreditCard className="w-4 h-4" />
-                Credit Limit: ₦{org.credit_limit.toLocaleString()}
+                Credit Limit: ₦{(org.credit_limit ?? 0).toLocaleString()}
               </div>
               
               <div className="grid grid-cols-3 gap-2 mt-2">

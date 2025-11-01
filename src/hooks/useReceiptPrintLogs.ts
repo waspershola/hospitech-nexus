@@ -34,7 +34,7 @@ export function useReceiptPrintLogs(filters?: {
       if (filters?.endDate) {
         query = query.lte('printed_at', filters.endDate);
       }
-      if (filters?.receiptType) {
+      if (filters?.receiptType && filters.receiptType !== 'all') {
         query = query.eq('receipt_type', filters.receiptType);
       }
       if (filters?.userId) {

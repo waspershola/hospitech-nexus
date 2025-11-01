@@ -17,7 +17,7 @@ export function ReceiptLogsTab() {
   const [filters, setFilters] = useState({
     startDate: '',
     endDate: '',
-    receiptType: '',
+    receiptType: 'all',
     userId: '',
   });
 
@@ -102,7 +102,7 @@ export function ReceiptLogsTab() {
                   <SelectValue placeholder="All types" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">All types</SelectItem>
+                  <SelectItem value="all">All types</SelectItem>
                   <SelectItem value="checkout">Checkout</SelectItem>
                   <SelectItem value="payment">Payment</SelectItem>
                   <SelectItem value="booking">Booking</SelectItem>
@@ -113,7 +113,7 @@ export function ReceiptLogsTab() {
             <div className="space-y-2 flex items-end">
               <Button
                 variant="outline"
-                onClick={() => setFilters({ startDate: '', endDate: '', receiptType: '', userId: '' })}
+                onClick={() => setFilters({ startDate: '', endDate: '', receiptType: 'all', userId: '' })}
                 className="w-full"
               >
                 Clear Filters

@@ -36,7 +36,7 @@ export function usePrintReceipt() {
           booking_id: params.bookingId,
           receipt_settings_id: params.settingsId,
           printed_by: user?.id,
-          print_method: 'browser',
+          print_method: 'pdf',
           receipt_data: {
             ...(params.receiptData || {}),
             receipt_number: params.receiptNumber,
