@@ -5,7 +5,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
-import { TrendingUp, TrendingDown, DollarSign, AlertCircle, Calendar } from 'lucide-react';
+import { TrendingUp, TrendingDown, DollarSign, AlertCircle, Calendar, Download } from 'lucide-react';
+import { useFinanceExport } from '@/hooks/useFinanceExport';
+import { useProviderAnalytics } from '@/hooks/useProviderAnalytics';
 import { format, subDays, startOfDay, endOfDay } from 'date-fns';
 import { Calendar as CalendarComponent } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
@@ -26,6 +28,8 @@ export function AnalyticsTab() {
   });
   const [calendarOpen, setCalendarOpen] = useState(false);
   const [granularity, setGranularity] = useState<'daily' | 'weekly' | 'monthly'>('daily');
+  const { exportData, isExporting } = useFinanceExport();
+  const providerAnalytics = useProviderAnalytics(dateRange.start, dateRange.end);
 
   const analytics = useFinanceAnalytics({
     startDate: dateRange.start,
@@ -109,6 +113,33 @@ export function AnalyticsTab() {
     },
   ];
 
+  const handleExportPayments = () => {
+    const exportPayments = payments?.map(p => ({
+      date: format(new Date(p.created_at), 'yyyy-MM-dd HH:mm'),
+      reference: p.transaction_ref,
+      amount: p.amount,
+      method: p.method,
+      provider: p.method_provider,
+      status: p.status,
+      department: p.department,
+    })) || [];
+    
+    exportData({ data: exportPayments, filename: 'payments-report', type: 'csv' });
+  };
+
+  const handleExportProviderStats = () => {
+    const providerStatsData = providerAnalytics.data?.map(p => ({
+      provider: p.provider_name,
+      total_transactions: p.total_transactions,
+      total_amount: p.total_amount,
+      success_rate: `${p.success_rate.toFixed(2)}%`,
+      avg_amount: p.avg_transaction_amount.toFixed(2),
+      reconciliation_rate: `${p.reconciliation_rate.toFixed(2)}%`,
+    })) || [];
+    
+    exportData({ data: providerStatsData, filename: 'provider-analytics', type: 'csv' });
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -120,6 +151,15 @@ export function AnalyticsTab() {
         </div>
 
         <div className="flex items-center gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleExportPayments}
+            disabled={isExporting || !payments?.length}
+          >
+            <Download className="w-4 h-4 mr-2" />
+            Export Payments
+          </Button>
           <Select value={granularity} onValueChange={(value: any) => setGranularity(value)}>
             <SelectTrigger className="w-[120px]">
               <SelectValue />
@@ -231,6 +271,70 @@ export function AnalyticsTab() {
         <DepartmentOverview data={analytics.departments} />
         
         <DiscrepancyHeatmap data={analytics.discrepancies} />
+        
+        {/* Provider Performance */}
+        <Card className="p-6 rounded-2xl shadow-card">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-lg font-semibold">Provider Performance</h3>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleExportProviderStats}
+              disabled={isExporting || !providerAnalytics.data?.length}
+            >
+              <Download className="w-4 h-4 mr-2" />
+              Export
+            </Button>
+          </div>
+          
+          {providerAnalytics.isLoading ? (
+            <div className="text-center py-8 text-muted-foreground">Loading provider analytics...</div>
+          ) : providerAnalytics.data && providerAnalytics.data.length > 0 ? (
+            <div className="space-y-4">
+              {providerAnalytics.data.map((provider) => (
+                <div key={provider.provider_id} className="border rounded-lg p-4">
+                  <div className="flex items-center justify-between mb-3">
+                    <h4 className="font-semibold">{provider.provider_name}</h4>
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm text-muted-foreground">
+                        {provider.total_transactions} transactions
+                      </span>
+                    </div>
+                  </div>
+                  
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                    <div>
+                      <p className="text-sm text-muted-foreground">Total Amount</p>
+                      <p className="text-lg font-bold">₦{provider.total_amount.toLocaleString()}</p>
+                    </div>
+                    <div>
+                      <p className="text-sm text-muted-foreground">Success Rate</p>
+                      <p className="text-lg font-bold text-semantic-success">
+                        {provider.success_rate.toFixed(1)}%
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-sm text-muted-foreground">Avg Transaction</p>
+                      <p className="text-lg font-bold">
+                        ₦{provider.avg_transaction_amount.toLocaleString()}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-sm text-muted-foreground">Reconciliation</p>
+                      <p className="text-lg font-bold text-primary">
+                        {provider.reconciliation_rate.toFixed(1)}%
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="text-center py-8 text-muted-foreground">
+              No provider data available for this period
+            </div>
+          )}
+        </Card>
       </div>
     </div>
   );
