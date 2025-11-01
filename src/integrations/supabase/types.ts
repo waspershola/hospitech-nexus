@@ -1615,6 +1615,9 @@ export type Database = {
           paper_size: string
           printer_endpoint: string | null
           printer_name: string | null
+          receipt_number_length: number | null
+          receipt_number_prefix: string | null
+          reset_sequence_yearly: boolean | null
           show_provider_fee: boolean | null
           show_qr_code: boolean | null
           show_vat_breakdown: boolean | null
@@ -1637,6 +1640,9 @@ export type Database = {
           paper_size?: string
           printer_endpoint?: string | null
           printer_name?: string | null
+          receipt_number_length?: number | null
+          receipt_number_prefix?: string | null
+          reset_sequence_yearly?: boolean | null
           show_provider_fee?: boolean | null
           show_qr_code?: boolean | null
           show_vat_breakdown?: boolean | null
@@ -1659,6 +1665,9 @@ export type Database = {
           paper_size?: string
           printer_endpoint?: string | null
           printer_name?: string | null
+          receipt_number_length?: number | null
+          receipt_number_prefix?: string | null
+          reset_sequence_yearly?: boolean | null
           show_provider_fee?: boolean | null
           show_qr_code?: boolean | null
           show_vat_breakdown?: boolean | null

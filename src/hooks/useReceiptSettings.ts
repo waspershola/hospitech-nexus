@@ -21,6 +21,9 @@ export interface ReceiptSettings {
   font_size: 'small' | 'normal' | 'large';
   auto_print_on_checkout: boolean;
   auto_print_on_payment: boolean;
+  receipt_number_prefix: string;
+  receipt_number_length: number;
+  reset_sequence_yearly: boolean;
   created_at: string;
   updated_at: string;
 }

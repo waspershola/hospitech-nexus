@@ -173,6 +173,66 @@ export function ReceiptSettingsTab() {
         </CardContent>
       </Card>
 
+      {/* Receipt Numbering */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Receipt Numbering</CardTitle>
+          <CardDescription>Configure how receipt numbers are generated</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label>Number Prefix</Label>
+              <Input 
+                placeholder="e.g., RCP, INV, RCPT"
+                value={currentSettings?.receipt_number_prefix || 'RCP'}
+                onChange={(e) => handleUpdate({ receipt_number_prefix: e.target.value.toUpperCase() })}
+                maxLength={10}
+              />
+              <p className="text-xs text-muted-foreground">
+                Appears before the number (e.g., RCP-2025-000001)
+              </p>
+            </div>
+
+            <div className="space-y-2">
+              <Label>Number Length</Label>
+              <Input 
+                type="number"
+                min={4}
+                max={10}
+                value={currentSettings?.receipt_number_length || 6}
+                onChange={(e) => handleUpdate({ receipt_number_length: parseInt(e.target.value) || 6 })}
+              />
+              <p className="text-xs text-muted-foreground">
+                Number of digits (e.g., 6 = 000001)
+              </p>
+            </div>
+          </div>
+
+          <div className="flex items-center justify-between">
+            <div>
+              <Label>Reset Sequence Yearly</Label>
+              <p className="text-xs text-muted-foreground">
+                Start numbering from 1 each new year
+              </p>
+            </div>
+            <Switch 
+              checked={currentSettings?.reset_sequence_yearly ?? true}
+              onCheckedChange={(checked) => handleUpdate({ reset_sequence_yearly: checked })}
+            />
+          </div>
+
+          <div className="p-3 bg-muted rounded-md">
+            <p className="text-sm font-medium mb-1">Preview:</p>
+            <p className="text-xs font-mono">
+              {currentSettings?.receipt_number_prefix || 'RCP'}-
+              {new Date().getFullYear()}-
+              {'0'.repeat(currentSettings?.receipt_number_length || 6)}1
+            </p>
+          </div>
+        </CardContent>
+      </Card>
+
       {/* Auto-Print Settings */}
       <Card>
         <CardHeader>
