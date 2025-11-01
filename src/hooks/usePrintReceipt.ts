@@ -99,10 +99,24 @@ export function usePrintReceipt() {
         }
       }
 
+      // Validate essential data
+      if (!receiptData) {
+        toast.error('Failed to load receipt data', { id: 'receipt-prep' });
+        return;
+      }
+
+      if (!receiptData.booking && !receiptData.guest) {
+        console.warn('Receipt missing booking or guest data:', receiptData);
+        toast.warning('Receipt may be incomplete - some data is missing', { id: 'receipt-prep' });
+      }
+
+      // Dismiss loading toast before opening print window
+      toast.dismiss('receipt-prep');
+
       // Create print window
       const printWindow = window.open('', '_blank');
       if (!printWindow) {
-        toast.error('Please allow popups to print receipts', { id: 'receipt-prep' });
+        toast.error('Please allow popups to print receipts');
         return;
       }
 
@@ -165,11 +179,30 @@ function generateReceiptHTML(
   
   // Calculate charges and totals
   const chargesSubtotal = receiptData.charges.reduce((sum, c) => sum + Number(c.amount), 0);
+  const bookingTotal = receiptData.booking?.total_amount || 0;
+  
+  // Financial settings
   const vatRate = receiptData.financials?.vat_rate || 7.5;
   const serviceChargeRate = receiptData.financials?.service_charge || 10;
-  const vatAmount = (chargesSubtotal * vatRate) / 100;
-  const serviceChargeAmount = (chargesSubtotal * serviceChargeRate) / 100;
-  const grandTotal = chargesSubtotal + vatAmount + serviceChargeAmount;
+  
+  // Prefer booking total over calculated total (most accurate)
+  const grandTotal = bookingTotal > 0 ? Number(bookingTotal) : (() => {
+    const vatAmount = (chargesSubtotal * vatRate) / 100;
+    const serviceChargeAmount = (chargesSubtotal * serviceChargeRate) / 100;
+    return chargesSubtotal + vatAmount + serviceChargeAmount;
+  })();
+  
+  // For display purposes, calculate VAT and service charge from charges or derive from total
+  const vatAmount = chargesSubtotal > 0 
+    ? (chargesSubtotal * vatRate) / 100
+    : (grandTotal * vatRate) / (100 + vatRate + serviceChargeRate);
+  const serviceChargeAmount = chargesSubtotal > 0
+    ? (chargesSubtotal * serviceChargeRate) / 100  
+    : (grandTotal * serviceChargeRate) / (100 + vatRate + serviceChargeRate);
+  const displaySubtotal = chargesSubtotal > 0 
+    ? chargesSubtotal 
+    : grandTotal - vatAmount - serviceChargeAmount;
+    
   const totalPaid = receiptData.payments.reduce((sum, p) => sum + Number(p.amount), 0);
 
   const transactionTypeMap = {
@@ -384,21 +417,28 @@ function generateReceiptHTML(
           </div>
         ` : ''}
         
-        ${receiptData.charges.length > 0 ? `
+        ${receiptData.charges.length > 0 || (receiptData.booking && receiptData.booking.total_amount > 0) ? `
           <div class="divider"></div>
           
-          ${receiptData.charges.map(charge => `
+          ${receiptData.charges.length > 0 ? `
+            ${receiptData.charges.map(charge => `
+              <div class="charge-item">
+                <span class="charge-desc">${charge.description}</span>
+                <span class="charge-amount">${currency}${Number(charge.amount).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</span>
+              </div>
+            `).join('')}
+          ` : `
             <div class="charge-item">
-              <span class="charge-desc">${charge.description}</span>
-              <span class="charge-amount">${currency}${Number(charge.amount).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</span>
+              <span class="charge-desc">Room Charges</span>
+              <span class="charge-amount">${currency}${displaySubtotal.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</span>
             </div>
-          `).join('')}
+          `}
           
           <div class="divider"></div>
           
           <div class="line-item">
             <span class="line-item-label">Subtotal:</span>
-            <span class="line-item-value">${currency}${chargesSubtotal.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</span>
+            <span class="line-item-value">${currency}${displaySubtotal.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</span>
           </div>
           
           ${settings?.show_vat_breakdown && vatRate > 0 ? `

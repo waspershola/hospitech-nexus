@@ -156,8 +156,8 @@ export async function fetchReceiptData({
     if (paymentData) {
       result.payments = [paymentData];
 
-      // If payment has booking_id, fetch booking details
-      if (paymentData.booking_id && !bookingId) {
+      // If payment has booking_id, fetch booking details (even if bookingId was already passed)
+      if (paymentData.booking_id) {
         const { data: bookingData } = await supabase
           .from('bookings')
           .select(`
