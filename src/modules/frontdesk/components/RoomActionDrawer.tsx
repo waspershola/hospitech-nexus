@@ -175,7 +175,19 @@ export function RoomActionDrawer({ roomId, open, onClose, onOpenAssignDrawer }: 
     onClose();
     
     // Then complete checkout in background
-    completeCheckout({ bookingId: activeBooking.id });
+    completeCheckout({ bookingId: activeBooking.id }, {
+      onSuccess: () => {
+        // Auto-print receipt if enabled
+        const defaultSettings = receiptSettings?.[0];
+        if (defaultSettings?.auto_print_on_checkout) {
+          printReceipt({
+            receiptType: 'checkout',
+            bookingId: activeBooking.id,
+            settingsId: defaultSettings.id,
+          }, defaultSettings);
+        }
+      }
+    });
   };
 
   const handleForceCheckout = async () => {
@@ -187,6 +199,18 @@ export function RoomActionDrawer({ roomId, open, onClose, onOpenAssignDrawer }: 
       bookingId: activeBooking.id,
       reason: 'Manager override - guest checkout with outstanding balance',
       createReceivable: true,
+    }, {
+      onSuccess: () => {
+        // Auto-print receipt if enabled
+        const defaultSettings = receiptSettings?.[0];
+        if (defaultSettings?.auto_print_on_checkout) {
+          printReceipt({
+            receiptType: 'checkout',
+            bookingId: activeBooking.id,
+            settingsId: defaultSettings.id,
+          }, defaultSettings);
+        }
+      }
     });
   };
 

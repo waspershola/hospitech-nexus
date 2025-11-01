@@ -51,7 +51,7 @@ interface PaymentFormProps {
   prefilledAmount?: number;
   expectedAmount?: number;
   isBookingPayment?: boolean;
-  onSuccess?: () => void;
+  onSuccess?: (paymentId?: string) => void;
   onCancel?: () => void;
 }
 
@@ -232,10 +232,10 @@ export function PaymentForm({
         },
       },
       {
-        onSuccess: () => {
+        onSuccess: (data) => {
           setShowOverpaymentDialog(false);
           setShowManagerApproval(false);
-          onSuccess?.();
+          onSuccess?.(data?.payment?.id);
         },
         onError: (error: Error) => {
           setValidationError(error.message);
