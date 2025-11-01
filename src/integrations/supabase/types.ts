@@ -1560,6 +1560,44 @@ export type Database = {
           },
         ]
       }
+      receipt_sequences: {
+        Row: {
+          created_at: string | null
+          id: string
+          next_number: number
+          receipt_type: string
+          tenant_id: string
+          updated_at: string | null
+          year: number
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          next_number?: number
+          receipt_type: string
+          tenant_id: string
+          updated_at?: string | null
+          year: number
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          next_number?: number
+          receipt_type?: string
+          tenant_id?: string
+          updated_at?: string | null
+          year?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "receipt_sequences_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       receipt_settings: {
         Row: {
           alignment: string | null
@@ -2178,6 +2216,10 @@ export type Database = {
       }
     }
     Functions: {
+      generate_receipt_number: {
+        Args: { p_receipt_type: string; p_tenant_id: string }
+        Returns: string
+      }
       get_tenant_by_domain: { Args: { _domain: string }; Returns: string }
       get_user_tenant: { Args: { _user_id: string }; Returns: string }
       has_role: {

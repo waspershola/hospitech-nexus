@@ -22,10 +22,10 @@ export function usePrintReceipt() {
   const queryClient = useQueryClient();
 
   const printMutation = useMutation({
-    mutationFn: async (params: PrintReceiptParams) => {
+    mutationFn: async (params: PrintReceiptParams & { receiptNumber?: string }) => {
       if (!tenantId) throw new Error('No tenant ID');
 
-      // Log the print action
+      // Log the print action with receipt number
       const { data, error } = await supabase
         .from('receipt_print_logs')
         .insert({
@@ -36,7 +36,10 @@ export function usePrintReceipt() {
           receipt_settings_id: params.settingsId,
           printed_by: user?.id,
           print_method: 'browser',
-          receipt_data: params.receiptData || {},
+          receipt_data: {
+            ...(params.receiptData || {}),
+            receipt_number: params.receiptNumber,
+          },
         })
         .select()
         .single();
@@ -54,6 +57,24 @@ export function usePrintReceipt() {
 
   const print = async (params: PrintReceiptParams, receiptSettings?: ReceiptSettings) => {
     try {
+      if (!tenantId) {
+        toast.error('No tenant ID');
+        return;
+      }
+
+      // Generate receipt number
+      const { data: receiptNumber, error: receiptError } = await supabase
+        .rpc('generate_receipt_number', {
+          p_tenant_id: tenantId,
+          p_receipt_type: params.receiptType,
+        });
+
+      if (receiptError) {
+        console.error('Receipt number generation error:', receiptError);
+        toast.error('Failed to generate receipt number');
+        return;
+      }
+
       // Create print window
       const printWindow = window.open('', '_blank');
       if (!printWindow) {
@@ -61,8 +82,13 @@ export function usePrintReceipt() {
         return;
       }
 
-      // Generate receipt HTML
-      const receiptHtml = generateReceiptHTML(params, receiptSettings);
+      // Generate receipt HTML with receipt number
+      const receiptHtml = generateReceiptHTML(
+        params, 
+        receiptSettings, 
+        params.receiptData,
+        receiptNumber || 'DRAFT'
+      );
       
       printWindow.document.write(receiptHtml);
       printWindow.document.close();
@@ -70,8 +96,8 @@ export function usePrintReceipt() {
       // Wait for content to load, then print
       printWindow.onload = () => {
         printWindow.print();
-        // Log the print action
-        printMutation.mutate(params);
+        // Log the print action with receipt number
+        printMutation.mutate({ ...params, receiptNumber });
       };
 
       toast.success('Receipt sent to printer');
