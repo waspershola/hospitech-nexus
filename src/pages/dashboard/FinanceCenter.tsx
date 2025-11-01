@@ -11,8 +11,9 @@ import { AnalyticsTab } from '@/modules/finance-center/AnalyticsTab';
 import { ReconciliationTab } from '@/modules/finance-center/ReconciliationTab';
 import { ReceivablesTab } from '@/modules/finance-center/ReceivablesTab';
 import { WalletCreditsTab } from '@/modules/finance-center/WalletCreditsTab';
+import { ReceiptSettingsTab } from '@/modules/finance-center/ReceiptSettingsTab';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
-import { Wallet, Building2, TrendingUp, Building, RefreshCcw, MapPin, Shield, BarChart3, Settings, Receipt, CreditCard, Sliders } from 'lucide-react';
+import { Wallet, Building2, TrendingUp, Building, RefreshCcw, MapPin, Shield, BarChart3, Settings, Receipt, CreditCard, Sliders, FileText } from 'lucide-react';
 
 export default function FinanceCenter() {
   return (
@@ -27,19 +28,23 @@ export default function FinanceCenter() {
         <TabsList className="grid w-full grid-cols-12 mb-6">
           <TabsTrigger value="settings" className="flex items-center gap-2">
             <Settings className="w-4 h-4" />
-            Settings
+            <span className="hidden sm:inline">Settings</span>
           </TabsTrigger>
           <TabsTrigger value="preferences" className="flex items-center gap-2">
             <Sliders className="w-4 h-4" />
-            Preferences
+            <span className="hidden sm:inline">Preferences</span>
+          </TabsTrigger>
+          <TabsTrigger value="receipts" className="flex items-center gap-2">
+            <FileText className="w-4 h-4" />
+            <span className="hidden sm:inline">Receipts</span>
           </TabsTrigger>
           <TabsTrigger value="receivables" className="flex items-center gap-2">
             <Receipt className="w-4 h-4" />
-            Receivables
+            <span className="hidden sm:inline">A/R</span>
           </TabsTrigger>
           <TabsTrigger value="credits" className="flex items-center gap-2">
             <CreditCard className="w-4 h-4" />
-            Credits
+            <span className="hidden sm:inline">Credits</span>
           </TabsTrigger>
           <TabsTrigger value="organizations" className="flex items-center gap-2">
             <Building className="w-4 h-4" />
@@ -81,6 +86,10 @@ export default function FinanceCenter() {
 
         <TabsContent value="preferences">
           <PaymentPreferencesTab />
+        </TabsContent>
+
+        <TabsContent value="receipts">
+          <ReceiptSettingsTab />
         </TabsContent>
 
         <TabsContent value="receivables">

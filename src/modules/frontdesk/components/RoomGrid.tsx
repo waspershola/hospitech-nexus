@@ -46,7 +46,8 @@ export function RoomGrid({ searchQuery, statusFilter, categoryFilter, floorFilte
         .gte('bookings.check_out', new Date().toISOString().split('T')[0])
         .order('number', { ascending: true });
 
-      if (statusFilter) {
+      // Don't filter overstay at database level (it's a computed status)
+      if (statusFilter && statusFilter !== 'overstay') {
         query = query.eq('status', statusFilter);
       }
 
@@ -74,6 +75,23 @@ export function RoomGrid({ searchQuery, statusFilter, categoryFilter, floorFilte
           const activeBooking = room.bookings.find((b: any) => 
             b.organization_id === organizationFilter
           );
+          return !!activeBooking;
+        });
+      }
+      
+      // Handle overstay filtering (client-side computed status)
+      if (statusFilter === 'overstay') {
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        
+        filteredData = filteredData.filter(room => {
+          if (!room.bookings || room.bookings.length === 0) return false;
+          
+          const activeBooking = room.bookings.find((b: any) => 
+            b.status === 'checked_in' && 
+            new Date(b.check_out) < today
+          );
+          
           return !!activeBooking;
         });
       }

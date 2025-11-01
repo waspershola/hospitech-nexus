@@ -14,9 +14,10 @@ import { useFrontDeskKPIs } from '../hooks/useFrontDeskKPIs';
 
 interface QuickKPIsProps {
   onFilterClick: (status: string | null) => void;
+  activeFilter: string | null;
 }
 
-export function QuickKPIs({ onFilterClick }: QuickKPIsProps) {
+export function QuickKPIs({ onFilterClick, activeFilter }: QuickKPIsProps) {
   const { kpis, isLoading } = useFrontDeskKPIs();
 
   const cards = [
@@ -100,8 +101,12 @@ export function QuickKPIs({ onFilterClick }: QuickKPIsProps) {
       {cards.map((card) => (
         <Card 
           key={card.label}
-          className={`p-2 md:p-3 cursor-pointer transition-all duration-300 hover:shadow-lg rounded-xl relative ${
+          className={`p-2 md:p-3 cursor-pointer transition-all duration-300 rounded-xl relative ${
             card.filter ? 'hover:scale-105' : ''
+          } ${
+            activeFilter === card.filter 
+              ? 'ring-2 ring-primary shadow-xl scale-105' 
+              : 'hover:shadow-lg'
           }`}
           onClick={() => card.filter && onFilterClick(card.filter)}
         >

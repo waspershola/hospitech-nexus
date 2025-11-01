@@ -1492,6 +1492,158 @@ export type Database = {
         }
         Relationships: []
       }
+      receipt_print_logs: {
+        Row: {
+          booking_id: string | null
+          id: string
+          payment_id: string | null
+          print_method: string | null
+          printed_at: string | null
+          printed_by: string | null
+          receipt_data: Json | null
+          receipt_settings_id: string | null
+          receipt_type: string
+          tenant_id: string
+        }
+        Insert: {
+          booking_id?: string | null
+          id?: string
+          payment_id?: string | null
+          print_method?: string | null
+          printed_at?: string | null
+          printed_by?: string | null
+          receipt_data?: Json | null
+          receipt_settings_id?: string | null
+          receipt_type: string
+          tenant_id: string
+        }
+        Update: {
+          booking_id?: string | null
+          id?: string
+          payment_id?: string | null
+          print_method?: string | null
+          printed_at?: string | null
+          printed_by?: string | null
+          receipt_data?: Json | null
+          receipt_settings_id?: string | null
+          receipt_type?: string
+          tenant_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "receipt_print_logs_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: false
+            referencedRelation: "bookings"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "receipt_print_logs_payment_id_fkey"
+            columns: ["payment_id"]
+            isOneToOne: false
+            referencedRelation: "payments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "receipt_print_logs_receipt_settings_id_fkey"
+            columns: ["receipt_settings_id"]
+            isOneToOne: false
+            referencedRelation: "receipt_settings"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "receipt_print_logs_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      receipt_settings: {
+        Row: {
+          alignment: string | null
+          auto_print_on_checkout: boolean | null
+          auto_print_on_payment: boolean | null
+          created_at: string | null
+          created_by: string | null
+          font_size: string | null
+          footer_text: string | null
+          header_text: string | null
+          id: string
+          include_service_charge: boolean | null
+          location_id: string | null
+          logo_url: string | null
+          paper_size: string
+          printer_endpoint: string | null
+          printer_name: string | null
+          show_provider_fee: boolean | null
+          show_qr_code: boolean | null
+          show_vat_breakdown: boolean | null
+          tenant_id: string
+          updated_at: string | null
+        }
+        Insert: {
+          alignment?: string | null
+          auto_print_on_checkout?: boolean | null
+          auto_print_on_payment?: boolean | null
+          created_at?: string | null
+          created_by?: string | null
+          font_size?: string | null
+          footer_text?: string | null
+          header_text?: string | null
+          id?: string
+          include_service_charge?: boolean | null
+          location_id?: string | null
+          logo_url?: string | null
+          paper_size?: string
+          printer_endpoint?: string | null
+          printer_name?: string | null
+          show_provider_fee?: boolean | null
+          show_qr_code?: boolean | null
+          show_vat_breakdown?: boolean | null
+          tenant_id: string
+          updated_at?: string | null
+        }
+        Update: {
+          alignment?: string | null
+          auto_print_on_checkout?: boolean | null
+          auto_print_on_payment?: boolean | null
+          created_at?: string | null
+          created_by?: string | null
+          font_size?: string | null
+          footer_text?: string | null
+          header_text?: string | null
+          id?: string
+          include_service_charge?: boolean | null
+          location_id?: string | null
+          logo_url?: string | null
+          paper_size?: string
+          printer_endpoint?: string | null
+          printer_name?: string | null
+          show_provider_fee?: boolean | null
+          show_qr_code?: boolean | null
+          show_vat_breakdown?: boolean | null
+          tenant_id?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "receipt_settings_location_id_fkey"
+            columns: ["location_id"]
+            isOneToOne: false
+            referencedRelation: "finance_locations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "receipt_settings_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       receivables: {
         Row: {
           amount: number

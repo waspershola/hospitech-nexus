@@ -14,12 +14,14 @@ import {
   CheckCircle,
   XCircle,
   AlertCircle,
-  RotateCcw
+  RotateCcw,
+  Printer
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { useState } from 'react';
 import { RefundModal } from './RefundModal';
 import { PaymentMetadataDisplay } from '@/components/shared/PaymentMetadataDisplay';
+import { toast } from 'sonner';
 
 interface PaymentHistoryProps {
   bookingId: string;
@@ -251,14 +253,24 @@ export function PaymentHistory({ bookingId, onClose }: PaymentHistoryProps) {
                         </div>
 
                         {payment.status === 'completed' && (
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => handleRefund(payment)}
-                          >
-                            <RotateCcw className="h-4 w-4 mr-2" />
-                            Refund
-                          </Button>
+                          <div className="flex gap-2">
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => toast.info('Print functionality coming soon')}
+                            >
+                              <Printer className="h-4 w-4 mr-2" />
+                              Print
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => handleRefund(payment)}
+                            >
+                              <RotateCcw className="h-4 w-4 mr-2" />
+                              Refund
+                            </Button>
+                          </div>
                         )}
                       </div>
 

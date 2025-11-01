@@ -18,6 +18,10 @@ import { useRoomRealtime, useBookingRealtime, usePaymentRealtime } from '@/hooks
 export default function FrontDesk() {
   const [selectedRoomId, setSelectedRoomId] = useState<string | null>(null);
   const [statusFilter, setStatusFilter] = useState<string | null>(null);
+
+  const handleFilterToggle = (status: string | null) => {
+    setStatusFilter(prev => prev === status ? null : status);
+  };
   const [searchQuery, setSearchQuery] = useState('');
   const [isBookingFlowOpen, setIsBookingFlowOpen] = useState(false);
   const [overstayModalOpen, setOverstayModalOpen] = useState(false);
@@ -95,7 +99,10 @@ export default function FrontDesk() {
       
       <div className="flex-1 flex flex-col overflow-hidden">
         <div className="px-3 sm:px-4 lg:px-6 pt-3 sm:pt-4 lg:pt-6">
-          <QuickKPIs onFilterClick={setStatusFilter} />
+          <QuickKPIs 
+            onFilterClick={handleFilterToggle} 
+            activeFilter={statusFilter}
+          />
         </div>
         
         <ScrollArea className="flex-1">
