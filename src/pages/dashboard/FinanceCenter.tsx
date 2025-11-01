@@ -12,8 +12,9 @@ import { ReconciliationTab } from '@/modules/finance-center/ReconciliationTab';
 import { ReceivablesTab } from '@/modules/finance-center/ReceivablesTab';
 import { WalletCreditsTab } from '@/modules/finance-center/WalletCreditsTab';
 import { ReceiptSettingsTab } from '@/modules/finance-center/ReceiptSettingsTab';
+import { ReceiptLogsTab } from '@/modules/finance-center/ReceiptLogsTab';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
-import { Wallet, Building2, TrendingUp, Building, RefreshCcw, MapPin, Shield, BarChart3, Settings, Receipt, CreditCard, Sliders, FileText } from 'lucide-react';
+import { Wallet, Building2, TrendingUp, Building, RefreshCcw, MapPin, Shield, BarChart3, Settings, Receipt, CreditCard, Sliders, FileText, Printer } from 'lucide-react';
 
 export default function FinanceCenter() {
   return (
@@ -25,7 +26,7 @@ export default function FinanceCenter() {
       </div>
 
       <Tabs defaultValue="settings" className="flex-1">
-        <TabsList className="grid w-full grid-cols-12 mb-6">
+        <TabsList className="grid w-full grid-cols-13 mb-6">
           <TabsTrigger value="settings" className="flex items-center gap-2">
             <Settings className="w-4 h-4" />
             <span className="hidden sm:inline">Settings</span>
@@ -37,6 +38,10 @@ export default function FinanceCenter() {
           <TabsTrigger value="receipts" className="flex items-center gap-2">
             <FileText className="w-4 h-4" />
             <span className="hidden sm:inline">Receipts</span>
+          </TabsTrigger>
+          <TabsTrigger value="receipt-logs" className="flex items-center gap-2">
+            <Printer className="w-4 h-4" />
+            <span className="hidden sm:inline">Logs</span>
           </TabsTrigger>
           <TabsTrigger value="receivables" className="flex items-center gap-2">
             <Receipt className="w-4 h-4" />
@@ -90,6 +95,10 @@ export default function FinanceCenter() {
 
         <TabsContent value="receipts">
           <ReceiptSettingsTab />
+        </TabsContent>
+
+        <TabsContent value="receipt-logs">
+          <ReceiptLogsTab />
         </TabsContent>
 
         <TabsContent value="receivables">
