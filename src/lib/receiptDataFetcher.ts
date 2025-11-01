@@ -166,8 +166,9 @@ export async function fetchReceiptData({
             check_out,
             total_amount,
             status,
-            rooms (number, type),
-            guests (id, name, email, phone)
+            room_id,
+            guest_id,
+            organization_id
           `)
           .eq('id', paymentData.booking_id)
           .single();
@@ -181,26 +182,53 @@ export async function fetchReceiptData({
             status: bookingData.status,
           };
 
-          if (bookingData.rooms) {
-            result.room = Array.isArray(bookingData.rooms)
-              ? bookingData.rooms[0]
-              : bookingData.rooms;
+          // Fetch room separately
+          if (bookingData.room_id) {
+            const { data: roomData } = await supabase
+              .from('rooms')
+              .select('id, number, type')
+              .eq('id', bookingData.room_id)
+              .single();
+            
+            if (roomData) {
+              result.room = roomData;
+            }
           }
 
-          if (bookingData.guests) {
-            const guestData = Array.isArray(bookingData.guests)
-              ? bookingData.guests[0]
-              : bookingData.guests;
-            result.guest = guestData;
+          // Fetch guest separately
+          if (bookingData.guest_id) {
+            const { data: guestData } = await supabase
+              .from('guests')
+              .select('id, name, email, phone')
+              .eq('id', bookingData.guest_id)
+              .single();
+            
+            if (guestData) {
+              result.guest = guestData;
+            }
           }
 
-          // Fetch charges for this booking
-          const { data: chargesData } = await supabase
-            .from('booking_charges')
-            .select('id, charge_type, description, amount, department')
-            .eq('booking_id', paymentData.booking_id);
+          // Fetch organization separately
+          if (bookingData.organization_id) {
+            const { data: orgData } = await supabase
+              .from('organizations')
+              .select('id, name, contact_person')
+              .eq('id', bookingData.organization_id)
+              .single();
+            
+            if (orgData) {
+              result.organization = orgData;
+            }
+          }
 
-          result.charges = chargesData || [];
+        // Fetch charges for this booking (exclude balance_due accounting entries)
+        const { data: chargesData } = await supabase
+          .from('booking_charges')
+          .select('id, charge_type, description, amount, department')
+          .eq('booking_id', paymentData.booking_id)
+          .neq('charge_type', 'balance_due');
+
+        result.charges = chargesData || [];
 
           // Fetch all payments for this booking (not just the current one)
           const { data: paymentsData } = await supabase
@@ -278,6 +306,16 @@ export async function fetchReceiptData({
       result.walletBalance = walletData.balance;
     }
   }
+
+  // Debug logging
+  console.log('Receipt Data Fetched:', {
+    booking: result.booking,
+    guest: result.guest,
+    room: result.room,
+    charges: result.charges?.length,
+    payments: result.payments?.length,
+    organization: result.organization,
+  });
 
   return result;
 }

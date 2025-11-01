@@ -204,6 +204,18 @@ function generateReceiptHTML(
     : grandTotal - vatAmount - serviceChargeAmount;
     
   const totalPaid = receiptData.payments.reduce((sum, p) => sum + Number(p.amount), 0);
+  
+  // Find the specific payment being printed (if paymentId is provided)
+  const currentPayment = params.paymentId 
+    ? receiptData.payments.find(p => p.id === params.paymentId)
+    : receiptData.payments[0]; // fallback to first payment
+  
+  const otherPayments = params.paymentId
+    ? receiptData.payments.filter(p => p.id !== params.paymentId)
+    : receiptData.payments.slice(1); // exclude first payment
+  
+  const previousPaymentsTotal = otherPayments.reduce((sum, p) => sum + Number(p.amount), 0);
+  const currentPaymentAmount = currentPayment ? Number(currentPayment.amount) : 0;
 
   const transactionTypeMap = {
     payment: 'Payment Receipt',
@@ -463,59 +475,82 @@ function generateReceiptHTML(
           </div>
         ` : ''}
         
-        ${receiptData.payments.length > 0 ? `
+        ${currentPayment ? `
           <div class="divider"></div>
           
-          ${receiptData.payments.map(payment => `
-            <div class="payment-info">
-              <div class="line-item">
-                <span class="line-item-label">Amount Paid:</span>
-                <span class="line-item-value text-bold">${currency}${Number(payment.amount).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</span>
-              </div>
-              <div class="line-item">
-                <span class="line-item-label">Paid via:</span>
-                <span class="line-item-value text-semibold uppercase">${payment.method_provider || payment.method || 'N/A'}</span>
-              </div>
-              <div class="line-item">
-                <span class="line-item-label">Status:</span>
-                <span class="line-item-value text-semibold">${payment.status}</span>
-              </div>
-              ${payment.transaction_ref ? `
-                <div class="line-item" style="font-size: 0.85em;">
-                  <span class="line-item-label">Ref:</span>
-                  <span class="line-item-value">${payment.transaction_ref}</span>
-                </div>
-              ` : ''}
-              ${payment.provider_reference ? `
-                <div class="line-item" style="font-size: 0.85em;">
-                  <span class="line-item-label">Provider Ref:</span>
-                  <span class="line-item-value">${payment.provider_reference}</span>
-                </div>
-              ` : ''}
-              <div class="line-item" style="font-size: 0.85em;">
-                <span class="line-item-label">Date:</span>
-                <span class="line-item-value">${format(new Date(payment.created_at), 'dd/MM/yyyy HH:mm')}</span>
-              </div>
-            </div>
-          `).join('')}
-          
-          <div class="divider"></div>
-          
-          <div class="line-item total-row">
-            <span class="line-item-label">TOTAL PAID:</span>
-            <span class="line-item-value">${currency}${totalPaid.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</span>
+          <div style="text-align: ${alignment}; margin: 10px 0;">
+            <div style="font-weight: 600; font-size: ${fontSize === 'small' ? '11px' : fontSize === 'large' ? '15px' : '13px'};">THIS PAYMENT</div>
           </div>
           
-          ${totalPaid < grandTotal ? `
-            <div class="line-item" style="color: #dc2626;">
-              <span class="line-item-label">Balance Due:</span>
-              <span class="line-item-value text-bold">${currency}${(grandTotal - totalPaid).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</span>
+          <div class="divider"></div>
+          
+          <div class="payment-info">
+            <div class="line-item">
+              <span class="line-item-label">Amount Paid:</span>
+              <span class="line-item-value text-bold">${currency}${currentPaymentAmount.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</span>
             </div>
-          ` : totalPaid > grandTotal ? `
-            <div class="line-item" style="color: #16a34a;">
-              <span class="line-item-label">Overpayment:</span>
-              <span class="line-item-value text-bold">${currency}${(totalPaid - grandTotal).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</span>
+            <div class="line-item">
+              <span class="line-item-label">Paid via:</span>
+              <span class="line-item-value text-semibold uppercase">${currentPayment.method_provider || currentPayment.method || 'N/A'}</span>
             </div>
+            <div class="line-item">
+              <span class="line-item-label">Status:</span>
+              <span class="line-item-value text-semibold">${currentPayment.status}</span>
+            </div>
+            ${currentPayment.transaction_ref ? `
+              <div class="line-item" style="font-size: 0.85em;">
+                <span class="line-item-label">Ref:</span>
+                <span class="line-item-value">${currentPayment.transaction_ref}</span>
+              </div>
+            ` : ''}
+            ${currentPayment.provider_reference ? `
+              <div class="line-item" style="font-size: 0.85em;">
+                <span class="line-item-label">Provider Ref:</span>
+                <span class="line-item-value">${currentPayment.provider_reference}</span>
+              </div>
+            ` : ''}
+            <div class="line-item" style="font-size: 0.85em;">
+              <span class="line-item-label">Date:</span>
+              <span class="line-item-value">${format(new Date(currentPayment.created_at), 'dd/MM/yyyy HH:mm')}</span>
+            </div>
+          </div>
+          
+          ${receiptData.payments.length > 1 || grandTotal > 0 ? `
+            <div class="divider"></div>
+            
+            <div style="text-align: ${alignment}; margin: 10px 0;">
+              <div style="font-weight: 600; font-size: ${fontSize === 'small' ? '11px' : fontSize === 'large' ? '15px' : '13px'};">PAYMENT SUMMARY</div>
+            </div>
+            
+            <div class="divider"></div>
+            
+            ${previousPaymentsTotal > 0 ? `
+              <div class="line-item">
+                <span class="line-item-label">Previous Payments:</span>
+                <span class="line-item-value">${currency}${previousPaymentsTotal.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</span>
+              </div>
+              <div class="line-item">
+                <span class="line-item-label">This Payment:</span>
+                <span class="line-item-value">${currency}${currentPaymentAmount.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</span>
+              </div>
+            ` : ''}
+            
+            <div class="line-item total-row">
+              <span class="line-item-label">TOTAL PAID:</span>
+              <span class="line-item-value">${currency}${totalPaid.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</span>
+            </div>
+            
+            ${totalPaid < grandTotal ? `
+              <div class="line-item" style="color: #dc2626;">
+                <span class="line-item-label">Balance Due:</span>
+                <span class="line-item-value text-bold">${currency}${(grandTotal - totalPaid).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</span>
+              </div>
+            ` : totalPaid > grandTotal ? `
+              <div class="line-item" style="color: #16a34a;">
+                <span class="line-item-label">Overpayment:</span>
+                <span class="line-item-value text-bold">${currency}${(totalPaid - grandTotal).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</span>
+              </div>
+            ` : ''}
           ` : ''}
         ` : ''}
         
