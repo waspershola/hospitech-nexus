@@ -19,127 +19,131 @@ import { Wallet, Building2, TrendingUp, Building, RefreshCcw, MapPin, Shield, Ba
 export default function FinanceCenter() {
   return (
     <ErrorBoundary>
-      <div className="h-full flex flex-col p-6">
+      <div className="h-full flex flex-col">
       <div className="mb-6">
         <h1 className="text-3xl font-display font-bold">Finance Center</h1>
         <p className="text-muted-foreground">Manage payments, providers, and wallets</p>
       </div>
 
-      <Tabs defaultValue="settings" className="flex-1">
-        <TabsList className="grid w-full grid-cols-13 mb-6">
-          <TabsTrigger value="settings" className="flex items-center gap-2">
-            <Settings className="w-4 h-4" />
-            <span className="hidden sm:inline">Settings</span>
-          </TabsTrigger>
-          <TabsTrigger value="preferences" className="flex items-center gap-2">
-            <Sliders className="w-4 h-4" />
-            <span className="hidden sm:inline">Preferences</span>
-          </TabsTrigger>
-          <TabsTrigger value="receipts" className="flex items-center gap-2">
-            <FileText className="w-4 h-4" />
-            <span className="hidden sm:inline">Receipts</span>
-          </TabsTrigger>
-          <TabsTrigger value="receipt-logs" className="flex items-center gap-2">
-            <Printer className="w-4 h-4" />
-            <span className="hidden sm:inline">Logs</span>
-          </TabsTrigger>
-          <TabsTrigger value="receivables" className="flex items-center gap-2">
-            <Receipt className="w-4 h-4" />
-            <span className="hidden sm:inline">A/R</span>
-          </TabsTrigger>
-          <TabsTrigger value="credits" className="flex items-center gap-2">
-            <CreditCard className="w-4 h-4" />
-            <span className="hidden sm:inline">Credits</span>
-          </TabsTrigger>
-          <TabsTrigger value="organizations" className="flex items-center gap-2">
-            <Building className="w-4 h-4" />
-            Organizations
-          </TabsTrigger>
-          <TabsTrigger value="providers" className="flex items-center gap-2">
-            <Building2 className="w-4 h-4" />
-            Providers
-          </TabsTrigger>
-          <TabsTrigger value="locations" className="flex items-center gap-2">
-            <MapPin className="w-4 h-4" />
-            Locations
-          </TabsTrigger>
-          <TabsTrigger value="rules" className="flex items-center gap-2">
-            <Shield className="w-4 h-4" />
-            Rules
-          </TabsTrigger>
-          <TabsTrigger value="wallets" className="flex items-center gap-2">
-            <Wallet className="w-4 h-4" />
-            Wallets
-          </TabsTrigger>
-          <TabsTrigger value="reconciliation" className="flex items-center gap-2">
-            <RefreshCcw className="w-4 h-4" />
-            Reconciliation
-          </TabsTrigger>
-          <TabsTrigger value="org-analytics" className="flex items-center gap-2">
-            <BarChart3 className="w-4 h-4" />
-            Org Analytics
-          </TabsTrigger>
-          <TabsTrigger value="analytics" className="flex items-center gap-2">
-            <TrendingUp className="w-4 h-4" />
-            Analytics
-          </TabsTrigger>
-        </TabsList>
+      <Tabs defaultValue="settings" className="flex-1 flex flex-col overflow-hidden">
+        <div className="overflow-x-auto pb-2 -mx-6 px-6">
+          <TabsList className="inline-flex w-auto h-auto mb-4 gap-1 flex-nowrap">
+            <TabsTrigger value="settings" className="flex items-center gap-2 whitespace-nowrap">
+              <Settings className="w-4 h-4" />
+              <span>Settings</span>
+            </TabsTrigger>
+            <TabsTrigger value="preferences" className="flex items-center gap-2 whitespace-nowrap">
+              <Sliders className="w-4 h-4" />
+              <span>Preferences</span>
+            </TabsTrigger>
+            <TabsTrigger value="receipts" className="flex items-center gap-2 whitespace-nowrap">
+              <FileText className="w-4 h-4" />
+              <span>Receipts</span>
+            </TabsTrigger>
+            <TabsTrigger value="receipt-logs" className="flex items-center gap-2 whitespace-nowrap">
+              <Printer className="w-4 h-4" />
+              <span>Logs</span>
+            </TabsTrigger>
+            <TabsTrigger value="receivables" className="flex items-center gap-2 whitespace-nowrap">
+              <Receipt className="w-4 h-4" />
+              <span>A/R</span>
+            </TabsTrigger>
+            <TabsTrigger value="credits" className="flex items-center gap-2 whitespace-nowrap">
+              <CreditCard className="w-4 h-4" />
+              <span>Credits</span>
+            </TabsTrigger>
+            <TabsTrigger value="organizations" className="flex items-center gap-2 whitespace-nowrap">
+              <Building className="w-4 h-4" />
+              <span>Organizations</span>
+            </TabsTrigger>
+            <TabsTrigger value="providers" className="flex items-center gap-2 whitespace-nowrap">
+              <Building2 className="w-4 h-4" />
+              <span>Providers</span>
+            </TabsTrigger>
+            <TabsTrigger value="locations" className="flex items-center gap-2 whitespace-nowrap">
+              <MapPin className="w-4 h-4" />
+              <span>Locations</span>
+            </TabsTrigger>
+            <TabsTrigger value="rules" className="flex items-center gap-2 whitespace-nowrap">
+              <Shield className="w-4 h-4" />
+              <span>Rules</span>
+            </TabsTrigger>
+            <TabsTrigger value="wallets" className="flex items-center gap-2 whitespace-nowrap">
+              <Wallet className="w-4 h-4" />
+              <span>Wallets</span>
+            </TabsTrigger>
+            <TabsTrigger value="reconciliation" className="flex items-center gap-2 whitespace-nowrap">
+              <RefreshCcw className="w-4 h-4" />
+              <span>Reconciliation</span>
+            </TabsTrigger>
+            <TabsTrigger value="org-analytics" className="flex items-center gap-2 whitespace-nowrap">
+              <BarChart3 className="w-4 h-4" />
+              <span>Org Analytics</span>
+            </TabsTrigger>
+            <TabsTrigger value="analytics" className="flex items-center gap-2 whitespace-nowrap">
+              <TrendingUp className="w-4 h-4" />
+              <span>Analytics</span>
+            </TabsTrigger>
+          </TabsList>
+        </div>
 
-        <TabsContent value="settings">
-          <FinanceSettingsTab />
-        </TabsContent>
+        <div className="flex-1 overflow-y-auto px-6">
+          <TabsContent value="settings" className="mt-0">
+            <FinanceSettingsTab />
+          </TabsContent>
 
-        <TabsContent value="preferences">
-          <PaymentPreferencesTab />
-        </TabsContent>
+          <TabsContent value="preferences" className="mt-0">
+            <PaymentPreferencesTab />
+          </TabsContent>
 
-        <TabsContent value="receipts">
-          <ReceiptSettingsTab />
-        </TabsContent>
+          <TabsContent value="receipts" className="mt-0">
+            <ReceiptSettingsTab />
+          </TabsContent>
 
-        <TabsContent value="receipt-logs">
-          <ReceiptLogsTab />
-        </TabsContent>
+          <TabsContent value="receipt-logs" className="mt-0">
+            <ReceiptLogsTab />
+          </TabsContent>
 
-        <TabsContent value="receivables">
-          <ReceivablesTab />
-        </TabsContent>
+          <TabsContent value="receivables" className="mt-0">
+            <ReceivablesTab />
+          </TabsContent>
 
-        <TabsContent value="credits">
-          <WalletCreditsTab />
-        </TabsContent>
+          <TabsContent value="credits" className="mt-0">
+            <WalletCreditsTab />
+          </TabsContent>
 
-        <TabsContent value="organizations">
-          <OrganizationsTab />
-        </TabsContent>
+          <TabsContent value="organizations" className="mt-0">
+            <OrganizationsTab />
+          </TabsContent>
 
-        <TabsContent value="providers">
-          <ProvidersTab />
-        </TabsContent>
+          <TabsContent value="providers" className="mt-0">
+            <ProvidersTab />
+          </TabsContent>
 
-        <TabsContent value="locations">
-          <LocationsTab />
-        </TabsContent>
+          <TabsContent value="locations" className="mt-0">
+            <LocationsTab />
+          </TabsContent>
 
-        <TabsContent value="rules">
-          <RulesTab />
-        </TabsContent>
+          <TabsContent value="rules" className="mt-0">
+            <RulesTab />
+          </TabsContent>
 
-        <TabsContent value="wallets">
-          <WalletsTab />
-        </TabsContent>
+          <TabsContent value="wallets" className="mt-0">
+            <WalletsTab />
+          </TabsContent>
 
-        <TabsContent value="reconciliation">
-          <ReconciliationTab />
-        </TabsContent>
+          <TabsContent value="reconciliation" className="mt-0">
+            <ReconciliationTab />
+          </TabsContent>
 
-        <TabsContent value="org-analytics">
-          <OrganizationAnalyticsTab />
-        </TabsContent>
+          <TabsContent value="org-analytics" className="mt-0">
+            <OrganizationAnalyticsTab />
+          </TabsContent>
 
-        <TabsContent value="analytics">
-          <AnalyticsTab />
-        </TabsContent>
+          <TabsContent value="analytics" className="mt-0">
+            <AnalyticsTab />
+          </TabsContent>
+        </div>
       </Tabs>
       </div>
     </ErrorBoundary>
