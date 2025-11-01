@@ -193,6 +193,25 @@ export async function fetchReceiptData({
               : bookingData.guests;
             result.guest = guestData;
           }
+
+          // Fetch charges for this booking
+          const { data: chargesData } = await supabase
+            .from('booking_charges')
+            .select('id, charge_type, description, amount, department')
+            .eq('booking_id', paymentData.booking_id);
+
+          result.charges = chargesData || [];
+
+          // Fetch all payments for this booking (not just the current one)
+          const { data: paymentsData } = await supabase
+            .from('payments')
+            .select('id, amount, method, method_provider, transaction_ref, provider_reference, status, created_at, recorded_by')
+            .eq('booking_id', paymentData.booking_id)
+            .order('created_at', { ascending: false });
+
+          if (paymentsData) {
+            result.payments = paymentsData;
+          }
         }
       }
 
