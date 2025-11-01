@@ -156,9 +156,9 @@ function generateReceiptHTML(
                      paperSize === '58mm' ? '58mm' : '80mm';
 
   const fontSizeMap = {
-    small: '10px',
-    normal: '12px',
-    large: '14px',
+    small: '11px',
+    normal: '13px',
+    large: '15px',
   };
 
   const currency = receiptData.financials?.currency_symbol || '₦';
@@ -195,86 +195,130 @@ function generateReceiptHTML(
             }
           }
           
+          * {
+            box-sizing: border-box;
+          }
+          
           body {
-            font-family: 'Courier New', monospace;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
             font-size: ${fontSizeMap[fontSize]};
-            line-height: 1.4;
+            line-height: 1.6;
             text-align: ${alignment};
             max-width: ${paperWidth};
             margin: 0 auto;
-            padding: 10px;
+            padding: 16px;
             color: #000;
             background: #fff;
           }
           
-          .header {
-            margin-bottom: 10px;
-          }
-          
           .logo {
-            max-width: 120px;
-            max-height: 60px;
-            margin: 0 auto 8px;
+            max-width: 100px;
+            max-height: 50px;
+            margin: 0 auto 12px;
             display: block;
           }
           
           .hotel-name {
             font-weight: bold;
-            font-size: 1.1em;
+            font-size: 1.3em;
             margin-bottom: 4px;
+            text-transform: uppercase;
+          }
+          
+          .location-name {
+            font-size: 0.85em;
+            margin-bottom: 2px;
+          }
+          
+          .contact-info {
+            font-size: 0.75em;
+            margin-bottom: 2px;
+          }
+          
+          .header-text {
+            font-size: 0.85em;
+            margin-top: 8px;
+            font-weight: 500;
           }
           
           .divider {
-            border-top: 2px dashed #000;
-            margin: 8px 0;
+            border-top: 1px solid #ddd;
+            margin: 12px 0;
           }
           
-          .divider-thin {
-            border-top: 1px dashed #666;
-            margin: 6px 0;
-          }
-          
-          .divider-solid {
+          .divider-thick {
             border-top: 2px solid #000;
-            margin: 8px 0;
+            margin: 12px 0;
           }
           
-          .transaction-type {
-            font-weight: bold;
+          .receipt-type {
+            font-weight: 600;
             text-align: center;
-            margin: 8px 0;
+            margin: 12px 0;
+            font-size: 1.1em;
           }
           
           .line-item {
             display: flex;
             justify-content: space-between;
+            margin: 6px 0;
+            font-size: 0.95em;
+          }
+          
+          .line-item-label {
+            flex: 0 0 auto;
+            margin-right: 16px;
+          }
+          
+          .line-item-value {
+            text-align: right;
+            font-weight: 500;
+          }
+          
+          .charge-item {
+            display: flex;
+            justify-content: space-between;
             margin: 4px 0;
-            font-size: 0.9em;
           }
           
-          .line-item span:first-child {
+          .charge-desc {
             flex: 1;
+            margin-right: 8px;
           }
           
-          .section-title {
+          .charge-amount {
+            text-align: right;
+            white-space: nowrap;
+          }
+          
+          .total-row {
             font-weight: bold;
-            margin: 8px 0 4px 0;
-            font-size: 0.9em;
+            font-size: 1.15em;
+            margin-top: 8px;
           }
           
-          .total {
-            font-weight: bold;
-            font-size: 1.1em;
+          .payment-info {
+            margin: 8px 0;
+            padding: 8px 0;
           }
           
-          .footer {
+          .footer-text {
             margin-top: 12px;
-            font-size: 0.9em;
+            font-size: 0.85em;
+            font-weight: 500;
           }
           
-          .qr-code {
-            margin: 10px auto;
+          .qr-container {
+            margin: 12px auto;
             text-align: center;
+          }
+          
+          .text-semibold {
+            font-weight: 600;
+          }
+          
+          .text-bold {
+            font-weight: bold;
           }
           
           .uppercase {
@@ -286,142 +330,143 @@ function generateReceiptHTML(
         ${settings?.logo_url ? `<img src="${settings.logo_url}" alt="Logo" class="logo" />` : ''}
         
         <div class="hotel-name">${receiptData.hotelMeta?.hotel_name || 'Hotel'}</div>
-        ${params.locationName ? `<div style="font-size: 0.9em;">${params.locationName}</div>` : ''}
-        ${receiptData.hotelMeta?.contact_phone ? `<div style="font-size: 0.8em;">Phone: ${receiptData.hotelMeta.contact_phone}</div>` : ''}
+        ${params.locationName ? `<div class="location-name">${params.locationName}</div>` : ''}
+        ${receiptData.hotelMeta?.contact_phone ? `<div class="contact-info">${receiptData.hotelMeta.contact_phone}</div>` : ''}
+        ${settings?.header_text ? `<div class="header-text">${settings.header_text}</div>` : ''}
         
         <div class="divider"></div>
         
-        <div class="transaction-type">${transactionTypeMap[params.receiptType]}</div>
+        <div class="receipt-type">${transactionTypeMap[params.receiptType]}</div>
         
         <div class="line-item">
-          <span>Receipt #:</span>
-          <span style="font-weight: bold;">${receiptNumber}</span>
+          <span class="line-item-label">Receipt #:</span>
+          <span class="line-item-value text-bold">${receiptNumber}</span>
         </div>
         <div class="line-item">
-          <span>Date:</span>
-          <span>${format(new Date(), 'dd/MM/yyyy HH:mm')}</span>
+          <span class="line-item-label">Date:</span>
+          <span class="line-item-value">${format(new Date(), 'dd/MM/yyyy HH:mm')}</span>
         </div>
         ${receiptData.staff ? `
           <div class="line-item">
-            <span>Staff:</span>
-            <span>${receiptData.staff.full_name || receiptData.staff.email}</span>
+            <span class="line-item-label">Staff:</span>
+            <span class="line-item-value">${receiptData.staff.full_name || receiptData.staff.email}</span>
           </div>
         ` : ''}
         
-        <div class="divider-thin"></div>
+        <div class="divider"></div>
         
         ${receiptData.guest ? `
           <div class="line-item">
-            <span>Guest:</span>
-            <span style="font-weight: 600;">${receiptData.guest.name}</span>
+            <span class="line-item-label">Guest:</span>
+            <span class="line-item-value text-semibold">${receiptData.guest.name}</span>
           </div>
         ` : ''}
         ${receiptData.organization ? `
           <div class="line-item">
-            <span>Organization:</span>
-            <span style="font-weight: 600;">${receiptData.organization.name}</span>
+            <span class="line-item-label">Organization:</span>
+            <span class="line-item-value text-semibold">${receiptData.organization.name}</span>
           </div>
         ` : ''}
         ${receiptData.room ? `
           <div class="line-item">
-            <span>Room:</span>
-            <span>${receiptData.room.number}</span>
+            <span class="line-item-label">Room:</span>
+            <span class="line-item-value text-semibold">${receiptData.room.number}</span>
           </div>
         ` : ''}
         ${receiptData.booking ? `
           <div class="line-item">
-            <span>Check-in:</span>
-            <span>${format(new Date(receiptData.booking.check_in), 'dd/MM/yyyy')}</span>
+            <span class="line-item-label">Check-in:</span>
+            <span class="line-item-value">${format(new Date(receiptData.booking.check_in), 'dd/MM/yyyy')}</span>
           </div>
           <div class="line-item">
-            <span>Check-out:</span>
-            <span>${format(new Date(receiptData.booking.check_out), 'dd/MM/yyyy')}</span>
+            <span class="line-item-label">Check-out:</span>
+            <span class="line-item-value">${format(new Date(receiptData.booking.check_out), 'dd/MM/yyyy')}</span>
           </div>
         ` : ''}
         
         ${receiptData.charges.length > 0 ? `
-          <div class="divider-thin"></div>
-          <div class="section-title">Items / Charges:</div>
-          <div class="divider-thin"></div>
+          <div class="divider"></div>
           
           ${receiptData.charges.map(charge => `
-            <div class="line-item">
-              <span>${charge.description}</span>
-              <span>${currency}${Number(charge.amount).toFixed(2)}</span>
+            <div class="charge-item">
+              <span class="charge-desc">${charge.description}</span>
+              <span class="charge-amount">${currency}${Number(charge.amount).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</span>
             </div>
           `).join('')}
           
-          <div class="divider-thin"></div>
+          <div class="divider"></div>
           
           <div class="line-item">
-            <span>Subtotal:</span>
-            <span>${currency}${chargesSubtotal.toFixed(2)}</span>
+            <span class="line-item-label">Subtotal:</span>
+            <span class="line-item-value">${currency}${chargesSubtotal.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</span>
           </div>
           
           ${settings?.show_vat_breakdown && vatRate > 0 ? `
-            <div class="line-item">
-              <span>VAT (${vatRate}%):</span>
-              <span>${currency}${vatAmount.toFixed(2)}</span>
+            <div class="line-item" style="font-size: 0.9em;">
+              <span class="line-item-label">VAT (${vatRate}%):</span>
+              <span class="line-item-value">${currency}${vatAmount.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</span>
             </div>
           ` : ''}
           
           ${settings?.include_service_charge && serviceChargeRate > 0 ? `
-            <div class="line-item">
-              <span>Service Charge (${serviceChargeRate}%):</span>
-              <span>${currency}${serviceChargeAmount.toFixed(2)}</span>
+            <div class="line-item" style="font-size: 0.9em;">
+              <span class="line-item-label">Service Charge (${serviceChargeRate}%):</span>
+              <span class="line-item-value">${currency}${serviceChargeAmount.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</span>
             </div>
           ` : ''}
           
-          <div class="divider-solid"></div>
+          <div class="divider-thick"></div>
           
-          <div class="line-item total">
-            <span>**TOTAL:**</span>
-            <span>${currency}${grandTotal.toFixed(2)}</span>
+          <div class="line-item total-row">
+            <span class="line-item-label">TOTAL:</span>
+            <span class="line-item-value">${currency}${grandTotal.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</span>
           </div>
         ` : ''}
         
         ${receiptData.payments.length > 0 ? `
-          <div class="divider-thin"></div>
+          <div class="divider"></div>
           
           ${receiptData.payments.map(payment => `
-            <div class="line-item">
-              <span>Paid via:</span>
-              <span class="uppercase" style="font-weight: 600;">${payment.method_provider || payment.method || 'N/A'}</span>
-            </div>
-            <div class="line-item">
-              <span>Status:</span>
-              <span class="uppercase" style="font-weight: 600;">${payment.status}</span>
-            </div>
-            ${payment.transaction_ref ? `
-              <div class="line-item" style="font-size: 0.8em;">
-                <span>Ref:</span>
-                <span>${payment.transaction_ref}</span>
+            <div class="payment-info">
+              <div class="line-item">
+                <span class="line-item-label">Paid via:</span>
+                <span class="line-item-value text-semibold uppercase">${payment.method_provider || payment.method || 'N/A'}</span>
               </div>
-            ` : ''}
+              <div class="line-item">
+                <span class="line-item-label">Status:</span>
+                <span class="line-item-value text-semibold">${payment.status}</span>
+              </div>
+              ${payment.transaction_ref ? `
+                <div class="line-item" style="font-size: 0.85em;">
+                  <span class="line-item-label">Ref:</span>
+                  <span class="line-item-value">${payment.transaction_ref}</span>
+                </div>
+              ` : ''}
+            </div>
           `).join('')}
         ` : ''}
         
         ${receiptData.walletBalance !== null && receiptData.walletBalance !== undefined ? `
           <div class="line-item">
-            <span>Wallet Balance:</span>
-            <span style="font-weight: 600;">${currency}${Number(receiptData.walletBalance).toLocaleString()}</span>
+            <span class="line-item-label">Wallet Balance:</span>
+            <span class="line-item-value text-semibold">${currency}${Number(receiptData.walletBalance).toLocaleString()}</span>
           </div>
         ` : ''}
         
         ${settings?.footer_text ? `
           <div class="divider"></div>
-          <div class="footer">${settings.footer_text}</div>
+          <div class="footer-text">${settings.footer_text}</div>
         ` : ''}
         
         ${receiptData.hotelMeta?.contact_email ? `
-          <div style="font-size: 0.8em; margin-top: 4px;">${receiptData.hotelMeta.contact_email}</div>
+          <div class="contact-info" style="margin-top: 8px;">${receiptData.hotelMeta.contact_email}</div>
         ` : ''}
         
         ${settings?.show_qr_code ? `
-          <div class="qr-code">
-            <svg width="80" height="80">
-              <rect width="80" height="80" fill="#fff" stroke="#000" stroke-width="2"/>
-              <text x="40" y="45" text-anchor="middle" font-size="10">QR Code</text>
+          <div class="qr-container">
+            <svg width="80" height="80" style="border: 2px solid #000;">
+              <rect width="80" height="80" fill="#fff"/>
+              <text x="40" y="45" text-anchor="middle" font-size="10" fill="#000">QR Code</text>
             </svg>
           </div>
         ` : ''}
