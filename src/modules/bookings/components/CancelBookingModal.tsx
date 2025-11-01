@@ -97,6 +97,11 @@ export function CancelBookingModal({ open, onClose, bookingId }: CancelBookingMo
 
   const cancelMutation = useMutation({
     mutationFn: async () => {
+      // Early exit if already cancelled
+      if (booking?.status === 'cancelled') {
+        throw new Error('Booking is already cancelled');
+      }
+      
       if (!cancellationReason.trim()) {
         throw new Error('Please provide a reason for cancellation');
       }
@@ -206,6 +211,8 @@ export function CancelBookingModal({ open, onClose, bookingId }: CancelBookingMo
       queryClient.invalidateQueries({ queryKey: ['booking', bookingId] });
       queryClient.invalidateQueries({ queryKey: ['bookings'] });
       queryClient.invalidateQueries({ queryKey: ['rooms'] });
+      queryClient.invalidateQueries({ queryKey: ['room-detail'] });
+      queryClient.invalidateQueries({ queryKey: ['rooms-grid'] });
       queryClient.invalidateQueries({ queryKey: ['payments'] });
       queryClient.invalidateQueries({ queryKey: ['wallets'] });
       
@@ -382,7 +389,11 @@ export function CancelBookingModal({ open, onClose, bookingId }: CancelBookingMo
             </Button>
             <Button
               variant="destructive"
-              onClick={() => cancelMutation.mutate()}
+              onClick={() => {
+                if (!cancelMutation.isPending) {
+                  cancelMutation.mutate();
+                }
+              }}
               className="flex-1"
               disabled={cancelMutation.isPending || !cancellationReason.trim()}
             >

@@ -19,7 +19,44 @@ export function RoomAuditTrail({ roomId }: RoomAuditTrailProps) {
         .limit(10);
 
       if (error) throw error;
-      return data;
+      
+      // Enrich with booking and staff context
+      const enrichedData = await Promise.all(
+        (data || []).map(async (entry) => {
+          // Fetch staff who made the change
+          let changedByName = null;
+          if (entry.changed_by) {
+            const { data: profile } = await supabase
+              .from('profiles')
+              .select('full_name')
+              .eq('id', entry.changed_by)
+              .maybeSingle();
+            changedByName = profile?.full_name;
+          }
+          
+          // Fetch booking context at the time of status change
+          const { data: booking } = await supabase
+            .from('bookings')
+            .select(`
+              id,
+              check_in,
+              check_out,
+              guest:guests(name)
+            `)
+            .eq('room_id', roomId)
+            .lte('check_in', entry.created_at)
+            .gte('check_out', entry.created_at)
+            .maybeSingle();
+          
+          return {
+            ...entry,
+            booking,
+            changed_by_name: changedByName,
+          };
+        })
+      );
+      
+      return enrichedData;
     },
     enabled: !!roomId,
   });
@@ -55,8 +92,24 @@ export function RoomAuditTrail({ roomId }: RoomAuditTrailProps) {
                 {format(new Date(entry.created_at), 'MMM dd, HH:mm')}
               </p>
             </div>
+            
+            {/* Show guest context */}
+            {entry.booking?.guest?.name && (
+              <p className="text-xs text-muted-foreground mt-1">
+                Guest: {entry.booking.guest.name}
+              </p>
+            )}
+            
+            {/* Show action context */}
             {entry.reason && (
-              <p className="text-xs text-muted-foreground mt-1">{entry.reason}</p>
+              <p className="text-xs text-muted-foreground">{entry.reason}</p>
+            )}
+            
+            {/* Show staff who made change */}
+            {entry.changed_by_name && (
+              <p className="text-xs text-muted-foreground">
+                By: {entry.changed_by_name}
+              </p>
             )}
           </div>
         </div>

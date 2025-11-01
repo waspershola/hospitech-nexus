@@ -256,13 +256,28 @@ export function PaymentForm({
       <div className="grid grid-cols-2 gap-4">
         <div className="space-y-2">
           <Label htmlFor="amount">Amount Paying Now *</Label>
-          <Input
-            id="amount"
-            type="number"
-            step="0.01"
-            placeholder="Enter amount paying..."
-            {...register('amount')}
-          />
+          <div className="flex gap-2">
+            <Input
+              id="amount"
+              type="number"
+              step="0.01"
+              placeholder="Enter amount paying..."
+              {...register('amount')}
+              className="flex-1"
+            />
+            {expectedAmountField && parseFloat(expectedAmountField) > 0 && (
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => setValue('amount', expectedAmountField)}
+                className="whitespace-nowrap"
+                title="Use Balance Due"
+              >
+                Use Balance
+              </Button>
+            )}
+          </div>
           {errors.amount && (
             <p className="text-sm text-destructive">{errors.amount.message}</p>
           )}

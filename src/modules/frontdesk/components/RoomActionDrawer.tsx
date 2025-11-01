@@ -15,6 +15,8 @@ import { useBookingFolio } from '@/hooks/useBookingFolio';
 import { useOrganizationWallet } from '@/hooks/useOrganizationWallet';
 import { useForceCheckout } from '@/hooks/useForceCheckout';
 import { usePaymentPreferences } from '@/hooks/usePaymentPreferences';
+import { usePrintReceipt } from '@/hooks/usePrintReceipt';
+import { useReceiptSettings } from '@/hooks/useReceiptSettings';
 import { ExtendStayModal } from './ExtendStayModal';
 import { AddChargeModal } from './AddChargeModal';
 import { ChargeToOrgModal } from './ChargeToOrgModal';
@@ -28,7 +30,7 @@ import { BookingPaymentManager } from '@/modules/bookings/components/BookingPaym
 import { toast } from '@/hooks/use-toast';
 import { 
   Loader2, User, CreditCard, Calendar, AlertCircle, Clock, Building2, AlertTriangle, 
-  Wallet, Zap, Coffee, BellOff, UserPlus, LogIn, LogOut, Wrench, Sparkles, FileText, Receipt, Edit
+  Wallet, Zap, Coffee, BellOff, UserPlus, LogIn, LogOut, Wrench, Sparkles, FileText, Receipt, Edit, Printer
 } from 'lucide-react';
 
 interface RoomActionDrawerProps {
@@ -45,6 +47,8 @@ export function RoomActionDrawer({ roomId, open, onClose, onOpenAssignDrawer }: 
   const { mutate: completeCheckout, isPending: isCheckingOut } = useCheckout();
   const { mutate: forceCheckout, isPending: isForcingCheckout } = useForceCheckout();
   const { preferences } = usePaymentPreferences();
+  const { print: printReceipt } = usePrintReceipt();
+  const { settings: receiptSettings } = useReceiptSettings();
   const [extendModalOpen, setExtendModalOpen] = useState(false);
   const [chargeModalOpen, setChargeModalOpen] = useState(false);
   const [chargeToOrgModalOpen, setChargeToOrgModalOpen] = useState(false);
@@ -322,12 +326,33 @@ export function RoomActionDrawer({ roomId, open, onClose, onOpenAssignDrawer }: 
           ) : room ? (
             <>
               <SheetHeader>
-                <SheetTitle className="text-2xl font-display">Room {room.number}</SheetTitle>
-                <div className="flex items-center gap-2">
-                  <Badge className="capitalize">{room.status}</Badge>
-                  <span className="text-sm text-muted-foreground">
-                    {room.category?.name || room.type}
-                  </span>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <SheetTitle className="text-2xl font-display">Room {room.number}</SheetTitle>
+                    <div className="flex items-center gap-2 mt-1">
+                      <Badge className="capitalize">{room.status}</Badge>
+                      <span className="text-sm text-muted-foreground">
+                        {room.category?.name || room.type}
+                      </span>
+                    </div>
+                  </div>
+                  {activeBooking && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={async () => {
+                        if (!activeBooking) return;
+                        await printReceipt({
+                          receiptType: 'invoice',
+                          bookingId: activeBooking.id,
+                          settingsId: receiptSettings?.[0]?.id,
+                        }, receiptSettings?.[0]);
+                      }}
+                      title="Print receipt"
+                    >
+                      <Printer className="h-4 w-4" />
+                    </Button>
+                  )}
                 </div>
               </SheetHeader>
 
@@ -456,8 +481,9 @@ export function RoomActionDrawer({ roomId, open, onClose, onOpenAssignDrawer }: 
                             expectedAmount={folio?.balance || 0}
                             onSuccess={() => {
                               setQuickPaymentOpen(false);
-                              // Refetch folio data
-                              window.location.reload();
+                              queryClient.invalidateQueries({ queryKey: ['room-detail', roomId] });
+                              queryClient.invalidateQueries({ queryKey: ['rooms-grid'] });
+                              queryClient.invalidateQueries({ queryKey: ['booking-folio'] });
                             }}
                             onCancel={() => setQuickPaymentOpen(false)}
                           />
