@@ -37,13 +37,20 @@ export default function Payments() {
     const matchesSearch = 
       payment.transaction_ref?.toLowerCase().includes(searchQuery.toLowerCase()) ||
       payment.provider_reference?.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesStatus = statusFilter === 'all' || payment.status === statusFilter;
+    
+    // Handle both 'paid', 'success', and 'completed' as the same status
+    const normalizedStatus = payment.status === 'success' || payment.status === 'completed' ? 'paid' : payment.status;
+    const matchesStatus = statusFilter === 'all' || normalizedStatus === statusFilter;
+    
     const matchesMethod = methodFilter === 'all' || payment.method === methodFilter;
     return matchesSearch && matchesStatus && matchesMethod;
   });
 
   const getStatusColor = (status: string) => {
-    switch (status) {
+    // Normalize status for display
+    const normalizedStatus = status === 'success' || status === 'completed' ? 'paid' : status;
+    
+    switch (normalizedStatus) {
       case 'paid':
         return 'bg-status-available/10 text-status-available border-status-available/20';
       case 'pending':
@@ -168,7 +175,7 @@ export default function Payments() {
                   </TableCell>
                   <TableCell>
                     <Badge variant="outline" className={getStatusColor(payment.status)}>
-                      {payment.status}
+                      {payment.status === 'success' || payment.status === 'completed' ? 'paid' : payment.status}
                     </Badge>
                   </TableCell>
                   <TableCell className="text-right">

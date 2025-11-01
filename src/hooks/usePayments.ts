@@ -21,7 +21,7 @@ export interface Payment {
   location: string | null;
   wallet_id: string | null;
   recorded_by: string | null;
-  status: 'pending' | 'paid' | 'failed' | 'refunded';
+  status: 'pending' | 'paid' | 'success' | 'completed' | 'failed' | 'refunded';
   metadata: Record<string, any>;
   created_at: string;
 }

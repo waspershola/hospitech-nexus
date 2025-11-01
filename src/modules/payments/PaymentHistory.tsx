@@ -22,6 +22,9 @@ import { useState } from 'react';
 import { RefundModal } from './RefundModal';
 import { PaymentMetadataDisplay } from '@/components/shared/PaymentMetadataDisplay';
 import { toast } from 'sonner';
+import { usePrintReceipt } from '@/hooks/usePrintReceipt';
+import { useReceiptSettings } from '@/hooks/useReceiptSettings';
+import { ReceiptDocument } from '@/components/receipts/ReceiptDocument';
 
 interface PaymentHistoryProps {
   bookingId: string;
@@ -31,6 +34,8 @@ interface PaymentHistoryProps {
 export function PaymentHistory({ bookingId, onClose }: PaymentHistoryProps) {
   const [refundModalOpen, setRefundModalOpen] = useState(false);
   const [selectedPayment, setSelectedPayment] = useState<any>(null);
+  const { print, isPrinting } = usePrintReceipt();
+  const { settings: receiptSettings } = useReceiptSettings();
 
   const { data: payments, isLoading } = useQuery({
     queryKey: ['payment-history', bookingId],
@@ -134,6 +139,205 @@ export function PaymentHistory({ bookingId, onClose }: PaymentHistoryProps) {
   const handleRefund = (payment: any) => {
     setSelectedPayment(payment);
     setRefundModalOpen(true);
+  };
+
+  const handlePrint = async (payment: any) => {
+    const settings = receiptSettings?.[0];
+    
+    if (!settings) {
+      toast.error('No receipt settings configured. Please configure receipt settings first.');
+      return;
+    }
+
+    try {
+      // Generate receipt HTML
+      const paperWidth = settings.paper_size === 'A4' ? '210mm' : 
+                         settings.paper_size === 'A5' ? '148mm' :
+                         settings.paper_size === '58mm' ? '58mm' : '80mm';
+
+      const fontSizeMap = {
+        small: '10px',
+        normal: '12px',
+        large: '14px',
+      };
+
+      const fullHtml = `
+        <!DOCTYPE html>
+        <html>
+          <head>
+            <meta charset="utf-8">
+            <title>Payment Receipt</title>
+            <style>
+              @media print {
+                @page {
+                  size: ${paperWidth} auto;
+                  margin: 5mm;
+                }
+                body { margin: 0; }
+              }
+              body {
+                font-family: 'Courier New', monospace;
+                font-size: ${fontSizeMap[settings.font_size || 'normal']};
+                line-height: 1.4;
+                text-align: ${settings.alignment || 'center'};
+                max-width: ${paperWidth};
+                margin: 0 auto;
+                padding: 10px;
+              }
+              .header {
+                margin-bottom: 15px;
+                padding-bottom: 10px;
+                border-bottom: 2px dashed #000;
+              }
+              .logo {
+                max-width: 120px;
+                max-height: 60px;
+                margin: 0 auto 10px;
+                display: block;
+              }
+              .section {
+                margin: 15px 0;
+                padding: 10px 0;
+                border-bottom: 1px dashed #ccc;
+              }
+              .line-item {
+                display: flex;
+                justify-content: space-between;
+                margin: 5px 0;
+              }
+              .total {
+                font-weight: bold;
+                font-size: 1.2em;
+                margin-top: 10px;
+                padding-top: 10px;
+                border-top: 2px solid #000;
+              }
+              .footer {
+                margin-top: 20px;
+                padding-top: 10px;
+                border-top: 2px dashed #000;
+                font-size: 0.9em;
+              }
+            </style>
+          </head>
+          <body>
+            ${settings.logo_url ? `<img src="${settings.logo_url}" alt="Logo" class="logo" />` : ''}
+            
+            <div class="header">
+              ${settings.header_text ? `<div style="font-weight: bold; margin: 5px 0;">${settings.header_text}</div>` : ''}
+              <div>PAYMENT RECEIPT</div>
+              <div>Date: ${format(new Date(payment.created_at), 'dd/MM/yyyy HH:mm')}</div>
+            </div>
+            
+            <div class="section">
+              <div class="line-item">
+                <span>Receipt #:</span>
+                <span style="font-weight: bold;">${payment.transaction_ref || payment.id.substring(0, 8)}</span>
+              </div>
+              ${booking ? `
+                <div class="line-item">
+                  <span>Guest:</span>
+                  <span>${booking.guest?.name || 'N/A'}</span>
+                </div>
+                <div class="line-item">
+                  <span>Room:</span>
+                  <span>${booking.room?.number || 'N/A'}</span>
+                </div>
+              ` : ''}
+            </div>
+            
+            <div class="section">
+              <div class="line-item">
+                <span>Payment Method:</span>
+                <span style="text-transform: uppercase;">${payment.method || 'N/A'}</span>
+              </div>
+              ${payment.method_provider ? `
+                <div class="line-item">
+                  <span>Provider:</span>
+                  <span>${payment.method_provider}</span>
+                </div>
+              ` : ''}
+              ${payment.provider_reference ? `
+                <div class="line-item" style="font-size: 0.9em;">
+                  <span>Provider Ref:</span>
+                  <span>${payment.provider_reference}</span>
+                </div>
+              ` : ''}
+            </div>
+            
+            <div class="section">
+              <div class="total line-item">
+                <span>Amount Paid:</span>
+                <span>${payment.currency} ${Number(payment.amount).toFixed(2)}</span>
+              </div>
+              
+              ${settings.show_vat_breakdown && payment.metadata?.vat ? `
+                <div class="line-item" style="font-size: 0.9em;">
+                  <span>VAT:</span>
+                  <span>${payment.currency} ${Number(payment.metadata.vat).toFixed(2)}</span>
+                </div>
+              ` : ''}
+              
+              ${settings.include_service_charge && payment.metadata?.service_charge ? `
+                <div class="line-item" style="font-size: 0.9em;">
+                  <span>Service Charge:</span>
+                  <span>${payment.currency} ${Number(payment.metadata.service_charge).toFixed(2)}</span>
+                </div>
+              ` : ''}
+            </div>
+            
+            <div style="margin-top: 10px; padding-top: 10px; border-top: 2px solid #000;">
+              <div class="line-item">
+                <span>Status:</span>
+                <span style="font-weight: bold; text-transform: uppercase;">${payment.status}</span>
+              </div>
+            </div>
+            
+            ${settings.footer_text ? `
+              <div class="footer">
+                ${settings.footer_text}
+              </div>
+            ` : ''}
+            
+            ${settings.show_qr_code ? `
+              <div style="margin-top: 15px; text-align: center;">
+                <div style="width: 80px; height: 80px; border: 2px solid #000; display: inline-flex; align-items: center; justify-content: center; font-size: 10px;">
+                  QR Code
+                </div>
+              </div>
+            ` : ''}
+          </body>
+        </html>
+      `;
+
+      // Open print window
+      const printWindow = window.open('', '_blank');
+      if (!printWindow) {
+        toast.error('Please allow popups to print receipts');
+        return;
+      }
+
+      printWindow.document.write(fullHtml);
+      printWindow.document.close();
+
+      // Wait for content to load, then print
+      printWindow.onload = () => {
+        printWindow.print();
+      };
+
+      // Log the print
+      await print({
+        receiptType: 'payment',
+        paymentId: payment.id,
+        bookingId: booking?.id,
+        settingsId: settings.id,
+      }, settings);
+
+      toast.success('Receipt sent to printer');
+    } catch (error) {
+      console.error('Print error:', error);
+      toast.error('Failed to print receipt');
+    }
   };
 
   if (isLoading) {
@@ -257,7 +461,8 @@ export function PaymentHistory({ bookingId, onClose }: PaymentHistoryProps) {
                             <Button
                               variant="ghost"
                               size="sm"
-                              onClick={() => toast.info('Print functionality coming soon')}
+                              onClick={() => handlePrint(payment)}
+                              disabled={isPrinting}
                             >
                               <Printer className="h-4 w-4 mr-2" />
                               Print
