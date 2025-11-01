@@ -18,6 +18,7 @@ import Rooms from './pages/dashboard/Rooms';
 import RoomCategories from './pages/dashboard/RoomCategories';
 import Bookings from './pages/dashboard/Bookings';
 import Guests from './pages/dashboard/Guests';
+import GuestProfile from './pages/dashboard/GuestProfile';
 import Reports from './pages/dashboard/Reports';
 import Settings from './pages/dashboard/Settings';
 import ConfigurationCenter from './pages/dashboard/ConfigurationCenter';
@@ -49,6 +50,7 @@ const App = () => (
               <Route path="categories" element={<RoleGuard allowedRoles={['owner', 'manager']}><RoomCategories /></RoleGuard>} />
               <Route path="bookings" element={<Bookings />} />
               <Route path="guests" element={<Guests />} />
+              <Route path="guests/:id" element={<GuestProfile />} />
               <Route path="payments" element={<Payments />} />
               <Route path="wallets" element={<Wallets />} />
               <Route path="reports" element={<RoleGuard allowedRoles={['owner', 'manager']}><Reports /></RoleGuard>} />

@@ -1,9 +1,13 @@
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Badge } from '@/components/ui/badge';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import {
   Table,
   TableBody,
@@ -29,10 +33,10 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
-import { Plus, Edit, Trash2, User } from 'lucide-react';
+import { Plus, Edit, Trash2, User, Search, Eye } from 'lucide-react';
+import { useGuestSearch } from '@/hooks/useGuestSearch';
 
 interface Guest {
   id: string;
@@ -41,15 +45,23 @@ interface Guest {
   phone: string;
   id_number: string;
   created_at: string;
+  status?: string;
+  tags?: string[];
+  last_stay_date?: string;
+  total_bookings?: number;
+  total_spent?: number;
 }
 
 export default function Guests() {
   const { tenantId } = useAuth();
   const { toast } = useToast();
+  const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [editingGuest, setEditingGuest] = useState<Guest | null>(null);
   const [deletingGuest, setDeletingGuest] = useState<Guest | null>(null);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [statusFilter, setStatusFilter] = useState('all');
   const [formData, setFormData] = useState({
     name: '',
     email: '',
@@ -71,6 +83,8 @@ export default function Guests() {
     },
     enabled: !!tenantId,
   });
+
+  const filteredGuests = useGuestSearch(guests, searchQuery, { status: statusFilter });
 
   const createMutation = useMutation({
     mutationFn: async (newGuest: typeof formData) => {
@@ -155,6 +169,15 @@ export default function Guests() {
     });
   };
 
+  const getStatusColor = (status?: string) => {
+    switch (status) {
+      case 'active': return 'default';
+      case 'inactive': return 'secondary';
+      case 'blacklisted': return 'destructive';
+      default: return 'default';
+    }
+  };
+
   if (isLoading) {
     return <div className="text-center py-12">Loading guests...</div>;
   }
@@ -218,6 +241,32 @@ export default function Guests() {
         </Dialog>
       </div>
 
+      {/* Search & Filters */}
+      <Card className="p-4">
+        <div className="flex flex-col md:flex-row gap-4">
+          <div className="flex-1 relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input
+              placeholder="Search by name, email, phone, or ID..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="pl-10"
+            />
+          </div>
+          <Select value={statusFilter} onValueChange={setStatusFilter}>
+            <SelectTrigger className="w-full md:w-[180px]">
+              <SelectValue placeholder="Status" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Status</SelectItem>
+              <SelectItem value="active">Active</SelectItem>
+              <SelectItem value="inactive">Inactive</SelectItem>
+              <SelectItem value="blacklisted">Blacklisted</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+      </Card>
+
       <Card className="p-6">
         <Table>
           <TableHeader>
@@ -225,35 +274,63 @@ export default function Guests() {
               <TableHead>Name</TableHead>
               <TableHead>Email</TableHead>
               <TableHead>Phone</TableHead>
-              <TableHead>ID Number</TableHead>
+              <TableHead>Status</TableHead>
+              <TableHead>Total Stays</TableHead>
+              <TableHead>Total Spent</TableHead>
               <TableHead>Registered</TableHead>
               <TableHead className="text-right">Actions</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
-            {guests.map((guest) => (
-              <TableRow key={guest.id}>
+            {filteredGuests.map((guest) => (
+              <TableRow 
+                key={guest.id}
+                className="cursor-pointer hover:bg-muted/50"
+                onClick={() => navigate(`/dashboard/guests/${guest.id}`)}
+              >
                 <TableCell className="font-medium flex items-center gap-2">
                   <User className="w-4 h-4 text-muted-foreground" />
                   {guest.name}
                 </TableCell>
                 <TableCell>{guest.email || '-'}</TableCell>
                 <TableCell>{guest.phone || '-'}</TableCell>
-                <TableCell>{guest.id_number || '-'}</TableCell>
+                <TableCell>
+                  <Badge variant={getStatusColor(guest.status)}>
+                    {guest.status || 'active'}
+                  </Badge>
+                </TableCell>
+                <TableCell>{guest.total_bookings || 0}</TableCell>
+                <TableCell>₦{(guest.total_spent || 0).toLocaleString()}</TableCell>
                 <TableCell>{new Date(guest.created_at).toLocaleDateString()}</TableCell>
                 <TableCell className="text-right">
                   <div className="flex justify-end gap-2">
                     <Button
                       variant="outline"
                       size="sm"
-                      onClick={() => openEditDialog(guest)}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        navigate(`/dashboard/guests/${guest.id}`);
+                      }}
+                    >
+                      <Eye className="w-4 h-4" />
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        openEditDialog(guest);
+                      }}
                     >
                       <Edit className="w-4 h-4" />
                     </Button>
                     <Button
                       variant="outline"
                       size="sm"
-                      onClick={() => setDeletingGuest(guest)}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setDeletingGuest(guest);
+                      }}
                     >
                       <Trash2 className="w-4 h-4" />
                     </Button>
@@ -264,9 +341,11 @@ export default function Guests() {
           </TableBody>
         </Table>
 
-        {guests.length === 0 && (
+        {filteredGuests.length === 0 && (
           <div className="text-center py-12 text-muted-foreground">
-            No guests found. Add your first guest to get started.
+            {searchQuery || statusFilter !== 'all' 
+              ? 'No guests match your filters.'
+              : 'No guests found. Add your first guest to get started.'}
           </div>
         )}
       </Card>

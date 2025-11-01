@@ -1,5 +1,6 @@
+import { useState } from 'react';
 import { format } from 'date-fns';
-import { ArrowDownLeft, ArrowUpRight } from 'lucide-react';
+import { ArrowDownLeft, ArrowUpRight, Printer, Download, Filter } from 'lucide-react';
 import {
   Sheet,
   SheetContent,
@@ -8,8 +9,11 @@ import {
   SheetTitle,
 } from '@/components/ui/sheet';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useWalletTransactions } from '@/hooks/useWalletTransactions';
 import { useWallets } from '@/hooks/useWallets';
+import { useWalletStatementPrint } from '@/hooks/useWalletStatementPrint';
 
 interface WalletTransactionsDrawerProps {
   open: boolean;
@@ -18,9 +22,16 @@ interface WalletTransactionsDrawerProps {
 }
 
 export function WalletTransactionsDrawer({ open, onClose, walletId }: WalletTransactionsDrawerProps) {
+  const [typeFilter, setTypeFilter] = useState<string>('all');
   const { data: transactions, isLoading } = useWalletTransactions(walletId || undefined);
   const { wallets } = useWallets();
   const wallet = wallets.find((w) => w.id === walletId);
+  const { printStatement, exportToCSV } = useWalletStatementPrint();
+
+  const filteredTransactions = transactions?.filter(txn => {
+    if (typeFilter === 'all') return true;
+    return txn.type === typeFilter;
+  });
 
   return (
     <Sheet open={open} onOpenChange={onClose}>
@@ -32,16 +43,53 @@ export function WalletTransactionsDrawer({ open, onClose, walletId }: WalletTran
           </SheetDescription>
         </SheetHeader>
 
+        {/* Action Buttons */}
+        <div className="mt-4 flex gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => walletId && printStatement({ walletId })}
+          >
+            <Printer className="h-4 w-4 mr-2" />
+            Print Statement
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => walletId && exportToCSV({ walletId })}
+          >
+            <Download className="h-4 w-4 mr-2" />
+            Export CSV
+          </Button>
+        </div>
+
+        {/* Filters */}
+        <div className="mt-4 flex items-center gap-2">
+          <Filter className="h-4 w-4 text-muted-foreground" />
+          <Select value={typeFilter} onValueChange={setTypeFilter}>
+            <SelectTrigger className="w-[150px]">
+              <SelectValue placeholder="Type" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Types</SelectItem>
+              <SelectItem value="credit">Credits</SelectItem>
+              <SelectItem value="debit">Debits</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+
         <div className="mt-6 space-y-4">
           {isLoading && (
             <div className="text-center py-8 text-muted-foreground">Loading transactions...</div>
           )}
 
-          {!isLoading && transactions && transactions.length === 0 && (
-            <div className="text-center py-8 text-muted-foreground">No transactions yet</div>
+          {!isLoading && filteredTransactions && filteredTransactions.length === 0 && (
+            <div className="text-center py-8 text-muted-foreground">
+              {typeFilter === 'all' ? 'No transactions yet' : `No ${typeFilter} transactions found`}
+            </div>
           )}
 
-          {transactions?.map((txn: any) => {
+          {filteredTransactions?.map((txn: any) => {
             const roomNumber = txn.payment?.booking?.room?.number;
             const guestName = txn.payment?.booking?.guest?.name;
             const createdByName = txn.created_by_name;
