@@ -429,6 +429,10 @@ function generateReceiptHTML(
           ${receiptData.payments.map(payment => `
             <div class="payment-info">
               <div class="line-item">
+                <span class="line-item-label">Amount Paid:</span>
+                <span class="line-item-value text-bold">${currency}${Number(payment.amount).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</span>
+              </div>
+              <div class="line-item">
                 <span class="line-item-label">Paid via:</span>
                 <span class="line-item-value text-semibold uppercase">${payment.method_provider || payment.method || 'N/A'}</span>
               </div>
@@ -442,8 +446,37 @@ function generateReceiptHTML(
                   <span class="line-item-value">${payment.transaction_ref}</span>
                 </div>
               ` : ''}
+              ${payment.provider_reference ? `
+                <div class="line-item" style="font-size: 0.85em;">
+                  <span class="line-item-label">Provider Ref:</span>
+                  <span class="line-item-value">${payment.provider_reference}</span>
+                </div>
+              ` : ''}
+              <div class="line-item" style="font-size: 0.85em;">
+                <span class="line-item-label">Date:</span>
+                <span class="line-item-value">${format(new Date(payment.created_at), 'dd/MM/yyyy HH:mm')}</span>
+              </div>
             </div>
           `).join('')}
+          
+          <div class="divider"></div>
+          
+          <div class="line-item total-row">
+            <span class="line-item-label">TOTAL PAID:</span>
+            <span class="line-item-value">${currency}${totalPaid.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</span>
+          </div>
+          
+          ${totalPaid < grandTotal ? `
+            <div class="line-item" style="color: #dc2626;">
+              <span class="line-item-label">Balance Due:</span>
+              <span class="line-item-value text-bold">${currency}${(grandTotal - totalPaid).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</span>
+            </div>
+          ` : totalPaid > grandTotal ? `
+            <div class="line-item" style="color: #16a34a;">
+              <span class="line-item-label">Overpayment:</span>
+              <span class="line-item-value text-bold">${currency}${(totalPaid - grandTotal).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</span>
+            </div>
+          ` : ''}
         ` : ''}
         
         ${receiptData.walletBalance !== null && receiptData.walletBalance !== undefined ? `
