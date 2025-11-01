@@ -3,14 +3,15 @@ import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { Card } from '@/components/ui/card';
 import { Bed, Calendar, Users, DollarSign } from 'lucide-react';
-import { useFinanceOverview } from '@/hooks/useFinanceOverview';
 import { useDebtorsCreditors } from '@/hooks/useDebtorsCreditors';
+import { useTodayPayments } from '@/hooks/useTodayPayments';
 import { FinanceOverviewKPIs } from '@/modules/finance-center/components/FinanceOverviewKPIs';
 import { LiveTransactionFeed } from '@/modules/finance-center/components/LiveTransactionFeed';
 import { LiveActivityStream } from '@/modules/finance-center/components/LiveActivityStream';
 import { ProviderBreakdownCard } from '@/modules/finance-center/components/ProviderBreakdownCard';
 import { DebtorsCard } from '@/modules/finance-center/components/DebtorsCard';
 import { CreditorsCard } from '@/modules/finance-center/components/CreditorsCard';
+import { useFinanceOverview } from '@/hooks/useFinanceOverview';
 
 export default function Overview() {
   const { tenantId } = useAuth();
@@ -21,11 +22,12 @@ export default function Overview() {
     totalGuests: 0,
   });
 
+  const todayPayments = useTodayPayments();
+  
   const {
     kpis,
     kpisLoading,
     transactionFeed,
-    transactionFeedLoading,
     providerBreakdown,
     providerBreakdownLoading
   } = useFinanceOverview();
@@ -150,12 +152,12 @@ export default function Overview() {
         {/* Finance KPIs */}
         <FinanceOverviewKPIs data={kpis} isLoading={kpisLoading} />
 
-        {/* Transaction Feed & Activity Stream */}
+        {/* Today's Payments Feed */}
         <div className="grid lg:grid-cols-3 gap-6">
           <div className="lg:col-span-2">
             <LiveTransactionFeed 
-              transactions={transactionFeed || []} 
-              isLoading={transactionFeedLoading} 
+              transactions={todayPayments.data || []} 
+              isLoading={todayPayments.isLoading} 
             />
           </div>
           <LiveActivityStream transactions={transactionFeed || []} />

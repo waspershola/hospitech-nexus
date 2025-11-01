@@ -1,7 +1,7 @@
 import { useFinanceOverview } from '@/hooks/useFinanceOverview';
 import { useDebtorsCreditors } from '@/hooks/useDebtorsCreditors';
 import { FinanceOverviewKPIs } from './components/FinanceOverviewKPIs';
-import { LiveTransactionFeed } from './components/LiveTransactionFeed';
+import { LiveWalletTransactions } from './components/LiveWalletTransactions';
 import { LiveActivityStream } from './components/LiveActivityStream';
 import { ProviderBreakdownCard } from './components/ProviderBreakdownCard';
 import { DebtorsCard } from './components/DebtorsCard';
@@ -26,9 +26,9 @@ export function FinanceOverviewTab() {
 
       {/* Main Content Grid */}
       <div className="grid lg:grid-cols-3 gap-6">
-        {/* Live Transaction Feed (2/3 width) */}
+        {/* Live Wallet Transactions (2/3 width) */}
         <div className="lg:col-span-2">
-          <LiveTransactionFeed 
+          <LiveWalletTransactions 
             transactions={transactionFeed || []} 
             isLoading={transactionFeedLoading} 
           />

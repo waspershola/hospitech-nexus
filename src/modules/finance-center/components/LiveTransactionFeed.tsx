@@ -2,12 +2,12 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
-import type { TransactionFeedItem } from '@/hooks/useFinanceOverview';
+import type { TodayPayment } from '@/hooks/useTodayPayments';
 import { formatDistanceToNow } from 'date-fns';
 import { ArrowUpRight, ArrowDownRight } from 'lucide-react';
 
 interface LiveTransactionFeedProps {
-  transactions: TransactionFeedItem[];
+  transactions: TodayPayment[];
   isLoading: boolean;
 }
 
@@ -40,8 +40,8 @@ export function LiveTransactionFeed({ transactions, isLoading }: LiveTransaction
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Live Transaction Feed</CardTitle>
-        <CardDescription>Real-time view of all financial transactions</CardDescription>
+        <CardTitle>Today's Payments</CardTitle>
+        <CardDescription>Live feed of all payments made today</CardDescription>
       </CardHeader>
       <CardContent>
         <div className="rounded-md border">
@@ -51,69 +51,50 @@ export function LiveTransactionFeed({ transactions, isLoading }: LiveTransaction
                 <TableHead>Time</TableHead>
                 <TableHead>Entity</TableHead>
                 <TableHead>Department</TableHead>
-                <TableHead>Type</TableHead>
+                <TableHead>Method</TableHead>
                 <TableHead className="text-right">Amount</TableHead>
-                <TableHead className="text-right">Balance</TableHead>
                 <TableHead>Staff</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {transactions.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={7} className="text-center text-muted-foreground py-8">
-                    No transactions found
+                  <TableCell colSpan={6} className="text-center text-muted-foreground py-8">
+                    No payments today
                   </TableCell>
                 </TableRow>
               ) : (
-                transactions.map((txn) => (
-                  <TableRow key={txn.id} className="hover:bg-muted/50">
+                transactions.map((payment) => (
+                  <TableRow key={payment.id} className="hover:bg-muted/50">
                     <TableCell className="whitespace-nowrap">
                       <div className="text-sm">
-                        {formatDistanceToNow(new Date(txn.created_at), { addSuffix: true })}
+                        {formatDistanceToNow(new Date(payment.created_at), { addSuffix: true })}
                       </div>
                       <div className="text-xs text-muted-foreground">
-                        {new Date(txn.created_at).toLocaleTimeString()}
+                        {new Date(payment.created_at).toLocaleTimeString()}
                       </div>
                     </TableCell>
                     <TableCell>
-                      <div className="font-medium">{txn.guest_name || txn.org_name || 'Unknown'}</div>
-                      {txn.room_number && (
-                        <div className="text-xs text-muted-foreground">Room {txn.room_number}</div>
+                      <div className="font-medium">{payment.guest_name || payment.org_name || 'Unknown'}</div>
+                      {payment.room_number && (
+                        <div className="text-xs text-muted-foreground">Room {payment.room_number}</div>
                       )}
                     </TableCell>
                     <TableCell>
-                      <Badge variant="outline">{txn.department || 'General'}</Badge>
+                      <Badge variant="outline">{payment.department || 'General'}</Badge>
                     </TableCell>
                     <TableCell>
-                      <div className="flex items-center gap-2">
-                        {txn.type === 'credit' ? (
-                          <>
-                            <ArrowUpRight className="h-4 w-4 text-green-600" />
-                            <span className="text-green-600 font-medium">Credit</span>
-                          </>
-                        ) : (
-                          <>
-                            <ArrowDownRight className="h-4 w-4 text-red-600" />
-                            <span className="text-red-600 font-medium">Debit</span>
-                          </>
-                        )}
-                      </div>
-                      <div className="text-xs text-muted-foreground">{txn.provider_name || txn.source}</div>
+                      <div className="font-medium">{payment.method || 'N/A'}</div>
+                      <div className="text-xs text-muted-foreground">{payment.method_provider || ''}</div>
                     </TableCell>
                     <TableCell className="text-right">
-                      <span className={txn.type === 'credit' ? 'text-green-600 font-semibold' : 'text-red-600 font-semibold'}>
-                        ₦{Number(txn.amount).toLocaleString()}
+                      <span className="text-green-600 font-semibold flex items-center justify-end gap-1">
+                        <ArrowUpRight className="h-4 w-4" />
+                        ₦{Number(payment.amount).toLocaleString()}
                       </span>
                     </TableCell>
-                    <TableCell className="text-right">
-                      {txn.balance_after !== null ? (
-                        <span className="text-muted-foreground">₦{Number(txn.balance_after).toLocaleString()}</span>
-                      ) : (
-                        <span className="text-muted-foreground">-</span>
-                      )}
-                    </TableCell>
                     <TableCell>
-                      <div className="text-sm">{txn.created_by_name || 'System'}</div>
+                      <div className="text-sm">{payment.staff_name || 'System'}</div>
                     </TableCell>
                   </TableRow>
                 ))
