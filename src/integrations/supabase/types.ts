@@ -111,42 +111,51 @@ export type Database = {
       bookings: {
         Row: {
           action_id: string | null
+          booking_reference: string | null
           check_in: string
           check_out: string
           created_at: string | null
           guest_id: string
           id: string
           metadata: Json | null
+          notes: string | null
           organization_id: string | null
           room_id: string
+          source: string | null
           status: string | null
           tenant_id: string
           total_amount: number | null
         }
         Insert: {
           action_id?: string | null
+          booking_reference?: string | null
           check_in: string
           check_out: string
           created_at?: string | null
           guest_id: string
           id?: string
           metadata?: Json | null
+          notes?: string | null
           organization_id?: string | null
           room_id: string
+          source?: string | null
           status?: string | null
           tenant_id: string
           total_amount?: number | null
         }
         Update: {
           action_id?: string | null
+          booking_reference?: string | null
           check_in?: string
           check_out?: string
           created_at?: string | null
           guest_id?: string
           id?: string
           metadata?: Json | null
+          notes?: string | null
           organization_id?: string | null
           room_id?: string
+          source?: string | null
           status?: string | null
           tenant_id?: string
           total_amount?: number | null
@@ -691,15 +700,82 @@ export type Database = {
           },
         ]
       }
+      guest_communications: {
+        Row: {
+          created_at: string | null
+          direction: string
+          guest_id: string
+          id: string
+          message: string | null
+          sent_by: string | null
+          status: string | null
+          subject: string | null
+          tenant_id: string
+          type: string
+        }
+        Insert: {
+          created_at?: string | null
+          direction: string
+          guest_id: string
+          id?: string
+          message?: string | null
+          sent_by?: string | null
+          status?: string | null
+          subject?: string | null
+          tenant_id: string
+          type: string
+        }
+        Update: {
+          created_at?: string | null
+          direction?: string
+          guest_id?: string
+          id?: string
+          message?: string | null
+          sent_by?: string | null
+          status?: string | null
+          subject?: string | null
+          tenant_id?: string
+          type?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "guest_communications_guest_id_fkey"
+            columns: ["guest_id"]
+            isOneToOne: false
+            referencedRelation: "guests"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "guest_communications_sent_by_fkey"
+            columns: ["sent_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "guest_communications_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       guests: {
         Row: {
           created_at: string | null
           email: string | null
           id: string
           id_number: string | null
+          last_stay_date: string | null
           name: string
+          notes: string | null
           phone: string | null
+          status: string | null
+          tags: Json | null
           tenant_id: string
+          total_bookings: number | null
+          total_spent: number | null
           user_id: string | null
         }
         Insert: {
@@ -707,9 +783,15 @@ export type Database = {
           email?: string | null
           id?: string
           id_number?: string | null
+          last_stay_date?: string | null
           name: string
+          notes?: string | null
           phone?: string | null
+          status?: string | null
+          tags?: Json | null
           tenant_id: string
+          total_bookings?: number | null
+          total_spent?: number | null
           user_id?: string | null
         }
         Update: {
@@ -717,9 +799,15 @@ export type Database = {
           email?: string | null
           id?: string
           id_number?: string | null
+          last_stay_date?: string | null
           name?: string
+          notes?: string | null
           phone?: string | null
+          status?: string | null
+          tags?: Json | null
           tenant_id?: string
+          total_bookings?: number | null
+          total_spent?: number | null
           user_id?: string | null
         }
         Relationships: [
