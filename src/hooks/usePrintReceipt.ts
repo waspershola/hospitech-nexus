@@ -5,6 +5,7 @@ import { toast } from 'sonner';
 import { format } from 'date-fns';
 import type { ReceiptSettings } from './useReceiptSettings';
 import type { ReceiptData } from './useReceiptData';
+import { fetchReceiptData } from '@/lib/receiptDataFetcher';
 
 interface PrintReceiptParams {
   receiptType: 'payment' | 'checkout' | 'reservation';
@@ -78,13 +79,24 @@ export function usePrintReceipt() {
         return;
       }
 
-      // Wait for receipt data if not provided (prevents "Loading..." in print)
+      // Fetch receipt data if not provided
       let receiptData = params.receiptData;
       if (!receiptData && (params.bookingId || params.paymentId)) {
         toast.loading('Fetching receipt data...', { id: 'receipt-prep' });
         
-        // Give a brief moment for data to load from cache/query
-        await new Promise(resolve => setTimeout(resolve, 500));
+        try {
+          receiptData = await fetchReceiptData({
+            tenantId,
+            bookingId: params.bookingId,
+            paymentId: params.paymentId,
+            guestId: params.guestId,
+            organizationId: params.organizationId,
+          });
+        } catch (error) {
+          console.error('Failed to fetch receipt data:', error);
+          toast.error('Failed to load receipt data', { id: 'receipt-prep' });
+          return;
+        }
       }
 
       // Create print window
