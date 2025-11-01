@@ -31,8 +31,8 @@ export function MultiRoomSelection({ bookingData, onChange }: MultiRoomSelection
     bookingData.selectedRoomIds || []
   );
 
-  const { data: rooms } = useQuery({
-    queryKey: ['rooms-available', tenantId],
+  const { data: allRooms } = useQuery({
+    queryKey: ['rooms-all', tenantId],
     queryFn: async () => {
       if (!tenantId) return [];
       const { data, error } = await supabase
@@ -42,7 +42,6 @@ export function MultiRoomSelection({ bookingData, onChange }: MultiRoomSelection
           category:room_categories(name, base_rate, max_occupancy)
         `)
         .eq('tenant_id', tenantId)
-        .eq('status', 'available')
         .order('number', { ascending: true });
 
       if (error) throw error;
@@ -51,22 +50,54 @@ export function MultiRoomSelection({ bookingData, onChange }: MultiRoomSelection
     enabled: !!tenantId,
   });
 
+  // Check availability for each room based on selected dates
+  const { data: overlappingBookings } = useQuery({
+    queryKey: ['bookings-overlap', tenantId, checkIn.toISOString(), checkOut.toISOString()],
+    queryFn: async () => {
+      if (!tenantId) return [];
+      const { data, error } = await supabase
+        .from('bookings')
+        .select('id, room_id')
+        .eq('tenant_id', tenantId)
+        .in('status', ['reserved', 'checked_in'])
+        .lt('check_in', checkOut.toISOString())
+        .gt('check_out', checkIn.toISOString());
+
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!tenantId && !!checkIn && !!checkOut,
+  });
+
+  // Filter rooms to only show available ones for the selected date range
+  const rooms = allRooms?.filter((room) => {
+    // Check if room has overlapping bookings
+    const hasConflict = overlappingBookings?.some(booking => booking.room_id === room.id);
+    return !hasConflict;
+  });
+
   const nights = Math.ceil((checkOut.getTime() - checkIn.getTime()) / (1000 * 60 * 60 * 24));
 
-  // Calculate total for all selected rooms
+  // Calculate total for all selected rooms including add-ons and deposits
   const calculateTotal = () => {
     if (!financials || selectedRoomIds.length === 0) return 0;
     
-    let total = 0;
+    let roomsTotal = 0;
     selectedRoomIds.forEach(roomId => {
       const room = rooms?.find(r => r.id === roomId);
       const rate = room?.category?.base_rate || room?.rate || 0;
       const baseAmount = rate * nights;
       const roomTotal = calculateBookingTotal(baseAmount, financials);
-      total += roomTotal.totalAmount;
+      roomsTotal += roomTotal.totalAmount;
     });
+
+    // Add-ons are multiplied by number of rooms and nights (if applicable)
+    const addonsTotal = (bookingData.addonsTotal || 0) * selectedRoomIds.length;
     
-    return total;
+    // Deposit is subtracted from total
+    const deposit = bookingData.depositAmount || 0;
+    
+    return roomsTotal + addonsTotal - deposit;
   };
 
   useEffect(() => {
@@ -200,8 +231,27 @@ export function MultiRoomSelection({ bookingData, onChange }: MultiRoomSelection
           <span className="font-medium">{nights}</span>
         </div>
         <Separator />
+        <div className="space-y-2 text-sm">
+          <div className="flex justify-between">
+            <span className="text-muted-foreground">Rooms Subtotal:</span>
+            <span>₦{(totalAmount - (bookingData.addonsTotal || 0) * selectedRoomIds.length + (bookingData.depositAmount || 0)).toFixed(2)}</span>
+          </div>
+          {bookingData.addonsTotal && bookingData.addonsTotal > 0 && (
+            <div className="flex justify-between">
+              <span className="text-muted-foreground">Add-ons ({selectedRoomIds.length} rooms):</span>
+              <span>₦{((bookingData.addonsTotal || 0) * selectedRoomIds.length).toFixed(2)}</span>
+            </div>
+          )}
+          {bookingData.depositAmount && bookingData.depositAmount > 0 && (
+            <div className="flex justify-between text-green-600 dark:text-green-400">
+              <span>Deposit Applied:</span>
+              <span>-₦{bookingData.depositAmount.toFixed(2)}</span>
+            </div>
+          )}
+        </div>
+        <Separator />
         <div className="flex justify-between text-base font-semibold">
-          <span>Total Amount:</span>
+          <span>Balance Due:</span>
           <span className="text-primary">₦{totalAmount.toFixed(2)}</span>
         </div>
       </div>

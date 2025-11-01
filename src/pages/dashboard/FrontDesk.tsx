@@ -11,13 +11,17 @@ import { AssignRoomDrawer } from '@/modules/frontdesk/components/AssignRoomDrawe
 import { OverstayAlertModal } from '@/modules/frontdesk/components/OverstayAlertModal';
 import { BookingFlow } from '@/modules/bookings/BookingFlow';
 import { MobileBottomNav } from '@/modules/frontdesk/components/MobileBottomNav';
+import { AvailabilityCalendar } from '@/modules/frontdesk/components/AvailabilityCalendar';
 import { useOverstayRooms } from '@/hooks/useOverstayRooms';
 import { useRoomActions } from '@/modules/frontdesk/hooks/useRoomActions';
 import { useRoomRealtime, useBookingRealtime, usePaymentRealtime } from '@/hooks/useRoomRealtime';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Calendar, LayoutGrid } from 'lucide-react';
 
 export default function FrontDesk() {
   const [selectedRoomId, setSelectedRoomId] = useState<string | null>(null);
   const [statusFilter, setStatusFilter] = useState<string | null>(null);
+  const [viewMode, setViewMode] = useState<'status' | 'date'>('status');
 
   const handleFilterToggle = (status: string | null) => {
     setStatusFilter(prev => prev === status ? null : status);
@@ -60,6 +64,11 @@ export default function FrontDesk() {
         e.preventDefault();
         setIsBookingFlowOpen(true);
       }
+      // Ctrl/Cmd + D for date view
+      if ((e.ctrlKey || e.metaKey) && e.key === 'd') {
+        e.preventDefault();
+        setViewMode(prev => prev === 'status' ? 'date' : 'status');
+      }
       // Escape to close drawers/modals
       if (e.key === 'Escape') {
         setSelectedRoomId(null);
@@ -98,27 +107,51 @@ export default function FrontDesk() {
       </div>
       
       <div className="flex-1 flex flex-col overflow-hidden">
-        <div className="px-3 sm:px-4 lg:px-6 pt-3 sm:pt-4 lg:pt-6">
-          <QuickKPIs 
-            onFilterClick={handleFilterToggle} 
-            activeFilter={statusFilter}
-          />
-        </div>
-        
-        <ScrollArea className="flex-1">
-          <div className="px-3 sm:px-4 lg:px-6 pt-3 sm:pt-4 pb-20 lg:pb-6">
-            <RoomStatusOverview 
-              statusFilter={statusFilter}
-              onRoomClick={setSelectedRoomId}
-              globalSearchQuery={searchQuery}
-            />
-            
-            {/* Legend moved to bottom */}
-            <div className="mt-6">
-              <RoomLegend />
-            </div>
+        <Tabs value={viewMode} onValueChange={(v) => setViewMode(v as 'status' | 'date')} className="flex-1 flex flex-col">
+          <div className="px-3 sm:px-4 lg:px-6 pt-3 sm:pt-4 border-b">
+            <TabsList className="grid w-full max-w-md grid-cols-2">
+              <TabsTrigger value="status" className="gap-2">
+                <LayoutGrid className="h-4 w-4" />
+                Room Status
+              </TabsTrigger>
+              <TabsTrigger value="date" className="gap-2">
+                <Calendar className="h-4 w-4" />
+                By Date
+              </TabsTrigger>
+            </TabsList>
           </div>
-        </ScrollArea>
+
+          <TabsContent value="status" className="flex-1 flex flex-col m-0 overflow-hidden">
+            <div className="px-3 sm:px-4 lg:px-6 pt-3 sm:pt-4">
+              <QuickKPIs 
+                onFilterClick={handleFilterToggle} 
+                activeFilter={statusFilter}
+              />
+            </div>
+            
+            <ScrollArea className="flex-1">
+              <div className="px-3 sm:px-4 lg:px-6 pt-3 sm:pt-4 pb-20 lg:pb-6">
+                <RoomStatusOverview 
+                  statusFilter={statusFilter}
+                  onRoomClick={setSelectedRoomId}
+                  globalSearchQuery={searchQuery}
+                />
+                
+                <div className="mt-6">
+                  <RoomLegend />
+                </div>
+              </div>
+            </ScrollArea>
+          </TabsContent>
+
+          <TabsContent value="date" className="flex-1 flex flex-col m-0 overflow-hidden">
+            <ScrollArea className="flex-1">
+              <div className="px-3 sm:px-4 lg:px-6 pt-3 sm:pt-4 pb-20 lg:pb-6">
+                <AvailabilityCalendar onRoomClick={setSelectedRoomId} />
+              </div>
+            </ScrollArea>
+          </TabsContent>
+        </Tabs>
       </div>
 
       <RoomActionDrawer 

@@ -109,7 +109,7 @@ serve(async (req) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
     );
 
-    const { action_id, tenant_id, guest_id, room_id, check_in, check_out, total_amount, organization_id, department, created_by, group_booking, group_id, group_name, group_size, group_leader, rate_override, addons, addons_total, deposit_amount, special_requests } = await req.json();
+    const { action_id, tenant_id, guest_id, room_id, check_in, check_out, total_amount, organization_id, department, created_by, group_booking, group_id, group_name, group_size, group_leader, rate_override, addons, addons_total, deposit_amount, special_requests, is_part_of_group } = await req.json();
 
     console.log('Creating booking with action_id:', action_id);
 
@@ -137,7 +137,14 @@ serve(async (req) => {
     // Use comprehensive tax calculation
     const taxBreakdown = calculateBookingTotal(baseAmount, financials || {});
 
-    console.log('Tax breakdown:', taxBreakdown);
+    // For group bookings, calculate add-ons per room and deposit per room
+    const addonsPerRoom = (is_part_of_group && addons_total) ? addons_total : (addons_total || 0);
+    const depositPerRoom = (is_part_of_group && deposit_amount) ? deposit_amount : (deposit_amount || 0);
+    
+    // Final total includes addons and subtracts deposit
+    const finalTotalAmount = taxBreakdown.totalAmount + addonsPerRoom - depositPerRoom;
+
+    console.log('Tax breakdown:', taxBreakdown, 'Add-ons per room:', addonsPerRoom, 'Deposit per room:', depositPerRoom, 'Final total:', finalTotalAmount);
 
     // Check for existing booking with same action_id (idempotency)
     const { data: existingBooking, error: existingError } = await supabaseClient
@@ -194,7 +201,7 @@ serve(async (req) => {
         room_id,
         check_in: checkInDate.toISOString(),
         check_out: checkOutDate.toISOString(),
-        total_amount: taxBreakdown.totalAmount,
+        total_amount: finalTotalAmount,
         organization_id: organization_id || null,
         status: 'reserved',
         action_id,
@@ -223,8 +230,8 @@ serve(async (req) => {
             group_leader,
           } : {}),
           ...(rate_override ? { rate_override } : {}),
-          ...(addons && addons.length > 0 ? { addons, addons_total } : {}),
-          ...(deposit_amount ? { deposit_amount } : {}),
+          ...(addons && addons.length > 0 ? { addons, addons_total: addonsPerRoom } : {}),
+          ...(depositPerRoom > 0 ? { deposit_amount: depositPerRoom } : {}),
           ...(special_requests ? { special_requests } : {}),
         }
       }])
@@ -246,7 +253,7 @@ serve(async (req) => {
 
     // If organization booking, create payment and debit wallet
     let payment = null;
-    if (organization_id && taxBreakdown.totalAmount > 0) {
+    if (organization_id && finalTotalAmount > 0) {
       console.log('Creating organization payment for booking:', newBooking.id);
       
       // Get organization wallet - NOW REQUIRED
@@ -292,7 +299,7 @@ serve(async (req) => {
         ? availableCredit - currentBalance  // Can go negative
         : Math.max(0, availableCredit - Math.abs(currentBalance)); // Cannot go negative
       
-      if (taxBreakdown.totalAmount > effectiveLimit) {
+      if (finalTotalAmount > effectiveLimit) {
         // Delete the booking
         await supabaseClient
           .from('bookings')
@@ -303,9 +310,9 @@ serve(async (req) => {
           JSON.stringify({ 
             success: false, 
             error: 'INSUFFICIENT_CREDIT',
-            message: `Organization has insufficient credit. Available: ₦${effectiveLimit.toLocaleString()}, Required: ₦${taxBreakdown.totalAmount.toLocaleString()}`,
+            message: `Organization has insufficient credit. Available: ₦${effectiveLimit.toLocaleString()}, Required: ₦${finalTotalAmount.toLocaleString()}`,
             available_credit: effectiveLimit,
-            required_amount: taxBreakdown.totalAmount
+            required_amount: finalTotalAmount
           }),
           { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 400 }
         );
@@ -320,8 +327,8 @@ serve(async (req) => {
           guest_id,
           organization_id,
           wallet_id: wallet.id,
-          amount: taxBreakdown.totalAmount,
-          expected_amount: taxBreakdown.totalAmount,
+          amount: finalTotalAmount,
+          expected_amount: finalTotalAmount,
           payment_type: 'full',
           method: 'organization_wallet',
           status: 'completed',
@@ -365,7 +372,7 @@ serve(async (req) => {
           tenant_id,
           wallet_id: wallet.id,
           type: 'debit',
-          amount: taxBreakdown.totalAmount,
+          amount: finalTotalAmount,
           payment_id: newPayment.id,
           description: `Booking charge - Room ${room?.number || room_id}`,
           created_by: created_by || guest_id,
@@ -395,7 +402,7 @@ serve(async (req) => {
       
       console.log('Organization wallet debited successfully:', {
         wallet_id: wallet.id,
-        amount: taxBreakdown.totalAmount,
+        amount: finalTotalAmount,
         payment_id: newPayment.id
       });
     }

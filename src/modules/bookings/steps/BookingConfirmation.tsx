@@ -103,6 +103,11 @@ export function BookingConfirmation({ bookingData, onComplete }: BookingConfirma
         const groupId = crypto.randomUUID();
         const actionId = crypto.randomUUID();
 
+        // Calculate add-ons and deposit per room for group bookings
+        const numRooms = bookingData.selectedRoomIds.length;
+        const addonsPerRoom = (bookingData.addonsTotal || 0);
+        const depositPerRoom = (bookingData.depositAmount || 0) / numRooms;
+
         // Create bookings for each room
         const results = await Promise.all(
           bookingData.selectedRoomIds.map(async (roomId) => {
@@ -123,6 +128,11 @@ export function BookingConfirmation({ bookingData, onComplete }: BookingConfirma
                 group_name: bookingData.groupName,
                 group_size: bookingData.groupSize,
                 group_leader: bookingData.groupLeaderName,
+                addons: bookingData.selectedAddons,
+                addons_total: addonsPerRoom,
+                deposit_amount: depositPerRoom,
+                special_requests: bookingData.specialRequests,
+                is_part_of_group: true,
               },
             });
 

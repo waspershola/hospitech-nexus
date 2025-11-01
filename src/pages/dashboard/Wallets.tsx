@@ -20,7 +20,7 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { Search, Wallet, Plus, TrendingUp, TrendingDown } from 'lucide-react';
-import { WalletDetail } from '@/modules/wallets/WalletDetail';
+import { WalletTransactionsDrawer } from '@/modules/finance-center/WalletTransactionsDrawer';
 import { CreateWalletDialog } from '@/modules/wallets/CreateWalletDialog';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
 
@@ -196,10 +196,10 @@ export default function Wallets() {
         </Card>
       </div>
 
-      <WalletDetail
-        walletId={selectedWalletId}
+      <WalletTransactionsDrawer
         open={!!selectedWalletId}
         onClose={() => setSelectedWalletId(null)}
+        walletId={selectedWalletId}
       />
 
       <CreateWalletDialog

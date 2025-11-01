@@ -8,9 +8,11 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
-import { ArrowLeft, Mail, Phone, User, Calendar, DollarSign, FileText, MessageSquare, Edit, Wallet as WalletIcon } from 'lucide-react';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { ArrowLeft, Mail, Phone, User, Calendar, DollarSign, FileText, MessageSquare, Edit, Wallet as WalletIcon, Info } from 'lucide-react';
 import { useGuestCommunications } from '@/hooks/useGuestCommunications';
 import { format } from 'date-fns';
+import { toast } from 'sonner';
 
 export default function GuestProfile() {
   const { id } = useParams<{ id: string }>();
@@ -319,7 +321,40 @@ export default function GuestProfile() {
                   </Button>
                 </div>
               ) : (
-                <p className="text-center text-muted-foreground py-8">No wallet found for this guest</p>
+                <Alert>
+                  <Info className="h-4 w-4" />
+                  <AlertDescription>
+                    No wallet found for this guest.
+                    <Button 
+                      variant="link" 
+                      className="p-0 h-auto ml-1"
+                      onClick={async () => {
+                        try {
+                          const { data, error } = await supabase
+                            .from('wallets')
+                            .insert({
+                              tenant_id: tenantId,
+                              wallet_type: 'guest',
+                              owner_id: guest?.id,
+                              name: `${guest?.name}'s Wallet`,
+                              currency: 'NGN',
+                              balance: 0
+                            })
+                            .select()
+                            .single();
+                          
+                          if (error) throw error;
+                          toast.success('Wallet created successfully!');
+                          window.location.reload();
+                        } catch (error) {
+                          toast.error('Failed to create wallet');
+                        }
+                      }}
+                    >
+                      Create one now
+                    </Button>
+                  </AlertDescription>
+                </Alert>
               )}
             </CardContent>
           </Card>
