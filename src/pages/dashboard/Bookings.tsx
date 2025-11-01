@@ -40,7 +40,8 @@ import {
 } from '@/components/ui/alert-dialog';
 import { useToast } from '@/hooks/use-toast';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Plus, Edit, Trash2, LogIn, LogOut } from 'lucide-react';
+import { Plus, Edit, Trash2, LogIn, LogOut, Search, Filter } from 'lucide-react';
+import { useBookingSearch, type BookingFilters } from '@/hooks/useBookingSearch';
 
 interface Booking {
   id: string;
@@ -50,8 +51,11 @@ interface Booking {
   total_amount: number;
   guest_id: string;
   room_id: string;
+  booking_reference?: string;
+  source?: string;
+  notes?: string;
   guests: { id: string; name: string };
-  rooms: { id: string; number: string };
+  rooms: { id: string; number: string; type: string };
 }
 
 interface Guest {
@@ -72,6 +76,9 @@ export default function Bookings() {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingBooking, setEditingBooking] = useState<Booking | null>(null);
   const [deleteId, setDeleteId] = useState<string | null>(null);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [showFilters, setShowFilters] = useState(false);
+  const [filters, setFilters] = useState<BookingFilters>({});
   const [formData, setFormData] = useState({
     guest_id: '',
     room_id: '',
@@ -85,7 +92,7 @@ export default function Bookings() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('bookings')
-        .select('*, guests(id, name), rooms(id, number)')
+        .select('*, guests(id, name), rooms(id, number, type)')
         .eq('tenant_id', tenantId)
         .order('check_in', { ascending: false });
       if (error) throw error;
@@ -93,6 +100,8 @@ export default function Bookings() {
     },
     enabled: !!tenantId,
   });
+
+  const filteredBookings = useBookingSearch(bookings, searchTerm, filters);
 
   const { data: guests = [] } = useQuery({
     queryKey: ['guests', tenantId],
@@ -348,29 +357,138 @@ export default function Bookings() {
         </Dialog>
       </div>
 
+      {/* Search and Filter */}
+      <Card className="p-4">
+        <div className="flex gap-4">
+          <div className="relative flex-1">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input
+              placeholder="Search by guest name, room, reference..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="pl-10"
+            />
+          </div>
+          <Button
+            variant="outline"
+            onClick={() => setShowFilters(!showFilters)}
+          >
+            <Filter className="h-4 w-4 mr-2" />
+            Filters
+          </Button>
+        </div>
+
+        {showFilters && (
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-4 pt-4 border-t">
+            <div>
+              <Label>Status</Label>
+              <Select
+                value={filters.status || 'all'}
+                onValueChange={(value) => setFilters({ ...filters, status: value === 'all' ? undefined : value })}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="All Statuses" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Statuses</SelectItem>
+                  <SelectItem value="pending">Pending</SelectItem>
+                  <SelectItem value="confirmed">Confirmed</SelectItem>
+                  <SelectItem value="checked-in">Checked In</SelectItem>
+                  <SelectItem value="checked-out">Checked Out</SelectItem>
+                  <SelectItem value="cancelled">Cancelled</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div>
+              <Label>Source</Label>
+              <Select
+                value={filters.source || 'all'}
+                onValueChange={(value) => setFilters({ ...filters, source: value === 'all' ? undefined : value })}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="All Sources" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Sources</SelectItem>
+                  <SelectItem value="front_desk">Front Desk</SelectItem>
+                  <SelectItem value="online">Online</SelectItem>
+                  <SelectItem value="phone">Phone</SelectItem>
+                  <SelectItem value="walk_in">Walk In</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div>
+              <Label>Room Type</Label>
+              <Select
+                value={filters.roomType || 'all'}
+                onValueChange={(value) => setFilters({ ...filters, roomType: value === 'all' ? undefined : value })}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="All Types" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Types</SelectItem>
+                  {Array.from(new Set(bookings.map(b => b.rooms?.type).filter(Boolean))).map((type) => (
+                    <SelectItem key={type} value={type!}>{type}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="flex items-end">
+              <Button
+                variant="ghost"
+                onClick={() => {
+                  setFilters({});
+                  setSearchTerm('');
+                }}
+                className="w-full"
+              >
+                Clear Filters
+              </Button>
+            </div>
+          </div>
+        )}
+      </Card>
+
       <Card className="p-6">
         <Table>
           <TableHeader>
             <TableRow>
+              <TableHead>Reference</TableHead>
               <TableHead>Guest</TableHead>
               <TableHead>Room</TableHead>
               <TableHead>Check-in</TableHead>
               <TableHead>Check-out</TableHead>
               <TableHead>Status</TableHead>
+              <TableHead>Source</TableHead>
               <TableHead className="text-right">Amount</TableHead>
               <TableHead className="text-right">Actions</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
-            {bookings.map((booking) => (
+            {filteredBookings.map((booking) => (
               <TableRow key={booking.id}>
+                <TableCell className="font-mono text-sm">{booking.booking_reference || '-'}</TableCell>
                 <TableCell className="font-medium">{booking.guests?.name}</TableCell>
-                <TableCell>{booking.rooms?.number}</TableCell>
+                <TableCell>
+                  <div className="flex flex-col">
+                    <span className="font-medium">{booking.rooms?.number}</span>
+                    <span className="text-xs text-muted-foreground">{booking.rooms?.type}</span>
+                  </div>
+                </TableCell>
                 <TableCell>{new Date(booking.check_in).toLocaleDateString()}</TableCell>
                 <TableCell>{new Date(booking.check_out).toLocaleDateString()}</TableCell>
                 <TableCell>
                   <Badge className={getStatusColor(booking.status)}>
                     {booking.status}
+                  </Badge>
+                </TableCell>
+                <TableCell>
+                  <Badge variant="outline" className="capitalize">
+                    {booking.source?.replace('_', ' ') || 'front desk'}
                   </Badge>
                 </TableCell>
                 <TableCell className="text-right">${booking.total_amount}</TableCell>
@@ -406,6 +524,12 @@ export default function Bookings() {
         {bookings.length === 0 && (
           <div className="text-center py-12 text-muted-foreground">
             No bookings found. Create your first booking to get started.
+          </div>
+        )}
+        
+        {bookings.length > 0 && filteredBookings.length === 0 && (
+          <div className="text-center py-12 text-muted-foreground">
+            No bookings match your search criteria.
           </div>
         )}
       </Card>
