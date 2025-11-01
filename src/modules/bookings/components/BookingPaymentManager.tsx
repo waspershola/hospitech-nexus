@@ -9,13 +9,16 @@ import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Plus, Receipt, CreditCard, Trash2, Loader2 } from 'lucide-react';
+import { Plus, Receipt, CreditCard, Trash2, Loader2, Printer } from 'lucide-react';
 import { format } from 'date-fns';
 import { toast } from 'sonner';
 import { useRecordPayment } from '@/hooks/useRecordPayment';
 import { useAuth } from '@/contexts/AuthContext';
 import { useFinanceProviders } from '@/hooks/useFinanceProviders';
 import { useFinanceLocations } from '@/hooks/useFinanceLocations';
+import { usePrintReceipt } from '@/hooks/usePrintReceipt';
+import { useReceiptData } from '@/hooks/useReceiptData';
+import { useReceiptSettings } from '@/hooks/useReceiptSettings';
 
 interface BookingPaymentManagerProps {
   bookingId: string;
@@ -35,6 +38,12 @@ export function BookingPaymentManager({ bookingId }: BookingPaymentManagerProps)
   const recordPayment = useRecordPayment();
   const { providers } = useFinanceProviders();
   const { locations } = useFinanceLocations();
+  const { print, isPrinting } = usePrintReceipt();
+  const { settings: receiptSettings } = useReceiptSettings();
+  const { data: receiptData } = useReceiptData({ bookingId });
+  
+  // Get the default receipt settings
+  const defaultSettings = receiptSettings?.[0];
   
   const activeProviders = providers.filter(p => p.status === 'active');
   const activeLocations = locations.filter(l => l.status === 'active');
@@ -188,6 +197,18 @@ export function BookingPaymentManager({ bookingId }: BookingPaymentManagerProps)
     });
   };
 
+  const handlePrintReceipt = async () => {
+    if (!receiptData) return;
+    await print({
+      receiptType: 'checkout',
+      bookingId,
+      guestId: receiptData.guest?.id,
+      organizationId: receiptData.organization?.id,
+      settingsId: defaultSettings?.id,
+      receiptData,
+    }, defaultSettings);
+  };
+
   if (bookingLoading) {
     return (
       <div className="flex items-center justify-center py-8">
@@ -206,10 +227,21 @@ export function BookingPaymentManager({ bookingId }: BookingPaymentManagerProps)
       {/* Summary Card */}
       <Card>
         <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Receipt className="h-5 w-5" />
-            Booking Folio Summary
-          </CardTitle>
+          <div className="flex items-center justify-between">
+            <CardTitle className="flex items-center gap-2">
+              <Receipt className="h-5 w-5" />
+              Booking Folio Summary
+            </CardTitle>
+            <Button 
+              variant="outline" 
+              size="sm" 
+              onClick={handlePrintReceipt}
+              disabled={isPrinting || !receiptData}
+            >
+              <Printer className="h-4 w-4 mr-2" />
+              {isPrinting ? 'Printing...' : 'Print Folio'}
+            </Button>
+          </div>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="grid grid-cols-3 gap-4">

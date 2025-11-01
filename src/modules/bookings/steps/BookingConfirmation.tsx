@@ -3,13 +3,16 @@ import { useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useFinancials } from '@/hooks/useFinancials';
+import { usePrintReceipt } from '@/hooks/usePrintReceipt';
+import { useReceiptData } from '@/hooks/useReceiptData';
+import { useReceiptSettings } from '@/hooks/useReceiptSettings';
 import { calculateBookingTotal } from '@/lib/finance/tax';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Loader2, Check, Building2, AlertCircle, Users, CheckCircle } from 'lucide-react';
+import { Loader2, Check, Building2, AlertCircle, Users, CheckCircle, Printer } from 'lucide-react';
 import { toast } from 'sonner';
 import { useOrganizationWallet } from '@/hooks/useOrganizationWallet';
 import { PaymentStep } from '../components/PaymentStep';
@@ -25,9 +28,19 @@ export function BookingConfirmation({ bookingData, onComplete }: BookingConfirma
   const { tenantId, user } = useAuth();
   const queryClient = useQueryClient();
   const { data: financials } = useFinancials();
+  const { print, isPrinting } = usePrintReceipt();
+  const { settings: receiptSettings } = useReceiptSettings();
   const isGroupBooking = bookingData.isGroupBooking && (bookingData.selectedRoomIds?.length || 0) > 1;
   const [showPayment, setShowPayment] = useState(false);
   const [createdBookings, setCreatedBookings] = useState<Array<{ id: string; guestId: string; amount: number }>>([]);
+  
+  // Get the default receipt settings
+  const defaultSettings = receiptSettings?.[0];
+  
+  // Fetch receipt data for the first booking (if created)
+  const { data: receiptData } = useReceiptData({ 
+    bookingId: createdBookings[0]?.id || undefined 
+  });
   
   // Fetch organization wallet if booking for org
   const { data: orgWallet } = useOrganizationWallet(bookingData.organizationId);
@@ -263,6 +276,18 @@ export function BookingConfirmation({ bookingData, onComplete }: BookingConfirma
     setTimeout(() => {
       onComplete();
     }, 1500);
+  };
+
+  const handlePrintConfirmation = async () => {
+    if (!receiptData || createdBookings.length === 0) return;
+    await print({
+      receiptType: 'reservation',
+      bookingId: createdBookings[0].id,
+      guestId: receiptData.guest?.id,
+      organizationId: receiptData.organization?.id,
+      settingsId: defaultSettings?.id,
+      receiptData,
+    }, defaultSettings);
   };
 
   // Show payment step after booking creation (for non-org bookings)
@@ -515,24 +540,37 @@ export function BookingConfirmation({ bookingData, onComplete }: BookingConfirma
         </div>
       </Card>
 
-      <Button
-        onClick={() => createBookingMutation.mutate()}
-        disabled={createBookingMutation.isPending}
-        className="w-full"
-        size="lg"
-      >
-        {createBookingMutation.isPending ? (
-          <>
-            <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-            {isGroupBooking ? 'Creating Group Bookings...' : 'Creating Booking...'}
-          </>
-        ) : (
-          <>
-            <Check className="w-4 h-4 mr-2" />
-            {isGroupBooking ? `Confirm ${bookingData.selectedRoomIds?.length} Room Bookings` : 'Confirm Booking'}
-          </>
+      <div className="flex gap-2">
+        <Button
+          onClick={() => createBookingMutation.mutate()}
+          disabled={createBookingMutation.isPending}
+          className="flex-1"
+          size="lg"
+        >
+          {createBookingMutation.isPending ? (
+            <>
+              <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+              {isGroupBooking ? 'Creating Group Bookings...' : 'Creating Booking...'}
+            </>
+          ) : (
+            <>
+              <Check className="w-4 h-4 mr-2" />
+              {isGroupBooking ? `Confirm ${bookingData.selectedRoomIds?.length} Room Bookings` : 'Confirm Booking'}
+            </>
+          )}
+        </Button>
+        
+        {createdBookings.length > 0 && receiptData && (
+          <Button
+            onClick={handlePrintConfirmation}
+            disabled={isPrinting}
+            variant="outline"
+            size="lg"
+          >
+            <Printer className="w-4 h-4" />
+          </Button>
         )}
-      </Button>
+      </div>
     </div>
   );
 }

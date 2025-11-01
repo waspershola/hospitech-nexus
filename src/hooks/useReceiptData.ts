@@ -75,6 +75,7 @@ export interface ReceiptData {
   
   // Organization (if applicable)
   organization: {
+    id: string;
     name: string;
   } | null;
   
@@ -149,7 +150,7 @@ export function useReceiptData({ bookingId, paymentId, guestId, organizationId }
             organization_id,
             rooms (number, type),
             guests (id, name, email, phone),
-            organizations (name)
+            organizations (id, name)
           `)
           .eq('id', bookingId)
           .single();
@@ -303,7 +304,7 @@ export function useReceiptData({ bookingId, paymentId, guestId, organizationId }
           if (paymentData.organization_id) {
             const { data: orgData } = await supabase
               .from('organizations')
-              .select('name')
+              .select('id, name')
               .eq('id', paymentData.organization_id)
               .single();
 

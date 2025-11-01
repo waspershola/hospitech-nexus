@@ -1,5 +1,8 @@
 import { usePayments } from '@/hooks/usePayments';
 import { useWalletTransactions } from '@/hooks/useWalletTransactions';
+import { usePrintReceipt } from '@/hooks/usePrintReceipt';
+import { useReceiptData } from '@/hooks/useReceiptData';
+import { useReceiptSettings } from '@/hooks/useReceiptSettings';
 import {
   Sheet,
   SheetContent,
@@ -18,7 +21,7 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import { CheckCircle2, XCircle, Clock, Receipt } from 'lucide-react';
+import { CheckCircle2, XCircle, Clock, Receipt, Printer } from 'lucide-react';
 import { PaymentMetadataDisplay } from '@/components/shared/PaymentMetadataDisplay';
 
 interface PaymentDrawerProps {
@@ -30,6 +33,12 @@ interface PaymentDrawerProps {
 export function PaymentDrawer({ paymentId, open, onClose }: PaymentDrawerProps) {
   const { payments } = usePayments();
   const payment = payments.find(p => p.id === paymentId);
+  const { print, isPrinting } = usePrintReceipt();
+  const { settings: receiptSettings } = useReceiptSettings();
+  const { data: receiptData } = useReceiptData({ paymentId: paymentId || undefined });
+  
+  // Get the default receipt settings
+  const defaultSettings = receiptSettings?.[0];
   
   // Fetch wallet transactions linked to this payment
   const { data: allTransactions = [] } = useWalletTransactions();
@@ -75,9 +84,17 @@ export function PaymentDrawer({ paymentId, open, onClose }: PaymentDrawerProps) 
     console.log('Refund payment:', payment.id);
   };
 
-  const handleViewReceipt = () => {
-    // TODO: Implement receipt viewing
-    console.log('View receipt:', payment.id);
+  const handlePrintReceipt = async () => {
+    if (!paymentId || !receiptData) return;
+    await print({
+      receiptType: 'payment',
+      paymentId,
+      bookingId: payment?.booking_id || undefined,
+      guestId: receiptData.guest?.id,
+      organizationId: payment?.organization_id || undefined,
+      settingsId: defaultSettings?.id,
+      receiptData,
+    }, defaultSettings);
   };
 
   return (
@@ -239,9 +256,14 @@ export function PaymentDrawer({ paymentId, open, onClose }: PaymentDrawerProps) 
             )}
             {payment.status === 'paid' && (
               <>
-                <Button variant="outline" onClick={handleViewReceipt} className="w-full">
-                  <Receipt className="mr-2 h-4 w-4" />
-                  View Receipt
+                <Button 
+                  variant="default" 
+                  onClick={handlePrintReceipt} 
+                  className="w-full"
+                  disabled={isPrinting || !receiptData}
+                >
+                  <Printer className="mr-2 h-4 w-4" />
+                  {isPrinting ? 'Printing...' : 'Print Receipt'}
                 </Button>
                 <Button variant="outline" onClick={handleRefund} className="w-full">
                   Refund Payment
