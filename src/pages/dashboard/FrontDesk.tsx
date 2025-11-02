@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Plus } from 'lucide-react';
+import { Plus, RefreshCw } from 'lucide-react';
 import { HeaderBar } from '@/modules/frontdesk/components/HeaderBar';
 import { QuickKPIs } from '@/modules/frontdesk/components/QuickKPIs';
 import { RoomStatusOverview } from '@/modules/frontdesk/components/RoomStatusOverview';
@@ -15,6 +15,7 @@ import { AvailabilityCalendar } from '@/modules/frontdesk/components/Availabilit
 import { useOverstayRooms } from '@/hooks/useOverstayRooms';
 import { useRoomActions } from '@/modules/frontdesk/hooks/useRoomActions';
 import { useRoomRealtime, useBookingRealtime, usePaymentRealtime } from '@/hooks/useRoomRealtime';
+import { useSyncRoomBookings } from '@/hooks/useSyncRoomBookings';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Calendar, LayoutGrid } from 'lucide-react';
 
@@ -35,11 +36,17 @@ export default function FrontDesk() {
   
   const { data: overstayRooms = [] } = useOverstayRooms();
   const { checkOut } = useRoomActions();
+  const syncMutation = useSyncRoomBookings();
   
   // Enable real-time updates
   useRoomRealtime();
   useBookingRealtime();
   usePaymentRealtime();
+  
+  // Auto-sync on mount to fix any stale data
+  useEffect(() => {
+    syncMutation.mutate();
+  }, []);
 
   // Handle opening AssignRoomDrawer from RoomActionDrawer
   const handleOpenAssignDrawer = (roomId: string, roomNumber: string) => {

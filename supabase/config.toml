@@ -1,12 +1,9 @@
 project_id = "akchmpmzcupzjaeewdui"
 
+[functions.apply-wallet-credit]
+verify_jwt = true
+
 [functions.auto-sync-reconciliation]
-verify_jwt = true
-
-[functions.create-booking]
-verify_jwt = true
-
-[functions.create-payment]
 verify_jwt = true
 
 [functions.charge-to-organization]
@@ -15,7 +12,19 @@ verify_jwt = true
 [functions.complete-checkout]
 verify_jwt = true
 
+[functions.create-booking]
+verify_jwt = true
+
+[functions.create-payment]
+verify_jwt = true
+
+[functions.force-checkout]
+verify_jwt = true
+
 [functions.manage-domain]
+verify_jwt = true
+
+[functions.recalculate-financials]
 verify_jwt = true
 
 [functions.reconcile-transactions]
@@ -24,12 +33,12 @@ verify_jwt = true
 [functions.sync]
 verify_jwt = true
 
+[functions.sync-room-bookings]
+verify_jwt = true
+
 [functions.validate-booking]
 verify_jwt = true
 
 [functions.verify-payment]
-verify_jwt = true
-
-[functions.recalculate-financials]
 verify_jwt = true
 
