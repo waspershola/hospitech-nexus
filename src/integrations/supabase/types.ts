@@ -2068,6 +2068,7 @@ export type Database = {
           floor: number | null
           housekeeping_status: string | null
           id: string
+          metadata: Json | null
           notes: string | null
           number: string
           rate: number | null
@@ -2084,6 +2085,7 @@ export type Database = {
           floor?: number | null
           housekeeping_status?: string | null
           id?: string
+          metadata?: Json | null
           notes?: string | null
           number: string
           rate?: number | null
@@ -2100,6 +2102,7 @@ export type Database = {
           floor?: number | null
           housekeeping_status?: string | null
           id?: string
+          metadata?: Json | null
           notes?: string | null
           number?: string
           rate?: number | null

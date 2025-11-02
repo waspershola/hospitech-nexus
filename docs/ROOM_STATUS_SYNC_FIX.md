@@ -19,7 +19,7 @@ export function useRoomActions() {
     
     // If manual override is specified, update metadata
     if (manualOverride !== undefined) {
-      const currentMetadata = (oldRoom?.metadata as Record<string, any>) || {};
+      const currentMetadata = oldRoom?.metadata || {};
       updateData.metadata = {
         ...currentMetadata,
         manual_status_override: manualOverride
