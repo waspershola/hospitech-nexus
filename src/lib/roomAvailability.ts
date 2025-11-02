@@ -33,24 +33,31 @@ export function getRoomStatusForDate(
   const dateStr = format(date, 'yyyy-MM-dd');
   
   // Find booking active on this date
-  const activeBooking = bookings.find(b => 
-    b.room_id === room.id &&
-    b.check_in <= dateStr &&
-    b.check_out > dateStr &&
-    b.status !== 'cancelled'
-  );
+  const activeBooking = bookings.find(b => {
+    if (b.room_id !== room.id || b.status === 'cancelled') return false;
+    
+    // Normalize ISO timestamps to yyyy-MM-dd for proper comparison
+    const checkInDate = format(new Date(b.check_in), 'yyyy-MM-dd');
+    const checkOutDate = format(new Date(b.check_out), 'yyyy-MM-dd');
+    
+    return checkInDate <= dateStr && checkOutDate > dateStr;
+  });
   
   if (!activeBooking) {
     return 'available';
   }
   
+  // Normalize dates for check-in/check-out day comparison
+  const checkInDate = format(new Date(activeBooking.check_in), 'yyyy-MM-dd');
+  const checkOutDate = format(new Date(activeBooking.check_out), 'yyyy-MM-dd');
+  
   // Check if it's check-in day
-  if (activeBooking.check_in === dateStr) {
+  if (checkInDate === dateStr) {
     return activeBooking.status === 'checked_in' ? 'check-in' : 'reserved';
   }
   
   // Check if it's check-out day
-  if (activeBooking.check_out === dateStr) {
+  if (checkOutDate === dateStr) {
     return 'check-out';
   }
   

@@ -26,51 +26,26 @@ export function AvailabilityCalendar({ onRoomClick }: AvailabilityCalendarProps)
     new Date(selectedDate.getTime() + 86400000) // Next day
   );
 
-  // Filter rooms by selected date using shared logic
-  const filteredRooms = roomAvailability
-    ?.map((room) => {
-      const selectedDateStr = format(selectedDate, 'yyyy-MM-dd');
-      
-      // Create booking object for status calculation
-      const bookings = room.checkIn && room.checkOut ? [{
-        id: room.roomId,
-        room_id: room.roomId,
-        check_in: room.checkIn,
-        check_out: room.checkOut,
-        status: room.status === 'occupied' ? 'checked_in' : 'reserved',
-      }] : [];
-      
-      // Use shared function for consistent status
-      const correctStatus = getRoomStatusForDate(
-        { id: room.roomId, number: room.roomNumber, status: room.status },
-        selectedDate,
-        bookings
-      );
-      
-      return {
-        ...room,
-        status: correctStatus,
-      };
-    })
-    .filter((room) => {
-      if (typeFilter !== 'all' && room.roomType !== typeFilter) return false;
-      if (floorFilter !== 'all' && room.floor?.toString() !== floorFilter) return false;
-      return true;
-    });
+  // Filter rooms - use status directly from hook (already calculated correctly)
+  const filteredRooms = roomAvailability?.filter((room) => {
+    if (typeFilter !== 'all' && room.roomType !== typeFilter) return false;
+    if (floorFilter !== 'all' && room.floor?.toString() !== floorFilter) return false;
+    return true;
+  });
 
   const availableRooms = filteredRooms?.filter(r => r.status === 'available') || [];
   const reservedRooms = filteredRooms?.filter(r => r.status === 'reserved') || [];
   const occupiedRooms = filteredRooms?.filter(r => r.status === 'occupied') || [];
-  const checkingInRooms = filteredRooms?.filter(r => r.status === 'check-in') || [];
-  const checkingOutRooms = filteredRooms?.filter(r => r.status === 'check-out') || [];
+  const checkingInRooms = filteredRooms?.filter(r => r.status === 'checking_in') || [];
+  const checkingOutRooms = filteredRooms?.filter(r => r.status === 'checking_out') || [];
 
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'available': return 'bg-green-100 dark:bg-green-900/30 border-green-300 dark:border-green-700';
       case 'reserved': return 'bg-yellow-100 dark:bg-yellow-900/30 border-yellow-300 dark:border-yellow-700';
       case 'occupied': return 'bg-red-100 dark:bg-red-900/30 border-red-300 dark:border-red-700';
-      case 'check-in': return 'bg-blue-100 dark:bg-blue-900/30 border-blue-300 dark:border-blue-700';
-      case 'check-out': return 'bg-purple-100 dark:bg-purple-900/30 border-purple-300 dark:border-purple-700';
+      case 'checking_in': return 'bg-blue-100 dark:bg-blue-900/30 border-blue-300 dark:border-blue-700';
+      case 'checking_out': return 'bg-purple-100 dark:bg-purple-900/30 border-purple-300 dark:border-purple-700';
       default: return 'bg-muted border-border';
     }
   };
@@ -80,8 +55,8 @@ export function AvailabilityCalendar({ onRoomClick }: AvailabilityCalendarProps)
       case 'available': return <Badge className="bg-green-600 hover:bg-green-700"><CheckCircle className="w-3 h-3 mr-1" />Available</Badge>;
       case 'reserved': return <Badge className="bg-yellow-600 hover:bg-yellow-700"><Clock className="w-3 h-3 mr-1" />Reserved</Badge>;
       case 'occupied': return <Badge className="bg-red-600 hover:bg-red-700"><XCircle className="w-3 h-3 mr-1" />Occupied</Badge>;
-      case 'check-in': return <Badge className="bg-blue-600 hover:bg-blue-700"><Clock className="w-3 h-3 mr-1" />Check-in Today</Badge>;
-      case 'check-out': return <Badge className="bg-purple-600 hover:bg-purple-700"><Clock className="w-3 h-3 mr-1" />Check-out Today</Badge>;
+      case 'checking_in': return <Badge className="bg-blue-600 hover:bg-blue-700"><Clock className="w-3 h-3 mr-1" />Check-in Today</Badge>;
+      case 'checking_out': return <Badge className="bg-purple-600 hover:bg-purple-700"><Clock className="w-3 h-3 mr-1" />Check-out Today</Badge>;
       default: return null;
     }
   };
