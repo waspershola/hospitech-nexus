@@ -63,8 +63,7 @@ export default function Debtors() {
           created_by,
           metadata,
           guest:guests(id, name, email, phone),
-          organization:organizations(id, name, contact_email),
-          created_by_profile:profiles!receivables_created_by_fkey(full_name)
+          organization:organizations(id, name, contact_email)
         `)
         .eq('tenant_id', tenantId)
         .eq('status', 'open');
@@ -79,6 +78,17 @@ export default function Debtors() {
         const entityId = isGuest ? r.guest_id! : r.organization_id!;
         const entityData = isGuest ? (r.guest as any) : (r.organization as any);
 
+        // Fetch staff name if created_by exists
+        let staffName = 'System';
+        if (r.created_by) {
+          const { data: profile } = await supabase
+            .from('profiles')
+            .select('full_name')
+            .eq('id', r.created_by)
+            .single();
+          staffName = profile?.full_name || 'Staff';
+        }
+
         if (debtorMap.has(entityId)) {
           const existing = debtorMap.get(entityId)!;
           existing.total_debt += Number(r.amount);
@@ -90,7 +100,7 @@ export default function Debtors() {
             due_date: r.due_date,
             booking_id: r.booking_id,
             status: r.status,
-            created_by: (r.created_by_profile as any)?.full_name || 'System',
+            created_by: staffName,
             location: (r.metadata as any)?.location || 'N/A'
           });
           const age = differenceInDays(new Date(), new Date(r.created_at));
@@ -128,7 +138,7 @@ export default function Debtors() {
               due_date: r.due_date,
               booking_id: r.booking_id,
               status: r.status,
-              created_by: (r.created_by_profile as any)?.full_name || 'System',
+              created_by: staffName,
               location: (r.metadata as any)?.location || 'N/A'
             }]
           });
