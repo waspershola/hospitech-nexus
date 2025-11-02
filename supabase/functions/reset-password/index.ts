@@ -201,7 +201,10 @@ serve(async (req: Request): Promise<Response> => {
         JSON.stringify({
           success: true,
           message: 'Password reset successfully',
-          email_sent: emailSent,
+          data: {
+            new_password: tempPassword,
+            email_sent: emailSent,
+          }
         }),
         { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );

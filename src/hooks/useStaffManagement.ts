@@ -63,11 +63,8 @@ export function useStaffManagement(filters?: StaffFilters) {
   // Create staff
   const createStaff = useMutation({
     mutationFn: async (newStaff: Omit<Staff, 'id' | 'tenant_id' | 'created_at' | 'updated_at'>) => {
-      const { data, error } = await supabase.functions.invoke('manage-staff', {
-        body: {
-          action: 'create',
-          ...newStaff,
-        },
+      const { data, error } = await supabase.functions.invoke('manage-staff/create', {
+        body: newStaff,
       });
 
       if (error) throw error;

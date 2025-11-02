@@ -12,15 +12,12 @@ export function usePasswordReset() {
       });
 
       if (error) throw error;
+      if (data?.error) throw new Error(data.error);
       return data;
     },
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['staff'] });
-      if (data.email_sent) {
-        toast.success('Password reset successfully. New credentials sent via email.');
-      } else {
-        toast.success('Password reset successfully.');
-      }
+      // Don't show toast here - let the modal handle the UI
     },
     onError: (error: any) => {
       toast.error(error.message || 'Failed to reset password');
