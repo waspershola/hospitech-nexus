@@ -49,7 +49,7 @@ export default function StaffPage() {
   const supervisors = staff?.filter(s => s.role === 'supervisor' || s.role === 'manager') || [];
 
   return (
-    <DashboardShell>
+    <>
       <div className="space-y-6">
         {/* Header */}
         <div className="flex items-center justify-between">
@@ -215,6 +215,6 @@ export default function StaffPage() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-    </DashboardShell>
+    </>
   );
 }

@@ -72,11 +72,11 @@ Deno.serve(async (req) => {
           { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
     }
-  } catch (error) {
+  } catch (error: any) {
     console.error('Error:', error);
     return new Response(
-      JSON.stringify({ error: error.message }),
-      { status: error.message === 'Unauthorized' ? 401 : 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      JSON.stringify({ error: error?.message || 'Unknown error' }),
+      { status: error?.message === 'Unauthorized' ? 401 : 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   }
 });
