@@ -29,6 +29,54 @@ serve(async (req) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
     );
 
+    // 🔒 SECURITY: Authentication check
+    const authHeader = req.headers.get('Authorization');
+    if (!authHeader) {
+      return new Response(
+        JSON.stringify({ success: false, error: 'Missing authorization header' }),
+        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    const token = authHeader.replace('Bearer ', '');
+    const { data: { user }, error: authError } = await supabase.auth.getUser(token);
+
+    if (authError || !user) {
+      console.error('Authentication failed:', authError);
+      return new Response(
+        JSON.stringify({ success: false, error: 'Unauthorized' }),
+        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // 🔒 SECURITY: Role-based authorization
+    const { data: userRole, error: roleError } = await supabase
+      .from('user_roles')
+      .select('role, tenant_id')
+      .eq('user_id', user.id)
+      .single();
+
+    if (roleError || !userRole) {
+      console.error('Role fetch failed:', roleError);
+      return new Response(
+        JSON.stringify({ success: false, error: 'User role not found' }),
+        { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    const allowedRoles = ['owner', 'manager', 'frontdesk', 'finance'];
+    if (!allowedRoles.includes(userRole.role)) {
+      console.log(`Access denied for role: ${userRole.role}`);
+      return new Response(
+        JSON.stringify({ 
+          success: false, 
+          error: 'Insufficient permissions',
+          required_roles: allowedRoles
+        }),
+        { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
     const rawBody = await req.json();
     const validationResult = chargeSchema.safeParse(rawBody);
     
@@ -44,6 +92,14 @@ serve(async (req) => {
     }
 
     const { tenant_id, organization_id, guest_id, booking_id, amount, description, department, recorded_by } = validationResult.data;
+
+    // 🔒 SECURITY: Tenant ID validation
+    if (tenant_id !== userRole.tenant_id) {
+      return new Response(
+        JSON.stringify({ success: false, error: 'Tenant ID mismatch' }),
+        { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
 
     console.log('Charging organization:', organization_id, 'amount:', amount);
 
