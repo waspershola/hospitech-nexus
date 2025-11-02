@@ -334,6 +334,48 @@ export function BookingConfirmation({ bookingData, onComplete }: BookingConfirma
     ? calculateBookingTotal(baseAmount, financials)
     : { baseAmount, vatAmount: 0, serviceAmount: 0, totalAmount: baseAmount };
 
+  // Fetch selected rooms for group booking display calculation
+  const { data: selectedRoomsData } = useQuery({
+    queryKey: ['selected-rooms', bookingData.selectedRoomIds],
+    queryFn: async () => {
+      if (!bookingData.selectedRoomIds || bookingData.selectedRoomIds.length === 0) {
+        return null;
+      }
+      const { data } = await supabase
+        .from('rooms')
+        .select('id, category:room_categories(base_rate)')
+        .in('id', bookingData.selectedRoomIds);
+      return data;
+    },
+    enabled: isGroupBooking && !!bookingData.selectedRoomIds,
+  });
+
+  // Calculate display total for group bookings
+  const groupDisplayTotal = isGroupBooking && selectedRoomsData && financials
+    ? (() => {
+        const totalRate = selectedRoomsData.reduce((sum, room) => {
+          return sum + ((room.category as any)?.base_rate || 0);
+        }, 0);
+        const avgRate = totalRate / selectedRoomsData.length;
+        
+        const calculation = calculateGroupBookingTotal({
+          roomRate: avgRate,
+          nights,
+          numberOfRooms: bookingData.selectedRoomIds.length,
+          selectedAddonIds: bookingData.selectedAddons || [],
+          financials,
+          rateOverride: bookingData.rateOverride,
+        });
+        
+        return calculation;
+      })()
+    : null;
+
+  // Use this for display
+  const displayTotal = isGroupBooking 
+    ? groupDisplayTotal?.totalAmount || 0
+    : taxBreakdown.totalAmount;
+
   // Handle payment completion
   const handlePaymentComplete = () => {
     queryClient.invalidateQueries({ queryKey: ['payments'] });
@@ -571,7 +613,7 @@ export function BookingConfirmation({ bookingData, onComplete }: BookingConfirma
             <div className="space-y-2">
               <div className="flex items-center justify-between text-sm">
                 <span className="text-muted-foreground">Total for {bookingData.selectedRoomIds?.length} rooms ({nights} {nights === 1 ? 'night' : 'nights'})</span>
-                <span className="font-medium">₦{bookingData.totalAmount?.toFixed(2)}</span>
+                <span className="font-medium">₦{displayTotal.toFixed(2)}</span>
               </div>
               <p className="text-xs text-muted-foreground">Includes all taxes and charges</p>
             </div>
@@ -610,7 +652,7 @@ export function BookingConfirmation({ bookingData, onComplete }: BookingConfirma
         <div className="flex items-center justify-between">
           <span className="text-lg font-semibold">Total Amount:</span>
           <span className="text-2xl font-bold text-primary">
-            ₦{isGroupBooking ? bookingData.totalAmount?.toFixed(2) : taxBreakdown.totalAmount.toFixed(2)}
+            ₦{displayTotal.toFixed(2)}
           </span>
         </div>
       </Card>
