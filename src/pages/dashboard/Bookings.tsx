@@ -72,15 +72,27 @@ export default function Bookings() {
   const [showFilters, setShowFilters] = useState(false);
   const [filters, setFilters] = useState<BookingFilters>({});
 
-  const { data: bookings = [], isLoading } = useQuery({
+  const { data: bookings = [], isLoading, error } = useQuery({
     queryKey: ['bookings', tenantId],
     queryFn: async () => {
+      if (!tenantId) {
+        console.warn('⚠️ No tenantId available for bookings query');
+        return [];
+      }
+      
+      console.log('📊 Fetching bookings for tenant:', tenantId);
       const { data, error } = await supabase
         .from('bookings')
         .select('*, guests(id, name), rooms(id, number, type)')
         .eq('tenant_id', tenantId)
         .order('check_in', { ascending: false });
-      if (error) throw error;
+      
+      if (error) {
+        console.error('❌ Error fetching bookings:', error);
+        throw error;
+      }
+      
+      console.log(`✅ Fetched ${data?.length || 0} bookings`);
       return data as Booking[];
     },
     enabled: !!tenantId,
@@ -107,6 +119,15 @@ export default function Bookings() {
 
   if (isLoading) {
     return <div className="text-center py-12">Loading bookings...</div>;
+  }
+
+  if (error) {
+    return (
+      <div className="text-center py-12">
+        <p className="text-destructive mb-2">Error loading bookings</p>
+        <p className="text-sm text-muted-foreground">{error.message}</p>
+      </div>
+    );
   }
 
   return (

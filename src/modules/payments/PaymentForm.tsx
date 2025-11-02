@@ -13,6 +13,7 @@ import { useFinancials } from '@/hooks/useFinancials';
 import { useDashboardDefaults } from '@/hooks/useDashboardDefaults';
 import { useApplyWalletCredit } from '@/hooks/useApplyWalletCredit';
 import { usePaymentPreferences } from '@/hooks/usePaymentPreferences';
+import { useQueryClient } from '@tanstack/react-query';
 import { calculateBookingTotal } from '@/lib/finance/tax';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -86,6 +87,7 @@ export function PaymentForm({
   const [autoApplyAttempted, setAutoApplyAttempted] = useState(false);
   
   const { tenantId } = useAuth();
+  const queryClient = useQueryClient();
   const { providers = [], isLoading: providersLoading } = useFinanceProviders();
   const { locations = [] } = useFinanceLocations();
   const { wallets = [] } = useWallets();
@@ -211,6 +213,9 @@ export function PaymentForm({
           setWalletCreditApplied(amountToApply);
           const newExpectedAmount = Math.max(0, expectedAmount - amountToApply);
           setValue('expected_amount', newExpectedAmount.toString());
+          // Invalidate wallet queries to refresh balance
+          queryClient.invalidateQueries({ queryKey: ['guest-wallet-balance', guestId, tenantId] });
+          queryClient.invalidateQueries({ queryKey: ['wallets'] });
         },
         onError: () => {
           // Silent fail for auto-apply
@@ -363,6 +368,9 @@ export function PaymentForm({
                     const newExpectedAmount = Math.max(0, expectedAmount - appliedAmount);
                     setValue('expected_amount', newExpectedAmount.toString());
                   }
+                  // Invalidate wallet queries to refresh balance
+                  queryClient.invalidateQueries({ queryKey: ['guest-wallet-balance', guestId, tenantId] });
+                  queryClient.invalidateQueries({ queryKey: ['wallets'] });
                   setShowWalletApplyDialog(false);
                 },
                 onError: () => {
