@@ -1,5 +1,8 @@
 project_id = "akchmpmzcupzjaeewdui"
 
+[functions.manage-staff]
+verify_jwt = true
+
 [functions.apply-wallet-credit]
 verify_jwt = true
 

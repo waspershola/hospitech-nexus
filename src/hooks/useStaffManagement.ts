@@ -1,0 +1,189 @@
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/contexts/AuthContext';
+import { toast } from '@/hooks/use-toast';
+
+export interface Staff {
+  id: string;
+  tenant_id: string;
+  user_id: string;
+  full_name: string;
+  email: string;
+  phone?: string;
+  department?: string;
+  role?: string;
+  supervisor_id?: string;
+  branch?: string;
+  status: 'active' | 'suspended' | 'inactive';
+  created_at: string;
+  updated_at: string;
+}
+
+export interface StaffFilters {
+  department?: string;
+  role?: string;
+  status?: string;
+  search?: string;
+}
+
+export function useStaffManagement(filters?: StaffFilters) {
+  const { tenantId } = useAuth();
+  const queryClient = useQueryClient();
+
+  // Fetch staff list
+  const { data: staff, isLoading } = useQuery({
+    queryKey: ['staff', tenantId, filters],
+    queryFn: async () => {
+      let query = supabase
+        .from('staff')
+        .select('*')
+        .eq('tenant_id', tenantId!)
+        .order('created_at', { ascending: false });
+
+      if (filters?.department) {
+        query = query.eq('department', filters.department);
+      }
+      if (filters?.role) {
+        query = query.eq('role', filters.role);
+      }
+      if (filters?.status) {
+        query = query.eq('status', filters.status);
+      }
+      if (filters?.search) {
+        query = query.or(`full_name.ilike.%${filters.search}%,email.ilike.%${filters.search}%`);
+      }
+
+      const { data, error } = await query;
+      if (error) throw error;
+      return data as Staff[];
+    },
+    enabled: !!tenantId,
+  });
+
+  // Create staff
+  const createStaff = useMutation({
+    mutationFn: async (newStaff: Omit<Staff, 'id' | 'tenant_id' | 'created_at' | 'updated_at'>) => {
+      const { data, error } = await supabase
+        .from('staff')
+        .insert({
+          ...newStaff,
+          tenant_id: tenantId,
+        })
+        .select()
+        .single();
+
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['staff'] });
+      toast({
+        title: 'Success',
+        description: 'Staff member created successfully',
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: 'Error',
+        description: error.message,
+        variant: 'destructive',
+      });
+    },
+  });
+
+  // Update staff
+  const updateStaff = useMutation({
+    mutationFn: async ({ id, ...updates }: Partial<Staff> & { id: string }) => {
+      const { data, error } = await supabase
+        .from('staff')
+        .update(updates)
+        .eq('id', id)
+        .eq('tenant_id', tenantId!)
+        .select()
+        .single();
+
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['staff'] });
+      toast({
+        title: 'Success',
+        description: 'Staff member updated successfully',
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: 'Error',
+        description: error.message,
+        variant: 'destructive',
+      });
+    },
+  });
+
+  // Change status
+  const changeStatus = useMutation({
+    mutationFn: async ({ id, status }: { id: string; status: Staff['status'] }) => {
+      const { data, error } = await supabase
+        .from('staff')
+        .update({ status })
+        .eq('id', id)
+        .eq('tenant_id', tenantId!)
+        .select()
+        .single();
+
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['staff'] });
+      toast({
+        title: 'Success',
+        description: 'Staff status updated successfully',
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: 'Error',
+        description: error.message,
+        variant: 'destructive',
+      });
+    },
+  });
+
+  // Remove staff
+  const removeStaff = useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase
+        .from('staff')
+        .delete()
+        .eq('id', id)
+        .eq('tenant_id', tenantId!);
+
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['staff'] });
+      toast({
+        title: 'Success',
+        description: 'Staff member removed successfully',
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: 'Error',
+        description: error.message,
+        variant: 'destructive',
+      });
+    },
+  });
+
+  return {
+    staff,
+    isLoading,
+    createStaff,
+    updateStaff,
+    changeStatus,
+    removeStaff,
+  };
+}

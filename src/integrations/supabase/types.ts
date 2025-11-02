@@ -2020,6 +2020,53 @@ export type Database = {
           },
         ]
       }
+      role_permissions: {
+        Row: {
+          can_delete: boolean | null
+          can_edit: boolean | null
+          can_view: boolean | null
+          created_at: string | null
+          department: string | null
+          id: string
+          module: string
+          role: string
+          tenant_id: string
+          updated_at: string | null
+        }
+        Insert: {
+          can_delete?: boolean | null
+          can_edit?: boolean | null
+          can_view?: boolean | null
+          created_at?: string | null
+          department?: string | null
+          id?: string
+          module: string
+          role: string
+          tenant_id: string
+          updated_at?: string | null
+        }
+        Update: {
+          can_delete?: boolean | null
+          can_edit?: boolean | null
+          can_view?: boolean | null
+          created_at?: string | null
+          department?: string | null
+          id?: string
+          module?: string
+          role?: string
+          tenant_id?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "role_permissions_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       room_categories: {
         Row: {
           amenities: Json | null
@@ -2194,6 +2241,126 @@ export type Database = {
           },
           {
             foreignKeyName: "rooms_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      staff: {
+        Row: {
+          branch: string | null
+          created_at: string | null
+          department: string | null
+          email: string
+          full_name: string
+          id: string
+          phone: string | null
+          role: string | null
+          status: string | null
+          supervisor_id: string | null
+          tenant_id: string
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          branch?: string | null
+          created_at?: string | null
+          department?: string | null
+          email: string
+          full_name: string
+          id?: string
+          phone?: string | null
+          role?: string | null
+          status?: string | null
+          supervisor_id?: string | null
+          tenant_id: string
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          branch?: string | null
+          created_at?: string | null
+          department?: string | null
+          email?: string
+          full_name?: string
+          id?: string
+          phone?: string | null
+          role?: string | null
+          status?: string | null
+          supervisor_id?: string | null
+          tenant_id?: string
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "staff_supervisor_id_fkey"
+            columns: ["supervisor_id"]
+            isOneToOne: false
+            referencedRelation: "staff"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "staff_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      staff_activity: {
+        Row: {
+          action: string
+          department: string | null
+          description: string | null
+          entity: string | null
+          entity_id: string | null
+          id: string
+          metadata: Json | null
+          role: string | null
+          staff_id: string
+          tenant_id: string
+          timestamp: string | null
+        }
+        Insert: {
+          action: string
+          department?: string | null
+          description?: string | null
+          entity?: string | null
+          entity_id?: string | null
+          id?: string
+          metadata?: Json | null
+          role?: string | null
+          staff_id: string
+          tenant_id: string
+          timestamp?: string | null
+        }
+        Update: {
+          action?: string
+          department?: string | null
+          description?: string | null
+          entity?: string | null
+          entity_id?: string | null
+          id?: string
+          metadata?: Json | null
+          role?: string | null
+          staff_id?: string
+          tenant_id?: string
+          timestamp?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "staff_activity_staff_id_fkey"
+            columns: ["staff_id"]
+            isOneToOne: false
+            referencedRelation: "staff"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "staff_activity_tenant_id_fkey"
             columns: ["tenant_id"]
             isOneToOne: false
             referencedRelation: "tenants"
@@ -2478,6 +2645,18 @@ export type Database = {
       generate_receipt_number: {
         Args: { p_receipt_type: string; p_tenant_id: string }
         Returns: string
+      }
+      get_department_staff: {
+        Args: { _tenant_id: string; _user_id: string }
+        Returns: {
+          branch: string
+          email: string
+          full_name: string
+          phone: string
+          role: string
+          staff_id: string
+          status: string
+        }[]
       }
       get_tenant_by_domain: { Args: { _domain: string }; Returns: string }
       get_user_tenant: { Args: { _user_id: string }; Returns: string }

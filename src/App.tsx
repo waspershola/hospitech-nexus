@@ -22,6 +22,7 @@ import GuestProfile from './pages/dashboard/GuestProfile';
 import Reports from './pages/dashboard/Reports';
 import Settings from './pages/dashboard/Settings';
 import UserRoles from './pages/dashboard/UserRoles';
+import Staff from './pages/dashboard/Staff';
 import ConfigurationCenter from './pages/dashboard/ConfigurationCenter';
 import FinanceCenter from './pages/dashboard/FinanceCenter';
 import FinanceDashboard from './pages/dashboard/FinanceDashboard';
@@ -70,6 +71,7 @@ const App = () => (
               
           <Route path="settings" element={<Settings />} />
           <Route path="user-roles" element={<UserRoles />} />
+          <Route path="staff" element={<Staff />} />
             </Route>
 
             <Route path="/portal" element={<ProtectedRoute><GuestPortalShell /></ProtectedRoute>}>
