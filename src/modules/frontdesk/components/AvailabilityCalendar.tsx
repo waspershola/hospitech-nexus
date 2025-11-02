@@ -13,7 +13,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { getRoomStatusForDate } from '@/lib/roomAvailability';
 
 interface AvailabilityCalendarProps {
-  onRoomClick?: (roomId: string) => void;
+  onRoomClick?: (roomId: string, date: Date) => void;
 }
 
 export function AvailabilityCalendar({ onRoomClick }: AvailabilityCalendarProps) {
@@ -145,7 +145,7 @@ export function AvailabilityCalendar({ onRoomClick }: AvailabilityCalendarProps)
               <div
                 key={room.roomId}
                 className={`p-3 rounded-lg border-2 cursor-pointer transition-all hover:shadow-md ${getStatusColor(room.status)}`}
-                onClick={() => onRoomClick?.(room.roomId)}
+                onClick={() => onRoomClick?.(room.roomId, selectedDate)}
               >
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">

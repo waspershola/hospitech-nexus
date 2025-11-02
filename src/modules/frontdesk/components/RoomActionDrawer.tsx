@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { format } from 'date-fns';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -39,12 +40,13 @@ import {
 
 interface RoomActionDrawerProps {
   roomId: string | null;
+  contextDate?: Date | null;
   open: boolean;
   onClose: () => void;
   onOpenAssignDrawer?: (roomId: string, roomNumber: string) => void;
 }
 
-export function RoomActionDrawer({ roomId, open, onClose, onOpenAssignDrawer }: RoomActionDrawerProps) {
+export function RoomActionDrawer({ roomId, contextDate, open, onClose, onOpenAssignDrawer }: RoomActionDrawerProps) {
   const { tenantId, role } = useAuth();
   const canForceCheckout = hasPermission(role, PERMISSIONS.MANAGE_FINANCE);
   const queryClient = useQueryClient();
@@ -134,7 +136,7 @@ export function RoomActionDrawer({ roomId, open, onClose, onOpenAssignDrawer }: 
   // Phase 7: Intelligent booking selection for overlapping bookings
   const bookingsArray = Array.isArray(room?.bookings) ? room.bookings : room?.bookings ? [room.bookings] : [];
   
-  // Smart booking selection: prioritize active bookings and filter out past bookings
+  // Smart booking selection: prioritize by context date, then active bookings
   const activeBooking = (() => {
     if (!bookingsArray.length) return null;
     
@@ -147,7 +149,29 @@ export function RoomActionDrawer({ roomId, open, onClose, onOpenAssignDrawer }: 
     // Single booking - use it
     if (bookingsArray.length === 1) return bookingsArray[0];
     
-    // Multiple bookings - FILTER out past bookings and prioritize
+    // CONTEXT DATE FILTERING: If viewing from date calendar, prioritize bookings overlapping that date
+    if (contextDate) {
+      const contextDay = new Date(contextDate);
+      contextDay.setHours(0, 0, 0, 0);
+      
+      // Find bookings that overlap with the context date
+      const dateRelevantBookings = bookingsArray.filter((b: any) => {
+        const checkIn = new Date(b.check_in);
+        checkIn.setHours(0, 0, 0, 0);
+        const checkOut = new Date(b.check_out);
+        checkOut.setHours(0, 0, 0, 0);
+        
+        // Booking overlaps if: checkIn <= contextDate < checkOut
+        return checkIn <= contextDay && contextDay < checkOut;
+      });
+      
+      // If we found bookings for this date, use the first one (most relevant)
+      if (dateRelevantBookings.length > 0) {
+        return dateRelevantBookings[0];
+      }
+    }
+    
+    // FALLBACK: Multiple bookings without context date - use smart selection
     const now = new Date();
     now.setHours(0, 0, 0, 0);
     
@@ -446,6 +470,16 @@ export function RoomActionDrawer({ roomId, open, onClose, onOpenAssignDrawer }: 
             </div>
           ) : room ? (
             <>
+              {/* Date Context Badge */}
+              {contextDate && (
+                <div className="px-4 py-2 bg-blue-50 dark:bg-blue-900/20 border-b -mx-4 -mt-4 mb-4">
+                  <p className="text-xs text-blue-700 dark:text-blue-300 flex items-center gap-1">
+                    <Calendar className="h-3 w-3" />
+                    Viewing for: {format(contextDate, 'MMMM dd, yyyy')}
+                  </p>
+                </div>
+              )}
+              
               <SheetHeader>
                 <div className="flex items-center justify-between">
                   <div>
@@ -466,7 +500,10 @@ export function RoomActionDrawer({ roomId, open, onClose, onOpenAssignDrawer }: 
                   <Alert>
                     <AlertTriangle className="h-4 w-4" />
                     <AlertDescription>
-                      Multiple bookings detected for this room ({bookingsArray.length} bookings)
+                      {contextDate 
+                        ? `Showing booking for ${format(contextDate, 'MMM dd, yyyy')}. Multiple bookings detected (${bookingsArray.length} bookings).`
+                        : `Multiple bookings detected for this room (${bookingsArray.length} bookings)`
+                      }
                     </AlertDescription>
                   </Alert>
                   

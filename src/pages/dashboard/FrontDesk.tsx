@@ -21,6 +21,7 @@ import { Calendar, LayoutGrid } from 'lucide-react';
 
 export default function FrontDesk() {
   const [selectedRoomId, setSelectedRoomId] = useState<string | null>(null);
+  const [contextDate, setContextDate] = useState<Date | null>(null);
   const [statusFilter, setStatusFilter] = useState<string | null>(null);
   const [viewMode, setViewMode] = useState<'status' | 'date'>('status');
 
@@ -135,7 +136,10 @@ export default function FrontDesk() {
               <div className="px-3 sm:px-4 lg:px-6 pt-3 sm:pt-4 pb-20 lg:pb-6">
                 <RoomStatusOverview 
                   statusFilter={statusFilter}
-                  onRoomClick={setSelectedRoomId}
+                  onRoomClick={(roomId) => {
+                    setSelectedRoomId(roomId);
+                    setContextDate(null);
+                  }}
                   globalSearchQuery={searchQuery}
                 />
                 
@@ -149,7 +153,10 @@ export default function FrontDesk() {
           <TabsContent value="date" className="flex-1 flex flex-col m-0 overflow-hidden data-[state=inactive]:absolute data-[state=inactive]:invisible data-[state=inactive]:pointer-events-none">
             <ScrollArea className="flex-1">
               <div className="px-3 sm:px-4 lg:px-6 pt-3 sm:pt-4 pb-20 lg:pb-6">
-                <AvailabilityCalendar onRoomClick={setSelectedRoomId} />
+                <AvailabilityCalendar onRoomClick={(roomId, date) => {
+                  setSelectedRoomId(roomId);
+                  setContextDate(date);
+                }} />
               </div>
             </ScrollArea>
           </TabsContent>
@@ -158,8 +165,12 @@ export default function FrontDesk() {
 
       <RoomActionDrawer 
         roomId={selectedRoomId}
+        contextDate={contextDate}
         open={!!selectedRoomId}
-        onClose={() => setSelectedRoomId(null)}
+        onClose={() => {
+          setSelectedRoomId(null);
+          setContextDate(null);
+        }}
         onOpenAssignDrawer={handleOpenAssignDrawer}
       />
 
