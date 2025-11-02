@@ -494,40 +494,6 @@ export function RoomActionDrawer({ roomId, contextDate, open, onClose, onOpenAss
                 </div>
               </SheetHeader>
 
-              {/* Multiple Bookings Alert & Selector */}
-              {bookingsArray.length > 1 && (
-                <div className="mt-4 space-y-3">
-                  <Alert>
-                    <AlertTriangle className="h-4 w-4" />
-                    <AlertDescription>
-                      {contextDate 
-                        ? `Showing booking for ${format(contextDate, 'MMM dd, yyyy')}. Multiple bookings detected (${bookingsArray.length} bookings).`
-                        : `Multiple bookings detected for this room (${bookingsArray.length} bookings)`
-                      }
-                    </AlertDescription>
-                  </Alert>
-                  
-                  <div className="space-y-2">
-                    <Label>Select Booking to View</Label>
-                    <Select 
-                      value={selectedBookingId || activeBooking?.id || ''} 
-                      onValueChange={setSelectedBookingId}
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select booking..." />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {bookingsArray.map((b: any) => (
-                          <SelectItem key={b.id} value={b.id}>
-                            {b.guest?.name} ({new Date(b.check_in).toLocaleDateString()} - {new Date(b.check_out).toLocaleDateString()})
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </div>
-              )}
-
               <Tabs defaultValue={showConfirmationDoc ? "confirmation" : "details"} className="mt-6">
                 <TabsList className="grid w-full grid-cols-4">
                   <TabsTrigger value="details">Details</TabsTrigger>
