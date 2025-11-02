@@ -84,6 +84,7 @@ export function QuickPaymentForm({
         guestId={guestId}
         expectedAmount={balanceDue}
         isBookingPayment={true}
+        dashboardContext="front_desk"
         onSuccess={handlePaymentSuccess}
         onCancel={onCancel}
       />

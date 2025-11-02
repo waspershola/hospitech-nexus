@@ -53,9 +53,9 @@ export function useRoomAvailabilityByDate(startDate: Date | null, endDate: Date 
           guest:guests(name)
         `)
         .eq('tenant_id', tenantId)
-        .in('status', ['reserved', 'checked_in'])
-        .lt('check_in', endDate.toISOString())
-        .gt('check_out', startDate.toISOString());
+        .in('status', ['reserved', 'checked_in', 'confirmed'])
+        .lte('check_in', endDate.toISOString())
+        .gte('check_out', startDate.toISOString());
 
       if (bookingsError) throw bookingsError;
 

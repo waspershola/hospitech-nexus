@@ -54,6 +54,7 @@ interface PaymentFormProps {
   prefilledAmount?: number;
   expectedAmount?: number;
   isBookingPayment?: boolean;
+  dashboardContext?: string;
   onSuccess?: (paymentId?: string) => void;
   onCancel?: () => void;
 }
@@ -65,6 +66,7 @@ export function PaymentForm({
   prefilledAmount,
   expectedAmount,
   isBookingPayment = false,
+  dashboardContext = 'front_desk',
   onSuccess,
   onCancel,
 }: PaymentFormProps) {
@@ -134,12 +136,12 @@ export function PaymentForm({
   // Auto-select default location on mount
   useEffect(() => {
     if (!watch('location_id')) {
-      const defaultLoc = getDefaultLocation('front_desk');
+      const defaultLoc = getDefaultLocation(dashboardContext);
       if (defaultLoc) {
         setValue('location_id', defaultLoc);
       }
     }
-  }, [getDefaultLocation, setValue, watch]);
+  }, [getDefaultLocation, setValue, watch, dashboardContext]);
 
   // Auto-select provider based on location
   useEffect(() => {
@@ -283,7 +285,14 @@ export function PaymentForm({
           onOpenChange={setShowWalletApplyDialog}
           guestId={guestId}
           bookingTotal={expectedAmount || 0}
-          onApply={() => setShowWalletApplyDialog(false)}
+          onApply={(appliedAmount) => {
+            setShowWalletApplyDialog(false);
+            // Reduce expected amount by wallet credit applied
+            if (appliedAmount && expectedAmount) {
+              const newExpectedAmount = Math.max(0, expectedAmount - appliedAmount);
+              setValue('expected_amount', newExpectedAmount.toString());
+            }
+          }}
         />
       )}
 

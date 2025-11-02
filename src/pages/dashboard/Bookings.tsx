@@ -7,13 +7,6 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from '@/components/ui/dialog';
-import {
   Select,
   SelectContent,
   SelectItem,
@@ -38,10 +31,11 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { useToast } from '@/hooks/use-toast';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Plus, Edit, Trash2, LogIn, LogOut, Search, Filter } from 'lucide-react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { Plus, Search, Filter } from 'lucide-react';
 import { useBookingSearch, type BookingFilters } from '@/hooks/useBookingSearch';
+import { BookingFlow } from '@/modules/bookings/BookingFlow';
+import { toast } from 'sonner';
 
 interface Booking {
   id: string;
@@ -71,21 +65,12 @@ interface Room {
 
 export default function Bookings() {
   const { tenantId } = useAuth();
-  const { toast } = useToast();
   const queryClient = useQueryClient();
-  const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const [editingBooking, setEditingBooking] = useState<Booking | null>(null);
+  const [isBookingFlowOpen, setIsBookingFlowOpen] = useState(false);
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [showFilters, setShowFilters] = useState(false);
   const [filters, setFilters] = useState<BookingFilters>({});
-  const [formData, setFormData] = useState({
-    guest_id: '',
-    room_id: '',
-    check_in: '',
-    check_out: '',
-    total_amount: '',
-  });
 
   const { data: bookings = [], isLoading } = useQuery({
     queryKey: ['bookings', tenantId],
@@ -102,147 +87,6 @@ export default function Bookings() {
   });
 
   const filteredBookings = useBookingSearch(bookings, searchTerm, filters);
-
-  const { data: guests = [] } = useQuery({
-    queryKey: ['guests', tenantId],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from('guests')
-        .select('id, name')
-        .eq('tenant_id', tenantId)
-        .order('name');
-      if (error) throw error;
-      return data as Guest[];
-    },
-    enabled: !!tenantId,
-  });
-
-  const { data: rooms = [] } = useQuery({
-    queryKey: ['rooms', tenantId],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from('rooms')
-        .select('id, number, rate')
-        .eq('tenant_id', tenantId)
-        .eq('status', 'available')
-        .order('number');
-      if (error) throw error;
-      return data as Room[];
-    },
-    enabled: !!tenantId,
-  });
-
-  const createMutation = useMutation({
-    mutationFn: async (data: typeof formData) => {
-      const { error } = await supabase.from('bookings').insert({
-        ...data,
-        total_amount: parseFloat(data.total_amount),
-        tenant_id: tenantId,
-        status: 'pending',
-      });
-      if (error) throw error;
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['bookings'] });
-      toast({ title: 'Booking created successfully' });
-      setIsDialogOpen(false);
-      resetForm();
-    },
-    onError: (error: Error) => {
-      toast({ title: 'Error creating booking', description: error.message, variant: 'destructive' });
-    },
-  });
-
-  const updateMutation = useMutation({
-    mutationFn: async ({ id, data }: { id: string; data: typeof formData }) => {
-      const { error } = await supabase
-        .from('bookings')
-        .update({
-          ...data,
-          total_amount: parseFloat(data.total_amount),
-        })
-        .eq('id', id);
-      if (error) throw error;
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['bookings'] });
-      toast({ title: 'Booking updated successfully' });
-      setIsDialogOpen(false);
-      resetForm();
-    },
-    onError: (error: Error) => {
-      toast({ title: 'Error updating booking', description: error.message, variant: 'destructive' });
-    },
-  });
-
-  const deleteMutation = useMutation({
-    mutationFn: async (id: string) => {
-      const { error } = await supabase.from('bookings').delete().eq('id', id);
-      if (error) throw error;
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['bookings'] });
-      toast({ title: 'Booking deleted successfully' });
-      setDeleteId(null);
-    },
-    onError: (error: Error) => {
-      toast({ title: 'Error deleting booking', description: error.message, variant: 'destructive' });
-    },
-  });
-
-  const checkInMutation = useMutation({
-    mutationFn: async (id: string) => {
-      const { error } = await supabase.from('bookings').update({ status: 'checked-in' }).eq('id', id);
-      if (error) throw error;
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['bookings'] });
-      toast({ title: 'Guest checked in successfully' });
-    },
-    onError: (error: Error) => {
-      toast({ title: 'Error checking in', description: error.message, variant: 'destructive' });
-    },
-  });
-
-  const checkOutMutation = useMutation({
-    mutationFn: async (id: string) => {
-      const { error } = await supabase.from('bookings').update({ status: 'checked-out' }).eq('id', id);
-      if (error) throw error;
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['bookings'] });
-      toast({ title: 'Guest checked out successfully' });
-    },
-    onError: (error: Error) => {
-      toast({ title: 'Error checking out', description: error.message, variant: 'destructive' });
-    },
-  });
-
-  const resetForm = () => {
-    setFormData({ guest_id: '', room_id: '', check_in: '', check_out: '', total_amount: '' });
-    setEditingBooking(null);
-  };
-
-  const handleEdit = (booking: Booking) => {
-    setEditingBooking(booking);
-    setFormData({
-      guest_id: booking.guest_id,
-      room_id: booking.room_id,
-      check_in: booking.check_in.split('T')[0],
-      check_out: booking.check_out.split('T')[0],
-      total_amount: booking.total_amount.toString(),
-    });
-    setIsDialogOpen(true);
-  };
-
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (editingBooking) {
-      updateMutation.mutate({ id: editingBooking.id, data: formData });
-    } else {
-      createMutation.mutate(formData);
-    }
-  };
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -272,90 +116,19 @@ export default function Bookings() {
           <h1 className="text-3xl font-display text-foreground mb-2">Bookings</h1>
           <p className="text-muted-foreground">Manage reservations and check-ins</p>
         </div>
-        <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-          <DialogTrigger asChild>
-            <Button onClick={resetForm}>
-              <Plus className="mr-2 h-4 w-4" /> New Booking
-            </Button>
-          </DialogTrigger>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>{editingBooking ? 'Edit Booking' : 'Create Booking'}</DialogTitle>
-            </DialogHeader>
-            <form onSubmit={handleSubmit} className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="guest_id">Guest</Label>
-                <Select value={formData.guest_id} onValueChange={(value) => setFormData({ ...formData, guest_id: value })}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select guest" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {guests.map((guest) => (
-                      <SelectItem key={guest.id} value={guest.id}>
-                        {guest.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="room_id">Room</Label>
-                <Select value={formData.room_id} onValueChange={(value) => setFormData({ ...formData, room_id: value })}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select room" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {rooms.map((room) => (
-                      <SelectItem key={room.id} value={room.id}>
-                        Room {room.number} - ${room.rate}/night
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="check_in">Check-in Date</Label>
-                <Input
-                  id="check_in"
-                  type="date"
-                  value={formData.check_in}
-                  onChange={(e) => setFormData({ ...formData, check_in: e.target.value })}
-                  required
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="check_out">Check-out Date</Label>
-                <Input
-                  id="check_out"
-                  type="date"
-                  value={formData.check_out}
-                  onChange={(e) => setFormData({ ...formData, check_out: e.target.value })}
-                  required
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="total_amount">Total Amount</Label>
-                <Input
-                  id="total_amount"
-                  type="number"
-                  step="0.01"
-                  value={formData.total_amount}
-                  onChange={(e) => setFormData({ ...formData, total_amount: e.target.value })}
-                  required
-                />
-              </div>
-              <div className="flex justify-end gap-2">
-                <Button type="button" variant="outline" onClick={() => setIsDialogOpen(false)}>
-                  Cancel
-                </Button>
-                <Button type="submit">
-                  {editingBooking ? 'Update' : 'Create'}
-                </Button>
-              </div>
-            </form>
-          </DialogContent>
-        </Dialog>
+        <Button onClick={() => setIsBookingFlowOpen(true)}>
+          <Plus className="mr-2 h-4 w-4" /> New Booking
+        </Button>
       </div>
+
+      {/* Unified Booking Flow */}
+      <BookingFlow 
+        open={isBookingFlowOpen} 
+        onClose={() => {
+          setIsBookingFlowOpen(false);
+          queryClient.invalidateQueries({ queryKey: ['bookings'] });
+        }}
+      />
 
       {/* Search and Filter */}
       <Card className="p-4">
@@ -491,30 +264,9 @@ export default function Bookings() {
                     {booking.source?.replace('_', ' ') || 'front desk'}
                   </Badge>
                 </TableCell>
-                <TableCell className="text-right">${booking.total_amount}</TableCell>
+                <TableCell className="text-right">₦{Number(booking.total_amount).toLocaleString()}</TableCell>
                 <TableCell className="text-right">
-                  <div className="flex justify-end gap-2">
-                    {booking.status === 'confirmed' && (
-                      <Button size="sm" variant="outline" onClick={() => checkInMutation.mutate(booking.id)}>
-                        <LogIn className="h-4 w-4" />
-                      </Button>
-                    )}
-                    {booking.status === 'checked-in' && (
-                      <Button size="sm" variant="outline" onClick={() => checkOutMutation.mutate(booking.id)}>
-                        <LogOut className="h-4 w-4" />
-                      </Button>
-                    )}
-                    {booking.status !== 'checked-out' && (
-                      <>
-                        <Button size="sm" variant="ghost" onClick={() => handleEdit(booking)}>
-                          <Edit className="h-4 w-4" />
-                        </Button>
-                        <Button size="sm" variant="ghost" onClick={() => setDeleteId(booking.id)}>
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </>
-                    )}
-                  </div>
+                  <span className="text-sm text-muted-foreground">View in Front Desk</span>
                 </TableCell>
               </TableRow>
             ))}
@@ -537,16 +289,13 @@ export default function Bookings() {
       <AlertDialog open={!!deleteId} onOpenChange={() => setDeleteId(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Delete Booking</AlertDialogTitle>
+            <AlertDialogTitle>Cannot Delete Booking</AlertDialogTitle>
             <AlertDialogDescription>
-              Are you sure you want to delete this booking? This action cannot be undone.
+              Bookings cannot be deleted from this page. Please use the Front Desk to cancel or modify bookings through the proper workflow.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={() => deleteId && deleteMutation.mutate(deleteId)}>
-              Delete
-            </AlertDialogAction>
+            <AlertDialogCancel>Close</AlertDialogCancel>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
