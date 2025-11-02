@@ -7,6 +7,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { Label } from '@/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
@@ -63,6 +64,7 @@ export function RoomActionDrawer({ roomId, open, onClose, onOpenAssignDrawer }: 
   const [showConfirmationDoc, setShowConfirmationDoc] = useState(false);
   const [realtimeDebounceTimer, setRealtimeDebounceTimer] = useState<NodeJS.Timeout | null>(null);
   const [printReceipt, setPrintReceipt] = useState(false);
+  const [selectedBookingId, setSelectedBookingId] = useState<string | null>(null);
 
   const { data: room, isLoading } = useQuery({
     queryKey: ['room-detail', roomId],
@@ -129,11 +131,51 @@ export function RoomActionDrawer({ roomId, open, onClose, onOpenAssignDrawer }: 
     };
   }, [roomId, tenantId, queryClient]);
 
-  // Phase 7: Use canonical fields for active booking (single source of truth)
+  // Phase 7: Intelligent booking selection for overlapping bookings
   const bookingsArray = Array.isArray(room?.bookings) ? room.bookings : room?.bookings ? [room.bookings] : [];
-  const activeBooking = room?.current_reservation_id
-    ? bookingsArray.find((b: any) => b.id === room.current_reservation_id)
-    : null;
+  
+  // Smart booking selection: prioritize by status and date
+  const activeBooking = (() => {
+    if (!bookingsArray.length) return null;
+    
+    // If user manually selected a booking, use that
+    if (selectedBookingId) {
+      const selected = bookingsArray.find((b: any) => b.id === selectedBookingId);
+      if (selected) return selected;
+    }
+    
+    // Single booking - use it
+    if (bookingsArray.length === 1) return bookingsArray[0];
+    
+    // Multiple bookings - prioritize by status and date
+    const now = new Date();
+    now.setHours(0, 0, 0, 0);
+    
+    // 1. Checked-in bookings first
+    const checkedIn = bookingsArray.filter((b: any) => b.status === 'checked_in');
+    if (checkedIn.length) return checkedIn[0];
+    
+    // 2. Reserved bookings checking in today
+    const checkingInToday = bookingsArray.filter((b: any) => {
+      if (b.status !== 'reserved') return false;
+      const checkIn = new Date(b.check_in);
+      checkIn.setHours(0, 0, 0, 0);
+      return checkIn.getTime() === now.getTime();
+    });
+    if (checkingInToday.length) return checkingInToday[0];
+    
+    // 3. Earliest future check-in
+    const futureBookings = bookingsArray
+      .filter((b: any) => b.status === 'reserved')
+      .sort((a: any, b: any) => new Date(a.check_in).getTime() - new Date(b.check_in).getTime());
+      
+    return futureBookings[0] || bookingsArray[0];
+  })();
+  
+  // Reset selected booking when room changes
+  useEffect(() => {
+    setSelectedBookingId(null);
+  }, [roomId]);
   
   // Phase 4: Detect transition state (room shows occupied/reserved but no booking data)
   const isTransitioning = (room?.status === 'occupied' || room?.status === 'reserved') 
@@ -408,6 +450,37 @@ export function RoomActionDrawer({ roomId, open, onClose, onOpenAssignDrawer }: 
                   </div>
                 </div>
               </SheetHeader>
+
+              {/* Multiple Bookings Alert & Selector */}
+              {bookingsArray.length > 1 && (
+                <div className="mt-4 space-y-3">
+                  <Alert>
+                    <AlertTriangle className="h-4 w-4" />
+                    <AlertDescription>
+                      Multiple bookings detected for this room ({bookingsArray.length} bookings)
+                    </AlertDescription>
+                  </Alert>
+                  
+                  <div className="space-y-2">
+                    <Label>Select Booking to View</Label>
+                    <Select 
+                      value={selectedBookingId || activeBooking?.id || ''} 
+                      onValueChange={setSelectedBookingId}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select booking..." />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {bookingsArray.map((b: any) => (
+                          <SelectItem key={b.id} value={b.id}>
+                            {b.guest?.name} ({new Date(b.check_in).toLocaleDateString()} - {new Date(b.check_out).toLocaleDateString()})
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+              )}
 
               <Tabs defaultValue={showConfirmationDoc ? "confirmation" : "details"} className="mt-6">
                 <TabsList className="grid w-full grid-cols-4">
