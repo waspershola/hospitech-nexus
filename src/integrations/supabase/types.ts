@@ -2256,6 +2256,8 @@ export type Database = {
           email: string
           full_name: string
           id: string
+          metadata: Json | null
+          password_reset_required: boolean | null
           phone: string | null
           role: string | null
           status: string | null
@@ -2271,6 +2273,8 @@ export type Database = {
           email: string
           full_name: string
           id?: string
+          metadata?: Json | null
+          password_reset_required?: boolean | null
           phone?: string | null
           role?: string | null
           status?: string | null
@@ -2286,6 +2290,8 @@ export type Database = {
           email?: string
           full_name?: string
           id?: string
+          metadata?: Json | null
+          password_reset_required?: boolean | null
           phone?: string | null
           role?: string | null
           status?: string | null
@@ -2361,6 +2367,59 @@ export type Database = {
           },
           {
             foreignKeyName: "staff_activity_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      staff_invitations: {
+        Row: {
+          accepted_at: string | null
+          created_at: string | null
+          department: string | null
+          email: string
+          expires_at: string
+          full_name: string
+          id: string
+          invitation_token: string
+          invited_by: string | null
+          role: string | null
+          status: string | null
+          tenant_id: string
+        }
+        Insert: {
+          accepted_at?: string | null
+          created_at?: string | null
+          department?: string | null
+          email: string
+          expires_at?: string
+          full_name: string
+          id?: string
+          invitation_token?: string
+          invited_by?: string | null
+          role?: string | null
+          status?: string | null
+          tenant_id: string
+        }
+        Update: {
+          accepted_at?: string | null
+          created_at?: string | null
+          department?: string | null
+          email?: string
+          expires_at?: string
+          full_name?: string
+          id?: string
+          invitation_token?: string
+          invited_by?: string | null
+          role?: string | null
+          status?: string | null
+          tenant_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "staff_invitations_tenant_id_fkey"
             columns: ["tenant_id"]
             isOneToOne: false
             referencedRelation: "tenants"
