@@ -121,7 +121,7 @@ export default function FrontDesk() {
             </TabsList>
           </div>
 
-          <TabsContent value="status" className="flex-1 flex flex-col m-0 overflow-hidden">
+          <TabsContent value="status" className="flex-1 flex flex-col m-0 overflow-hidden data-[state=inactive]:absolute data-[state=inactive]:invisible data-[state=inactive]:pointer-events-none">
             <div className="px-3 sm:px-4 lg:px-6 pt-3 sm:pt-4">
               <QuickKPIs 
                 onFilterClick={handleFilterToggle} 
@@ -144,7 +144,7 @@ export default function FrontDesk() {
             </ScrollArea>
           </TabsContent>
 
-          <TabsContent value="date" className="flex-1 flex flex-col m-0 overflow-hidden">
+          <TabsContent value="date" className="flex-1 flex flex-col m-0 overflow-hidden data-[state=inactive]:absolute data-[state=inactive]:invisible data-[state=inactive]:pointer-events-none">
             <ScrollArea className="flex-1">
               <div className="px-3 sm:px-4 lg:px-6 pt-3 sm:pt-4 pb-20 lg:pb-6">
                 <AvailabilityCalendar onRoomClick={setSelectedRoomId} />
