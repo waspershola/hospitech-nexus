@@ -23,6 +23,7 @@ import Reports from './pages/dashboard/Reports';
 import Settings from './pages/dashboard/Settings';
 import UserRoles from './pages/dashboard/UserRoles';
 import Staff from './pages/dashboard/Staff';
+import StaffActivity from './pages/dashboard/StaffActivity';
 import ConfigurationCenter from './pages/dashboard/ConfigurationCenter';
 import FinanceCenter from './pages/dashboard/FinanceCenter';
 import FinanceDashboard from './pages/dashboard/FinanceDashboard';
@@ -70,8 +71,9 @@ const App = () => (
               <Route path="maintenance-dashboard" element={<RoleGuard allowedRoles={['owner', 'manager', 'maintenance']}><MaintenanceDashboard /></RoleGuard>} />
               
           <Route path="settings" element={<Settings />} />
-          <Route path="user-roles" element={<UserRoles />} />
-          <Route path="staff" element={<Staff />} />
+          <Route path="user-roles" element={<RoleGuard allowedRoles={['owner', 'manager']}><UserRoles /></RoleGuard>} />
+          <Route path="staff" element={<RoleGuard allowedRoles={['owner', 'manager', 'supervisor']}><Staff /></RoleGuard>} />
+          <Route path="staff-activity" element={<RoleGuard allowedRoles={['owner', 'manager', 'supervisor']}><StaffActivity /></RoleGuard>} />
             </Route>
 
             <Route path="/portal" element={<ProtectedRoute><GuestPortalShell /></ProtectedRoute>}>
