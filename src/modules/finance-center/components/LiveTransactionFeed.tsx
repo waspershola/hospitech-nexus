@@ -57,7 +57,7 @@ export function LiveTransactionFeed({ transactions, isLoading }: LiveTransaction
               </TableRow>
             </TableHeader>
             <TableBody>
-              {transactions.length === 0 ? (
+              {!transactions || transactions.length === 0 ? (
                 <TableRow>
                   <TableCell colSpan={6} className="text-center text-muted-foreground py-8">
                     No payments today

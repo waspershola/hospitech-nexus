@@ -47,11 +47,11 @@ export function DebtorsCard({ data, isLoading }: DebtorsCardProps) {
           <AlertCircle className="h-5 w-5 text-amber-600" />
           <CardTitle>Top Debtors</CardTitle>
         </div>
-        <CardDescription>Outstanding receivables ({data.length})</CardDescription>
+        <CardDescription>Outstanding receivables ({data?.length || 0})</CardDescription>
       </CardHeader>
       <CardContent>
         <div className="space-y-3">
-          {data.length === 0 ? (
+          {!data || data.length === 0 ? (
             <div className="text-center text-muted-foreground py-8">
               No outstanding receivables 🎉
             </div>

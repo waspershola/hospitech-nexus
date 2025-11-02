@@ -47,11 +47,11 @@ export function CreditorsCard({ data, isLoading }: CreditorsCardProps) {
           <Wallet className="h-5 w-5 text-purple-600" />
           <CardTitle>Top Creditors</CardTitle>
         </div>
-        <CardDescription>Active wallet credits ({data.length})</CardDescription>
+        <CardDescription>Active wallet credits ({data?.length || 0})</CardDescription>
       </CardHeader>
       <CardContent>
         <div className="space-y-3">
-          {data.length === 0 ? (
+          {!data || data.length === 0 ? (
             <div className="text-center text-muted-foreground py-8">
               No active wallet credits
             </div>
