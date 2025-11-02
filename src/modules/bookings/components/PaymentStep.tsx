@@ -113,7 +113,14 @@ export function PaymentStep({
       />
       
       <Card className="p-6">
-        <h3 className="text-lg font-semibold mb-4">Collect Payment</h3>
+        <div className="mb-4">
+          <h3 className="text-lg font-semibold">Collect Payment</h3>
+          <p className="text-sm text-muted-foreground">
+            {folio?.isGroupBooking 
+              ? `Balance Due (from ${folio.numberOfBookings} room group)`
+              : 'Balance Due (from booking)'}
+          </p>
+        </div>
         <PaymentForm
           bookingId={bookingId}
           guestId={guestId}
