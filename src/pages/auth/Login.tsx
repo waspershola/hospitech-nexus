@@ -38,12 +38,28 @@ export default function Login() {
         return;
       }
 
+      // Department-based redirect
+      const departmentRedirects: Record<string, string> = {
+        'front_office': '/dashboard/front-desk',
+        'housekeeping': '/dashboard/housekeeping-dashboard',
+        'kitchen': '/dashboard/kitchen-dashboard',
+        'restaurant': '/dashboard/kitchen-dashboard',
+        'bar': '/dashboard/bar-dashboard',
+        'maintenance': '/dashboard/maintenance-dashboard',
+        'accounts': '/dashboard/finance-dashboard',
+        'finance': '/dashboard/finance-dashboard',
+      };
+
+      const redirectPath = staffData?.department 
+        ? departmentRedirects[staffData.department] || '/dashboard'
+        : '/dashboard';
+
       toast({
-        title: 'Welcome back!',
+        title: `Welcome back${staffData?.department ? ', ' + staffData.department.replace('_', ' ') : ''}!`,
         description: 'Successfully signed in.',
       });
       
-      navigate('/dashboard');
+      navigate(redirectPath);
     } catch (error: any) {
       toast({
         title: 'Error',
