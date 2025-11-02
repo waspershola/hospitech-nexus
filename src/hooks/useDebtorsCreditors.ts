@@ -26,23 +26,65 @@ export function useDebtorsCreditors() {
         .select(`
           amount,
           updated_at,
-          guest:guests(id, name),
-          organization:organizations(id, name)
+          guest_id,
+          organization_id,
+          guest:guests(id, name, email),
+          organization:organizations(id, name, contact_email)
         `)
         .eq('tenant_id', tenantId)
-        .eq('status', 'open')
-        .order('amount', { ascending: false })
-        .limit(10);
+        .eq('status', 'open');
 
-      const debtors: DebtorCreditor[] = (receivablesData || []).map(r => ({
-        type: 'debtor' as const,
-        entity_name: (r.guest as any)?.name || (r.organization as any)?.name || 'Unknown',
-        entity_id: (r.guest as any)?.id || (r.organization as any)?.id,
-        entity_type: (r.guest as any) ? 'guest' : 'organization',
-        total_amount: Number(r.amount),
-        last_activity: r.updated_at,
-        transaction_count: 1
-      }));
+      // Group receivables by entity (guest or organization)
+      const debtorMap = new Map<string, {
+        entity_id: string;
+        entity_name: string;
+        entity_type: string;
+        total_amount: number;
+        transaction_count: number;
+        last_activity: string;
+        email?: string;
+      }>();
+
+      (receivablesData || []).forEach(r => {
+        const isGuest = !!r.guest_id;
+        const entityId = isGuest ? r.guest_id! : r.organization_id!;
+        const entityData = isGuest ? (r.guest as any) : (r.organization as any);
+        const entityName = entityData?.name || 'Unknown';
+        const entityEmail = isGuest ? entityData?.email : entityData?.contact_email;
+
+        if (debtorMap.has(entityId)) {
+          const existing = debtorMap.get(entityId)!;
+          existing.total_amount += Number(r.amount);
+          existing.transaction_count += 1;
+          if (new Date(r.updated_at) > new Date(existing.last_activity)) {
+            existing.last_activity = r.updated_at;
+          }
+        } else {
+          debtorMap.set(entityId, {
+            entity_id: entityId,
+            entity_name: entityName,
+            entity_type: isGuest ? 'guest' : 'organization',
+            total_amount: Number(r.amount),
+            transaction_count: 1,
+            last_activity: r.updated_at,
+            email: entityEmail
+          });
+        }
+      });
+
+      // Convert to array and sort by total amount
+      const debtors: DebtorCreditor[] = Array.from(debtorMap.values())
+        .sort((a, b) => b.total_amount - a.total_amount)
+        .slice(0, 10)
+        .map(d => ({
+          type: 'debtor' as const,
+          entity_name: d.entity_name,
+          entity_id: d.entity_id,
+          entity_type: d.entity_type,
+          total_amount: d.total_amount,
+          last_activity: d.last_activity,
+          transaction_count: d.transaction_count
+        }));
 
       // Fetch creditors (positive wallet balances)
       const { data: walletsData } = await supabase
