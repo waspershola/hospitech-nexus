@@ -79,7 +79,12 @@ export function AssignRoomDrawer({ open, onClose, roomId, roomNumber }: AssignRo
         .order('name', { ascending: true });
       
       if (guestSearchTerm) {
-        query = query.or(`name.ilike.%${guestSearchTerm}%,email.ilike.%${guestSearchTerm}%,phone.ilike.%${guestSearchTerm}%`);
+        const cleanPhone = guestSearchTerm.replace(/\D/g, '');
+        if (cleanPhone.length >= 3) {
+          query = query.or(`name.ilike.%${guestSearchTerm}%,email.ilike.%${guestSearchTerm}%,phone.ilike.%${cleanPhone}%`);
+        } else {
+          query = query.or(`name.ilike.%${guestSearchTerm}%,email.ilike.%${guestSearchTerm}%`);
+        }
       }
       
       const { data, error } = await query.limit(20);

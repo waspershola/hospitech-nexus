@@ -48,7 +48,14 @@ export function GuestSelection({ bookingData, onChange, onNext }: GuestSelection
         .order('name', { ascending: true });
 
       if (searchQuery) {
-        query = query.or(`name.ilike.%${searchQuery}%,email.ilike.%${searchQuery}%,phone.ilike.%${searchQuery}%`);
+        const cleanPhone = searchQuery.replace(/\D/g, '');
+        if (cleanPhone.length >= 3) {
+          // Phone number search - match digits only
+          query = query.or(`name.ilike.%${searchQuery}%,email.ilike.%${searchQuery}%,phone.ilike.%${cleanPhone}%`);
+        } else {
+          // Name/email search
+          query = query.or(`name.ilike.%${searchQuery}%,email.ilike.%${searchQuery}%`);
+        }
       }
 
       const { data, error } = await query.limit(10);

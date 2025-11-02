@@ -69,9 +69,12 @@ export function PaymentStep({
   // Use actual folio balance if available, otherwise use totalAmount
   const balanceDue = folio?.balance ?? totalAmount;
 
-  // Auto-apply wallet credit on component mount if available and enabled
+  // Auto-apply wallet credit AFTER folio is loaded
   useEffect(() => {
     const autoApplyWallet = async () => {
+      // Only proceed if folio is loaded and valid
+      if (!folio || folioLoading) return;
+      
       const autoApply = preferences?.auto_apply_wallet_on_booking !== false;
       const hasWalletBalance = wallet && Number(wallet.balance) > 0;
       const hasBookingBalance = balanceDue > 0;
@@ -83,8 +86,7 @@ export function PaymentStep({
         !walletApplied &&
         !isApplyingWallet &&
         bookingId &&
-        guestId &&
-        !folioLoading
+        guestId
       ) {
         setIsApplyingWallet(true);
         try {
@@ -104,6 +106,8 @@ export function PaymentStep({
 
     autoApplyWallet();
   }, [
+    folio,
+    folioLoading,
     wallet,
     balanceDue,
     bookingId,
@@ -112,7 +116,6 @@ export function PaymentStep({
     isApplyingWallet,
     preferences,
     applyWalletMutation,
-    folioLoading,
   ]);
 
   const handleApplyWallet = (amount: number) => {

@@ -1008,6 +1008,41 @@ export type Database = {
           },
         ]
       }
+      hotel_dashboard_defaults: {
+        Row: {
+          created_at: string | null
+          dashboard_name: string
+          default_location_id: string | null
+          id: string
+          tenant_id: string
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          dashboard_name: string
+          default_location_id?: string | null
+          id?: string
+          tenant_id: string
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          dashboard_name?: string
+          default_location_id?: string | null
+          id?: string
+          tenant_id?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "hotel_dashboard_defaults_default_location_id_fkey"
+            columns: ["default_location_id"]
+            isOneToOne: false
+            referencedRelation: "finance_locations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       hotel_domains: {
         Row: {
           certificate_status: string | null

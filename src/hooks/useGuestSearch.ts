@@ -16,14 +16,19 @@ export function useGuestSearch<T extends Record<string, any>>(
   const filteredGuests = useMemo(() => {
     let result = guests;
 
-    // Search filter
+    // Search filter with phone number cleaning
     if (searchTerm) {
       const term = searchTerm.toLowerCase();
+      const cleanPhone = searchTerm.replace(/\D/g, ''); // Remove non-digits
+      
       result = result.filter((guest) => {
+        const phoneMatch = cleanPhone.length >= 3 && 
+          guest.phone?.replace(/\D/g, '').includes(cleanPhone);
+        
         return (
           guest.name?.toLowerCase().includes(term) ||
           guest.email?.toLowerCase().includes(term) ||
-          guest.phone?.toLowerCase().includes(term) ||
+          phoneMatch ||
           guest.id_number?.toLowerCase().includes(term)
         );
       });

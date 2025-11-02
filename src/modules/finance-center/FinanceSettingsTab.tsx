@@ -1,6 +1,7 @@
 import { CurrencySettingsCard } from '@/components/finance/CurrencySettingsCard';
 import { TaxSettingsCard } from '@/components/finance/TaxSettingsCard';
 import { ServiceChargeCard } from '@/components/finance/ServiceChargeCard';
+import { DashboardDefaultsCard } from './DashboardDefaultsCard';
 
 export function FinanceSettingsTab() {
   return (
@@ -16,6 +17,7 @@ export function FinanceSettingsTab() {
         <CurrencySettingsCard />
         <TaxSettingsCard />
         <ServiceChargeCard />
+        <DashboardDefaultsCard />
       </div>
     </div>
   );

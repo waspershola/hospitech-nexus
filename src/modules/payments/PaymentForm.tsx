@@ -7,11 +7,14 @@ import { useFinanceLocations } from '@/hooks/useFinanceLocations';
 import { useWallets } from '@/hooks/useWallets';
 import { useRecordPayment } from '@/hooks/useRecordPayment';
 import { useFinancials } from '@/hooks/useFinancials';
+import { useDashboardDefaults } from '@/hooks/useDashboardDefaults';
 import { calculateBookingTotal } from '@/lib/finance/tax';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
+import { GuestWalletBalanceCard } from '@/components/shared/GuestWalletBalanceCard';
+import { WalletCreditApplyDialog } from '@/modules/bookings/components/WalletCreditApplyDialog';
 import {
   Select,
   SelectContent,
@@ -71,12 +74,14 @@ export function PaymentForm({
   const [showManagerApproval, setShowManagerApproval] = useState(false);
   const [managerApprovalType, setManagerApprovalType] = useState<'overpayment' | 'underpayment'>('overpayment');
   const [requiresApprovalAmount, setRequiresApprovalAmount] = useState(0);
+  const [showWalletApplyDialog, setShowWalletApplyDialog] = useState(false);
   
   const { providers = [], isLoading: providersLoading } = useFinanceProviders();
   const { locations = [] } = useFinanceLocations();
   const { wallets = [] } = useWallets();
   const { data: financials } = useFinancials();
   const { mutate: recordPayment, isPending } = useRecordPayment();
+  const { getDefaultLocation } = useDashboardDefaults();
 
   const activeProviders = providers.filter(p => p.status === 'active');
   const activeLocations = locations.filter(l => l.status === 'active');
@@ -125,6 +130,16 @@ export function PaymentForm({
   const taxBreakdown = !isBookingPayment && amount && financials 
     ? calculateBookingTotal(parseFloat(amount), financials) 
     : null;
+
+  // Auto-select default location on mount
+  useEffect(() => {
+    if (!watch('location_id')) {
+      const defaultLoc = getDefaultLocation('front_desk');
+      if (defaultLoc) {
+        setValue('location_id', defaultLoc);
+      }
+    }
+  }, [getDefaultLocation, setValue, watch]);
 
   // Auto-select provider based on location
   useEffect(() => {
@@ -251,6 +266,25 @@ export function PaymentForm({
           <AlertCircle className="h-4 w-4" />
           <AlertDescription>{validationError}</AlertDescription>
         </Alert>
+      )}
+
+      {/* Guest Wallet Balance Display */}
+      {guestId && (
+        <GuestWalletBalanceCard 
+          guestId={guestId} 
+          onApplyWallet={() => setShowWalletApplyDialog(true)}
+        />
+      )}
+
+      {/* Wallet Apply Dialog */}
+      {guestId && bookingId && (
+        <WalletCreditApplyDialog
+          open={showWalletApplyDialog}
+          onOpenChange={setShowWalletApplyDialog}
+          guestId={guestId}
+          bookingTotal={expectedAmount || 0}
+          onApply={() => setShowWalletApplyDialog(false)}
+        />
       )}
 
       <div className="grid grid-cols-2 gap-4">
@@ -525,14 +559,16 @@ export function PaymentForm({
         </div>
       )}
 
-      {wallets.length > 0 && (
+      {/* Only show overpayment destination if overpayment detected */}
+      {wallets.length > 0 && getPaymentType() === 'overpayment' && (
         <div className="space-y-2">
-          <Label htmlFor="wallet_id">Destination Wallet (Optional)</Label>
+          <Label htmlFor="wallet_id">Overpayment Destination (Optional)</Label>
           <Select onValueChange={(value) => setValue('wallet_id', value)}>
             <SelectTrigger>
-              <SelectValue placeholder="Select wallet" />
+              <SelectValue placeholder="Auto (Guest Wallet)" />
             </SelectTrigger>
             <SelectContent>
+              <SelectItem value="auto">Auto (Guest Wallet)</SelectItem>
               {wallets.map((wallet) => (
                 <SelectItem key={wallet.id} value={wallet.id}>
                   {wallet.name || `${wallet.wallet_type} wallet`} - Balance: {wallet.currency} {Number(wallet.balance).toFixed(2)}
@@ -540,6 +576,9 @@ export function PaymentForm({
               ))}
             </SelectContent>
           </Select>
+          <p className="text-xs text-muted-foreground">
+            Where to credit the excess payment amount
+          </p>
         </div>
       )}
 
