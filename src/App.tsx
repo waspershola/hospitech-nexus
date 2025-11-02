@@ -9,6 +9,7 @@ import NotFound from "./pages/NotFound";
 import Login from './pages/auth/Login';
 import Signup from './pages/auth/Signup';
 import Onboard from './pages/auth/Onboard';
+import PasswordChangeRequired from './pages/auth/PasswordChangeRequired';
 import ProtectedRoute from "./components/ProtectedRoute";
 import RoleGuard from "./components/RoleGuard";
 import DashboardShell from "./components/layout/DashboardShell";
@@ -51,6 +52,7 @@ const App = () => (
         <Route path="/auth/login" element={<Login />} />
         <Route path="/auth/signup" element={<Signup />} />
         <Route path="/auth/onboard" element={<Onboard />} />
+        <Route path="/auth/password-change" element={<PasswordChangeRequired />} />
             
             <Route path="/dashboard" element={<ProtectedRoute><DashboardShell /></ProtectedRoute>}>
               <Route index element={<Overview />} />

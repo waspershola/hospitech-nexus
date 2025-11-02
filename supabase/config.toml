@@ -1,5 +1,8 @@
 project_id = "akchmpmzcupzjaeewdui"
 
+[functions.reset-password]
+verify_jwt = true
+
 [functions.invite-staff]
 verify_jwt = true
 

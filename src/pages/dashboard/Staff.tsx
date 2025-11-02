@@ -8,7 +8,9 @@ import { Badge } from '@/components/ui/badge';
 import { useStaffManagement, type Staff } from '@/hooks/useStaffManagement';
 import { StaffFormModal } from '@/modules/staff/StaffFormModal';
 import { InviteStaffModal } from '@/modules/staff/InviteStaffModal';
-import { Users, Search, Plus, Edit, UserX, Mail } from 'lucide-react';
+import { ResetPasswordModal } from '@/modules/staff/ResetPasswordModal';
+import { PendingInvitationsWidget } from '@/modules/staff/PendingInvitationsWidget';
+import { Users, Search, Plus, Edit, UserX, Mail, KeyRound } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 
@@ -23,6 +25,7 @@ export default function StaffPage() {
   const [showInviteModal, setShowInviteModal] = useState(false);
   const [editingStaff, setEditingStaff] = useState<Staff | undefined>();
   const [removingStaffId, setRemovingStaffId] = useState<string | null>(null);
+  const [resettingPasswordStaff, setResettingPasswordStaff] = useState<Staff | null>(null);
 
   const { staff, isLoading, changeStatus, removeStaff } = useStaffManagement(filters);
 
@@ -52,6 +55,9 @@ export default function StaffPage() {
 
   return (
     <>
+      {/* Pending Invitations Widget */}
+      <PendingInvitationsWidget />
+      
       <div className="space-y-6">
         {/* Header */}
         <div className="flex items-center justify-between">
@@ -167,13 +173,23 @@ export default function StaffPage() {
                           size="sm"
                           variant="ghost"
                           onClick={() => handleEdit(staffMember)}
+                          title="Edit staff"
                         >
                           <Edit className="w-4 h-4" />
                         </Button>
                         <Button
                           size="sm"
                           variant="ghost"
+                          onClick={() => setResettingPasswordStaff(staffMember)}
+                          title="Reset password"
+                        >
+                          <KeyRound className="w-4 h-4 text-amber-600" />
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="ghost"
                           onClick={() => setRemovingStaffId(staffMember.id)}
+                          title="Remove staff"
                         >
                           <UserX className="w-4 h-4 text-destructive" />
                         </Button>
@@ -210,6 +226,13 @@ export default function StaffPage() {
       <InviteStaffModal
         open={showInviteModal}
         onClose={() => setShowInviteModal(false)}
+      />
+
+      {/* Reset Password Modal */}
+      <ResetPasswordModal
+        staff={resettingPasswordStaff}
+        open={!!resettingPasswordStaff}
+        onClose={() => setResettingPasswordStaff(null)}
       />
 
       {/* Remove Confirmation Dialog */}
