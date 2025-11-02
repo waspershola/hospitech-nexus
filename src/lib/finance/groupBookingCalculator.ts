@@ -84,7 +84,7 @@ export function calculateGroupBookingTotal(params: BookingCalculationParams): Bo
         quantity = nights * numberOfRooms;
         total = addon.price * quantity;
       } else {
-        // One-time add-ons: charge once per room
+        // One-time add-ons: multiply by number of rooms only
         quantity = numberOfRooms;
         total = addon.price * quantity;
       }

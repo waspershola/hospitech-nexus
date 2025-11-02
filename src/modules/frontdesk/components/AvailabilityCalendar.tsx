@@ -60,9 +60,9 @@ export function AvailabilityCalendar({ onRoomClick }: AvailabilityCalendarProps)
   };
 
   return (
-    <div className="space-y-4 h-full flex flex-col">
+    <div className="flex flex-col h-full px-3 sm:px-4 lg:px-6 py-4 pb-20 lg:pb-6">
       {/* Header */}
-      <div className="flex items-center gap-3 flex-shrink-0">
+      <div className="flex items-center gap-3 mb-4">
         <div className="p-2 rounded-lg bg-primary/10">
           <CalendarIcon className="h-5 w-5 text-primary" />
         </div>
@@ -73,7 +73,7 @@ export function AvailabilityCalendar({ onRoomClick }: AvailabilityCalendarProps)
       </div>
 
       {/* Filters */}
-      <Card className="p-4 space-y-4">
+      <Card className="p-4 space-y-4 mb-4">
         <div className="flex items-center gap-2 text-sm font-medium">
           <Filter className="h-4 w-4" />
           Filters
@@ -122,7 +122,7 @@ export function AvailabilityCalendar({ onRoomClick }: AvailabilityCalendarProps)
       </Card>
 
       {/* Summary Stats */}
-      <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+      <div className="grid grid-cols-2 md:grid-cols-5 gap-3 mb-4">
         <Card className="p-4 bg-green-50 dark:bg-green-900/10 border-green-200 dark:border-green-800">
           <p className="text-2xl font-bold text-green-700 dark:text-green-400">{availableRooms.length}</p>
           <p className="text-xs text-green-600 dark:text-green-500">Available</p>
