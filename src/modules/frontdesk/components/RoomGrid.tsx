@@ -24,6 +24,8 @@ export function RoomGrid({ searchQuery, statusFilter, categoryFilter, floorFilte
     queryFn: async () => {
       if (!tenantId) return [];
       
+      const today = new Date().toISOString().split('T')[0];
+      
       let query = supabase
         .from('rooms')
         .select(`
@@ -42,57 +44,78 @@ export function RoomGrid({ searchQuery, statusFilter, categoryFilter, floorFilte
           )
         `)
         .eq('tenant_id', tenantId)
-        .not('bookings.status', 'in', '(completed,cancelled)')
-        .gte('bookings.check_out', new Date().toISOString().split('T')[0])
         .order('number', { ascending: true });
-
-      // Don't filter overstay at database level (it's a computed status)
-      if (statusFilter && statusFilter !== 'overstay') {
-        query = query.eq('status', statusFilter);
-      }
-
-      if (categoryFilter) {
-        query = query.eq('category_id', categoryFilter);
-      }
-
-      if (floorFilter !== null) {
-        query = query.eq('floor', floorFilter);
-      }
-
-      if (searchQuery) {
-        query = query.or(`number.ilike.%${searchQuery}%`);
-      }
 
       const { data, error } = await query;
       if (error) throw error;
       
-      let filteredData = data || [];
+      // Filter to only show TODAY's active bookings
+      let filteredData = (data || []).map(room => {
+        if (!room.bookings || room.bookings.length === 0) return room;
+        
+        const activeBookings = room.bookings.filter((b: any) => {
+          // Exclude completed and cancelled
+          if (['completed', 'cancelled'].includes(b.status)) return false;
+          
+          // Show if check-in is today or before, and check-out is today or after
+          const checkIn = new Date(b.check_in);
+          const checkOut = new Date(b.check_out);
+          const todayDate = new Date(today);
+          
+          checkIn.setHours(0, 0, 0, 0);
+          checkOut.setHours(0, 0, 0, 0);
+          todayDate.setHours(0, 0, 0, 0);
+          
+          return checkIn <= todayDate && checkOut >= todayDate;
+        });
+        
+        return { ...room, bookings: activeBookings };
+      });
+
+      // Apply room-level filters (not booking-level)
+      if (statusFilter && statusFilter !== 'overstay' && statusFilter !== 'pending_payments') {
+        filteredData = filteredData.filter(room => room.status === statusFilter);
+      }
+
+      if (categoryFilter) {
+        filteredData = filteredData.filter(room => room.category_id === categoryFilter);
+      }
+
+      if (floorFilter !== null) {
+        filteredData = filteredData.filter(room => room.floor === floorFilter);
+      }
+
+      if (searchQuery) {
+        const searchLower = searchQuery.toLowerCase();
+        filteredData = filteredData.filter(room => 
+          room.number.toLowerCase().includes(searchLower) ||
+          room.bookings?.some((b: any) => 
+            b.guest?.name?.toLowerCase().includes(searchLower)
+          )
+        );
+      }
       
-      // Filter by organization if needed (client-side since it's in nested data)
-      if (organizationFilter && data) {
-        filteredData = data.filter(room => {
+      // Filter by organization if needed
+      if (organizationFilter) {
+        filteredData = filteredData.filter(room => {
           if (!room.bookings || room.bookings.length === 0) return false;
-          const activeBooking = room.bookings.find((b: any) => 
-            b.organization_id === organizationFilter
-          );
-          return !!activeBooking;
+          return room.bookings.some((b: any) => b.organization_id === organizationFilter);
         });
       }
       
-      // Handle overstay filtering (client-side computed status)
+      // Handle overstay filtering
       if (statusFilter === 'overstay') {
-        const today = new Date();
-        today.setHours(0, 0, 0, 0);
+        const todayDate = new Date(today);
+        todayDate.setHours(0, 0, 0, 0);
         
         filteredData = filteredData.filter(room => {
           if (!room.bookings || room.bookings.length === 0) return false;
           
-          const activeBooking = room.bookings.find((b: any) => 
-            b.status === 'checked_in' && 
-            new Date(b.check_out) < today
-          );
-          
-          return !!activeBooking;
+          return room.bookings.some((b: any) => {
+            const checkOut = new Date(b.check_out);
+            checkOut.setHours(0, 0, 0, 0);
+            return b.status === 'checked_in' && checkOut < todayDate;
+          });
         });
       }
       
@@ -107,7 +130,6 @@ export function RoomGrid({ searchQuery, statusFilter, categoryFilter, floorFilte
             
             if (!activeBooking) return null;
             
-            // Get total paid for this booking
             const { data: payments } = await supabase
               .from('payments')
               .select('amount')
@@ -122,26 +144,6 @@ export function RoomGrid({ searchQuery, statusFilter, categoryFilter, floorFilte
         );
         
         filteredData = roomsWithBalance.filter(r => r !== null);
-      }
-      
-      // Additional client-side search for guest names if searchQuery exists
-      if (searchQuery && filteredData) {
-        const searchLower = searchQuery.toLowerCase();
-        filteredData = filteredData.filter(room => {
-          // Search by room number (already done server-side but keep for consistency)
-          if (room.number.toLowerCase().includes(searchLower)) return true;
-          
-          // Search by guest name in active bookings
-          if (room.bookings && room.bookings.length > 0) {
-            const hasMatchingGuest = room.bookings.some((b: any) => 
-              (b.status === 'checked_in' || b.status === 'reserved') &&
-              b.guest?.name?.toLowerCase().includes(searchLower)
-            );
-            if (hasMatchingGuest) return true;
-          }
-          
-          return false;
-        });
       }
       
       return filteredData;

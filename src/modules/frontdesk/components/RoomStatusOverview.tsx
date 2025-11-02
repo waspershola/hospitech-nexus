@@ -159,10 +159,13 @@ export function RoomStatusOverview({ statusFilter, onRoomClick, globalSearchQuer
         categories={categories}
         floors={floors}
         organizations={organizations}
-        onStatusChange={() => {}} // Status controlled by parent KPI clicks
-        onCategoryChange={setCategoryFilter}
-        onFloorChange={setFloorFilter}
-        onOrganizationChange={setOrganizationFilter}
+            onStatusChange={(value) => {
+              // Filter bar can change status, but will be overridden by parent
+              // This allows clearing the filter from the dropdown
+            }}
+            onCategoryChange={setCategoryFilter}
+            onFloorChange={setFloorFilter}
+            onOrganizationChange={setOrganizationFilter}
         onClearAll={handleClearFilters}
       />
 

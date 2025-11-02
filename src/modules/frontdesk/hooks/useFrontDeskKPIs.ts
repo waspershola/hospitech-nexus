@@ -20,87 +20,124 @@ export function useFrontDeskKPIs() {
   const query = useQuery({
     queryKey: ['frontdesk-kpis', tenantId],
     queryFn: async () => {
-      if (!tenantId) return null;
+      if (!tenantId) {
+        console.log('❌ useFrontDeskKPIs: No tenantId available');
+        return null;
+      }
+
+      console.log('🔄 useFrontDeskKPIs: Fetching KPIs for tenant:', tenantId);
 
       const today = new Date();
       today.setHours(0, 0, 0, 0);
+      const todayISO = today.toISOString().split('T')[0];
       const tomorrow = new Date(today);
       tomorrow.setDate(tomorrow.getDate() + 1);
+      const tomorrowISO = tomorrow.toISOString().split('T')[0];
 
-      // Get room counts by status
-      const { data: rooms } = await supabase
-        .from('rooms')
-        .select('status')
-        .eq('tenant_id', tenantId);
-
-      // Get today's arrivals
-      const { data: arrivals } = await supabase
-        .from('bookings')
-        .select('id')
-        .eq('tenant_id', tenantId)
-        .eq('status', 'reserved')
-        .gte('check_in', today.toISOString())
-        .lt('check_in', tomorrow.toISOString());
-
-      // Get today's departures
-      const { data: departures } = await supabase
-        .from('bookings')
-        .select('id')
-        .eq('tenant_id', tenantId)
-        .eq('status', 'checked_in')
-        .gte('check_out', today.toISOString())
-        .lt('check_out', tomorrow.toISOString());
-
-      // Get current guests (checked in)
-      const { data: inHouse } = await supabase
-        .from('bookings')
-        .select('id')
-        .eq('tenant_id', tenantId)
-        .eq('status', 'checked_in');
-
-      // Get pending payments
-      const { data: pendingPayments } = await supabase
-        .from('payments')
-        .select('id')
-        .eq('tenant_id', tenantId)
-        .eq('status', 'pending');
-
-      // Get overstays (checked-in bookings past check-out date)
-      const { data: overstays } = await supabase
-        .from('bookings')
-        .select('id, room_id')
-        .eq('tenant_id', tenantId)
-        .eq('status', 'checked_in')
-        .lt('check_out', today.toISOString());
-
-      // Mark rooms as overstay
-      if (overstays && overstays.length > 0) {
-        const overstayRoomIds = overstays.map(b => b.room_id);
-        await supabase
+      try {
+        // Get room counts by status
+        const { data: rooms, error: roomsError } = await supabase
           .from('rooms')
-          .update({ status: 'overstay' })
-          .in('id', overstayRoomIds)
-          .eq('status', 'occupied');
+          .select('status')
+          .eq('tenant_id', tenantId);
+
+        if (roomsError) {
+          console.error('❌ Error fetching rooms:', roomsError);
+          throw roomsError;
+        }
+
+        console.log('✅ Rooms fetched:', rooms?.length || 0);
+
+        // Get today's arrivals (bookings checking in today)
+        const { data: arrivals, error: arrivalsError } = await supabase
+          .from('bookings')
+          .select('id')
+          .eq('tenant_id', tenantId)
+          .in('status', ['reserved', 'confirmed'])
+          .eq('check_in', todayISO);
+
+        if (arrivalsError) console.error('❌ Error fetching arrivals:', arrivalsError);
+        console.log('✅ Arrivals today:', arrivals?.length || 0);
+
+        // Get today's departures (bookings checking out today)
+        const { data: departures, error: departuresError } = await supabase
+          .from('bookings')
+          .select('id')
+          .eq('tenant_id', tenantId)
+          .eq('status', 'checked_in')
+          .eq('check_out', todayISO);
+
+        if (departuresError) console.error('❌ Error fetching departures:', departuresError);
+        console.log('✅ Departures today:', departures?.length || 0);
+
+        // Get current guests (checked in and not overstaying)
+        const { data: inHouse, error: inHouseError } = await supabase
+          .from('bookings')
+          .select('id')
+          .eq('tenant_id', tenantId)
+          .eq('status', 'checked_in')
+          .gte('check_out', todayISO);
+
+        if (inHouseError) console.error('❌ Error fetching in-house:', inHouseError);
+        console.log('✅ In-house guests:', inHouse?.length || 0);
+
+        // Get pending payments
+        const { data: pendingPayments, error: paymentsError } = await supabase
+          .from('payments')
+          .select('id')
+          .eq('tenant_id', tenantId)
+          .eq('status', 'pending');
+
+        if (paymentsError) console.error('❌ Error fetching pending payments:', paymentsError);
+        console.log('✅ Pending payments:', pendingPayments?.length || 0);
+
+        // Get overstays (checked-in bookings past check-out date)
+        const { data: overstays, error: overstaysError } = await supabase
+          .from('bookings')
+          .select('id, room_id')
+          .eq('tenant_id', tenantId)
+          .eq('status', 'checked_in')
+          .lt('check_out', todayISO);
+
+        if (overstaysError) console.error('❌ Error fetching overstays:', overstaysError);
+        console.log('✅ Overstays:', overstays?.length || 0);
+
+        // Mark rooms as overstay
+        if (overstays && overstays.length > 0) {
+          const overstayRoomIds = overstays.map(b => b.room_id);
+          await supabase
+            .from('rooms')
+            .update({ status: 'overstay' })
+            .in('id', overstayRoomIds)
+            .eq('status', 'occupied');
+        }
+
+        const available = rooms?.filter(r => r.status === 'available').length || 0;
+        const occupied = rooms?.filter(r => r.status === 'occupied' || r.status === 'overstay').length || 0;
+        const outOfService = rooms?.filter(r => r.status === 'maintenance').length || 0;
+
+        const kpis = {
+          available,
+          occupied,
+          arrivals: arrivals?.length || 0,
+          departures: departures?.length || 0,
+          inHouse: inHouse?.length || 0,
+          pendingPayments: pendingPayments?.length || 0,
+          outOfService,
+          overstays: overstays?.length || 0,
+          dieselLevel: 75,
+        } as FrontDeskKPIs;
+
+        console.log('📊 KPIs calculated:', kpis);
+        return kpis;
+      } catch (error) {
+        console.error('❌ Fatal error in useFrontDeskKPIs:', error);
+        throw error;
       }
-
-      const available = rooms?.filter(r => r.status === 'available').length || 0;
-      const occupied = rooms?.filter(r => r.status === 'occupied' || r.status === 'overstay').length || 0;
-      const outOfService = rooms?.filter(r => r.status === 'maintenance').length || 0;
-
-      return {
-        available,
-        occupied,
-        arrivals: arrivals?.length || 0,
-        departures: departures?.length || 0,
-        inHouse: inHouse?.length || 0,
-        pendingPayments: pendingPayments?.length || 0,
-        outOfService,
-        overstays: overstays?.length || 0,
-        dieselLevel: 75, // This would come from a custom metric in production
-      } as FrontDeskKPIs;
     },
     enabled: !!tenantId,
-    refetchInterval: 30000, // Refresh every 30 seconds
+    refetchInterval: 30000,
+    retry: 2,
   });
 
   return {

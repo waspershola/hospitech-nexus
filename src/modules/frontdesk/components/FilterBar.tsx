@@ -39,20 +39,23 @@ export function FilterBar({
       <div className="flex flex-wrap gap-1.5 sm:gap-2 items-center">
         <Filter className="w-4 h-4 text-muted-foreground shrink-0" />
         
-        <Select value={statusFilter || 'all'} onValueChange={(v) => onStatusChange(v === 'all' ? null : v)}>
-          <SelectTrigger className="w-32 sm:w-36 h-9 text-xs">
-            <SelectValue placeholder="Status" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All Statuses</SelectItem>
-            <SelectItem value="available">Available</SelectItem>
-            <SelectItem value="occupied">Occupied</SelectItem>
-            <SelectItem value="reserved">Reserved</SelectItem>
-            <SelectItem value="cleaning">Cleaning</SelectItem>
-            <SelectItem value="maintenance">Maintenance</SelectItem>
-            <SelectItem value="overstay">Overstay</SelectItem>
-          </SelectContent>
-        </Select>
+        <div className="relative">
+          <Select value={statusFilter || 'all'} onValueChange={(v) => onStatusChange(v === 'all' ? null : v)}>
+            <SelectTrigger className="w-32 sm:w-36 h-9 text-xs">
+              <SelectValue placeholder="Status" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Statuses</SelectItem>
+              <SelectItem value="available">Available</SelectItem>
+              <SelectItem value="occupied">Occupied</SelectItem>
+              <SelectItem value="reserved">Reserved</SelectItem>
+              <SelectItem value="cleaning">Cleaning</SelectItem>
+              <SelectItem value="maintenance">Maintenance</SelectItem>
+              <SelectItem value="overstay">Overstay</SelectItem>
+              <SelectItem value="pending_payments">Pending Payments</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
 
         <Select value={categoryFilter || 'all'} onValueChange={(v) => onCategoryChange(v === 'all' ? null : v)}>
           <SelectTrigger className="w-32 sm:w-36 h-9 text-xs">
