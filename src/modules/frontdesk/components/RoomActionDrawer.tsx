@@ -134,7 +134,7 @@ export function RoomActionDrawer({ roomId, open, onClose, onOpenAssignDrawer }: 
   // Phase 7: Intelligent booking selection for overlapping bookings
   const bookingsArray = Array.isArray(room?.bookings) ? room.bookings : room?.bookings ? [room.bookings] : [];
   
-  // Smart booking selection: prioritize by status and date
+  // Smart booking selection: prioritize active bookings and filter out past bookings
   const activeBooking = (() => {
     if (!bookingsArray.length) return null;
     
@@ -147,16 +147,25 @@ export function RoomActionDrawer({ roomId, open, onClose, onOpenAssignDrawer }: 
     // Single booking - use it
     if (bookingsArray.length === 1) return bookingsArray[0];
     
-    // Multiple bookings - prioritize by status and date
+    // Multiple bookings - FILTER out past bookings and prioritize
     const now = new Date();
     now.setHours(0, 0, 0, 0);
     
+    // Filter out bookings that have checked out or are in the past
+    const activeBookings = bookingsArray.filter((b: any) => {
+      const checkOut = new Date(b.check_out);
+      checkOut.setHours(0, 0, 0, 0);
+      return b.status !== 'checked_out' && checkOut >= now;
+    });
+    
+    if (!activeBookings.length) return bookingsArray[0]; // Fallback to any booking
+    
     // 1. Checked-in bookings first
-    const checkedIn = bookingsArray.filter((b: any) => b.status === 'checked_in');
+    const checkedIn = activeBookings.filter((b: any) => b.status === 'checked_in');
     if (checkedIn.length) return checkedIn[0];
     
     // 2. Reserved bookings checking in today
-    const checkingInToday = bookingsArray.filter((b: any) => {
+    const checkingInToday = activeBookings.filter((b: any) => {
       if (b.status !== 'reserved') return false;
       const checkIn = new Date(b.check_in);
       checkIn.setHours(0, 0, 0, 0);
@@ -164,12 +173,12 @@ export function RoomActionDrawer({ roomId, open, onClose, onOpenAssignDrawer }: 
     });
     if (checkingInToday.length) return checkingInToday[0];
     
-    // 3. Earliest future check-in
-    const futureBookings = bookingsArray
+    // 3. Earliest future check-in among reserved bookings
+    const upcomingBookings = activeBookings
       .filter((b: any) => b.status === 'reserved')
       .sort((a: any, b: any) => new Date(a.check_in).getTime() - new Date(b.check_in).getTime());
       
-    return futureBookings[0] || bookingsArray[0];
+    return upcomingBookings[0] || activeBookings[0];
   })();
   
   // Reset selected booking when room changes
