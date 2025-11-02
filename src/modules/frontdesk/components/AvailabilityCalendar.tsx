@@ -60,9 +60,9 @@ export function AvailabilityCalendar({ onRoomClick }: AvailabilityCalendarProps)
   };
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-4 h-full flex flex-col">
       {/* Header */}
-      <div className="flex items-center gap-3">
+      <div className="flex items-center gap-3 flex-shrink-0">
         <div className="p-2 rounded-lg bg-primary/10">
           <CalendarIcon className="h-5 w-5 text-primary" />
         </div>
@@ -146,8 +146,8 @@ export function AvailabilityCalendar({ onRoomClick }: AvailabilityCalendarProps)
       </div>
 
       {/* Room List */}
-      <Card className="p-4">
-        <ScrollArea className="h-[500px]">
+      <Card className="p-4 flex-1 flex flex-col min-h-0">
+        <ScrollArea className="flex-1">
           {isLoading ? (
             <div className="space-y-3">
               {[...Array(8)].map((_, i) => (

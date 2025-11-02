@@ -144,12 +144,10 @@ export default function FrontDesk() {
             </ScrollArea>
           </TabsContent>
 
-          <TabsContent value="date" className="flex-1 flex flex-col m-0 overflow-hidden">
-            <ScrollArea className="flex-1">
-              <div className="px-3 sm:px-4 lg:px-6 pt-3 sm:pt-4 pb-20 lg:pb-6">
-                <AvailabilityCalendar onRoomClick={setSelectedRoomId} />
-              </div>
-            </ScrollArea>
+          <TabsContent value="date" className="flex-1 flex flex-col m-0 overflow-hidden p-0">
+            <div className="flex-1 flex flex-col px-3 sm:px-4 lg:px-6 pt-3 sm:pt-4 pb-20 lg:pb-6 min-h-0">
+              <AvailabilityCalendar onRoomClick={setSelectedRoomId} />
+            </div>
           </TabsContent>
         </Tabs>
       </div>

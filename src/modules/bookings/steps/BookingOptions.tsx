@@ -8,7 +8,8 @@ import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Separator } from '@/components/ui/separator';
 import { useAuth } from '@/contexts/AuthContext';
-import { Settings, Plus, Info } from 'lucide-react';
+import { Settings, Info, AlertCircle } from 'lucide-react';
+import { AVAILABLE_ADDONS } from '@/lib/finance/groupBookingCalculator';
 import type { BookingData } from '../BookingFlow';
 
 interface BookingOptionsProps {
@@ -17,39 +18,31 @@ interface BookingOptionsProps {
   onNext: () => void;
 }
 
-const AVAILABLE_ADDONS = [
-  { id: 'breakfast', label: 'Breakfast', price: 2500, description: 'Continental breakfast for 2' },
-  { id: 'late_checkout', label: 'Late Checkout (2 PM)', price: 5000, description: 'Extend checkout to 2 PM' },
-  { id: 'early_checkin', label: 'Early Check-In (10 AM)', price: 3000, description: 'Check in at 10 AM' },
-  { id: 'airport_pickup', label: 'Airport Pickup', price: 15000, description: 'One-way transfer from airport' },
-  { id: 'parking', label: 'Parking', price: 1500, description: 'Per night secure parking' },
-  { id: 'wifi_premium', label: 'Premium WiFi', price: 1000, description: 'High-speed internet access' },
-];
-
 export function BookingOptions({ bookingData, onChange }: BookingOptionsProps) {
   const { role } = useAuth();
   const canOverrideRate = role === 'owner' || role === 'manager';
 
   const [rateOverride, setRateOverride] = useState(bookingData.rateOverride?.toString() || '');
   const [selectedAddons, setSelectedAddons] = useState<string[]>(bookingData.selectedAddons || []);
-  const [depositAmount, setDepositAmount] = useState(bookingData.depositAmount?.toString() || '');
   const [specialRequests, setSpecialRequests] = useState(bookingData.specialRequests || '');
+  const [requiresApproval, setRequiresApproval] = useState(bookingData.requiresApproval || false);
 
   useEffect(() => {
-    const addonsTotal = selectedAddons.reduce((sum, addonId) => {
-      const addon = AVAILABLE_ADDONS.find(a => a.id === addonId);
-      return sum + (addon?.price || 0);
-    }, 0);
-
+    // Note: addonsTotal is now calculated based on addon type in groupBookingCalculator
+    // We just store the selected addon IDs here
+    const needsApproval = !!rateOverride && parseFloat(rateOverride) > 0;
+    
     onChange({
       ...bookingData,
       rateOverride: rateOverride ? parseFloat(rateOverride) : undefined,
       selectedAddons,
-      addonsTotal,
-      depositAmount: depositAmount ? parseFloat(depositAmount) : undefined,
       specialRequests,
+      requiresApproval: needsApproval,
+      approvalStatus: needsApproval ? 'pending' : undefined,
     });
-  }, [rateOverride, selectedAddons, depositAmount, specialRequests]);
+    
+    setRequiresApproval(needsApproval);
+  }, [rateOverride, selectedAddons, specialRequests]);
 
   const handleAddonToggle = (addonId: string) => {
     setSelectedAddons(prev =>
@@ -59,7 +52,8 @@ export function BookingOptions({ bookingData, onChange }: BookingOptionsProps) {
     );
   };
 
-  const addonsTotal = selectedAddons.reduce((sum, addonId) => {
+  // Calculate display total for selected add-ons (base price only, actual calc happens in calculator)
+  const addonsDisplayTotal = selectedAddons.reduce((sum, addonId) => {
     const addon = AVAILABLE_ADDONS.find(a => a.id === addonId);
     return sum + (addon?.price || 0);
   }, 0);
@@ -98,6 +92,14 @@ export function BookingOptions({ bookingData, onChange }: BookingOptionsProps) {
             <p className="text-xs text-muted-foreground">
               Override the standard room rate for this booking
             </p>
+            {requiresApproval && (
+              <Alert className="border-yellow-500/50 bg-yellow-500/10">
+                <AlertCircle className="h-4 w-4 text-yellow-600" />
+                <AlertDescription className="text-yellow-800 dark:text-yellow-300">
+                  This booking will require manager approval before confirmation
+                </AlertDescription>
+              </Alert>
+            )}
           </div>
         </Card>
       )}
@@ -108,7 +110,7 @@ export function BookingOptions({ bookingData, onChange }: BookingOptionsProps) {
           <h4 className="text-sm font-medium">Add-ons & Services</h4>
           {selectedAddons.length > 0 && (
             <Badge variant="secondary">
-              {selectedAddons.length} selected • ₦{addonsTotal.toString()}
+              {selectedAddons.length} selected • from ₦{addonsDisplayTotal.toLocaleString()}
             </Badge>
           )}
         </div>
@@ -131,8 +133,13 @@ export function BookingOptions({ bookingData, onChange }: BookingOptionsProps) {
                 />
                 <div className="flex-1">
                   <div className="flex items-center justify-between mb-1">
-                    <p className="font-medium text-sm">{addon.label}</p>
-                    <p className="font-semibold text-sm">₦{addon.price.toString()}</p>
+                    <div className="flex items-center gap-2">
+                      <p className="font-medium text-sm">{addon.label}</p>
+                      <Badge variant="outline" className="text-xs">
+                        {addon.type === 'per_night' ? 'Per Night' : 'One Time'}
+                      </Badge>
+                    </div>
+                    <p className="font-semibold text-sm">₦{addon.price.toLocaleString()}</p>
                   </div>
                   <p className="text-xs text-muted-foreground">{addon.description}</p>
                 </div>
@@ -149,25 +156,6 @@ export function BookingOptions({ bookingData, onChange }: BookingOptionsProps) {
             </AlertDescription>
           </Alert>
         )}
-      </Card>
-
-      {/* Deposit */}
-      <Card className="p-4 space-y-3">
-        <h4 className="text-sm font-medium">Deposit</h4>
-        <div className="space-y-2">
-          <Label htmlFor="deposit">Deposit Amount (₦)</Label>
-          <Input
-            id="deposit"
-            type="number"
-            step="0.01"
-            placeholder="0.00"
-            value={depositAmount}
-            onChange={(e) => setDepositAmount(e.target.value)}
-          />
-          <p className="text-xs text-muted-foreground">
-            Optional deposit to be collected at booking confirmation
-          </p>
-        </div>
       </Card>
 
       {/* Special Requests */}
@@ -189,7 +177,7 @@ export function BookingOptions({ bookingData, onChange }: BookingOptionsProps) {
       </Card>
 
       {/* Summary */}
-      {(selectedAddons.length > 0 || rateOverride || depositAmount || specialRequests) && (
+      {(selectedAddons.length > 0 || rateOverride || specialRequests) && (
         <>
           <Separator />
           <Card className="p-4 bg-muted/30">
@@ -198,19 +186,32 @@ export function BookingOptions({ bookingData, onChange }: BookingOptionsProps) {
               {rateOverride && (
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">Rate Override:</span>
-                  <span className="font-medium">₦{parseFloat(rateOverride).toFixed(2)}/night</span>
+                  <span className="font-medium">₦{parseFloat(rateOverride).toLocaleString()}/night</span>
                 </div>
               )}
               {selectedAddons.length > 0 && (
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Add-ons Total:</span>
-                  <span className="font-medium">₦{addonsTotal.toString()}</span>
-                </div>
-              )}
-              {depositAmount && (
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Deposit Required:</span>
-                  <span className="font-medium">₦{parseFloat(depositAmount).toFixed(2)}</span>
+                <div className="space-y-1">
+                  <div className="flex justify-between font-medium">
+                    <span className="text-muted-foreground">Selected Add-ons:</span>
+                    <span>{selectedAddons.length} items</span>
+                  </div>
+                  {selectedAddons.map(addonId => {
+                    const addon = AVAILABLE_ADDONS.find(a => a.id === addonId);
+                    return addon ? (
+                      <div key={addonId} className="flex justify-between text-xs pl-2">
+                        <span className="text-muted-foreground">
+                          {addon.label} 
+                          <Badge variant="outline" className="ml-1 text-[10px] h-4 px-1">
+                            {addon.type === 'per_night' ? 'per night' : 'one time'}
+                          </Badge>
+                        </span>
+                        <span>₦{addon.price.toLocaleString()}</span>
+                      </div>
+                    ) : null;
+                  })}
+                  <p className="text-xs text-muted-foreground italic pt-1">
+                    Final total will be calculated based on nights and rooms selected
+                  </p>
                 </div>
               )}
               {specialRequests && (

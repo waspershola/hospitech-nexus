@@ -7,6 +7,18 @@ const corsHeaders = {
 };
 
 /**
+ * Add-on definitions - must match src/lib/finance/groupBookingCalculator.ts
+ */
+const AVAILABLE_ADDONS = [
+  { id: 'breakfast', label: 'Breakfast', price: 2500, type: 'per_night' },
+  { id: 'late_checkout', label: 'Late Checkout (2 PM)', price: 5000, type: 'one_time' },
+  { id: 'early_checkin', label: 'Early Check-In (10 AM)', price: 3000, type: 'one_time' },
+  { id: 'airport_pickup', label: 'Airport Pickup', price: 15000, type: 'one_time' },
+  { id: 'parking', label: 'Parking', price: 1500, type: 'per_night' },
+  { id: 'wifi_premium', label: 'Premium WiFi', price: 1000, type: 'per_night' },
+];
+
+/**
  * Tax Calculation - Duplicated from src/lib/finance/tax.ts
  * Edge functions cannot import from src, so this logic is duplicated here
  */
@@ -109,7 +121,7 @@ serve(async (req) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
     );
 
-    const { action_id, tenant_id, guest_id, room_id, check_in, check_out, total_amount, organization_id, department, created_by, group_booking, group_id, group_name, group_size, group_leader, rate_override, addons, addons_total, deposit_amount, special_requests, is_part_of_group } = await req.json();
+    const { action_id, tenant_id, guest_id, room_id, check_in, check_out, total_amount, organization_id, department, created_by, group_booking, group_id, group_name, group_size, group_leader, rate_override, addons, special_requests, is_part_of_group, approval_status } = await req.json();
 
     console.log('Creating booking with action_id:', action_id);
 
@@ -131,20 +143,42 @@ serve(async (req) => {
     const checkInDate = new Date(check_in);
     const checkOutDate = new Date(check_out);
     const nights = Math.ceil((checkOutDate.getTime() - checkInDate.getTime()) / (1000 * 60 * 60 * 24));
-    const baseRate = room?.category?.base_rate || room?.rate || 0;
-    const baseAmount = baseRate * nights;
+    const effectiveRate = rate_override || room?.category?.base_rate || room?.rate || 0;
+    const baseAmount = effectiveRate * nights;
 
-    // Use comprehensive tax calculation
-    const taxBreakdown = calculateBookingTotal(baseAmount, financials || {});
+    // Calculate add-ons total (matching frontend logic)
+    let addonsTotal = 0;
+    if (addons && addons.length > 0) {
+      addons.forEach((addonId: string) => {
+        const addon = AVAILABLE_ADDONS.find(a => a.id === addonId);
+        if (addon) {
+          if (addon.type === 'per_night') {
+            addonsTotal += addon.price * nights;
+          } else {
+            addonsTotal += addon.price;
+          }
+        }
+      });
+    }
 
-    // For group bookings, calculate add-ons per room and deposit per room
-    const addonsPerRoom = (is_part_of_group && addons_total) ? addons_total : (addons_total || 0);
-    const depositPerRoom = (is_part_of_group && deposit_amount) ? deposit_amount : (deposit_amount || 0);
+    // Subtotal before tax
+    const subtotal = baseAmount + addonsTotal;
+
+    // Use comprehensive tax calculation on subtotal
+    const taxBreakdown = calculateBookingTotal(subtotal, financials || {});
     
-    // Final total includes addons and subtracts deposit
-    const finalTotalAmount = taxBreakdown.totalAmount + addonsPerRoom - depositPerRoom;
+    // Final total (no deposit in this version)
+    const finalTotalAmount = taxBreakdown.totalAmount;
 
-    console.log('Tax breakdown:', taxBreakdown, 'Add-ons per room:', addonsPerRoom, 'Deposit per room:', depositPerRoom, 'Final total:', finalTotalAmount);
+    console.log('Booking calculation:', {
+      baseAmount,
+      addonsTotal,
+      subtotal,
+      taxBreakdown,
+      finalTotalAmount,
+      nights,
+      effectiveRate,
+    });
 
     // Check for existing booking with same action_id (idempotency)
     const { data: existingBooking, error: existingError } = await supabaseClient
@@ -209,7 +243,7 @@ serve(async (req) => {
           created_via: 'edge_function',
           created_at: new Date().toISOString(),
           nights,
-          base_rate: baseRate,
+          base_rate: effectiveRate,
           tax_breakdown: {
             base_amount: taxBreakdown.baseAmount,
             vat_amount: taxBreakdown.vatAmount,
@@ -230,9 +264,9 @@ serve(async (req) => {
             group_leader,
           } : {}),
           ...(rate_override ? { rate_override } : {}),
-          ...(addons && addons.length > 0 ? { addons, addons_total: addonsPerRoom } : {}),
-          ...(depositPerRoom > 0 ? { deposit_amount: depositPerRoom } : {}),
+          ...(addons && addons.length > 0 ? { addons, addons_total: addonsTotal } : {}),
           ...(special_requests ? { special_requests } : {}),
+          ...(approval_status ? { approval_status } : {}),
         }
       }])
       .select()

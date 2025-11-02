@@ -33,9 +33,9 @@ export type BookingData = {
   selectedRoomIds?: string[];
   rateOverride?: number;
   selectedAddons?: string[];
-  addonsTotal?: number;
-  depositAmount?: number;
   specialRequests?: string;
+  requiresApproval?: boolean;
+  approvalStatus?: 'pending' | 'approved' | 'rejected';
 };
 
 export function BookingFlow({ open, onClose, preselectedRoomId }: BookingFlowProps) {

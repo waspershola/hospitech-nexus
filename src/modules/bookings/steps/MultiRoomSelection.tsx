@@ -3,7 +3,7 @@ import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useFinancials } from '@/hooks/useFinancials';
-import { calculateBookingTotal } from '@/lib/finance/tax';
+import { calculateGroupBookingTotal } from '@/lib/finance/groupBookingCalculator';
 import { Card } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
@@ -78,26 +78,30 @@ export function MultiRoomSelection({ bookingData, onChange }: MultiRoomSelection
 
   const nights = Math.ceil((checkOut.getTime() - checkIn.getTime()) / (1000 * 60 * 60 * 24));
 
-  // Calculate total for all selected rooms including add-ons and deposits
+  // Calculate total for all selected rooms using centralized calculator
   const calculateTotal = () => {
-    if (!financials || selectedRoomIds.length === 0) return 0;
+    if (!financials || selectedRoomIds.length === 0 || !rooms || rooms.length === 0) return 0;
     
-    let roomsTotal = 0;
+    // Get average rate from selected rooms
+    let totalRate = 0;
     selectedRoomIds.forEach(roomId => {
-      const room = rooms?.find(r => r.id === roomId);
+      const room = rooms.find(r => r.id === roomId);
       const rate = room?.category?.base_rate || room?.rate || 0;
-      const baseAmount = rate * nights;
-      const roomTotal = calculateBookingTotal(baseAmount, financials);
-      roomsTotal += roomTotal.totalAmount;
+      totalRate += rate;
     });
-
-    // Add-ons are multiplied by number of rooms and nights (if applicable)
-    const addonsTotal = (bookingData.addonsTotal || 0) * selectedRoomIds.length;
+    const avgRate = totalRate / selectedRoomIds.length;
     
-    // Deposit is subtracted from total
-    const deposit = bookingData.depositAmount || 0;
+    // Use centralized calculator
+    const calculation = calculateGroupBookingTotal({
+      roomRate: avgRate,
+      nights,
+      numberOfRooms: selectedRoomIds.length,
+      selectedAddonIds: bookingData.selectedAddons || [],
+      financials,
+      rateOverride: bookingData.rateOverride,
+    });
     
-    return roomsTotal + addonsTotal - deposit;
+    return calculation.totalAmount;
   };
 
   useEffect(() => {
@@ -165,10 +169,17 @@ export function MultiRoomSelection({ bookingData, onChange }: MultiRoomSelection
           {rooms?.map((room) => {
             const isSelected = selectedRoomIds.includes(room.id);
             const rate = room.category?.base_rate || room.rate || 0;
-            const baseAmount = rate * nights;
-            const roomTotal = financials 
-              ? calculateBookingTotal(baseAmount, financials)
-              : { totalAmount: baseAmount };
+            
+            // Calculate individual room total (1 room for display purposes)
+            const roomCalc = financials
+              ? calculateGroupBookingTotal({
+                  roomRate: rate,
+                  nights,
+                  numberOfRooms: 1,
+                  selectedAddonIds: [], // Don't include add-ons in per-room display
+                  financials,
+                })
+              : { totalAmount: rate * nights };
 
             return (
               <Card
@@ -192,7 +203,7 @@ export function MultiRoomSelection({ bookingData, onChange }: MultiRoomSelection
                         </p>
                       </div>
                       <div className="text-right">
-                        <p className="font-semibold">₦{roomTotal.totalAmount.toFixed(2)}</p>
+                        <p className="font-semibold">₦{roomCalc.totalAmount.toFixed(2)}</p>
                         <p className="text-xs text-muted-foreground">
                           for {nights} night{nights !== 1 ? 's' : ''}
                         </p>
@@ -233,27 +244,24 @@ export function MultiRoomSelection({ bookingData, onChange }: MultiRoomSelection
         <Separator />
         <div className="space-y-2 text-sm">
           <div className="flex justify-between">
-            <span className="text-muted-foreground">Rooms Subtotal:</span>
-            <span>₦{(totalAmount - (bookingData.addonsTotal || 0) * selectedRoomIds.length + (bookingData.depositAmount || 0)).toFixed(2)}</span>
+            <span className="text-muted-foreground">Selected Rooms:</span>
+            <span>{selectedRoomIds.length} × {nights} nights</span>
           </div>
-          {bookingData.addonsTotal && bookingData.addonsTotal > 0 && (
+          {bookingData.selectedAddons && bookingData.selectedAddons.length > 0 && (
             <div className="flex justify-between">
-              <span className="text-muted-foreground">Add-ons ({selectedRoomIds.length} rooms):</span>
-              <span>₦{((bookingData.addonsTotal || 0) * selectedRoomIds.length).toFixed(2)}</span>
-            </div>
-          )}
-          {bookingData.depositAmount && bookingData.depositAmount > 0 && (
-            <div className="flex justify-between text-green-600 dark:text-green-400">
-              <span>Deposit Applied:</span>
-              <span>-₦{bookingData.depositAmount.toFixed(2)}</span>
+              <span className="text-muted-foreground">Add-ons Selected:</span>
+              <span>{bookingData.selectedAddons.length} items</span>
             </div>
           )}
         </div>
         <Separator />
         <div className="flex justify-between text-base font-semibold">
-          <span>Balance Due:</span>
-          <span className="text-primary">₦{totalAmount.toFixed(2)}</span>
+          <span>Total Amount:</span>
+          <span className="text-primary">₦{totalAmount.toLocaleString()}</span>
         </div>
+        <p className="text-xs text-muted-foreground mt-1">
+          Includes all rooms, add-ons, taxes, and service charges
+        </p>
       </div>
     </div>
   );

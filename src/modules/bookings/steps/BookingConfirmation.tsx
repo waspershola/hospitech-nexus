@@ -103,10 +103,8 @@ export function BookingConfirmation({ bookingData, onComplete }: BookingConfirma
         const groupId = crypto.randomUUID();
         const actionId = crypto.randomUUID();
 
-        // Calculate add-ons and deposit per room for group bookings
+        // Group bookings: pass selected add-ons (edge function will calculate totals)
         const numRooms = bookingData.selectedRoomIds.length;
-        const addonsPerRoom = (bookingData.addonsTotal || 0);
-        const depositPerRoom = (bookingData.depositAmount || 0) / numRooms;
 
         // Create bookings for each room
         const results = await Promise.all(
@@ -129,10 +127,10 @@ export function BookingConfirmation({ bookingData, onComplete }: BookingConfirma
                 group_size: bookingData.groupSize,
                 group_leader: bookingData.groupLeaderName,
                 addons: bookingData.selectedAddons,
-                addons_total: addonsPerRoom,
-                deposit_amount: depositPerRoom,
                 special_requests: bookingData.specialRequests,
                 is_part_of_group: true,
+                rate_override: bookingData.rateOverride,
+                approval_status: bookingData.approvalStatus,
               },
             });
 
@@ -196,9 +194,8 @@ export function BookingConfirmation({ bookingData, onComplete }: BookingConfirma
           created_by: user?.id,
           rate_override: bookingData.rateOverride,
           addons: bookingData.selectedAddons,
-          addons_total: bookingData.addonsTotal,
-          deposit_amount: bookingData.depositAmount,
           special_requests: bookingData.specialRequests,
+          approval_status: bookingData.approvalStatus,
         },
       });
 
@@ -443,12 +440,20 @@ export function BookingConfirmation({ bookingData, onComplete }: BookingConfirma
         </div>
 
         {/* Booking Options Summary */}
-        {(bookingData.selectedAddons?.length || bookingData.depositAmount || bookingData.specialRequests) && (
+        {(bookingData.selectedAddons?.length || bookingData.specialRequests || bookingData.requiresApproval) && (
           <>
             <Separator />
             <div>
               <h3 className="font-semibold text-lg mb-3">Booking Options</h3>
               <div className="space-y-2 text-sm">
+                {bookingData.requiresApproval && (
+                  <Alert className="border-yellow-500/50 bg-yellow-500/10">
+                    <AlertCircle className="h-4 w-4 text-yellow-600" />
+                    <AlertDescription className="text-yellow-800 dark:text-yellow-300">
+                      This booking requires manager approval due to rate override
+                    </AlertDescription>
+                  </Alert>
+                )}
                 {bookingData.selectedAddons && bookingData.selectedAddons.length > 0 && (
                   <div>
                     <p className="text-muted-foreground mb-1">Add-ons:</p>
@@ -458,15 +463,9 @@ export function BookingConfirmation({ bookingData, onComplete }: BookingConfirma
                       ))}
                     </div>
                     <p className="text-xs text-muted-foreground mt-1">
-                      Total: ₦{bookingData.addonsTotal || 0}
+                      Included in total amount below
                     </p>
                   </div>
-                )}
-                {bookingData.depositAmount && (
-                  <p>
-                    <span className="text-muted-foreground">Deposit:</span>{' '}
-                    <span className="font-medium">₦{bookingData.depositAmount.toFixed(2)}</span>
-                  </p>
                 )}
                 {bookingData.specialRequests && (
                   <div>
