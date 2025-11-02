@@ -10,6 +10,7 @@ import { Label } from '@/components/ui/label';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
+import { hasPermission, PERMISSIONS } from '@/lib/roles';
 import { useRoomActions } from '../hooks/useRoomActions';
 import { useCheckout } from '@/hooks/useCheckout';
 import { useBookingFolio } from '@/hooks/useBookingFolio';
@@ -43,7 +44,8 @@ interface RoomActionDrawerProps {
 }
 
 export function RoomActionDrawer({ roomId, open, onClose, onOpenAssignDrawer }: RoomActionDrawerProps) {
-  const { tenantId } = useAuth();
+  const { tenantId, role } = useAuth();
+  const canForceCheckout = hasPermission(role, PERMISSIONS.MANAGE_FINANCE);
   const queryClient = useQueryClient();
   const { checkIn, checkOut, markClean, markMaintenance } = useRoomActions();
   const { mutate: completeCheckout, isPending: isCheckingOut } = useCheckout();
@@ -164,11 +166,23 @@ export function RoomActionDrawer({ roomId, open, onClose, onOpenAssignDrawer }: 
     
     const hasDebt = folio && folio.balance > 0;
     const allowDebt = preferences?.allow_checkout_with_debt ?? false;
+    const hasOrgPayment = activeBooking.organization_id && orgWallet;
 
-    if (hasDebt && !allowDebt) {
+    // Block unpaid checkout for regular guests
+    if (hasDebt && !allowDebt && !hasOrgPayment) {
       toast({ 
         title: 'Outstanding Balance', 
-        description: 'Please settle balance before checkout or use Force Checkout',
+        description: `Balance due: ₦${folio.balance.toLocaleString()}. Please settle payment or contact manager for Force Checkout.`,
+        variant: 'destructive'
+      });
+      return; // STOP - don't proceed with checkout
+    }
+
+    // For org bookings with debt, require explicit payment
+    if (hasDebt && hasOrgPayment) {
+      toast({ 
+        title: 'Outstanding Balance', 
+        description: `Organization booking has ₦${folio.balance.toLocaleString()} outstanding. Please record payment or use Force Checkout.`,
         variant: 'destructive'
       });
       return;
@@ -178,7 +192,10 @@ export function RoomActionDrawer({ roomId, open, onClose, onOpenAssignDrawer }: 
     onClose();
     
     // Then complete checkout in background
-    completeCheckout({ bookingId: activeBooking.id }, {
+    completeCheckout({ 
+      bookingId: activeBooking.id,
+      autoChargeToWallet: false
+    }, {
       onSuccess: () => {
         // Print receipt if user toggled it on
         const defaultSettings = receiptSettings?.[0];
@@ -194,7 +211,16 @@ export function RoomActionDrawer({ roomId, open, onClose, onOpenAssignDrawer }: 
   };
 
   const handleForceCheckout = async () => {
-    if (!room || !activeBooking) return;
+    if (!room || !activeBooking || !folio) return;
+    
+    const confirmed = confirm(
+      `⚠️ MANAGER OVERRIDE REQUIRED\n\n` +
+      `This will check out the guest with an outstanding balance of ₦${folio.balance.toLocaleString()}.\n\n` +
+      `A receivable will be created for tracking.\n\n` +
+      `Continue with force checkout?`
+    );
+    
+    if (!confirmed) return;
     
     onClose();
     
@@ -298,8 +324,8 @@ export function RoomActionDrawer({ roomId, open, onClose, onOpenAssignDrawer }: 
           { label: hasDND ? 'Remove DND' : 'Do Not Disturb', action: handleToggleDND, variant: hasDND ? 'secondary' : 'ghost' as const, icon: BellOff, tooltip: 'Toggle Do Not Disturb' },
         ];
         
-        // Add Force Checkout if there's debt
-        if (hasOutstandingBalance) {
+        // Add Force Checkout ONLY if there's debt AND user has permission
+        if (hasOutstandingBalance && canForceCheckout) {
           actions.splice(1, 0, { 
             label: 'Force Checkout', 
             action: handleForceCheckout, 
