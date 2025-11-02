@@ -1299,6 +1299,63 @@ export type Database = {
           },
         ]
       }
+      navigation_items: {
+        Row: {
+          allowed_roles: Database["public"]["Enums"]["app_role"][]
+          created_at: string | null
+          icon: string
+          id: string
+          is_active: boolean | null
+          name: string
+          order_index: number
+          parent_id: string | null
+          path: string
+          tenant_id: string
+          updated_at: string | null
+        }
+        Insert: {
+          allowed_roles: Database["public"]["Enums"]["app_role"][]
+          created_at?: string | null
+          icon: string
+          id?: string
+          is_active?: boolean | null
+          name: string
+          order_index?: number
+          parent_id?: string | null
+          path: string
+          tenant_id: string
+          updated_at?: string | null
+        }
+        Update: {
+          allowed_roles?: Database["public"]["Enums"]["app_role"][]
+          created_at?: string | null
+          icon?: string
+          id?: string
+          is_active?: boolean | null
+          name?: string
+          order_index?: number
+          parent_id?: string | null
+          path?: string
+          tenant_id?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "navigation_items_parent_id_fkey"
+            columns: ["parent_id"]
+            isOneToOne: false
+            referencedRelation: "navigation_items"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "navigation_items_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       organization_members: {
         Row: {
           added_by: string | null
@@ -2060,6 +2117,7 @@ export type Database = {
       }
       rooms: {
         Row: {
+          assigned_to: string | null
           capacity: number | null
           category_id: string | null
           created_at: string | null
@@ -2077,6 +2135,7 @@ export type Database = {
           type: string
         }
         Insert: {
+          assigned_to?: string | null
           capacity?: number | null
           category_id?: string | null
           created_at?: string | null
@@ -2094,6 +2153,7 @@ export type Database = {
           type: string
         }
         Update: {
+          assigned_to?: string | null
           capacity?: number | null
           category_id?: string | null
           created_at?: string | null
@@ -2427,6 +2487,10 @@ export type Database = {
           _tenant_id: string
           _user_id: string
         }
+        Returns: boolean
+      }
+      user_has_permission: {
+        Args: { _permission_key: string; _tenant_id: string; _user_id: string }
         Returns: boolean
       }
       validate_org_limits: {

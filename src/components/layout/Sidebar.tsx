@@ -1,6 +1,9 @@
-import { Hotel, Home, Bed, Calendar, Users, FileBarChart, Settings as SettingsIcon, Wrench, LayoutDashboard, Grid3x3, Wallet, Receipt } from 'lucide-react';
+import { Hotel } from 'lucide-react';
+import * as Icons from 'lucide-react';
 import { NavLink } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
+import { useNavigation } from '@/hooks/useNavigation';
+import { Skeleton } from '@/components/ui/skeleton';
 import {
   Sidebar,
   SidebarContent,
@@ -14,28 +17,10 @@ import {
   useSidebar,
 } from '@/components/ui/sidebar';
 
-const NAV_ITEMS = [
-  { name: 'Overview', icon: Home, path: '/dashboard', roles: ['frontdesk', 'manager', 'owner'] },
-  { name: 'Front Desk', icon: LayoutDashboard, path: '/dashboard/front-desk', roles: ['frontdesk', 'manager', 'owner'] },
-  { name: 'Rooms', icon: Bed, path: '/dashboard/rooms', roles: ['frontdesk', 'manager', 'owner'] },
-  { name: 'Categories', icon: Grid3x3, path: '/dashboard/categories', roles: ['manager', 'owner'] },
-  { name: 'Bookings', icon: Calendar, path: '/dashboard/bookings', roles: ['frontdesk', 'manager', 'owner'] },
-  { name: 'Guests', icon: Users, path: '/dashboard/guests', roles: ['frontdesk', 'manager', 'owner'] },
-  { name: 'Wallets', icon: Wallet, path: '/dashboard/wallets', roles: ['manager', 'owner'] },
-  { name: 'Debtors', icon: Receipt, path: '/dashboard/debtors', roles: ['manager', 'owner'] },
-  { name: 'Finance', icon: Wallet, path: '/dashboard/finance', roles: ['manager', 'owner'] },
-  { name: 'Reports', icon: FileBarChart, path: '/dashboard/reports', roles: ['manager', 'owner'] },
-  { name: 'Configuration', icon: Wrench, path: '/dashboard/configuration', roles: ['manager', 'owner'] },
-  { name: 'Settings', icon: SettingsIcon, path: '/dashboard/settings', roles: ['manager', 'owner'] },
-];
-
 export function AppSidebar() {
-  const { role, tenantName } = useAuth();
+  const { tenantName } = useAuth();
   const { open } = useSidebar();
-  
-  const filteredNav = NAV_ITEMS.filter((item) => 
-    role && item.roles.includes(role)
-  );
+  const { data: navItems, isLoading } = useNavigation();
 
   return (
     <Sidebar collapsible="icon" className="border-r border-sidebar-border">
@@ -65,28 +50,39 @@ export function AppSidebar() {
             {open ? 'Main Menu' : ''}
           </SidebarGroupLabel>
           <SidebarGroupContent>
-            <SidebarMenu>
-              {filteredNav.map((item) => (
-                <SidebarMenuItem key={item.name}>
-                  <SidebarMenuButton asChild tooltip={item.name}>
-                    <NavLink
-                      to={item.path}
-                      end={item.path === '/dashboard'}
-                      className={({ isActive }) =>
-                        `flex items-center gap-3 px-3 py-2 rounded-xl transition-colors ${
-                          isActive
-                            ? 'bg-sidebar-primary/20 text-sidebar-primary font-semibold'
-                            : 'text-sidebar-foreground hover:bg-sidebar-accent/20 hover:text-sidebar-primary'
-                        }`
-                      }
-                    >
-                      <item.icon className="h-5 w-5 shrink-0" />
-                      {open && <span>{item.name}</span>}
-                    </NavLink>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-              ))}
-            </SidebarMenu>
+            {isLoading ? (
+              <div className="space-y-2 px-2">
+                {[1, 2, 3, 4, 5].map((i) => (
+                  <Skeleton key={i} className="h-10 w-full" />
+                ))}
+              </div>
+            ) : (
+              <SidebarMenu>
+                {navItems?.map((item) => {
+                  const IconComponent = Icons[item.icon as keyof typeof Icons] as any;
+                  return (
+                    <SidebarMenuItem key={item.id}>
+                      <SidebarMenuButton asChild tooltip={item.name}>
+                        <NavLink
+                          to={item.path}
+                          end={item.path === '/dashboard'}
+                          className={({ isActive }) =>
+                            `flex items-center gap-3 px-3 py-2 rounded-xl transition-colors ${
+                              isActive
+                                ? 'bg-sidebar-primary/20 text-sidebar-primary font-semibold'
+                                : 'text-sidebar-foreground hover:bg-sidebar-accent/20 hover:text-sidebar-primary'
+                            }`
+                          }
+                        >
+                          {IconComponent && <IconComponent className="h-5 w-5 shrink-0" />}
+                          {open && <span>{item.name}</span>}
+                        </NavLink>
+                      </SidebarMenuButton>
+                    </SidebarMenuItem>
+                  );
+                })}
+              </SidebarMenu>
+            )}
           </SidebarGroupContent>
         </SidebarGroup>
       </SidebarContent>

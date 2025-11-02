@@ -23,6 +23,9 @@ import Reports from './pages/dashboard/Reports';
 import Settings from './pages/dashboard/Settings';
 import ConfigurationCenter from './pages/dashboard/ConfigurationCenter';
 import FinanceCenter from './pages/dashboard/FinanceCenter';
+import FinanceDashboard from './pages/dashboard/FinanceDashboard';
+import HousekeepingDashboard from './pages/dashboard/HousekeepingDashboard';
+import MaintenanceDashboard from './pages/dashboard/MaintenanceDashboard';
 import Payments from './pages/dashboard/Payments';
 import Wallets from './pages/dashboard/Wallets';
 import Debtors from './pages/dashboard/Debtors';
@@ -49,15 +52,22 @@ const App = () => (
               <Route path="front-desk" element={<FrontDesk />} />
               <Route path="rooms" element={<Rooms />} />
               <Route path="categories" element={<RoleGuard allowedRoles={['owner', 'manager']}><RoomCategories /></RoleGuard>} />
+              <Route path="room-categories" element={<RoleGuard allowedRoles={['owner', 'manager']}><RoomCategories /></RoleGuard>} />
               <Route path="bookings" element={<Bookings />} />
               <Route path="guests" element={<Guests />} />
               <Route path="guests/:id" element={<GuestProfile />} />
               <Route path="payments" element={<Payments />} />
               <Route path="wallets" element={<Wallets />} />
-              <Route path="debtors" element={<RoleGuard allowedRoles={['owner', 'manager']}><Debtors /></RoleGuard>} />
-              <Route path="reports" element={<RoleGuard allowedRoles={['owner', 'manager']}><Reports /></RoleGuard>} />
+              <Route path="debtors" element={<RoleGuard allowedRoles={['owner', 'manager', 'finance', 'accountant']}><Debtors /></RoleGuard>} />
+              <Route path="reports" element={<RoleGuard allowedRoles={['owner', 'manager', 'finance', 'accountant']}><Reports /></RoleGuard>} />
               <Route path="configuration" element={<RoleGuard allowedRoles={['owner', 'manager']}><ConfigurationCenter /></RoleGuard>} />
-              <Route path="finance" element={<RoleGuard allowedRoles={['owner', 'manager']}><FinanceCenter /></RoleGuard>} />
+              <Route path="finance" element={<RoleGuard allowedRoles={['owner', 'manager', 'finance', 'accountant']}><FinanceCenter /></RoleGuard>} />
+              
+              {/* Role-specific dashboards */}
+              <Route path="finance-dashboard" element={<RoleGuard allowedRoles={['owner', 'manager', 'finance', 'accountant']}><FinanceDashboard /></RoleGuard>} />
+              <Route path="housekeeping-dashboard" element={<RoleGuard allowedRoles={['owner', 'manager', 'housekeeping']}><HousekeepingDashboard /></RoleGuard>} />
+              <Route path="maintenance-dashboard" element={<RoleGuard allowedRoles={['owner', 'manager', 'maintenance']}><MaintenanceDashboard /></RoleGuard>} />
+              
               <Route path="settings" element={<Settings />} />
             </Route>
 

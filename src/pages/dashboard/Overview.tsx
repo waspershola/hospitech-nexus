@@ -1,16 +1,14 @@
 import { useEffect, useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
+import { useRole } from '@/hooks/useRole';
+import { useWidgets } from '@/config/widgetRegistry';
+import { PERMISSIONS } from '@/lib/roles';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Bed, Calendar, Users, DollarSign, Receipt } from 'lucide-react';
 import { useDebtorsCreditors } from '@/hooks/useDebtorsCreditors';
 import { useTodayPayments } from '@/hooks/useTodayPayments';
-import { FinanceOverviewKPIs } from '@/modules/finance-center/components/FinanceOverviewKPIs';
-import { LiveTransactionFeed } from '@/modules/finance-center/components/LiveTransactionFeed';
-import { LiveActivityStream } from '@/modules/finance-center/components/LiveActivityStream';
 import { ProviderBreakdownCard } from '@/modules/finance-center/components/ProviderBreakdownCard';
-import { DebtorsCard } from '@/modules/finance-center/components/DebtorsCard';
-import { CreditorsCard } from '@/modules/finance-center/components/CreditorsCard';
 import { useFinanceOverview } from '@/hooks/useFinanceOverview';
 import { useQuery } from '@tanstack/react-query';
 import { format, isToday, isYesterday, differenceInDays } from 'date-fns';
@@ -19,6 +17,10 @@ import { Link } from 'react-router-dom';
 
 export default function Overview() {
   const { tenantId } = useAuth();
+  const { can } = useRole();
+  const widgets = useWidgets();
+  const financeWidgets = widgets.filter(w => w.category === 'finance');
+  const canViewFinance = can(PERMISSIONS.VIEW_FINANCE);
   const [stats, setStats] = useState({
     totalRooms: 0,
     occupiedRooms: 0,
@@ -209,94 +211,76 @@ export default function Overview() {
         </div>
       </Card>
 
-      {/* Finance Overview Section */}
-      <div className="space-y-6 pt-8 border-t border-border">
-        <div>
-          <h2 className="text-2xl font-display text-charcoal mb-2">Financial Overview</h2>
-          <p className="text-muted-foreground">Real-time financial metrics at a glance</p>
-        </div>
-
-        {/* Finance KPIs */}
-        <FinanceOverviewKPIs data={kpis} isLoading={kpisLoading} />
-
-        {/* Today's Payments Feed */}
-        <div className="grid lg:grid-cols-3 gap-6">
-          <div className="lg:col-span-2">
-            <LiveTransactionFeed 
-              transactions={todayPayments.data || []} 
-              isLoading={todayPayments.isLoading} 
-            />
+      {/* Finance Overview Section - Only for finance roles */}
+      {canViewFinance && financeWidgets.length > 0 && (
+        <div className="space-y-6 pt-8 border-t border-border">
+          <div>
+            <h2 className="text-2xl font-display text-charcoal mb-2">Financial Overview</h2>
+            <p className="text-muted-foreground">Real-time financial metrics at a glance</p>
           </div>
-          <LiveActivityStream transactions={transactionFeed || []} />
-        </div>
 
-        {/* Provider Breakdown */}
-        <ProviderBreakdownCard 
-          data={providerBreakdown} 
-          isLoading={providerBreakdownLoading} 
-        />
+          {/* Render finance widgets dynamically */}
+          {financeWidgets.map(widget => {
+            const Widget = widget.component;
+            return <Widget key={widget.id} />;
+          })}
 
-        {/* Recent Outstanding Receivables */}
-        <Card>
-          <CardHeader>
-            <div className="flex items-center justify-between">
-              <div>
-                <CardTitle className="flex items-center gap-2">
-                  <Receipt className="h-5 w-5" />
-                  Recent Outstanding Receivables
-                </CardTitle>
-                <CardDescription>Chronological view of recent debt created</CardDescription>
+          {/* Provider Breakdown */}
+          <ProviderBreakdownCard 
+            data={providerBreakdown} 
+            isLoading={providerBreakdownLoading} 
+          />
+
+          {/* Recent Outstanding Receivables */}
+          <Card>
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <div>
+                  <CardTitle className="flex items-center gap-2">
+                    <Receipt className="h-5 w-5" />
+                    Recent Outstanding Receivables
+                  </CardTitle>
+                  <CardDescription>Chronological view of recent debt created</CardDescription>
+                </div>
+                <Link to="/dashboard/debtors">
+                  <Badge variant="outline" className="cursor-pointer hover:bg-accent">View All</Badge>
+                </Link>
               </div>
-              <Link to="/dashboard/debtors">
-                <Badge variant="outline" className="cursor-pointer hover:bg-accent">View All</Badge>
-              </Link>
-            </div>
-          </CardHeader>
-          <CardContent>
-            {!recentReceivables || recentReceivables.length === 0 ? (
-              <p className="text-center text-muted-foreground py-8">No outstanding receivables</p>
-            ) : (
-              <div className="space-y-4">
-                {recentReceivables.map((group) => (
-                  <div key={group.date} className="border-b border-border last:border-0 pb-4 last:pb-0">
-                    <div className="flex items-center justify-between mb-2">
-                      <h4 className="font-semibold text-sm text-muted-foreground">{group.date}</h4>
-                      <Badge variant="secondary">₦{group.total.toLocaleString()}</Badge>
-                    </div>
-                    <div className="space-y-2">
-                      {group.items.map((item) => (
-                        <div key={item.id} className="flex items-center justify-between text-sm bg-muted/50 p-2 rounded">
-                          <div className="flex items-center gap-2">
-                            <span className="font-medium">{item.entity_name}</span>
-                            {item.booking_id && (
-                              <code className="text-xs bg-background px-1 py-0.5 rounded">
-                                {item.booking_id.slice(0, 8)}
-                              </code>
-                            )}
+            </CardHeader>
+            <CardContent>
+              {!recentReceivables || recentReceivables.length === 0 ? (
+                <p className="text-center text-muted-foreground py-8">No outstanding receivables</p>
+              ) : (
+                <div className="space-y-4">
+                  {recentReceivables.map((group) => (
+                    <div key={group.date} className="border-b border-border last:border-0 pb-4 last:pb-0">
+                      <div className="flex items-center justify-between mb-2">
+                        <h4 className="font-semibold text-sm text-muted-foreground">{group.date}</h4>
+                        <Badge variant="secondary">₦{group.total.toLocaleString()}</Badge>
+                      </div>
+                      <div className="space-y-2">
+                        {group.items.map((item) => (
+                          <div key={item.id} className="flex items-center justify-between text-sm bg-muted/50 p-2 rounded">
+                            <div className="flex items-center gap-2">
+                              <span className="font-medium">{item.entity_name}</span>
+                              {item.booking_id && (
+                                <code className="text-xs bg-background px-1 py-0.5 rounded">
+                                  {item.booking_id.slice(0, 8)}
+                                </code>
+                              )}
+                            </div>
+                            <span className="text-destructive font-semibold">₦{item.amount.toLocaleString()}</span>
                           </div>
-                          <span className="text-destructive font-semibold">₦{item.amount.toLocaleString()}</span>
-                        </div>
-                      ))}
+                        ))}
+                      </div>
                     </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </CardContent>
-        </Card>
-
-        {/* Debtors & Creditors */}
-        <div className="grid lg:grid-cols-2 gap-6">
-          <DebtorsCard 
-            data={debtorsCreditors.data?.debtors || []} 
-            isLoading={debtorsCreditors.isLoading} 
-          />
-          <CreditorsCard 
-            data={debtorsCreditors.data?.creditors || []} 
-            isLoading={debtorsCreditors.isLoading} 
-          />
+                  ))}
+                </div>
+              )}
+            </CardContent>
+          </Card>
         </div>
-      </div>
+      )}
     </div>
   );
 }
