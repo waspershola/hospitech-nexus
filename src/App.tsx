@@ -51,7 +51,6 @@ const App = () => (
               <Route index element={<Overview />} />
               <Route path="front-desk" element={<FrontDesk />} />
               <Route path="rooms" element={<Rooms />} />
-              <Route path="categories" element={<RoleGuard allowedRoles={['owner', 'manager']}><RoomCategories /></RoleGuard>} />
               <Route path="room-categories" element={<RoleGuard allowedRoles={['owner', 'manager']}><RoomCategories /></RoleGuard>} />
               <Route path="bookings" element={<Bookings />} />
               <Route path="guests" element={<Guests />} />
