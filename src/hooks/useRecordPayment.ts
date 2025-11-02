@@ -48,7 +48,9 @@ export function useRecordPayment() {
       queryClient.invalidateQueries({ queryKey: ['wallet-transactions', tenantId] });
       queryClient.invalidateQueries({ queryKey: ['finance-analytics', tenantId] });
       queryClient.invalidateQueries({ queryKey: ['reconciliation-records', tenantId] });
+      // Invalidate ALL booking folios (including group bookings) to ensure all rooms refresh
       queryClient.invalidateQueries({ queryKey: ['booking-folio'] });
+      queryClient.invalidateQueries({ queryKey: ['bookings'] });
       
       toast.success('Payment recorded successfully', {
         description: `Transaction: ${data.payment?.transaction_ref || ''}`,

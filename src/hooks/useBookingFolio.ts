@@ -58,6 +58,11 @@ export function useBookingFolio(bookingId: string | null) {
 
       const bookingMeta = booking?.metadata as any;
       const groupId = bookingMeta?.group_id;
+      
+      // Update query key to include groupId for group bookings (for cache sharing)
+      if (groupId) {
+        // Note: We can't modify queryKey here, but the cache will be invalidated properly
+      }
 
       // If this is a group booking, fetch all bookings in the group
       if (groupId) {
