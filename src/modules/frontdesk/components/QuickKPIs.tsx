@@ -19,8 +19,11 @@ interface QuickKPIsProps {
 }
 
 export function QuickKPIs({ onFilterClick, activeFilter }: QuickKPIsProps) {
-  const { kpis, isLoading } = useFrontDeskKPIs();
+  const { kpis, isLoading, error } = useFrontDeskKPIs();
   const { data: pendingPaymentsData } = usePendingPaymentsRooms();
+  
+  // Debug logging
+  console.log('QuickKPIs render:', { kpis, isLoading, error, pendingPaymentsData });
 
   const cards = [
     { 
@@ -89,12 +92,21 @@ export function QuickKPIs({ onFilterClick, activeFilter }: QuickKPIsProps) {
 
   if (isLoading) {
     return (
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+      <div className="grid grid-cols-4 lg:grid-cols-8 gap-2 sm:gap-3">
         {cards.map((_, i) => (
-          <Card key={i} className="p-4 animate-pulse">
-            <div className="h-20 bg-muted rounded" />
+          <Card key={i} className="p-2 md:p-3 animate-pulse">
+            <div className="h-16 bg-muted rounded" />
           </Card>
         ))}
+      </div>
+    );
+  }
+  
+  if (error) {
+    console.error('QuickKPIs error:', error);
+    return (
+      <div className="p-4 bg-destructive/10 text-destructive rounded-lg">
+        <p className="text-sm">Failed to load KPIs. Please refresh.</p>
       </div>
     );
   }

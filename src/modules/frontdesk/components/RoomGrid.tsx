@@ -2,7 +2,8 @@ import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { RoomTile } from './RoomTile';
-import { Loader2 } from 'lucide-react';
+import { Loader2, AlertTriangle } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 
 interface RoomGridProps {
   searchQuery?: string;
@@ -19,7 +20,7 @@ interface RoomGridProps {
 export function RoomGrid({ searchQuery, statusFilter, categoryFilter, floorFilter, organizationFilter, onRoomClick, isSelectionMode, selectedRoomIds = [], onRoomSelectionChange }: RoomGridProps) {
   const { tenantId } = useAuth();
 
-  const { data: rooms, isLoading } = useQuery({
+  const { data: rooms, isLoading, error } = useQuery({
     queryKey: ['rooms-grid', tenantId, searchQuery, statusFilter, categoryFilter, floorFilter, organizationFilter],
     queryFn: async () => {
       if (!tenantId) return [];
@@ -155,6 +156,25 @@ export function RoomGrid({ searchQuery, statusFilter, categoryFilter, floorFilte
     return (
       <div className="flex items-center justify-center h-64">
         <Loader2 className="w-8 h-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+  
+  // Phase 7: Error boundary
+  if (error) {
+    console.error('RoomGrid error:', error);
+    return (
+      <div className="p-8 text-center space-y-4">
+        <AlertTriangle className="h-12 w-12 mx-auto text-destructive" />
+        <div>
+          <p className="text-destructive font-medium mb-2">Failed to load rooms</p>
+          <p className="text-sm text-muted-foreground mb-4">
+            {error instanceof Error ? error.message : 'An unknown error occurred'}
+          </p>
+          <Button onClick={() => window.location.reload()} size="sm" variant="outline">
+            Reload Page
+          </Button>
+        </div>
       </div>
     );
   }

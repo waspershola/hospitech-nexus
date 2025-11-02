@@ -25,11 +25,35 @@ export function AvailabilityCalendar({ onRoomClick }: AvailabilityCalendarProps)
     new Date(selectedDate.getTime() + 86400000) // Next day
   );
 
-  const filteredRooms = roomAvailability?.filter((room) => {
-    if (typeFilter !== 'all' && room.roomType !== typeFilter) return false;
-    if (floorFilter !== 'all' && room.floor?.toString() !== floorFilter) return false;
-    return true;
-  });
+  // Filter rooms by selected date's active bookings
+  const filteredRooms = roomAvailability
+    ?.map((room) => {
+      // Only show bookings active on the selected date
+      const selectedDateStr = format(selectedDate, 'yyyy-MM-dd');
+      
+      // Check if room has a booking active on selected date
+      const hasActiveBooking = room.checkIn && room.checkOut &&
+        room.checkIn <= selectedDateStr && 
+        room.checkOut > selectedDateStr;
+      
+      // If room has no active booking on selected date, show as available
+      if (!hasActiveBooking && room.status !== 'available') {
+        return {
+          ...room,
+          status: 'available',
+          guestName: null,
+          checkIn: null,
+          checkOut: null
+        };
+      }
+      
+      return room;
+    })
+    .filter((room) => {
+      if (typeFilter !== 'all' && room.roomType !== typeFilter) return false;
+      if (floorFilter !== 'all' && room.floor?.toString() !== floorFilter) return false;
+      return true;
+    });
 
   const availableRooms = filteredRooms?.filter(r => r.status === 'available') || [];
   const reservedRooms = filteredRooms?.filter(r => r.status === 'reserved') || [];

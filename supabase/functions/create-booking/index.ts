@@ -199,15 +199,21 @@ serve(async (req) => {
       );
     }
 
-    // Check room availability (dates already defined above)
+    // Phase 5: Strict overlap validation to prevent double bookings
+    // Check room availability with comprehensive date range check
     const { data: overlappingBookings, error: availabilityError } = await supabaseClient
       .from('bookings')
-      .select('id, guest_id')
+      .select('id, guest_id, check_in, check_out, status, booking_reference')
       .eq('tenant_id', tenant_id)
       .eq('room_id', room_id)
-      .in('status', ['reserved', 'checked_in'])
-      .lt('check_in', checkOutDate.toISOString())
-      .gt('check_out', checkInDate.toISOString());
+      .in('status', ['reserved', 'checked_in', 'confirmed'])
+      .or(`and(check_in.lt.${checkOutDate.toISOString()},check_out.gt.${checkInDate.toISOString()})`);
+    
+    console.log('Overlap check:', {
+      checkIn: checkInDate.toISOString(),
+      checkOut: checkOutDate.toISOString(),
+      overlapping: overlappingBookings,
+    });
 
     if (availabilityError) {
       console.error('Error checking availability:', availabilityError);
@@ -215,12 +221,22 @@ serve(async (req) => {
     }
 
     if (overlappingBookings && overlappingBookings.length > 0) {
-      console.log('Room not available, overlapping bookings:', overlappingBookings);
+      console.error('Room not available - overlapping bookings detected:', overlappingBookings);
+      
+      const conflictDetails = overlappingBookings.map(b => 
+        `${b.booking_reference || b.id.substring(0, 8)} (${b.check_in.split('T')[0]} to ${b.check_out.split('T')[0]})`
+      ).join(', ');
+      
       return new Response(
         JSON.stringify({ 
           success: false, 
-          error: 'Room not available for selected dates',
-          conflicting_bookings: overlappingBookings 
+          error: 'ROOM_NOT_AVAILABLE',
+          message: `Room ${room?.number || room_id} is already booked for the selected dates. Conflicting bookings: ${conflictDetails}`,
+          conflicting_bookings: overlappingBookings,
+          requested_dates: {
+            check_in: checkInDate.toISOString().split('T')[0],
+            check_out: checkOutDate.toISOString().split('T')[0]
+          }
         }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 409 }
       );

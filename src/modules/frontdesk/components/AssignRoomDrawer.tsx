@@ -186,6 +186,7 @@ export function AssignRoomDrawer({ open, onClose, roomId, roomNumber }: AssignRo
       setActionType('reserve');
     },
     onError: (error: any) => {
+      console.error('Assignment error:', error);
       const errorData = error?.response?.data || error;
       
       if (errorData.error === 'WALLET_NOT_FOUND') {
@@ -198,8 +199,16 @@ export function AssignRoomDrawer({ open, onClose, roomId, roomNumber }: AssignRo
           description: errorData.message || 'Organization has exceeded its credit limit.',
           duration: 6000,
         });
+      } else if (errorData.error === 'ROOM_NOT_AVAILABLE') {
+        toast.error('Room Not Available', {
+          description: errorData.message || 'This room is already booked for the selected dates.',
+          duration: 8000,
+        });
       } else {
-        toast.error(`Failed: ${error.message || 'Unknown error'}`);
+        toast.error('Assignment Failed', {
+          description: error.message || errorData.message || 'Unknown error occurred. Please try again.',
+          duration: 6000,
+        });
       }
     },
   });

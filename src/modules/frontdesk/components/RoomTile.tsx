@@ -36,14 +36,32 @@ export function RoomTile({ room, onClick, isSelectionMode, isSelected, onSelecti
   const statusColor = statusColors[room.status as keyof typeof statusColors] || statusColors.available;
   const borderColor = statusBorderColors[room.status as keyof typeof statusBorderColors] || statusBorderColors.available;
 
-  // Phase 5: Use canonical fields for active booking with strict null checks
+  // Phase 2: Prioritize TODAY's active booking over canonical fields
   const bookingsArray = Array.isArray(room.bookings) ? room.bookings : room.bookings ? [room.bookings] : [];
-  const activeBooking = room.current_reservation_id 
-    ? bookingsArray.find((b: any) => b.id === room.current_reservation_id)
-    : null;
+  const today = new Date().toISOString().split('T')[0];
+  
+  // Priority 1: Checked-in booking active today
+  let activeBooking = bookingsArray.find(
+    (b: any) => b.status === 'checked_in' && 
+    b.check_in?.split('T')[0] <= today && 
+    b.check_out?.split('T')[0] > today
+  );
+  
+  // Priority 2: Reserved booking arriving today
+  if (!activeBooking) {
+    activeBooking = bookingsArray.find(
+      (b: any) => b.status === 'reserved' && 
+      b.check_in?.split('T')[0] === today
+    );
+  }
+  
+  // Priority 3: Use canonical booking (fallback for future bookings)
+  if (!activeBooking && room.current_reservation_id) {
+    activeBooking = bookingsArray.find((b: any) => b.id === room.current_reservation_id);
+  }
+  
   const organization = activeBooking?.organization;
-  // Only show guest if both current_guest_id exists AND booking has guest data
-  const guest = (room.current_guest_id && activeBooking?.guest) ? activeBooking.guest : null;
+  const guest = activeBooking?.guest;
   
   // Calculate rate: room-specific rate or category base rate
   const displayRate = room.rate ?? room.category?.base_rate ?? 0;
