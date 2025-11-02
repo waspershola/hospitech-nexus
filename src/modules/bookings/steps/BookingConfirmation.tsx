@@ -173,6 +173,7 @@ export function BookingConfirmation({ bookingData, onComplete }: BookingConfirma
                 is_part_of_group: true,
                 rate_override: bookingData.rateOverride,
                 approval_status: bookingData.approvalStatus,
+                total_rooms_in_group: bookingData.selectedRoomIds.length,
               },
             });
 

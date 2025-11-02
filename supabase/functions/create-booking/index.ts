@@ -121,7 +121,7 @@ serve(async (req) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
     );
 
-    const { action_id, tenant_id, guest_id, room_id, check_in, check_out, total_amount, organization_id, department, created_by, group_booking, group_id, group_name, group_size, group_leader, rate_override, addons, special_requests, is_part_of_group, approval_status } = await req.json();
+    const { action_id, tenant_id, guest_id, room_id, check_in, check_out, total_amount, organization_id, department, created_by, group_booking, group_id, group_name, group_size, group_leader, rate_override, addons, special_requests, is_part_of_group, approval_status, total_rooms_in_group } = await req.json();
 
     console.log('Creating booking with action_id:', action_id);
 
@@ -147,15 +147,22 @@ serve(async (req) => {
     const baseAmount = effectiveRate * nights;
 
     // Calculate add-ons total (matching frontend logic)
+    // For group bookings, distribute add-on costs evenly across all rooms
+    const roomsInGroup = is_part_of_group && total_rooms_in_group ? total_rooms_in_group : 1;
     let addonsTotal = 0;
+    
     if (addons && addons.length > 0) {
       addons.forEach((addonId: string) => {
         const addon = AVAILABLE_ADDONS.find(a => a.id === addonId);
         if (addon) {
           if (addon.type === 'per_night') {
-            addonsTotal += addon.price * nights;
+            // Total cost for all rooms, then divide by number of rooms
+            const totalForAllRooms = addon.price * nights * roomsInGroup;
+            addonsTotal += totalForAllRooms / roomsInGroup;
           } else {
-            addonsTotal += addon.price;
+            // One-time cost shared across all rooms
+            const totalForAllRooms = addon.price * roomsInGroup;
+            addonsTotal += totalForAllRooms / roomsInGroup;
           }
         }
       });
@@ -178,6 +185,10 @@ serve(async (req) => {
       finalTotalAmount,
       nights,
       effectiveRate,
+      roomsInGroup,
+      is_part_of_group,
+      receivedTotalAmount: total_amount,
+      calculatedMatch: Math.abs(finalTotalAmount - (total_amount || 0)) < 1,
     });
 
     // Check for existing booking with same action_id (idempotency)
