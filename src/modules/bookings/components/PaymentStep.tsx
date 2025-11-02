@@ -10,6 +10,8 @@ import { usePaymentPreferences } from '@/hooks/usePaymentPreferences';
 import { useApplyWalletCredit } from '@/hooks/useApplyWalletCredit';
 import { useBookingFolio } from '@/hooks/useBookingFolio';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { Wallet } from 'lucide-react';
 
 interface PaymentStepProps {
   bookingId: string;
@@ -36,9 +38,10 @@ export function PaymentStep({
 }: PaymentStepProps) {
   const { tenantId } = useAuth();
   const { preferences } = usePaymentPreferences();
-  const { mutate: applyWalletCredit } = useApplyWalletCredit();
+  const applyWalletMutation = useApplyWalletCredit();
   const [showWalletDialog, setShowWalletDialog] = useState(false);
-  const [walletChecked, setWalletChecked] = useState(false);
+  const [walletApplied, setWalletApplied] = useState(false);
+  const [isApplyingWallet, setIsApplyingWallet] = useState(false);
 
   // Fetch actual booking folio to get current balance
   const { data: folio, isLoading: folioLoading } = useBookingFolio(bookingId);
@@ -63,44 +66,90 @@ export function PaymentStep({
     enabled: !!tenantId && !!guestId,
   });
 
-  // Auto-suggest wallet credit if enabled and available
+  // Use actual folio balance if available, otherwise use totalAmount
+  const balanceDue = folio?.balance ?? totalAmount;
+
+  // Auto-apply wallet credit on component mount if available and enabled
   useEffect(() => {
-    const autoApply = preferences?.auto_apply_wallet_on_booking ?? true;
-    const hasBalance = wallet && wallet.balance > 0;
-    
-    if (autoApply && hasBalance && !walletChecked && folio) {
-      setShowWalletDialog(true);
-      setWalletChecked(true);
-    }
-  }, [wallet, preferences, walletChecked, folio]);
+    const autoApplyWallet = async () => {
+      const autoApply = preferences?.auto_apply_wallet_on_booking !== false;
+      const hasWalletBalance = wallet && Number(wallet.balance) > 0;
+      const hasBookingBalance = balanceDue > 0;
+      
+      if (
+        autoApply &&
+        hasWalletBalance &&
+        hasBookingBalance &&
+        !walletApplied &&
+        !isApplyingWallet &&
+        bookingId &&
+        guestId &&
+        !folioLoading
+      ) {
+        setIsApplyingWallet(true);
+        try {
+          await applyWalletMutation.mutateAsync({
+            guestId,
+            bookingId,
+            amountToApply: balanceDue,
+          });
+          setWalletApplied(true);
+        } catch (error) {
+          console.error('Auto-apply wallet failed:', error);
+        } finally {
+          setIsApplyingWallet(false);
+        }
+      }
+    };
+
+    autoApplyWallet();
+  }, [
+    wallet,
+    balanceDue,
+    bookingId,
+    guestId,
+    walletApplied,
+    isApplyingWallet,
+    preferences,
+    applyWalletMutation,
+    folioLoading,
+  ]);
 
   const handleApplyWallet = (amount: number) => {
-    if (amount > 0) {
-      applyWalletCredit({
-        guestId,
-        bookingId,
-        amountToApply: amount,
-      }, {
-        onSuccess: () => {
-          setShowWalletDialog(false);
+    if (amount > 0 && bookingId && guestId) {
+      applyWalletMutation.mutate(
+        {
+          guestId,
+          bookingId,
+          amountToApply: amount,
         },
-      });
+        {
+          onSuccess: () => {
+            setShowWalletDialog(false);
+          },
+        }
+      );
     } else {
       setShowWalletDialog(false);
     }
   };
 
-  if (folioLoading) {
+  if (folioLoading || isApplyingWallet) {
     return (
       <Card className="p-6">
         <Skeleton className="h-6 w-48 mb-4" />
         <Skeleton className="h-32 w-full" />
+        {isApplyingWallet && (
+          <p className="text-sm text-muted-foreground mt-2">
+            Applying wallet credit automatically...
+          </p>
+        )}
       </Card>
     );
   }
 
-  // Use actual folio balance if available, otherwise use totalAmount
-  const balanceDue = folio?.balance ?? totalAmount;
+  const hasRemainingWallet = wallet && Number(wallet.balance) > 0;
+  const canApplyMoreWallet = hasRemainingWallet && balanceDue > 0 && !isApplyingWallet;
 
   return (
     <div className="space-y-6">
@@ -120,6 +169,25 @@ export function PaymentStep({
               ? `Balance Due (from ${folio.numberOfBookings} room group)`
               : 'Balance Due (from booking)'}
           </p>
+          
+          {canApplyMoreWallet && (
+            <Alert className="mt-4">
+              <Wallet className="h-4 w-4" />
+              <AlertTitle>Additional Wallet Credit Available</AlertTitle>
+              <AlertDescription className="flex items-center justify-between gap-4">
+                <span className="text-sm">
+                  Guest has ₦{Number(wallet.balance).toLocaleString()} remaining in wallet.
+                </span>
+                <Button 
+                  variant="outline" 
+                  size="sm"
+                  onClick={() => setShowWalletDialog(true)}
+                >
+                  Apply More Credit
+                </Button>
+              </AlertDescription>
+            </Alert>
+          )}
         </div>
         <PaymentForm
           bookingId={bookingId}
