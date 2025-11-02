@@ -60,9 +60,9 @@ export function AvailabilityCalendar({ onRoomClick }: AvailabilityCalendarProps)
   };
 
   return (
-    <div className="flex flex-col h-full px-3 sm:px-4 lg:px-6 py-4 pb-20 lg:pb-6">
+    <div className="space-y-4">
       {/* Header */}
-      <div className="flex items-center gap-3 mb-4">
+      <div className="flex items-center gap-3">
         <div className="p-2 rounded-lg bg-primary/10">
           <CalendarIcon className="h-5 w-5 text-primary" />
         </div>
@@ -73,7 +73,7 @@ export function AvailabilityCalendar({ onRoomClick }: AvailabilityCalendarProps)
       </div>
 
       {/* Filters */}
-      <Card className="p-4 space-y-4 mb-4">
+      <Card className="p-4 space-y-4">
         <div className="flex items-center gap-2 text-sm font-medium">
           <Filter className="h-4 w-4" />
           Filters
@@ -122,7 +122,7 @@ export function AvailabilityCalendar({ onRoomClick }: AvailabilityCalendarProps)
       </Card>
 
       {/* Summary Stats */}
-      <div className="grid grid-cols-2 md:grid-cols-5 gap-3 mb-4">
+      <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
         <Card className="p-4 bg-green-50 dark:bg-green-900/10 border-green-200 dark:border-green-800">
           <p className="text-2xl font-bold text-green-700 dark:text-green-400">{availableRooms.length}</p>
           <p className="text-xs text-green-600 dark:text-green-500">Available</p>
@@ -146,56 +146,54 @@ export function AvailabilityCalendar({ onRoomClick }: AvailabilityCalendarProps)
       </div>
 
       {/* Room List */}
-      <Card className="p-4 flex-1 flex flex-col min-h-0">
-        <ScrollArea className="flex-1">
-          {isLoading ? (
-            <div className="space-y-3">
-              {[...Array(8)].map((_, i) => (
-                <Skeleton key={i} className="h-20 w-full" />
-              ))}
-            </div>
-          ) : filteredRooms && filteredRooms.length > 0 ? (
-            <div className="space-y-2">
-              {filteredRooms.map((room) => (
-                <div
-                  key={room.roomId}
-                  className={`p-4 rounded-lg border-2 cursor-pointer transition-all hover:shadow-md ${getStatusColor(room.status)}`}
-                  onClick={() => onRoomClick?.(room.roomId)}
-                >
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                      <div className="p-2 rounded-lg bg-background/50">
-                        <BedDouble className="h-5 w-5" />
-                      </div>
-                      <div>
-                        <p className="font-semibold">Room {room.roomNumber}</p>
-                        <p className="text-sm text-muted-foreground">
-                          {room.categoryName || room.roomType} {room.floor && `• Floor ${room.floor}`}
-                        </p>
-                        {room.guestName && (
-                          <p className="text-xs font-medium mt-1">Guest: {room.guestName}</p>
-                        )}
-                      </div>
+      <Card className="p-4">
+        {isLoading ? (
+          <div className="space-y-3">
+            {[...Array(8)].map((_, i) => (
+              <Skeleton key={i} className="h-20 w-full" />
+            ))}
+          </div>
+        ) : filteredRooms && filteredRooms.length > 0 ? (
+          <div className="space-y-2">
+            {filteredRooms.map((room) => (
+              <div
+                key={room.roomId}
+                className={`p-4 rounded-lg border-2 cursor-pointer transition-all hover:shadow-md ${getStatusColor(room.status)}`}
+                onClick={() => onRoomClick?.(room.roomId)}
+              >
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="p-2 rounded-lg bg-background/50">
+                      <BedDouble className="h-5 w-5" />
                     </div>
-                    <div className="text-right">
-                      {getStatusBadge(room.status)}
-                      {room.checkIn && room.checkOut && (
-                        <p className="text-xs text-muted-foreground mt-2">
-                          {format(new Date(room.checkIn), 'MMM dd')} - {format(new Date(room.checkOut), 'MMM dd')}
-                        </p>
+                    <div>
+                      <p className="font-semibold">Room {room.roomNumber}</p>
+                      <p className="text-sm text-muted-foreground">
+                        {room.categoryName || room.roomType} {room.floor && `• Floor ${room.floor}`}
+                      </p>
+                      {room.guestName && (
+                        <p className="text-xs font-medium mt-1">Guest: {room.guestName}</p>
                       )}
                     </div>
                   </div>
+                  <div className="text-right">
+                    {getStatusBadge(room.status)}
+                    {room.checkIn && room.checkOut && (
+                      <p className="text-xs text-muted-foreground mt-2">
+                        {format(new Date(room.checkIn), 'MMM dd')} - {format(new Date(room.checkOut), 'MMM dd')}
+                      </p>
+                    )}
+                  </div>
                 </div>
-              ))}
-            </div>
-          ) : (
-            <div className="text-center py-12 text-muted-foreground">
-              <BedDouble className="h-12 w-12 mx-auto mb-4 opacity-50" />
-              <p>No rooms found matching the selected filters</p>
-            </div>
-          )}
-        </ScrollArea>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div className="text-center py-12 text-muted-foreground">
+            <BedDouble className="h-12 w-12 mx-auto mb-4 opacity-50" />
+            <p>No rooms found matching the selected filters</p>
+          </div>
+        )}
       </Card>
     </div>
   );
