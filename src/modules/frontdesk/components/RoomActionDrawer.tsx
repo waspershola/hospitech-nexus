@@ -314,6 +314,16 @@ export function RoomActionDrawer({ roomId, open, onClose, onOpenAssignDrawer }: 
 
     switch (room.status) {
       case 'available':
+        // Only show new booking actions if room is truly available (no active reservation)
+        const hasActiveReservation = room.current_reservation_id;
+        
+        if (hasActiveReservation) {
+          // Room shows available but has reservation - shouldn't happen but prevent duplicate bookings
+          return [
+            { label: 'Check-In Guest', action: handleCheckIn, variant: 'default' as const, icon: LogIn, tooltip: 'Complete guest check-in' },
+          ];
+        }
+        
         return [
           { label: 'Assign Room', action: () => room && onOpenAssignDrawer?.(room.id, room.number), variant: 'default' as const, icon: UserPlus, tooltip: 'Full booking with guest details' },
           { label: 'Walk-in Check-In', action: handleQuickCheckIn, variant: 'outline' as const, icon: LogIn, tooltip: 'Express walk-in check-in' },
@@ -343,11 +353,12 @@ export function RoomActionDrawer({ roomId, open, onClose, onOpenAssignDrawer }: 
         
         return actions;
       case 'reserved':
+        // Reserved rooms should only allow check-in, modification, or cancellation
+        // NOT new bookings to prevent double-booking
         return [
-          { label: 'Check-In', action: handleCheckIn, variant: 'default' as const, icon: LogIn, tooltip: 'Complete guest check-in' },
+          { label: 'Check-In Guest', action: handleCheckIn, variant: 'default' as const, icon: LogIn, tooltip: 'Complete guest check-in' },
+          { label: 'View Reservation', action: () => setAmendmentDrawerOpen(true), variant: 'outline' as const, icon: FileText, tooltip: 'View reservation details' },
           { label: 'Cancel Reservation', action: () => setCancelModalOpen(true), variant: 'destructive' as const, icon: AlertTriangle, tooltip: 'Cancel this reservation' },
-          { label: 'Modify Reservation', action: () => setAmendmentDrawerOpen(true), variant: 'outline' as const, icon: FileText, tooltip: 'Modify reservation details' },
-          { label: 'Assign Different Room', action: () => room && onOpenAssignDrawer?.(room.id, room.number), variant: 'outline' as const, icon: UserPlus, tooltip: 'Move to different room' },
         ];
       case 'overstay':
         return [

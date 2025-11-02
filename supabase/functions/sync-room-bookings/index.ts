@@ -1,3 +1,8 @@
+/**
+ * 🚨 DEPRECATED: Edge Function no longer needed.
+ * Room sync is now fully handled by the database trigger `sync_room_status_with_bookings()`.
+ * Retained only for backward compatibility until confirmed safe to delete.
+ */
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 

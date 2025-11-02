@@ -12,10 +12,10 @@ import { OverstayAlertModal } from '@/modules/frontdesk/components/OverstayAlert
 import { BookingFlow } from '@/modules/bookings/BookingFlow';
 import { MobileBottomNav } from '@/modules/frontdesk/components/MobileBottomNav';
 import { AvailabilityCalendar } from '@/modules/frontdesk/components/AvailabilityCalendar';
+import { StatusSyncMonitor } from '@/components/StatusSyncMonitor';
 import { useOverstayRooms } from '@/hooks/useOverstayRooms';
 import { useRoomActions } from '@/modules/frontdesk/hooks/useRoomActions';
 import { useRoomRealtime, useBookingRealtime, usePaymentRealtime } from '@/hooks/useRoomRealtime';
-import { useSyncRoomBookings } from '@/hooks/useSyncRoomBookings';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Calendar, LayoutGrid } from 'lucide-react';
 
@@ -36,17 +36,11 @@ export default function FrontDesk() {
   
   const { data: overstayRooms = [] } = useOverstayRooms();
   const { checkOut } = useRoomActions();
-  const syncMutation = useSyncRoomBookings();
   
   // Enable real-time updates
   useRoomRealtime();
   useBookingRealtime();
   usePaymentRealtime();
-  
-  // Auto-sync on mount to fix any stale data
-  useEffect(() => {
-    syncMutation.mutate();
-  }, []);
 
   // Handle opening AssignRoomDrawer from RoomActionDrawer
   const handleOpenAssignDrawer = (roomId: string, roomNumber: string) => {
@@ -130,6 +124,7 @@ export default function FrontDesk() {
 
           <TabsContent value="status" className="flex-1 flex flex-col m-0 overflow-hidden data-[state=inactive]:absolute data-[state=inactive]:invisible data-[state=inactive]:pointer-events-none">
             <div className="px-3 sm:px-4 lg:px-6 pt-3 sm:pt-4">
+              <StatusSyncMonitor />
               <QuickKPIs 
                 onFilterClick={handleFilterToggle} 
                 activeFilter={statusFilter}
