@@ -50,7 +50,7 @@ export function RoomGrid({ searchQuery, statusFilter, categoryFilter, floorFilte
       const { data, error } = await query;
       if (error) throw error;
       
-      // Filter to only show TODAY's active bookings
+      // Filter to only show TODAY's active bookings and update room status accordingly
       let filteredData = (data || []).map(room => {
         if (!room.bookings || room.bookings.length === 0) return room;
         
@@ -71,7 +71,13 @@ export function RoomGrid({ searchQuery, statusFilter, categoryFilter, floorFilte
           return checkIn <= todayDate && checkOut > todayDate;
         });
         
-        return { ...room, bookings: activeBookings };
+        // If room has no active bookings for today but status is reserved, make it available
+        const updatedRoom = { ...room, bookings: activeBookings };
+        if (activeBookings.length === 0 && room.status === 'reserved') {
+          updatedRoom.status = 'available';
+        }
+        
+        return updatedRoom;
       });
 
       // Apply room-level filters (not booking-level)
