@@ -39,6 +39,57 @@ serve(async (req) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
     );
 
+    // SECURITY: Verify user authentication and role
+    const authHeader = req.headers.get('Authorization');
+    if (!authHeader) {
+      return new Response(
+        JSON.stringify({ error: 'No authorization header' }),
+        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    const token = authHeader.replace('Bearer ', '');
+    const { data: { user }, error: authError } = await supabase.auth.getUser(token);
+    
+    if (authError || !user) {
+      console.error('Authentication failed:', authError);
+      return new Response(
+        JSON.stringify({ error: 'Unauthorized - invalid token' }),
+        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // Get user role and tenant
+    const { data: userRole, error: roleError } = await supabase
+      .from('user_roles')
+      .select('role, tenant_id')
+      .eq('user_id', user.id)
+      .single();
+
+    if (roleError || !userRole) {
+      console.error('Role fetch failed:', roleError);
+      return new Response(
+        JSON.stringify({ error: 'No role assigned to user' }),
+        { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // Check role permissions - only certain roles can create payments
+    const allowedRoles = ['owner', 'manager', 'frontdesk', 'finance', 'accountant'];
+    if (!allowedRoles.includes(userRole.role)) {
+      console.error('Insufficient permissions:', userRole.role);
+      return new Response(
+        JSON.stringify({ 
+          error: 'Insufficient permissions to create payments',
+          required_roles: allowedRoles,
+          user_role: userRole.role
+        }),
+        { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    console.log('User authorized:', user.id, 'Role:', userRole.role, 'Tenant:', userRole.tenant_id);
+
     // Parse and validate input
     const rawBody = await req.json();
     const validationResult = paymentSchema.safeParse(rawBody);
@@ -75,6 +126,15 @@ serve(async (req) => {
       force_approve,
       metadata,
     } = validationResult.data;
+
+    // SECURITY: Verify tenant_id matches user's tenant
+    if (tenant_id !== userRole.tenant_id) {
+      console.error('Tenant mismatch:', tenant_id, 'vs', userRole.tenant_id);
+      return new Response(
+        JSON.stringify({ error: 'Tenant mismatch - unauthorized access attempt' }),
+        { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
 
     console.log('Processing payment:', { transaction_ref, amount, method, provider_id, location_id });
 

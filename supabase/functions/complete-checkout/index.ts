@@ -12,12 +12,69 @@ serve(async (req) => {
   }
 
   try {
+    // SECURITY: Create admin client for role verification
+    const supabaseAdmin = createClient(
+      Deno.env.get('SUPABASE_URL') ?? '',
+      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
+    );
+
+    const authHeader = req.headers.get('Authorization');
+    if (!authHeader) {
+      return new Response(
+        JSON.stringify({ error: 'No authorization header' }),
+        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    const token = authHeader.replace('Bearer ', '');
+    const { data: { user }, error: authError } = await supabaseAdmin.auth.getUser(token);
+    
+    if (authError || !user) {
+      console.error('[complete-checkout] Authentication failed:', authError);
+      return new Response(
+        JSON.stringify({ error: 'Unauthorized - invalid token' }),
+        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // Get user role and tenant
+    const { data: userRole, error: roleError } = await supabaseAdmin
+      .from('user_roles')
+      .select('role, tenant_id')
+      .eq('user_id', user.id)
+      .single();
+
+    if (roleError || !userRole) {
+      console.error('[complete-checkout] Role fetch failed:', roleError);
+      return new Response(
+        JSON.stringify({ error: 'No role assigned to user' }),
+        { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // Check role permissions - only frontdesk, managers, and owners can checkout
+    const allowedRoles = ['owner', 'manager', 'frontdesk'];
+    if (!allowedRoles.includes(userRole.role)) {
+      console.error('[complete-checkout] Insufficient permissions:', userRole.role);
+      return new Response(
+        JSON.stringify({ 
+          error: 'Insufficient permissions to complete checkout',
+          required_roles: allowedRoles,
+          user_role: userRole.role
+        }),
+        { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    console.log('[complete-checkout] User authorized:', user.id, 'Role:', userRole.role);
+
+    // Create client with user's auth
     const supabaseClient = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
       Deno.env.get('SUPABASE_ANON_KEY') ?? '',
       {
         global: {
-          headers: { Authorization: req.headers.get('Authorization')! },
+          headers: { Authorization: authHeader },
         },
       }
     );

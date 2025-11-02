@@ -17,29 +17,78 @@ serve(async (req) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
     );
 
+    // SECURITY: Verify user authentication first
+    const authHeader = req.headers.get('Authorization');
+    if (!authHeader) {
+      return new Response(
+        JSON.stringify({ success: false, error: 'No authorization header' }),
+        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    const token = authHeader.replace('Bearer ', '');
+    const { data: { user }, error: authError } = await supabase.auth.getUser(token);
+    
+    if (authError || !user) {
+      console.error('[force-checkout] Authentication failed:', authError);
+      return new Response(
+        JSON.stringify({ success: false, error: 'Unauthorized - invalid token' }),
+        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // Get authenticated user's role and tenant
+    const { data: authenticatedUserRole, error: roleError } = await supabase
+      .from('user_roles')
+      .select('role, tenant_id')
+      .eq('user_id', user.id)
+      .single();
+
+    if (roleError || !authenticatedUserRole) {
+      console.error('[force-checkout] Role fetch failed:', roleError);
+      return new Response(
+        JSON.stringify({ success: false, error: 'No role assigned to user' }),
+        { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // CRITICAL: Only owners and managers can force checkout
+    const allowedRoles = ['owner', 'manager'];
+    if (!allowedRoles.includes(authenticatedUserRole.role)) {
+      console.error('[force-checkout] Insufficient permissions:', authenticatedUserRole.role);
+      return new Response(
+        JSON.stringify({ 
+          success: false, 
+          error: 'Insufficient permissions. Only managers and owners can force checkout.',
+          required_roles: allowedRoles,
+          user_role: authenticatedUserRole.role
+        }),
+        { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    console.log('[force-checkout] User authorized:', user.id, 'Role:', authenticatedUserRole.role);
+
     const { booking_id, tenant_id, manager_id, reason, create_receivable } = await req.json();
 
-    if (!booking_id || !tenant_id || !manager_id) {
+    if (!booking_id || !tenant_id) {
       return new Response(
-        JSON.stringify({ success: false, error: 'Missing required fields' }),
+        JSON.stringify({ success: false, error: 'Missing required fields: booking_id, tenant_id' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
-    // Validate manager has permission
-    const { data: userRole } = await supabase
-      .from('user_roles')
-      .select('role')
-      .eq('user_id', manager_id)
-      .eq('tenant_id', tenant_id)
-      .maybeSingle();
-
-    if (!userRole || !['owner', 'manager'].includes(userRole.role)) {
+    // SECURITY: Verify tenant_id matches authenticated user's tenant
+    if (tenant_id !== authenticatedUserRole.tenant_id) {
+      console.error('[force-checkout] Tenant mismatch:', tenant_id, 'vs', authenticatedUserRole.tenant_id);
       return new Response(
-        JSON.stringify({ success: false, error: 'Insufficient permissions. Manager or owner role required.' }),
+        JSON.stringify({ success: false, error: 'Tenant mismatch - unauthorized access attempt' }),
         { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
+
+    // Use authenticated user's ID as manager_id (ignore any provided manager_id)
+    const actualManagerId = user.id;
 
     // Get booking details
     const { data: booking } = await supabase
@@ -87,8 +136,8 @@ serve(async (req) => {
         booking_id: booking_id,
         amount: balanceDue,
         status: 'open',
-        created_by: manager_id,
-        approved_by: manager_id,
+        created_by: actualManagerId,
+        approved_by: actualManagerId,
         metadata: {
           reason: reason || 'Manager override checkout',
           forced_checkout: true,
@@ -108,7 +157,7 @@ serve(async (req) => {
         metadata: { 
           ...(booking.metadata || {}), 
           forced_checkout: true,
-          forced_checkout_by: manager_id,
+          forced_checkout_by: actualManagerId,
           forced_checkout_at: new Date().toISOString(),
           forced_checkout_reason: reason,
         }
@@ -121,7 +170,7 @@ serve(async (req) => {
     await supabase.from('finance_audit_events').insert([{
       tenant_id,
       event_type: 'checkout_override',
-      user_id: manager_id,
+      user_id: actualManagerId,
       target_id: booking_id,
       payload: {
         booking_id,
@@ -129,7 +178,7 @@ serve(async (req) => {
         organization_id: booking.organization_id,
         balance_due: balanceDue,
         reason: reason || 'No reason provided',
-        manager_role: userRole.role,
+        manager_role: authenticatedUserRole.role,
         receivable_created: create_receivable,
       },
     }]);
