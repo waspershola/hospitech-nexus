@@ -83,7 +83,7 @@ export default function Bookings() {
       console.log('📊 Fetching bookings for tenant:', tenantId);
       const { data, error } = await supabase
         .from('bookings')
-        .select('*, guests(id, name), rooms(id, number, type)')
+        .select('*, guests!bookings_guest_id_fkey(id, name), rooms!bookings_room_id_fkey(id, number, type)')
         .eq('tenant_id', tenantId)
         .order('check_in', { ascending: false });
       
