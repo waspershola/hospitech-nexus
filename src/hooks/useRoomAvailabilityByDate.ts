@@ -59,6 +59,16 @@ export function useRoomAvailabilityByDate(startDate: Date | null, endDate: Date 
 
       if (bookingsError) throw bookingsError;
 
+      // Get actual today's date for comparison
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      
+      const selectedDay = new Date(startDate);
+      selectedDay.setHours(0, 0, 0, 0);
+      
+      // Check if the selected day is actually today
+      const isSelectedDayToday = today.toDateString() === selectedDay.toDateString();
+
       // Create a map of room availability
       const roomAvailability: RoomAvailabilityData[] = (rooms || []).map((room) => {
         // Find if this room has a booking in the selected date range
@@ -76,21 +86,33 @@ export function useRoomAvailabilityByDate(startDate: Date | null, endDate: Date 
         }
 
         const checkInDate = new Date(booking.check_in);
+        checkInDate.setHours(0, 0, 0, 0);
         const checkOutDate = new Date(booking.check_out);
-        const isCheckInDay = checkInDate.toDateString() === startDate.toDateString();
-        const isCheckOutDay = checkOutDate.toDateString() === startDate.toDateString();
+        checkOutDate.setHours(0, 0, 0, 0);
+        
+        const isCheckInDay = checkInDate.toDateString() === selectedDay.toDateString();
+        const isCheckOutDay = checkOutDate.toDateString() === selectedDay.toDateString();
 
         let availabilityStatus: RoomAvailabilityData['status'];
         
-        // If check-in is today
+        // If check-in is on the selected day
         if (isCheckInDay) {
-          // Only show "checking_in" if booking is still in 'reserved' status
-          // If already checked_in, show as 'occupied'
-          availabilityStatus = booking.status === 'checked_in' ? 'occupied' : 'checking_in';
+          // Only show "checking_in" if:
+          // 1. The selected date is actually today AND
+          // 2. Booking is still in 'reserved' status
+          if (isSelectedDayToday && booking.status === 'reserved') {
+            availabilityStatus = 'checking_in';
+          } else if (booking.status === 'checked_in') {
+            availabilityStatus = 'occupied';
+          } else {
+            // Future check-in - show as reserved
+            availabilityStatus = 'reserved';
+          }
         } 
-        // If check-out is today
+        // If check-out is on the selected day
         else if (isCheckOutDay) {
-          availabilityStatus = 'checking_out';
+          // Only show "checking_out" if the selected date is today
+          availabilityStatus = isSelectedDayToday ? 'checking_out' : 'occupied';
         } 
         // Mid-stay (guest is staying multiple days)
         else {
