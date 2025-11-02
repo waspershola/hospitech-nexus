@@ -1,8 +1,8 @@
 import { useEffect, useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
-import { Card } from '@/components/ui/card';
-import { Bed, Calendar, Users, DollarSign } from 'lucide-react';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Bed, Calendar, Users, DollarSign, Receipt } from 'lucide-react';
 import { useDebtorsCreditors } from '@/hooks/useDebtorsCreditors';
 import { useTodayPayments } from '@/hooks/useTodayPayments';
 import { FinanceOverviewKPIs } from '@/modules/finance-center/components/FinanceOverviewKPIs';
@@ -12,6 +12,10 @@ import { ProviderBreakdownCard } from '@/modules/finance-center/components/Provi
 import { DebtorsCard } from '@/modules/finance-center/components/DebtorsCard';
 import { CreditorsCard } from '@/modules/finance-center/components/CreditorsCard';
 import { useFinanceOverview } from '@/hooks/useFinanceOverview';
+import { useQuery } from '@tanstack/react-query';
+import { format, isToday, isYesterday, differenceInDays } from 'date-fns';
+import { Badge } from '@/components/ui/badge';
+import { Link } from 'react-router-dom';
 
 export default function Overview() {
   const { tenantId } = useAuth();
@@ -33,6 +37,69 @@ export default function Overview() {
   } = useFinanceOverview();
 
   const debtorsCreditors = useDebtorsCreditors();
+
+  // Fetch recent receivables grouped by date
+  const { data: recentReceivables } = useQuery({
+    queryKey: ['recent-receivables', tenantId],
+    queryFn: async () => {
+      if (!tenantId) return [];
+
+      const { data } = await supabase
+        .from('receivables')
+        .select(`
+          id,
+          amount,
+          created_at,
+          guest_id,
+          organization_id,
+          booking_id,
+          guest:guests(name),
+          organization:organizations(name)
+        `)
+        .eq('tenant_id', tenantId)
+        .eq('status', 'open')
+        .order('created_at', { ascending: false })
+        .limit(20);
+
+      if (!data) return [];
+
+      // Group by date
+      const grouped = data.reduce((acc, r) => {
+        const date = new Date(r.created_at);
+        let dateLabel: string;
+        
+        if (isToday(date)) {
+          dateLabel = 'Today';
+        } else if (isYesterday(date)) {
+          dateLabel = 'Yesterday';
+        } else {
+          const daysAgo = differenceInDays(new Date(), date);
+          dateLabel = daysAgo <= 7 ? `${daysAgo} days ago` : format(date, 'MMM dd, yyyy');
+        }
+
+        if (!acc[dateLabel]) {
+          acc[dateLabel] = [];
+        }
+
+        acc[dateLabel].push({
+          id: r.id,
+          amount: Number(r.amount),
+          entity_name: (r.guest as any)?.name || (r.organization as any)?.name || 'Unknown',
+          booking_id: r.booking_id,
+          created_at: r.created_at
+        });
+
+        return acc;
+      }, {} as Record<string, Array<{id: string; amount: number; entity_name: string; booking_id: string | null; created_at: string}>>);
+
+      return Object.entries(grouped).map(([date, items]) => ({
+        date,
+        items,
+        total: items.reduce((sum, item) => sum + item.amount, 0)
+      }));
+    },
+    enabled: !!tenantId,
+  });
 
   useEffect(() => {
     if (!tenantId) return;
@@ -168,6 +235,55 @@ export default function Overview() {
           data={providerBreakdown} 
           isLoading={providerBreakdownLoading} 
         />
+
+        {/* Recent Outstanding Receivables */}
+        <Card>
+          <CardHeader>
+            <div className="flex items-center justify-between">
+              <div>
+                <CardTitle className="flex items-center gap-2">
+                  <Receipt className="h-5 w-5" />
+                  Recent Outstanding Receivables
+                </CardTitle>
+                <CardDescription>Chronological view of recent debt created</CardDescription>
+              </div>
+              <Link to="/dashboard/debtors">
+                <Badge variant="outline" className="cursor-pointer hover:bg-accent">View All</Badge>
+              </Link>
+            </div>
+          </CardHeader>
+          <CardContent>
+            {!recentReceivables || recentReceivables.length === 0 ? (
+              <p className="text-center text-muted-foreground py-8">No outstanding receivables</p>
+            ) : (
+              <div className="space-y-4">
+                {recentReceivables.map((group) => (
+                  <div key={group.date} className="border-b border-border last:border-0 pb-4 last:pb-0">
+                    <div className="flex items-center justify-between mb-2">
+                      <h4 className="font-semibold text-sm text-muted-foreground">{group.date}</h4>
+                      <Badge variant="secondary">₦{group.total.toLocaleString()}</Badge>
+                    </div>
+                    <div className="space-y-2">
+                      {group.items.map((item) => (
+                        <div key={item.id} className="flex items-center justify-between text-sm bg-muted/50 p-2 rounded">
+                          <div className="flex items-center gap-2">
+                            <span className="font-medium">{item.entity_name}</span>
+                            {item.booking_id && (
+                              <code className="text-xs bg-background px-1 py-0.5 rounded">
+                                {item.booking_id.slice(0, 8)}
+                              </code>
+                            )}
+                          </div>
+                          <span className="text-destructive font-semibold">₦{item.amount.toLocaleString()}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </CardContent>
+        </Card>
 
         {/* Debtors & Creditors */}
         <div className="grid lg:grid-cols-2 gap-6">

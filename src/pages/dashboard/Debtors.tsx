@@ -31,6 +31,8 @@ interface DebtorDetails {
     due_date: string | null;
     booking_id: string | null;
     status: string;
+    created_by: string;
+    location: string;
   }>;
 }
 
@@ -58,8 +60,11 @@ export default function Debtors() {
           status,
           guest_id,
           organization_id,
+          created_by,
+          metadata,
           guest:guests(id, name, email, phone),
-          organization:organizations(id, name, contact_email)
+          organization:organizations(id, name, contact_email),
+          created_by_profile:profiles!receivables_created_by_fkey(full_name)
         `)
         .eq('tenant_id', tenantId)
         .eq('status', 'open');
@@ -84,7 +89,9 @@ export default function Debtors() {
             created_at: r.created_at,
             due_date: r.due_date,
             booking_id: r.booking_id,
-            status: r.status
+            status: r.status,
+            created_by: (r.created_by_profile as any)?.full_name || 'System',
+            location: (r.metadata as any)?.location || 'N/A'
           });
           const age = differenceInDays(new Date(), new Date(r.created_at));
           if (age > existing.oldest_receivable_age) {
@@ -120,7 +127,9 @@ export default function Debtors() {
               created_at: r.created_at,
               due_date: r.due_date,
               booking_id: r.booking_id,
-              status: r.status
+              status: r.status,
+              created_by: (r.created_by_profile as any)?.full_name || 'System',
+              location: (r.metadata as any)?.location || 'N/A'
             }]
           });
         }
@@ -398,6 +407,8 @@ export default function Debtors() {
                       <TableHead>Amount</TableHead>
                       <TableHead>Created</TableHead>
                       <TableHead>Age</TableHead>
+                      <TableHead>Staff</TableHead>
+                      <TableHead>Location</TableHead>
                       <TableHead>Status</TableHead>
                       <TableHead className="text-right">Actions</TableHead>
                     </TableRow>
@@ -424,6 +435,8 @@ export default function Debtors() {
                               {age} days
                             </Badge>
                           </TableCell>
+                          <TableCell className="text-sm">{r.created_by}</TableCell>
+                          <TableCell className="text-sm">{r.location}</TableCell>
                           <TableCell>
                             <Badge variant="outline">{r.status}</Badge>
                           </TableCell>
