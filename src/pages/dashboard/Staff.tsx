@@ -77,12 +77,12 @@ export default function StaffPage() {
             </div>
           </div>
 
-          <Select value={filters.department} onValueChange={(value) => setFilters({ ...filters, department: value })}>
+          <Select value={filters.department || "all"} onValueChange={(value) => setFilters({ ...filters, department: value === "all" ? "" : value })}>
             <SelectTrigger className="w-[200px]">
               <SelectValue placeholder="All Departments" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="">All Departments</SelectItem>
+              <SelectItem value="all">All Departments</SelectItem>
               <SelectItem value="front_office">Front Office</SelectItem>
               <SelectItem value="housekeeping">Housekeeping</SelectItem>
               <SelectItem value="food_beverage">Food & Beverage</SelectItem>
@@ -96,12 +96,12 @@ export default function StaffPage() {
             </SelectContent>
           </Select>
 
-          <Select value={filters.status} onValueChange={(value) => setFilters({ ...filters, status: value })}>
+          <Select value={filters.status || "all"} onValueChange={(value) => setFilters({ ...filters, status: value === "all" ? "" : value })}>
             <SelectTrigger className="w-[150px]">
               <SelectValue placeholder="All Status" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="">All Status</SelectItem>
+              <SelectItem value="all">All Status</SelectItem>
               <SelectItem value="active">Active</SelectItem>
               <SelectItem value="suspended">Suspended</SelectItem>
               <SelectItem value="inactive">Inactive</SelectItem>
