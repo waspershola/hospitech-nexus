@@ -2,12 +2,17 @@ import { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
+import { useQuery } from '@tanstack/react-query';
+import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/contexts/AuthContext';
 import { useFinanceProviders } from '@/hooks/useFinanceProviders';
 import { useFinanceLocations } from '@/hooks/useFinanceLocations';
 import { useWallets } from '@/hooks/useWallets';
 import { useRecordPayment } from '@/hooks/useRecordPayment';
 import { useFinancials } from '@/hooks/useFinancials';
 import { useDashboardDefaults } from '@/hooks/useDashboardDefaults';
+import { useApplyWalletCredit } from '@/hooks/useApplyWalletCredit';
+import { usePaymentPreferences } from '@/hooks/usePaymentPreferences';
 import { calculateBookingTotal } from '@/lib/finance/tax';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -77,12 +82,17 @@ export function PaymentForm({
   const [managerApprovalType, setManagerApprovalType] = useState<'overpayment' | 'underpayment'>('overpayment');
   const [requiresApprovalAmount, setRequiresApprovalAmount] = useState(0);
   const [showWalletApplyDialog, setShowWalletApplyDialog] = useState(false);
+  const [walletCreditApplied, setWalletCreditApplied] = useState(0);
+  const [autoApplyAttempted, setAutoApplyAttempted] = useState(false);
   
+  const { tenantId } = useAuth();
   const { providers = [], isLoading: providersLoading } = useFinanceProviders();
   const { locations = [] } = useFinanceLocations();
   const { wallets = [] } = useWallets();
   const { data: financials } = useFinancials();
   const { mutate: recordPayment, isPending } = useRecordPayment();
+  const { mutate: applyWalletCredit, isPending: applyingWallet } = useApplyWalletCredit();
+  const { preferences } = usePaymentPreferences();
   const { getDefaultLocation } = useDashboardDefaults();
 
   const activeProviders = providers.filter(p => p.status === 'active');
@@ -143,6 +153,26 @@ export function PaymentForm({
     }
   }, [getDefaultLocation, setValue, watch, dashboardContext]);
 
+  // Fetch guest wallet for auto-apply
+  const { data: guestWallet } = useQuery({
+    queryKey: ['guest-wallet-balance', guestId, tenantId],
+    queryFn: async () => {
+      if (!tenantId || !guestId) return null;
+      
+      const { data, error } = await supabase
+        .from('wallets')
+        .select('*')
+        .eq('tenant_id', tenantId)
+        .eq('owner_id', guestId)
+        .eq('wallet_type', 'guest')
+        .maybeSingle();
+      
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!tenantId && !!guestId && isBookingPayment,
+  });
+
   // Auto-select provider based on location
   useEffect(() => {
     if (selectedLocationId) {
@@ -157,6 +187,37 @@ export function PaymentForm({
       }
     }
   }, [selectedLocationId, locations, activeProviders, setValue]);
+
+  // Auto-apply wallet credit if enabled in preferences
+  useEffect(() => {
+    if (!guestId || !bookingId || !expectedAmount) return;
+    if (!preferences?.auto_apply_wallet_on_booking) return;
+    if (walletCreditApplied > 0 || autoApplyAttempted) return;
+    
+    const walletBalance = guestWallet?.balance ? Number(guestWallet.balance) : 0;
+    if (walletBalance <= 0) {
+      setAutoApplyAttempted(true);
+      return;
+    }
+    
+    const amountToApply = Math.min(walletBalance, expectedAmount);
+    
+    // Auto-apply wallet credit
+    setAutoApplyAttempted(true);
+    applyWalletCredit(
+      { guestId, bookingId, amountToApply },
+      {
+        onSuccess: (data) => {
+          setWalletCreditApplied(amountToApply);
+          const newExpectedAmount = Math.max(0, expectedAmount - amountToApply);
+          setValue('expected_amount', newExpectedAmount.toString());
+        },
+        onError: () => {
+          // Silent fail for auto-apply
+        }
+      }
+    );
+  }, [guestId, bookingId, expectedAmount, preferences, guestWallet, walletCreditApplied, autoApplyAttempted, applyWalletCredit, setValue]);
 
   // Determine payment type based on BALANCE DUE vs AMOUNT PAYING
   const getPaymentType = (): 'partial' | 'full' | 'overpayment' | undefined => {
@@ -286,14 +347,42 @@ export function PaymentForm({
           guestId={guestId}
           bookingTotal={expectedAmount || 0}
           onApply={(appliedAmount) => {
-            setShowWalletApplyDialog(false);
-            // Reduce expected amount by wallet credit applied
-            if (appliedAmount && expectedAmount) {
-              const newExpectedAmount = Math.max(0, expectedAmount - appliedAmount);
-              setValue('expected_amount', newExpectedAmount.toString());
+            if (!bookingId || !guestId || appliedAmount <= 0) {
+              setShowWalletApplyDialog(false);
+              return;
             }
+            
+            // Actually apply wallet credit via edge function
+            applyWalletCredit(
+              { guestId, bookingId, amountToApply: appliedAmount },
+              {
+                onSuccess: (data) => {
+                  setWalletCreditApplied(walletCreditApplied + appliedAmount);
+                  // Now reduce the expected amount
+                  if (expectedAmount) {
+                    const newExpectedAmount = Math.max(0, expectedAmount - appliedAmount);
+                    setValue('expected_amount', newExpectedAmount.toString());
+                  }
+                  setShowWalletApplyDialog(false);
+                },
+                onError: () => {
+                  setShowWalletApplyDialog(false);
+                }
+              }
+            );
           }}
         />
+      )}
+
+      {/* Wallet Credit Applied Alert */}
+      {walletCreditApplied > 0 && (
+        <Alert className="border-green-500 bg-green-50 dark:bg-green-950">
+          <Wallet className="h-4 w-4 text-green-600" />
+          <AlertDescription className="text-green-800 dark:text-green-200">
+            <strong>Wallet Credit Applied:</strong> ₦{walletCreditApplied.toLocaleString()}
+            {preferences?.auto_apply_wallet_on_booking && ' (Auto-applied)'}
+          </AlertDescription>
+        </Alert>
       )}
 
       <div className="grid grid-cols-2 gap-4">
