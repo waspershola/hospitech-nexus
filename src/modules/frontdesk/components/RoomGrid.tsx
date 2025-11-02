@@ -67,7 +67,8 @@ export function RoomGrid({ searchQuery, statusFilter, categoryFilter, floorFilte
           checkOut.setHours(0, 0, 0, 0);
           todayDate.setHours(0, 0, 0, 0);
           
-          return checkIn <= todayDate && checkOut >= todayDate;
+          // Check-out day means room is available (guest has left)
+          return checkIn <= todayDate && checkOut > todayDate;
         });
         
         return { ...room, bookings: activeBookings };

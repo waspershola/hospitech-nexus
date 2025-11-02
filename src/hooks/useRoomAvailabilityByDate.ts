@@ -81,14 +81,22 @@ export function useRoomAvailabilityByDate(startDate: Date | null, endDate: Date 
         const isCheckOutDay = checkOutDate.toDateString() === startDate.toDateString();
 
         let availabilityStatus: RoomAvailabilityData['status'];
+        
+        // If check-in is today
         if (isCheckInDay) {
-          availabilityStatus = 'checking_in';
-        } else if (isCheckOutDay) {
+          // Only show "checking_in" if booking is still in 'reserved' status
+          // If already checked_in, show as 'occupied'
+          availabilityStatus = booking.status === 'checked_in' ? 'occupied' : 'checking_in';
+        } 
+        // If check-out is today
+        else if (isCheckOutDay) {
           availabilityStatus = 'checking_out';
-        } else if (booking.status === 'checked_in') {
-          availabilityStatus = 'occupied';
-        } else {
-          availabilityStatus = 'reserved';
+        } 
+        // Mid-stay (guest is staying multiple days)
+        else {
+          // If guest has checked in, show as occupied
+          // Otherwise show as reserved (future reservation)
+          availabilityStatus = booking.status === 'checked_in' ? 'occupied' : 'reserved';
         }
 
         return {

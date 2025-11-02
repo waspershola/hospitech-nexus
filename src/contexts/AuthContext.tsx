@@ -1,6 +1,7 @@
 import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
 import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
+import { autoCompleteOverdueBookings } from '@/lib/roomStatusSync';
 
 interface AuthContextType {
   user: User | null;
@@ -70,6 +71,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setTenantId(data?.tenant_id || null);
       setRole(data?.role || null);
       setTenantName((data?.tenants as any)?.name || null);
+      
+      // Auto-complete overdue bookings when user logs in
+      if (data?.tenant_id) {
+        autoCompleteOverdueBookings(data.tenant_id).then((result) => {
+          if (result.completed > 0) {
+            console.log(`Auto-completed ${result.completed} overdue bookings`);
+          }
+        }).catch(err => {
+          console.error('Error auto-completing overdue bookings:', err);
+        });
+      }
     } catch (error) {
       console.error('Error fetching user role:', error);
     } finally {

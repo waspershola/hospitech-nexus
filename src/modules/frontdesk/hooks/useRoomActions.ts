@@ -35,7 +35,27 @@ export function useRoomActions() {
   };
 
   const checkInMutation = useMutation({
-    mutationFn: (roomId: string) => updateRoomStatus(roomId, 'occupied', 'Guest checked in'),
+    mutationFn: async (roomId: string) => {
+      // Update room status to occupied (not just in history)
+      const { data, error } = await supabase
+        .from('rooms')
+        .update({ status: 'occupied' })
+        .eq('id', roomId)
+        .select()
+        .single();
+
+      if (error) throw error;
+
+      logAction({
+        action: 'UPDATE',
+        table_name: 'rooms',
+        record_id: roomId,
+        before_data: null,
+        after_data: data,
+      });
+
+      return data;
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['rooms-grid'] });
       queryClient.invalidateQueries({ queryKey: ['frontdesk-kpis'] });
