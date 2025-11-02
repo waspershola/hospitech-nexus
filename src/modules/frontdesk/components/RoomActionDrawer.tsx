@@ -168,24 +168,30 @@ export function RoomActionDrawer({ roomId, open, onClose, onOpenAssignDrawer }: 
     const allowDebt = preferences?.allow_checkout_with_debt ?? false;
     const hasOrgPayment = activeBooking.organization_id && orgWallet;
 
-    // Block unpaid checkout for regular guests
-    if (hasDebt && !allowDebt && !hasOrgPayment) {
+    // Option A: Honor allow_checkout_with_debt preference
+    if (hasDebt && !allowDebt) {
+      // Policy says NO checkout with debt - block it
       toast({ 
         title: 'Outstanding Balance', 
-        description: `Balance due: ₦${folio.balance.toLocaleString()}. Please settle payment or contact manager for Force Checkout.`,
-        variant: 'destructive'
-      });
-      return; // STOP - don't proceed with checkout
-    }
-
-    // For org bookings with debt, require explicit payment
-    if (hasDebt && hasOrgPayment) {
-      toast({ 
-        title: 'Outstanding Balance', 
-        description: `Organization booking has ₦${folio.balance.toLocaleString()} outstanding. Please record payment or use Force Checkout.`,
+        description: `Balance due: ₦${folio.balance.toLocaleString()}. Payment required before checkout. Policy does not allow debt. Use Force Checkout for manager override.`,
         variant: 'destructive'
       });
       return;
+    }
+
+    // If allowDebt is TRUE and there's debt, confirm with user
+    if (hasDebt && allowDebt) {
+      const entityName = hasOrgPayment 
+        ? activeBooking.organization?.name 
+        : activeBooking.guest?.name;
+      
+      const confirmed = confirm(
+        `Outstanding balance: ₦${folio.balance.toLocaleString()}\n\n` +
+        `This will be tracked as receivable for ${entityName}.\n\n` +
+        `Continue with checkout?`
+      );
+      
+      if (!confirmed) return;
     }
 
     // Phase 3: Close drawer BEFORE checkout to prevent "Room not found" flash
