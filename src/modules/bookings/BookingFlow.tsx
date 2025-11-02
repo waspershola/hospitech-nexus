@@ -94,8 +94,12 @@ export function BookingFlow({ open, onClose, preselectedRoomId }: BookingFlowPro
         case 3:
           return (bookingData.selectedRoomIds?.length || 0) > 0 && !!bookingData.checkIn && !!bookingData.checkOut;
         case 4:
+          return true; // Options step is always optional
         case 5:
-          return true;
+          // Ensure essential data is present for confirmation
+          // totalAmount will be calculated in BookingConfirmation component
+          return !!bookingData.checkIn && !!bookingData.checkOut && 
+                 (bookingData.selectedRoomIds?.length || 0) > 0;
         default:
           return false;
       }
@@ -106,8 +110,11 @@ export function BookingFlow({ open, onClose, preselectedRoomId }: BookingFlowPro
         case 2:
           return !!bookingData.roomId && !!bookingData.checkIn && !!bookingData.checkOut;
         case 3:
+          return true; // Options step is always optional
         case 4:
-          return true;
+          // Ensure essential data is present for confirmation
+          // totalAmount will be calculated in BookingConfirmation component
+          return !!bookingData.checkIn && !!bookingData.checkOut && !!bookingData.roomId;
         default:
           return false;
       }

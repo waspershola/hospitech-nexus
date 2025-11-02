@@ -53,23 +53,16 @@ export function RoomSelection({ bookingData, onChange, onNext }: RoomSelectionPr
   );
 
   useEffect(() => {
-    if (checkIn && checkOut && financials) {
-      const nights = Math.ceil((checkOut.getTime() - checkIn.getTime()) / (1000 * 60 * 60 * 24));
-      const room = rooms?.find(r => r.id === bookingData.roomId);
-      const rate = room?.category?.base_rate || room?.rate || 0;
-      
-      // Calculate total with taxes - pass baseAmount = rate * nights
-      const baseAmount = rate * nights;
-      const taxBreakdown = calculateBookingTotal(baseAmount, financials);
-      
+    if (checkIn && checkOut) {
       onChange({
         ...bookingData,
         checkIn,
         checkOut,
-        totalAmount: taxBreakdown.totalAmount,
+        // Don't set totalAmount here - it will be calculated in BookingConfirmation
+        // after add-ons are selected in the next step
       });
     }
-  }, [checkIn, checkOut, bookingData.roomId, rooms, financials]);
+  }, [checkIn, checkOut, bookingData.roomId]);
 
   const nights = Math.ceil((checkOut.getTime() - checkIn.getTime()) / (1000 * 60 * 60 * 24));
   const selectedRoom = rooms?.find(r => r.id === bookingData.roomId);

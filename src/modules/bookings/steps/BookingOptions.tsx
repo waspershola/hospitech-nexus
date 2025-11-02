@@ -8,8 +8,10 @@ import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Separator } from '@/components/ui/separator';
 import { useAuth } from '@/contexts/AuthContext';
+import { useFinancials } from '@/hooks/useFinancials';
 import { Settings, Info, AlertCircle } from 'lucide-react';
-import { AVAILABLE_ADDONS } from '@/lib/finance/groupBookingCalculator';
+import { AVAILABLE_ADDONS, calculateGroupBookingTotal } from '@/lib/finance/groupBookingCalculator';
+import { differenceInDays } from 'date-fns';
 import type { BookingData } from '../BookingFlow';
 
 interface BookingOptionsProps {
@@ -20,6 +22,7 @@ interface BookingOptionsProps {
 
 export function BookingOptions({ bookingData, onChange }: BookingOptionsProps) {
   const { role } = useAuth();
+  const { data: financials } = useFinancials();
   const canOverrideRate = role === 'owner' || role === 'manager';
 
   const [rateOverride, setRateOverride] = useState(bookingData.rateOverride?.toString() || '');
@@ -51,6 +54,38 @@ export function BookingOptions({ bookingData, onChange }: BookingOptionsProps) {
         : [...prev, addonId]
     );
   };
+
+  // Calculate preview total with current add-ons
+  const calculatePreviewTotal = () => {
+    if (!financials || !bookingData.checkIn || !bookingData.checkOut) return null;
+
+    const nights = differenceInDays(new Date(bookingData.checkOut), new Date(bookingData.checkIn));
+    const numberOfRooms = bookingData.selectedRoomIds?.length || 1;
+    
+    // Get average room rate from selected rooms (for group) or single room
+    let roomRate = 0;
+    if (bookingData.selectedRoomIds && bookingData.selectedRoomIds.length > 0) {
+      // Group booking - use average rate (will be calculated from actual rooms in confirmation)
+      // For preview, we'll use a placeholder - actual calculation happens in BookingConfirmation
+      roomRate = 50000; // Placeholder for preview
+    } else {
+      // Single booking - we don't have roomRate stored, so use placeholder
+      roomRate = 50000; // Placeholder for preview
+    }
+
+    const calculation = calculateGroupBookingTotal({
+      roomRate,
+      nights,
+      numberOfRooms,
+      selectedAddonIds: selectedAddons,
+      financials,
+      rateOverride: rateOverride ? parseFloat(rateOverride) : undefined,
+    });
+
+    return calculation;
+  };
+
+  const previewCalculation = calculatePreviewTotal();
 
   // Calculate display total for selected add-ons (base price only, actual calc happens in calculator)
   const addonsDisplayTotal = selectedAddons.reduce((sum, addonId) => {
@@ -155,6 +190,39 @@ export function BookingOptions({ bookingData, onChange }: BookingOptionsProps) {
               Select add-ons to enhance the guest experience
             </AlertDescription>
           </Alert>
+        )}
+
+        {/* Live Preview with selected add-ons */}
+        {selectedAddons.length > 0 && previewCalculation && (
+          <div className="mt-4 p-4 bg-primary/5 rounded-lg border-2 border-primary/20">
+            <h4 className="font-medium mb-3 flex items-center gap-2 text-primary">
+              <Info className="h-4 w-4" />
+              Add-ons Preview
+            </h4>
+            <div className="space-y-2 text-sm">
+              {previewCalculation.breakdown.addonsBreakdown.map(addon => (
+                <div key={addon.id} className="flex justify-between items-center">
+                  <div>
+                    <span className="font-medium">{addon.label}</span>
+                    <span className="text-muted-foreground ml-2 text-xs">
+                      (x{addon.quantity} @ ₦{addon.unitPrice.toLocaleString()})
+                    </span>
+                  </div>
+                  <span className="font-semibold">₦{addon.total.toLocaleString()}</span>
+                </div>
+              ))}
+              <Separator className="my-2" />
+              <div className="flex justify-between font-bold text-base">
+                <span>Add-ons Total:</span>
+                <Badge variant="secondary" className="text-base px-3 py-1">
+                  ₦{previewCalculation.addonsTotal.toLocaleString()}
+                </Badge>
+              </div>
+              <p className="text-xs text-muted-foreground italic mt-2">
+                This will be added to your room total in the next step
+              </p>
+            </div>
+          </div>
         )}
       </Card>
 

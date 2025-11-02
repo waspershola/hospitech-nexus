@@ -105,15 +105,15 @@ export function MultiRoomSelection({ bookingData, onChange }: MultiRoomSelection
   };
 
   useEffect(() => {
-    const totalAmount = calculateTotal();
     onChange({
       ...bookingData,
       checkIn,
       checkOut,
       selectedRoomIds,
-      totalAmount,
+      // Don't set totalAmount here - it will be calculated in BookingConfirmation
+      // after add-ons are selected in the next step
     });
-  }, [checkIn, checkOut, selectedRoomIds, rooms, financials]);
+  }, [checkIn, checkOut, selectedRoomIds]);
 
   const handleRoomToggle = (roomId: string) => {
     setSelectedRoomIds(prev =>

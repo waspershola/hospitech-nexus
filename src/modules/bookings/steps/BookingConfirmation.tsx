@@ -7,6 +7,8 @@ import { usePrintReceipt } from '@/hooks/usePrintReceipt';
 import { useReceiptData } from '@/hooks/useReceiptData';
 import { useReceiptSettings } from '@/hooks/useReceiptSettings';
 import { calculateBookingTotal } from '@/lib/finance/tax';
+import { calculateGroupBookingTotal } from '@/lib/finance/groupBookingCalculator';
+import { differenceInDays } from 'date-fns';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
@@ -94,6 +96,14 @@ export function BookingConfirmation({ bookingData, onComplete }: BookingConfirma
         throw new Error('Missing required booking information');
       }
 
+      // CRITICAL: Calculate final total with ALL data (rooms, nights, add-ons, rate override)
+      // This ensures add-ons selected in Step 4 are included in the final calculation
+      let finalTotalAmount = 0;
+
+      if (!financials) {
+        throw new Error("Financial settings not loaded");
+      }
+
       // Group booking: multiple rooms
       if (isGroupBooking) {
         if (!bookingData.selectedRoomIds || bookingData.selectedRoomIds.length === 0) {
@@ -103,7 +113,39 @@ export function BookingConfirmation({ bookingData, onComplete }: BookingConfirma
         const groupId = crypto.randomUUID();
         const actionId = crypto.randomUUID();
 
-        // Group bookings: pass selected add-ons (edge function will calculate totals)
+        // Fetch all selected rooms to get their rates
+        const { data: selectedRooms } = await supabase
+          .from('rooms')
+          .select('id, category:room_categories(base_rate)')
+          .in('id', bookingData.selectedRoomIds);
+
+        if (!selectedRooms || selectedRooms.length === 0) {
+          throw new Error("Selected rooms not found");
+        }
+
+        // Calculate total rate from all selected rooms
+        const totalRate = selectedRooms.reduce((sum, room) => {
+          return sum + ((room.category as any)?.base_rate || 0);
+        }, 0);
+        const avgRate = totalRate / selectedRooms.length;
+
+        const nights = differenceInDays(
+          new Date(bookingData.checkOut!),
+          new Date(bookingData.checkIn!)
+        );
+
+        const calculation = calculateGroupBookingTotal({
+          roomRate: avgRate,
+          nights,
+          numberOfRooms: bookingData.selectedRoomIds.length,
+          selectedAddonIds: bookingData.selectedAddons || [],
+          financials,
+          rateOverride: bookingData.rateOverride,
+        });
+
+        finalTotalAmount = calculation.totalAmount;
+        console.log('Group booking final total:', finalTotalAmount, 'with add-ons:', bookingData.selectedAddons);
+
         const numRooms = bookingData.selectedRoomIds.length;
 
         // Create bookings for each room
@@ -117,7 +159,7 @@ export function BookingConfirmation({ bookingData, onComplete }: BookingConfirma
                 organization_id: bookingData.organizationId,
                 check_in: bookingData.checkIn!.toISOString(),
                 check_out: bookingData.checkOut!.toISOString(),
-                total_amount: bookingData.totalAmount || 0,
+                total_amount: finalTotalAmount / numRooms, // Distribute total evenly
                 action_id: `${actionId}-${roomId}`,
                 department: 'front_desk',
                 created_by: user?.id,
@@ -154,6 +196,31 @@ export function BookingConfirmation({ bookingData, onComplete }: BookingConfirma
         throw new Error('No room selected');
       }
 
+      // Calculate final total for single booking
+      const { data: room } = await supabase
+        .from('rooms')
+        .select('category:room_categories(base_rate)')
+        .eq('id', bookingData.roomId)
+        .single();
+
+      const roomRate = (room?.category as any)?.base_rate || 0;
+      const nights = differenceInDays(
+        new Date(bookingData.checkOut!),
+        new Date(bookingData.checkIn!)
+      );
+
+      const calculation = calculateGroupBookingTotal({
+        roomRate,
+        nights,
+        numberOfRooms: 1,
+        selectedAddonIds: bookingData.selectedAddons || [],
+        financials,
+        rateOverride: bookingData.rateOverride,
+      });
+
+      finalTotalAmount = calculation.totalAmount;
+      console.log('Single booking final total:', finalTotalAmount, 'with add-ons:', bookingData.selectedAddons);
+
       // Validate booking with edge function first
       const { data: validationResult, error: validationError } = await supabase.functions.invoke('validate-booking', {
         body: {
@@ -163,7 +230,6 @@ export function BookingConfirmation({ bookingData, onComplete }: BookingConfirma
           organization_id: bookingData.organizationId,
           check_in: bookingData.checkIn.toISOString(),
           check_out: bookingData.checkOut.toISOString(),
-          category_id: room?.category_id,
         },
       });
 
@@ -188,7 +254,7 @@ export function BookingConfirmation({ bookingData, onComplete }: BookingConfirma
           organization_id: bookingData.organizationId,
           check_in: bookingData.checkIn.toISOString(),
           check_out: bookingData.checkOut.toISOString(),
-          total_amount: bookingData.totalAmount || 0,
+          total_amount: finalTotalAmount, // Use calculated total
           action_id: actionId,
           department: 'front_desk',
           created_by: user?.id,
