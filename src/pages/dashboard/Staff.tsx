@@ -7,7 +7,8 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Badge } from '@/components/ui/badge';
 import { useStaffManagement, type Staff } from '@/hooks/useStaffManagement';
 import { StaffFormModal } from '@/modules/staff/StaffFormModal';
-import { Users, Search, Plus, Edit, UserX } from 'lucide-react';
+import { InviteStaffModal } from '@/modules/staff/InviteStaffModal';
+import { Users, Search, Plus, Edit, UserX, Mail } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 
@@ -19,6 +20,7 @@ export default function StaffPage() {
     search: '',
   });
   const [showModal, setShowModal] = useState(false);
+  const [showInviteModal, setShowInviteModal] = useState(false);
   const [editingStaff, setEditingStaff] = useState<Staff | undefined>();
   const [removingStaffId, setRemovingStaffId] = useState<string | null>(null);
 
@@ -57,10 +59,16 @@ export default function StaffPage() {
             <h1 className="text-3xl font-display font-bold text-foreground">Staff Management</h1>
             <p className="text-muted-foreground">Manage your team members and their roles</p>
           </div>
-          <Button onClick={handleAdd}>
-            <Plus className="w-4 h-4 mr-2" />
-            Add Staff
-          </Button>
+          <div className="flex gap-2">
+            <Button onClick={() => setShowInviteModal(true)} variant="outline">
+              <Mail className="w-4 h-4 mr-2" />
+              Invite Staff
+            </Button>
+            <Button onClick={handleAdd}>
+              <Plus className="w-4 h-4 mr-2" />
+              Add Staff
+            </Button>
+          </div>
         </div>
 
         {/* Filters */}
@@ -196,6 +204,12 @@ export default function StaffPage() {
         onClose={() => setShowModal(false)}
         staff={editingStaff}
         availableSupervisors={supervisors}
+      />
+
+      {/* Invite Staff Modal */}
+      <InviteStaffModal
+        open={showInviteModal}
+        onClose={() => setShowInviteModal(false)}
       />
 
       {/* Remove Confirmation Dialog */}

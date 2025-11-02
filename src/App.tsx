@@ -6,8 +6,9 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "./contexts/AuthContext";
 import Index from "./pages/Index";
 import NotFound from "./pages/NotFound";
-import Login from "./pages/auth/Login";
-import Signup from "./pages/auth/Signup";
+import Login from './pages/auth/Login';
+import Signup from './pages/auth/Signup';
+import Onboard from './pages/auth/Onboard';
 import ProtectedRoute from "./components/ProtectedRoute";
 import RoleGuard from "./components/RoleGuard";
 import DashboardShell from "./components/layout/DashboardShell";
@@ -47,8 +48,9 @@ const App = () => (
         <BrowserRouter>
           <Routes>
             <Route path="/" element={<Index />} />
-            <Route path="/auth/login" element={<Login />} />
-            <Route path="/auth/signup" element={<Signup />} />
+        <Route path="/auth/login" element={<Login />} />
+        <Route path="/auth/signup" element={<Signup />} />
+        <Route path="/auth/onboard" element={<Onboard />} />
             
             <Route path="/dashboard" element={<ProtectedRoute><DashboardShell /></ProtectedRoute>}>
               <Route index element={<Overview />} />
