@@ -1,7 +1,7 @@
 import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
 import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
-import { autoCompleteOverdueBookings } from '@/lib/roomStatusSync';
+import { autoCompleteOverdueBookings, syncRoomStatusFromBookings } from '@/lib/roomStatusSync';
 
 interface AuthContextType {
   user: User | null;
@@ -58,6 +58,59 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return () => subscription.unsubscribe();
   }, []);
 
+  // Phase 7: Daily background sync at midnight
+  useEffect(() => {
+    if (!tenantId) return;
+
+    console.log('[Background Sync] Setting up daily sync scheduler');
+    
+    // Calculate time until next midnight
+    const now = new Date();
+    const midnight = new Date(now);
+    midnight.setHours(24, 0, 0, 0);
+    const msUntilMidnight = midnight.getTime() - now.getTime();
+    
+    console.log(`[Background Sync] Next sync in ${Math.round(msUntilMidnight / 1000 / 60)} minutes`);
+    
+    // Run at midnight
+    const midnightTimer = setTimeout(() => {
+      console.log('[Background Sync] Running midnight sync...');
+      
+      // Auto-complete overdue bookings
+      autoCompleteOverdueBookings(tenantId).then((result) => {
+        if (result.completed > 0) {
+          console.log(`[Midnight Sync] Completed ${result.completed} overdue bookings`);
+        }
+      }).catch(err => {
+        console.error('[Midnight Sync] Error auto-completing:', err);
+      });
+
+      // Sync room statuses
+      syncRoomStatusFromBookings(tenantId).then((result) => {
+        if (result.synced > 0) {
+          console.log(`[Midnight Sync] Synced ${result.synced} room statuses`);
+        }
+      }).catch(err => {
+        console.error('[Midnight Sync] Error syncing rooms:', err);
+      });
+      
+      // Then run every 24 hours
+      const dailyInterval = setInterval(() => {
+        console.log('[Daily Sync] Running scheduled sync...');
+        
+        autoCompleteOverdueBookings(tenantId);
+        syncRoomStatusFromBookings(tenantId);
+      }, 24 * 60 * 60 * 1000); // 24 hours
+      
+      return () => clearInterval(dailyInterval);
+    }, msUntilMidnight);
+    
+    return () => {
+      console.log('[Background Sync] Cleaning up sync scheduler');
+      clearTimeout(midnightTimer);
+    };
+  }, [tenantId]);
+
   const fetchUserRoleAndTenant = async (userId: string) => {
     try {
       const { data, error } = await supabase
@@ -72,14 +125,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setRole(data?.role || null);
       setTenantName((data?.tenants as any)?.name || null);
       
-      // Auto-complete overdue bookings when user logs in
+      // Auto-complete overdue bookings and sync room statuses when user logs in
       if (data?.tenant_id) {
+        // Run both sync operations
         autoCompleteOverdueBookings(data.tenant_id).then((result) => {
           if (result.completed > 0) {
-            console.log(`Auto-completed ${result.completed} overdue bookings`);
+            console.log(`[Auto-Complete] Completed ${result.completed} overdue bookings`);
           }
         }).catch(err => {
           console.error('Error auto-completing overdue bookings:', err);
+        });
+
+        syncRoomStatusFromBookings(data.tenant_id).then((result) => {
+          if (result.synced > 0) {
+            console.log(`[Room Sync] Synced ${result.synced} room statuses`);
+          }
+        }).catch(err => {
+          console.error('Error syncing room statuses:', err);
         });
       }
     } catch (error) {
