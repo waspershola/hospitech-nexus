@@ -1,5 +1,6 @@
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import { 
   Hotel, 
   Users, 
@@ -8,10 +9,12 @@ import {
   UserCheck, 
   CreditCard,
   AlertTriangle,
-  Fuel
+  Fuel,
+  CalendarRange
 } from 'lucide-react';
 import { useFrontDeskKPIs } from '../hooks/useFrontDeskKPIs';
 import { usePendingPaymentsRooms } from '@/hooks/usePendingPaymentsRooms';
+import { useNavigate } from 'react-router-dom';
 
 interface QuickKPIsProps {
   onFilterClick: (status: string | null) => void;
@@ -19,6 +22,7 @@ interface QuickKPIsProps {
 }
 
 export function QuickKPIs({ onFilterClick, activeFilter }: QuickKPIsProps) {
+  const navigate = useNavigate();
   const { kpis, isLoading, error } = useFrontDeskKPIs();
   const { data: pendingPaymentsData } = usePendingPaymentsRooms();
   
@@ -112,36 +116,51 @@ export function QuickKPIs({ onFilterClick, activeFilter }: QuickKPIsProps) {
   }
 
   return (
-    <div className="grid grid-cols-4 lg:grid-cols-8 gap-2 sm:gap-3">
-      {cards.map((card) => (
-        <Card 
-          key={card.label}
-          className={`p-2 md:p-3 cursor-pointer transition-all duration-300 rounded-xl relative ${
-            card.filter ? 'hover:scale-105' : ''
-          } ${
-            activeFilter === card.filter 
-              ? 'ring-2 ring-primary shadow-xl scale-105' 
-              : 'hover:shadow-lg'
-          }`}
-          onClick={() => card.filter && onFilterClick(card.filter)}
-        >
-          {card.showBadge && (
-            <Badge 
-              variant="destructive" 
-              className="absolute -top-1 -right-1 h-5 w-5 p-0 flex items-center justify-center rounded-full shadow-lg text-[10px]"
-            >
-              {card.value}
-            </Badge>
-          )}
-          <div className="flex items-center justify-between mb-1.5">
-            <div className={`p-1.5 rounded-lg ${card.bg}`}>
-              <card.icon className={`w-3 h-3 md:w-4 md:h-4 ${card.color}`} />
+    <div className="space-y-3">
+      <div className="grid grid-cols-4 lg:grid-cols-8 gap-2 sm:gap-3">
+        {cards.map((card) => (
+          <Card 
+            key={card.label}
+            className={`p-2 md:p-3 cursor-pointer transition-all duration-300 rounded-xl relative ${
+              card.filter ? 'hover:scale-105' : ''
+            } ${
+              activeFilter === card.filter 
+                ? 'ring-2 ring-primary shadow-xl scale-105' 
+                : 'hover:shadow-lg'
+            }`}
+            onClick={() => card.filter && onFilterClick(card.filter)}
+          >
+            {card.showBadge && (
+              <Badge 
+                variant="destructive" 
+                className="absolute -top-1 -right-1 h-5 w-5 p-0 flex items-center justify-center rounded-full shadow-lg text-[10px]"
+              >
+                {card.value}
+              </Badge>
+            )}
+            <div className="flex items-center justify-between mb-1.5">
+              <div className={`p-1.5 rounded-lg ${card.bg}`}>
+                <card.icon className={`w-3 h-3 md:w-4 md:h-4 ${card.color}`} />
+              </div>
+              <span className="text-lg md:text-xl font-bold font-display text-foreground">{card.value}</span>
             </div>
-            <span className="text-lg md:text-xl font-bold font-display text-foreground">{card.value}</span>
-          </div>
-          <p className="text-[10px] md:text-xs text-muted-foreground truncate leading-tight">{card.label}</p>
-        </Card>
-      ))}
+            <p className="text-[10px] md:text-xs text-muted-foreground truncate leading-tight">{card.label}</p>
+          </Card>
+        ))}
+      </div>
+      
+      {/* Shortcut to Bookings Page */}
+      <div className="flex justify-end">
+        <Button 
+          variant="outline" 
+          size="sm"
+          onClick={() => navigate('/dashboard/bookings')}
+          className="gap-2"
+        >
+          <CalendarRange className="h-4 w-4" />
+          View All Bookings
+        </Button>
+      </div>
     </div>
   );
 }

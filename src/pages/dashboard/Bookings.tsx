@@ -48,8 +48,10 @@ interface Booking {
   booking_reference?: string;
   source?: string;
   notes?: string;
+  action_id?: string;
   guests: { id: string; name: string };
   rooms: { id: string; number: string; type: string };
+  profiles?: { id: string; full_name: string | null };
 }
 
 interface Guest {
@@ -83,7 +85,11 @@ export default function Bookings() {
       console.log('📊 Fetching bookings for tenant:', tenantId);
       const { data, error } = await supabase
         .from('bookings')
-        .select('*, guests!bookings_guest_id_fkey(id, name), rooms!bookings_room_id_fkey(id, number, type)')
+        .select(`
+          *, 
+          guests!bookings_guest_id_fkey(id, name), 
+          rooms!bookings_room_id_fkey(id, number, type)
+        `)
         .eq('tenant_id', tenantId)
         .order('check_in', { ascending: false });
       
@@ -93,7 +99,24 @@ export default function Bookings() {
       }
       
       console.log(`✅ Fetched ${data?.length || 0} bookings`);
-      return data as Booking[];
+      
+      // Fetch booked_by user data separately
+      const bookingsWithUsers = await Promise.all(
+        (data || []).map(async (booking) => {
+          if (booking.action_id) {
+            const { data: profile } = await supabase
+              .from('profiles')
+              .select('id, full_name')
+              .eq('id', booking.action_id)
+              .single();
+            
+            return { ...booking, profiles: profile };
+          }
+          return { ...booking, profiles: null };
+        })
+      );
+      
+      return bookingsWithUsers as Booking[];
     },
     enabled: !!tenantId,
   });
@@ -258,6 +281,7 @@ export default function Bookings() {
               <TableHead>Check-out</TableHead>
               <TableHead>Status</TableHead>
               <TableHead>Source</TableHead>
+              <TableHead>Booked By</TableHead>
               <TableHead className="text-right">Amount</TableHead>
               <TableHead className="text-right">Actions</TableHead>
             </TableRow>
@@ -284,6 +308,11 @@ export default function Bookings() {
                   <Badge variant="outline" className="capitalize">
                     {booking.source?.replace('_', ' ') || 'front desk'}
                   </Badge>
+                </TableCell>
+                <TableCell>
+                  <span className="text-sm text-muted-foreground">
+                    {booking.profiles?.full_name || '-'}
+                  </span>
                 </TableCell>
                 <TableCell className="text-right">₦{Number(booking.total_amount).toLocaleString()}</TableCell>
                 <TableCell className="text-right">

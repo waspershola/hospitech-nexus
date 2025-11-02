@@ -22,10 +22,10 @@ export function useBookingSearch<T extends Record<string, any>>(
       const term = searchTerm.toLowerCase();
       result = result.filter((booking) => {
         return (
-          booking.guest?.name?.toLowerCase().includes(term) ||
-          booking.guest?.phone?.toLowerCase().includes(term) ||
+          booking.guests?.name?.toLowerCase().includes(term) ||
+          booking.guests?.phone?.toLowerCase().includes(term) ||
           booking.booking_reference?.toLowerCase().includes(term) ||
-          booking.room?.number?.toString().includes(term)
+          booking.rooms?.number?.toString().includes(term)
         );
       });
     }
@@ -47,7 +47,7 @@ export function useBookingSearch<T extends Record<string, any>>(
 
     // Room type filter
     if (filters.roomType) {
-      result = result.filter((booking) => booking.room?.type === filters.roomType);
+      result = result.filter((booking) => booking.rooms?.type === filters.roomType);
     }
 
     // Date range filter (check-in date)
