@@ -19,12 +19,24 @@ export default function Login() {
     setLoading(true);
 
     try {
-      const { error } = await supabase.auth.signInWithPassword({
+      const { data: authData, error } = await supabase.auth.signInWithPassword({
         email,
         password,
       });
 
       if (error) throw error;
+
+      // Check if user needs to reset password
+      const { data: staffData } = await supabase
+        .from('staff')
+        .select('password_reset_required, department, role')
+        .eq('user_id', authData.user.id)
+        .single();
+
+      if (staffData?.password_reset_required) {
+        navigate('/auth/password-change');
+        return;
+      }
 
       toast({
         title: 'Welcome back!',

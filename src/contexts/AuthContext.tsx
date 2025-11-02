@@ -9,6 +9,8 @@ interface AuthContextType {
   tenantId: string | null;
   tenantName: string | null;
   role: string | null;
+  department: string | null;
+  passwordResetRequired: boolean;
   loading: boolean;
   signOut: () => Promise<void>;
 }
@@ -21,6 +23,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [tenantId, setTenantId] = useState<string | null>(null);
   const [tenantName, setTenantName] = useState<string | null>(null);
   const [role, setRole] = useState<string | null>(null);
+  const [department, setDepartment] = useState<string | null>(null);
+  const [passwordResetRequired, setPasswordResetRequired] = useState(false);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -114,8 +118,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setRole(data?.role || null);
       setTenantName((data?.tenants as any)?.name || null);
       
-      // Auto-complete overdue bookings when user logs in
+      // Fetch staff information if available
       if (data?.tenant_id) {
+        const { data: staffData } = await supabase
+          .from('staff')
+          .select('department, password_reset_required')
+          .eq('user_id', userId)
+          .eq('tenant_id', data.tenant_id)
+          .single();
+        
+        if (staffData) {
+          setDepartment(staffData.department);
+          setPasswordResetRequired(staffData.password_reset_required || false);
+        }
+        
+        // Auto-complete overdue bookings when user logs in
         autoCompleteOverdueBookings(data.tenant_id).then((result) => {
           if (result.completed > 0) {
             console.log(`[Auto-Complete] Completed ${result.completed} overdue bookings`);
@@ -138,10 +155,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setTenantId(null);
     setTenantName(null);
     setRole(null);
+    setDepartment(null);
+    setPasswordResetRequired(false);
   };
 
   return (
-    <AuthContext.Provider value={{ user, session, tenantId, tenantName, role, loading, signOut }}>
+    <AuthContext.Provider value={{ user, session, tenantId, tenantName, role, department, passwordResetRequired, loading, signOut }}>
       {children}
     </AuthContext.Provider>
   );
