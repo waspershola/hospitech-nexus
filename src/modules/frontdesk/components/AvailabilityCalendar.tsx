@@ -60,126 +60,108 @@ export function AvailabilityCalendar({ onRoomClick }: AvailabilityCalendarProps)
   };
 
   return (
-    <div className="space-y-4">
-      {/* Header */}
-      <div className="flex items-center gap-3">
-        <div className="p-2 rounded-lg bg-primary/10">
-          <CalendarIcon className="h-5 w-5 text-primary" />
+    <div className="space-y-3">
+      {/* Compact Filters */}
+      <div className="flex flex-wrap items-end gap-3">
+        <div className="flex-1 min-w-[200px] space-y-1.5">
+          <Label htmlFor="date-select" className="text-xs">Date</Label>
+          <Input
+            id="date-select"
+            type="date"
+            value={format(selectedDate, 'yyyy-MM-dd')}
+            onChange={(e) => setSelectedDate(new Date(e.target.value))}
+            className="h-9"
+          />
         </div>
-        <div>
-          <h3 className="text-lg font-semibold">Room Availability by Date</h3>
-          <p className="text-sm text-muted-foreground">View which rooms are available for a specific date</p>
+        <div className="flex-1 min-w-[150px] space-y-1.5">
+          <Label htmlFor="type-filter" className="text-xs">Room Type</Label>
+          <Select value={typeFilter} onValueChange={setTypeFilter}>
+            <SelectTrigger id="type-filter" className="h-9">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Types</SelectItem>
+              <SelectItem value="single">Single</SelectItem>
+              <SelectItem value="double">Double</SelectItem>
+              <SelectItem value="suite">Suite</SelectItem>
+              <SelectItem value="deluxe">Deluxe</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+        <div className="flex-1 min-w-[150px] space-y-1.5">
+          <Label htmlFor="floor-filter" className="text-xs">Floor</Label>
+          <Select value={floorFilter} onValueChange={setFloorFilter}>
+            <SelectTrigger id="floor-filter" className="h-9">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Floors</SelectItem>
+              <SelectItem value="1">Floor 1</SelectItem>
+              <SelectItem value="2">Floor 2</SelectItem>
+              <SelectItem value="3">Floor 3</SelectItem>
+              <SelectItem value="4">Floor 4</SelectItem>
+            </SelectContent>
+          </Select>
         </div>
       </div>
 
-      {/* Filters */}
-      <Card className="p-4 space-y-4">
-        <div className="flex items-center gap-2 text-sm font-medium">
-          <Filter className="h-4 w-4" />
-          Filters
-        </div>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <div className="space-y-2">
-            <Label htmlFor="date-select">Select Date</Label>
-            <Input
-              id="date-select"
-              type="date"
-              value={format(selectedDate, 'yyyy-MM-dd')}
-              onChange={(e) => setSelectedDate(new Date(e.target.value))}
-            />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="type-filter">Room Type</Label>
-            <Select value={typeFilter} onValueChange={setTypeFilter}>
-              <SelectTrigger id="type-filter">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Types</SelectItem>
-                <SelectItem value="single">Single</SelectItem>
-                <SelectItem value="double">Double</SelectItem>
-                <SelectItem value="suite">Suite</SelectItem>
-                <SelectItem value="deluxe">Deluxe</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="floor-filter">Floor</Label>
-            <Select value={floorFilter} onValueChange={setFloorFilter}>
-              <SelectTrigger id="floor-filter">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Floors</SelectItem>
-                <SelectItem value="1">Floor 1</SelectItem>
-                <SelectItem value="2">Floor 2</SelectItem>
-                <SelectItem value="3">Floor 3</SelectItem>
-                <SelectItem value="4">Floor 4</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-        </div>
-      </Card>
-
       {/* Summary Stats */}
-      <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
-        <Card className="p-4 bg-green-50 dark:bg-green-900/10 border-green-200 dark:border-green-800">
-          <p className="text-2xl font-bold text-green-700 dark:text-green-400">{availableRooms.length}</p>
+      <div className="grid grid-cols-2 md:grid-cols-5 gap-2">
+        <Card className="p-3 bg-green-50 dark:bg-green-900/10 border-green-200 dark:border-green-800">
+          <p className="text-xl font-bold text-green-700 dark:text-green-400">{availableRooms.length}</p>
           <p className="text-xs text-green-600 dark:text-green-500">Available</p>
         </Card>
-        <Card className="p-4 bg-yellow-50 dark:bg-yellow-900/10 border-yellow-200 dark:border-yellow-800">
-          <p className="text-2xl font-bold text-yellow-700 dark:text-yellow-400">{reservedRooms.length}</p>
+        <Card className="p-3 bg-yellow-50 dark:bg-yellow-900/10 border-yellow-200 dark:border-yellow-800">
+          <p className="text-xl font-bold text-yellow-700 dark:text-yellow-400">{reservedRooms.length}</p>
           <p className="text-xs text-yellow-600 dark:text-yellow-500">Reserved</p>
         </Card>
-        <Card className="p-4 bg-red-50 dark:bg-red-900/10 border-red-200 dark:border-red-800">
-          <p className="text-2xl font-bold text-red-700 dark:text-red-400">{occupiedRooms.length}</p>
+        <Card className="p-3 bg-red-50 dark:bg-red-900/10 border-red-200 dark:border-red-800">
+          <p className="text-xl font-bold text-red-700 dark:text-red-400">{occupiedRooms.length}</p>
           <p className="text-xs text-red-600 dark:text-red-500">Occupied</p>
         </Card>
-        <Card className="p-4 bg-blue-50 dark:bg-blue-900/10 border-blue-200 dark:border-blue-800">
-          <p className="text-2xl font-bold text-blue-700 dark:text-blue-400">{checkingInRooms.length}</p>
+        <Card className="p-3 bg-blue-50 dark:bg-blue-900/10 border-blue-200 dark:border-blue-800">
+          <p className="text-xl font-bold text-blue-700 dark:text-blue-400">{checkingInRooms.length}</p>
           <p className="text-xs text-blue-600 dark:text-blue-500">Check-in</p>
         </Card>
-        <Card className="p-4 bg-purple-50 dark:bg-purple-900/10 border-purple-200 dark:border-purple-800">
-          <p className="text-2xl font-bold text-purple-700 dark:text-purple-400">{checkingOutRooms.length}</p>
+        <Card className="p-3 bg-purple-50 dark:bg-purple-900/10 border-purple-200 dark:border-purple-800">
+          <p className="text-xl font-bold text-purple-700 dark:text-purple-400">{checkingOutRooms.length}</p>
           <p className="text-xs text-purple-600 dark:text-purple-500">Check-out</p>
         </Card>
       </div>
 
       {/* Room List */}
-      <Card className="p-4">
+      <div className="space-y-2">
         {isLoading ? (
-          <div className="space-y-3">
-            {[...Array(8)].map((_, i) => (
-              <Skeleton key={i} className="h-20 w-full" />
+          <>
+            {[...Array(6)].map((_, i) => (
+              <Skeleton key={i} className="h-16 w-full" />
             ))}
-          </div>
+          </>
         ) : filteredRooms && filteredRooms.length > 0 ? (
-          <div className="space-y-2">
+          <>
             {filteredRooms.map((room) => (
               <div
                 key={room.roomId}
-                className={`p-4 rounded-lg border-2 cursor-pointer transition-all hover:shadow-md ${getStatusColor(room.status)}`}
+                className={`p-3 rounded-lg border-2 cursor-pointer transition-all hover:shadow-md ${getStatusColor(room.status)}`}
                 onClick={() => onRoomClick?.(room.roomId)}
               >
                 <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <div className="p-2 rounded-lg bg-background/50">
-                      <BedDouble className="h-5 w-5" />
-                    </div>
+                  <div className="flex items-center gap-2">
+                    <BedDouble className="h-4 w-4 flex-shrink-0" />
                     <div>
-                      <p className="font-semibold">Room {room.roomNumber}</p>
-                      <p className="text-sm text-muted-foreground">
+                      <p className="font-semibold text-sm">Room {room.roomNumber}</p>
+                      <p className="text-xs text-muted-foreground">
                         {room.categoryName || room.roomType} {room.floor && `• Floor ${room.floor}`}
                       </p>
                       {room.guestName && (
-                        <p className="text-xs font-medium mt-1">Guest: {room.guestName}</p>
+                        <p className="text-xs font-medium mt-0.5">Guest: {room.guestName}</p>
                       )}
                     </div>
                   </div>
-                  <div className="text-right">
+                  <div className="text-right flex-shrink-0">
                     {getStatusBadge(room.status)}
                     {room.checkIn && room.checkOut && (
-                      <p className="text-xs text-muted-foreground mt-2">
+                      <p className="text-xs text-muted-foreground mt-1">
                         {format(new Date(room.checkIn), 'MMM dd')} - {format(new Date(room.checkOut), 'MMM dd')}
                       </p>
                     )}
@@ -187,14 +169,14 @@ export function AvailabilityCalendar({ onRoomClick }: AvailabilityCalendarProps)
                 </div>
               </div>
             ))}
-          </div>
+          </>
         ) : (
-          <div className="text-center py-12 text-muted-foreground">
-            <BedDouble className="h-12 w-12 mx-auto mb-4 opacity-50" />
-            <p>No rooms found matching the selected filters</p>
+          <div className="text-center py-8 text-muted-foreground">
+            <BedDouble className="h-10 w-10 mx-auto mb-3 opacity-50" />
+            <p className="text-sm">No rooms found matching the selected filters</p>
           </div>
         )}
-      </Card>
+      </div>
     </div>
   );
 }
