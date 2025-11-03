@@ -53,10 +53,10 @@ export function useStaffActivities(filters?: ActivityFilters) {
       if (filters?.staff_id) {
         query = query.eq('staff_id', filters.staff_id);
       }
-      if (filters?.department) {
+      if (filters?.department && filters.department !== 'all') {
         query = query.eq('department', filters.department);
       }
-      if (filters?.action) {
+      if (filters?.action && filters.action !== 'all') {
         query = query.eq('action', filters.action);
       }
 

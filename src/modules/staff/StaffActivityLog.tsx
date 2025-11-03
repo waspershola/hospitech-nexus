@@ -13,8 +13,8 @@ interface StaffActivityLogProps {
 export function StaffActivityLog({ staffId }: StaffActivityLogProps) {
   const [filters, setFilters] = useState({
     staff_id: staffId,
-    department: '',
-    action: '',
+    department: 'all',
+    action: 'all',
   });
 
   const { data: activities, isLoading } = useStaffActivities(filters);
@@ -45,7 +45,7 @@ export function StaffActivityLog({ staffId }: StaffActivityLogProps) {
                 <SelectValue placeholder="All Departments" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">All Departments</SelectItem>
+                <SelectItem value="all">All Departments</SelectItem>
                 <SelectItem value="front_office">Front Office</SelectItem>
                 <SelectItem value="housekeeping">Housekeeping</SelectItem>
                 <SelectItem value="food_beverage">Food & Beverage</SelectItem>
@@ -64,7 +64,7 @@ export function StaffActivityLog({ staffId }: StaffActivityLogProps) {
                 <SelectValue placeholder="All Actions" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">All Actions</SelectItem>
+                <SelectItem value="all">All Actions</SelectItem>
                 <SelectItem value="staff_created">Created</SelectItem>
                 <SelectItem value="staff_updated">Updated</SelectItem>
                 <SelectItem value="staff_status_changed">Status Changed</SelectItem>
