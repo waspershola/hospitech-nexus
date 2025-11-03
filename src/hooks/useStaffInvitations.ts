@@ -31,16 +31,23 @@ export function useStaffInvitations() {
   const queryClient = useQueryClient();
 
   // Fetch all invitations
-  const { data: invitations, isLoading } = useQuery({
+  const { data: invitations, isLoading, error } = useQuery({
     queryKey: ['staff-invitations', tenantId],
     queryFn: async () => {
+      console.log('[useStaffInvitations] Fetching invitations for tenant:', tenantId);
+      
       const { data, error } = await supabase
         .from('staff_invitations')
         .select('*')
         .eq('tenant_id', tenantId!)
         .order('created_at', { ascending: false });
 
-      if (error) throw error;
+      if (error) {
+        console.error('[useStaffInvitations] Error fetching invitations:', error);
+        throw error;
+      }
+      
+      console.log('[useStaffInvitations] Fetched invitations:', data);
       return data as StaffInvitation[];
     },
     enabled: !!tenantId,
@@ -114,6 +121,7 @@ export function useStaffInvitations() {
   return {
     invitations,
     isLoading,
+    error,
     inviteStaff,
     resendInvitation,
     cancelInvitation,

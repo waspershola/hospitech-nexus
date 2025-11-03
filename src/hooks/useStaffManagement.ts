@@ -69,10 +69,16 @@ export function useStaffManagement(filters?: StaffFilters) {
 
       if (error) throw error;
       if (data?.error) throw new Error(data.error);
-      return data;
+      
+      // Edge function returns { success: true, data: staff, ... }
+      // Return the actual staff data from the nested structure
+      return data?.data || data;
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['staff'] });
+    onSuccess: async () => {
+      // Invalidate and refetch immediately
+      await queryClient.invalidateQueries({ queryKey: ['staff'] });
+      await queryClient.refetchQueries({ queryKey: ['staff', tenantId] });
+      
       toast({
         title: 'Success',
         description: 'Staff member created successfully',
