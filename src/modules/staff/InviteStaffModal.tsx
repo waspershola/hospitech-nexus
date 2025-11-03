@@ -5,7 +5,8 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useStaffInvitations } from '@/hooks/useStaffInvitations';
-import { Mail, Loader2 } from 'lucide-react';
+import { Mail, Loader2, AlertCircle } from 'lucide-react';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 
 interface InviteStaffModalProps {
   open: boolean;
@@ -41,7 +42,7 @@ const ROLES = [
 ];
 
 export function InviteStaffModal({ open, onClose }: InviteStaffModalProps) {
-  const { inviteStaff } = useStaffInvitations();
+  const { inviteStaff, invitations } = useStaffInvitations();
   const [formData, setFormData] = useState({
     full_name: '',
     email: '',
@@ -49,6 +50,15 @@ export function InviteStaffModal({ open, onClose }: InviteStaffModalProps) {
     role: '',
     branch: '',
   });
+
+  // Check if email already has pending invitation
+  const pendingInvitations = invitations?.filter(
+    inv => inv.status === 'pending' && new Date(inv.expires_at) > new Date()
+  ) || [];
+  
+  const existingInvitation = pendingInvitations.find(
+    inv => inv.email.toLowerCase() === formData.email.toLowerCase()
+  );
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -152,6 +162,17 @@ export function InviteStaffModal({ open, onClose }: InviteStaffModalProps) {
             </div>
           </div>
 
+          {existingInvitation && (
+            <Alert variant="destructive">
+              <AlertCircle className="h-4 w-4" />
+              <AlertDescription>
+                This email already has a pending invitation sent on{' '}
+                {new Date(existingInvitation.created_at).toLocaleDateString()}.
+                Please cancel the existing invitation first or use the "Resend" button.
+              </AlertDescription>
+            </Alert>
+          )}
+
           <div className="bg-muted rounded-lg p-4">
             <p className="text-sm text-muted-foreground">
               An invitation email will be sent to <strong>{formData.email || 'the email address'}</strong> with 
@@ -165,7 +186,7 @@ export function InviteStaffModal({ open, onClose }: InviteStaffModalProps) {
             </Button>
             <Button
               type="submit"
-              disabled={inviteStaff.isPending}
+              disabled={inviteStaff.isPending || !!existingInvitation}
             >
               {inviteStaff.isPending ? (
                 <>
