@@ -6,15 +6,25 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
-import { Package, AlertTriangle, TrendingDown, DollarSign, Plus, ArrowRightLeft } from 'lucide-react';
+import { Package, AlertTriangle, TrendingDown, DollarSign, Plus, ArrowRightLeft, FileText, Edit, Trash2 } from 'lucide-react';
 import { useRole } from '@/hooks/useRole';
 import { PERMISSIONS } from '@/lib/roles';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import { ItemFormModal } from '@/modules/inventory/ItemFormModal';
+import { StockMovementModal } from '@/modules/inventory/StockMovementModal';
+import { DepartmentRequestModal } from '@/modules/inventory/DepartmentRequestModal';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { useInventoryItems } from '@/hooks/useInventoryItems';
 
 export default function Inventory() {
   const { tenantId } = useAuth();
   const { can } = useRole();
   const [activeTab, setActiveTab] = useState('overview');
+  const [itemModalOpen, setItemModalOpen] = useState(false);
+  const [movementModalOpen, setMovementModalOpen] = useState(false);
+  const [requestModalOpen, setRequestModalOpen] = useState(false);
+  const [selectedItem, setSelectedItem] = useState<any>(null);
+  const { items: inventoryItems, deleteItem } = useInventoryItems();
 
   // Fetch inventory summary
   const { data: items } = useQuery({
@@ -97,11 +107,15 @@ export default function Inventory() {
         </div>
         {can(PERMISSIONS.MANAGE_INVENTORY_ITEMS) && (
           <div className="flex gap-2">
-            <Button variant="outline">
+            <Button variant="outline" onClick={() => setRequestModalOpen(true)}>
+              <FileText className="w-4 h-4 mr-2" />
+              Create Request
+            </Button>
+            <Button variant="outline" onClick={() => setMovementModalOpen(true)}>
               <ArrowRightLeft className="w-4 h-4 mr-2" />
               Stock Movement
             </Button>
-            <Button variant="default">
+            <Button variant="default" onClick={() => { setSelectedItem(null); setItemModalOpen(true); }}>
               <Plus className="w-4 h-4 mr-2" />
               Add Item
             </Button>
@@ -226,9 +240,67 @@ export default function Inventory() {
               <CardDescription>All items in your inventory</CardDescription>
             </CardHeader>
             <CardContent>
-              <p className="text-muted-foreground text-center py-8">
-                Item list view coming soon...
-              </p>
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Code</TableHead>
+                    <TableHead>Name</TableHead>
+                    <TableHead>Category</TableHead>
+                    <TableHead>Unit</TableHead>
+                    <TableHead>Stock</TableHead>
+                    <TableHead>Reorder Level</TableHead>
+                    <TableHead>Cost Price</TableHead>
+                    <TableHead className="text-right">Actions</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {inventoryItems?.map((item) => {
+                    const stockQty = item.store_stock?.[0]?.quantity || 0;
+                    const isLowStock = stockQty <= item.reorder_level;
+                    
+                    return (
+                      <TableRow key={item.id}>
+                        <TableCell className="font-medium">{item.item_code}</TableCell>
+                        <TableCell>{item.item_name}</TableCell>
+                        <TableCell className="capitalize">{item.category}</TableCell>
+                        <TableCell>{item.unit}</TableCell>
+                        <TableCell>
+                          <Badge variant={isLowStock ? 'destructive' : 'secondary'}>
+                            {stockQty}
+                          </Badge>
+                        </TableCell>
+                        <TableCell>{item.reorder_level}</TableCell>
+                        <TableCell>₦{item.cost_price.toLocaleString()}</TableCell>
+                        <TableCell className="text-right">
+                          <div className="flex justify-end gap-2">
+                            <Button
+                              variant="outline"
+                              size="icon"
+                              onClick={() => { setSelectedItem(item); setItemModalOpen(true); }}
+                            >
+                              <Edit className="w-4 h-4" />
+                            </Button>
+                            <Button
+                              variant="outline"
+                              size="icon"
+                              onClick={() => deleteItem.mutate(item.id)}
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </Button>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
+                  {!inventoryItems?.length && (
+                    <TableRow>
+                      <TableCell colSpan={8} className="text-center text-muted-foreground py-8">
+                        No items found. Add your first inventory item to get started.
+                      </TableCell>
+                    </TableRow>
+                  )}
+                </TableBody>
+              </Table>
             </CardContent>
           </Card>
         </TabsContent>
@@ -280,6 +352,22 @@ export default function Inventory() {
           </Card>
         </TabsContent>
       </Tabs>
+
+      <ItemFormModal 
+        open={itemModalOpen} 
+        onOpenChange={setItemModalOpen}
+        item={selectedItem}
+      />
+      
+      <StockMovementModal 
+        open={movementModalOpen} 
+        onOpenChange={setMovementModalOpen}
+      />
+      
+      <DepartmentRequestModal 
+        open={requestModalOpen} 
+        onOpenChange={setRequestModalOpen}
+      />
     </div>
   );
 }
