@@ -6,7 +6,14 @@ import { Mail, Clock, XCircle, RefreshCw, Loader2 } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 
 export function PendingInvitationsWidget() {
-  const { invitations, isLoading, resendInvitation, cancelInvitation } = useStaffInvitations();
+  const { invitations, isLoading, error, resendInvitation, cancelInvitation } = useStaffInvitations();
+
+  console.log('[PendingInvitationsWidget] Render:', { 
+    invitations, 
+    isLoading, 
+    error,
+    invitationsLength: invitations?.length 
+  });
 
   const pendingInvitations = invitations?.filter(
     inv => inv.status === 'pending' && new Date(inv.expires_at) > new Date()
@@ -20,6 +27,25 @@ export function PendingInvitationsWidget() {
         </CardHeader>
         <CardContent className="flex items-center justify-center py-8">
           <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+        </CardContent>
+      </Card>
+    );
+  }
+
+  if (error) {
+    console.error('[PendingInvitationsWidget] Error state:', error);
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-destructive">Error Loading Invitations</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-2">
+          <p className="text-sm text-destructive">
+            {error instanceof Error ? error.message : 'Failed to load pending invitations'}
+          </p>
+          <p className="text-xs text-muted-foreground">
+            Check console for detailed error information
+          </p>
         </CardContent>
       </Card>
     );
