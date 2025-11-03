@@ -2754,6 +2754,8 @@ export type Database = {
         | "bar"
         | "accountant"
         | "supervisor"
+        | "store_manager"
+        | "procurement"
       department_type:
         | "front_office"
         | "housekeeping"
@@ -2906,6 +2908,8 @@ export const Constants = {
         "bar",
         "accountant",
         "supervisor",
+        "store_manager",
+        "procurement",
       ],
       department_type: [
         "front_office",

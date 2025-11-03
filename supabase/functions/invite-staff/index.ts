@@ -47,6 +47,10 @@ function mapStaffRoleToAppRole(staffRole: string, department: string): string {
     'general_manager': 'manager',
     'manager': 'manager',
     'supervisor': 'supervisor',
+    'store_manager': 'store_manager',
+    'inventory_manager': 'store_manager',
+    'procurement_officer': 'procurement',
+    'purchasing_officer': 'procurement',
   };
   
   if (directRoleMap[staffRole]) {
@@ -122,10 +126,20 @@ function mapStaffRoleToAppRole(staffRole: string, department: string): string {
     
     // Inventory/Store Department
     'inventory': {
-      'store_clerk': 'finance',
+      'store_clerk': 'store_manager',
+      'store_keeper': 'store_manager',
       'inventory_supervisor': 'supervisor',
-      'inventory_manager': 'manager',
-      '_default': 'finance'
+      'inventory_manager': 'store_manager',
+      'store_manager': 'store_manager',
+      '_default': 'store_manager'
+    },
+    
+    // Procurement Department
+    'procurement': {
+      'procurement_officer': 'procurement',
+      'purchasing_officer': 'procurement',
+      'procurement_manager': 'manager',
+      '_default': 'procurement'
     },
     
     // HR Department
