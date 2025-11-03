@@ -7,6 +7,18 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
+/**
+ * Validate department against enum
+ */
+function validateDepartment(department: string): boolean {
+  const validDepartments = [
+    'front_office', 'housekeeping', 'maintenance', 'food_beverage',
+    'kitchen', 'bar', 'finance', 'management', 'security', 'spa',
+    'concierge', 'admin'
+  ];
+  return validDepartments.includes(department);
+}
+
 // Generate secure random password
 function generateTempPassword(length = 10): string {
   const charset = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%';
@@ -159,6 +171,14 @@ Deno.serve(async (req) => {
 async function handleCreate(req: Request, supabase: any, userRole: any, userId: string) {
   const body = await req.json();
   const { full_name, email, phone, department, role, supervisor_id, branch } = body;
+
+  // Validate department
+  if (!validateDepartment(department)) {
+    return new Response(
+      JSON.stringify({ error: `Invalid department. Must be one of: front_office, housekeeping, maintenance, food_beverage, kitchen, bar, finance, management, security, spa, concierge, admin` }),
+      { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+    );
+  }
 
   // Get tenant info for email
   const { data: tenant } = await supabase
@@ -330,6 +350,14 @@ async function handleDetails(req: Request, supabase: any, userRole: any) {
 async function handleUpdate(req: Request, supabase: any, userRole: any, userId: string) {
   const body = await req.json();
   const { id, full_name, email, phone, department, role, supervisor_id, branch } = body;
+
+  // Validate department if being updated
+  if (department && !validateDepartment(department)) {
+    return new Response(
+      JSON.stringify({ error: `Invalid department. Must be one of: front_office, housekeeping, maintenance, food_beverage, kitchen, bar, finance, management, security, spa, concierge, admin` }),
+      { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+    );
+  }
 
   const { data: staff, error: updateError } = await supabase
     .from('staff')

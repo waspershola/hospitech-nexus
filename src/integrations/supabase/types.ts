@@ -2754,6 +2754,19 @@ export type Database = {
         | "bar"
         | "accountant"
         | "supervisor"
+      department_type:
+        | "front_office"
+        | "housekeeping"
+        | "maintenance"
+        | "food_beverage"
+        | "kitchen"
+        | "bar"
+        | "finance"
+        | "management"
+        | "security"
+        | "spa"
+        | "concierge"
+        | "admin"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -2893,6 +2906,20 @@ export const Constants = {
         "bar",
         "accountant",
         "supervisor",
+      ],
+      department_type: [
+        "front_office",
+        "housekeeping",
+        "maintenance",
+        "food_beverage",
+        "kitchen",
+        "bar",
+        "finance",
+        "management",
+        "security",
+        "spa",
+        "concierge",
+        "admin",
       ],
     },
   },

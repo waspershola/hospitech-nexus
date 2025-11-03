@@ -92,3 +92,34 @@ export function getRolePermissions(role: string): string[] {
   
   return rolePermissions;
 }
+
+// Department enum - must match database department_type enum
+export const DEPARTMENTS = [
+  'front_office',
+  'housekeeping',
+  'maintenance',
+  'food_beverage',
+  'kitchen',
+  'bar',
+  'finance',
+  'management',
+  'security',
+  'spa',
+  'concierge',
+  'admin',
+] as const;
+
+export const DEPARTMENT_LABELS: Record<string, string> = {
+  front_office: 'Front Office',
+  housekeeping: 'Housekeeping',
+  maintenance: 'Maintenance',
+  food_beverage: 'Food & Beverage',
+  kitchen: 'Kitchen',
+  bar: 'Bar',
+  finance: 'Finance',
+  management: 'Management',
+  security: 'Security',
+  spa: 'Spa & Wellness',
+  concierge: 'Concierge',
+  admin: 'Administration',
+};

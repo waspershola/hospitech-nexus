@@ -22,6 +22,18 @@ export interface InviteStaffRequest {
 }
 
 /**
+ * Validate department against enum
+ */
+function validateDepartment(department: string): boolean {
+  const validDepartments = [
+    'front_office', 'housekeeping', 'maintenance', 'food_beverage',
+    'kitchen', 'bar', 'finance', 'management', 'security', 'spa',
+    'concierge', 'admin'
+  ];
+  return validDepartments.includes(department);
+}
+
+/**
  * Map staff roles and departments to application-level roles
  * Staff roles are granular job titles (receptionist, room_attendant, etc.)
  * App roles are permission levels (frontdesk, housekeeping, manager, etc.)
@@ -209,6 +221,14 @@ serve(async (req: Request): Promise<Response> => {
     }
 
     const inviteData: InviteStaffRequest = await req.json();
+
+    // Validate department
+    if (!validateDepartment(inviteData.department)) {
+      return new Response(
+        JSON.stringify({ error: `Invalid department. Must be one of: front_office, housekeeping, maintenance, food_beverage, kitchen, bar, finance, management, security, spa, concierge, admin` }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
 
     // Check if staff already exists
     const { data: existingStaff } = await supabase
