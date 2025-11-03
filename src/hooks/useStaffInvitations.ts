@@ -61,10 +61,26 @@ export function useStaffInvitations() {
       });
 
       if (error) {
-        // Parse error message from edge function
-        const errorMessage = error.message || 'Failed to send invitation';
+        // Parse error message from edge function response
+        let errorMessage = 'Failed to send invitation';
+        
+        // Try to extract error from the response
+        if (typeof error === 'object' && error !== null) {
+          if ('message' in error && error.message) {
+            errorMessage = error.message as string;
+          } else if ('error' in error && error.error) {
+            errorMessage = error.error as string;
+          }
+        }
+        
         throw new Error(errorMessage);
       }
+
+      // Check if data contains an error (edge function returned error in body)
+      if (data?.error) {
+        throw new Error(data.error);
+      }
+      
       return data;
     },
     onSuccess: () => {
