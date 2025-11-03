@@ -56,32 +56,22 @@ export function useStaffInvitations() {
   // Invite staff mutation
   const inviteStaff = useMutation({
     mutationFn: async (inviteData: InviteStaffData) => {
-      try {
-        const { data, error } = await supabase.functions.invoke('invite-staff', {
-          body: inviteData,
-        });
+      const { data, error } = await supabase.functions.invoke('invite-staff', {
+        body: inviteData,
+      });
 
-        console.log('[inviteStaff] Response:', { data, error });
+      console.log('[inviteStaff] Full response:', { data, error });
 
-        // Handle edge function errors (400, 500, etc.)
-        if (error) {
-          // Extract error message from various possible formats
-          const errorMessage = error.message || 
-                             (typeof error === 'string' ? error : 'Failed to send invitation');
-          throw new Error(errorMessage);
-        }
-
-        // Check if data contains an error (some edge functions return errors in body)
-        if (data?.error) {
-          throw new Error(data.error);
-        }
-        
-        return data;
-      } catch (err: any) {
-        console.error('[inviteStaff] Caught error:', err);
-        // Re-throw to let React Query handle it
-        throw err;
+      // When edge function returns non-2xx status, error will be set
+      // and data will contain the error response body
+      if (error) {
+        // Try to extract error message from response body first
+        const errorMessage = data?.error || error.message || 'Failed to send invitation';
+        console.error('[inviteStaff] Error:', errorMessage);
+        throw new Error(errorMessage);
       }
+      
+      return data;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['staff-invitations', tenantId] });
