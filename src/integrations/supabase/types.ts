@@ -191,6 +191,134 @@ export type Database = {
           },
         ]
       }
+      department_requests: {
+        Row: {
+          approved_at: string | null
+          approved_by: string | null
+          created_at: string | null
+          department: Database["public"]["Enums"]["department_type"]
+          id: string
+          issued_at: string | null
+          issued_by: string | null
+          items: Json
+          priority: string | null
+          purpose: string | null
+          request_number: string
+          requested_at: string | null
+          requested_by: string
+          status: Database["public"]["Enums"]["request_status"] | null
+          tenant_id: string
+          updated_at: string | null
+        }
+        Insert: {
+          approved_at?: string | null
+          approved_by?: string | null
+          created_at?: string | null
+          department: Database["public"]["Enums"]["department_type"]
+          id?: string
+          issued_at?: string | null
+          issued_by?: string | null
+          items: Json
+          priority?: string | null
+          purpose?: string | null
+          request_number: string
+          requested_at?: string | null
+          requested_by: string
+          status?: Database["public"]["Enums"]["request_status"] | null
+          tenant_id: string
+          updated_at?: string | null
+        }
+        Update: {
+          approved_at?: string | null
+          approved_by?: string | null
+          created_at?: string | null
+          department?: Database["public"]["Enums"]["department_type"]
+          id?: string
+          issued_at?: string | null
+          issued_by?: string | null
+          items?: Json
+          priority?: string | null
+          purpose?: string | null
+          request_number?: string
+          requested_at?: string | null
+          requested_by?: string
+          status?: Database["public"]["Enums"]["request_status"] | null
+          tenant_id?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "department_requests_approved_by_fkey"
+            columns: ["approved_by"]
+            isOneToOne: false
+            referencedRelation: "staff"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "department_requests_issued_by_fkey"
+            columns: ["issued_by"]
+            isOneToOne: false
+            referencedRelation: "staff"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "department_requests_requested_by_fkey"
+            columns: ["requested_by"]
+            isOneToOne: false
+            referencedRelation: "staff"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "department_requests_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      department_stock: {
+        Row: {
+          department: Database["public"]["Enums"]["department_type"]
+          id: string
+          item_id: string
+          last_updated: string | null
+          quantity: number
+          tenant_id: string
+        }
+        Insert: {
+          department: Database["public"]["Enums"]["department_type"]
+          id?: string
+          item_id: string
+          last_updated?: string | null
+          quantity?: number
+          tenant_id: string
+        }
+        Update: {
+          department?: Database["public"]["Enums"]["department_type"]
+          id?: string
+          item_id?: string
+          last_updated?: string | null
+          quantity?: number
+          tenant_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "department_stock_item_id_fkey"
+            columns: ["item_id"]
+            isOneToOne: false
+            referencedRelation: "inventory_items"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "department_stock_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       document_templates: {
         Row: {
           created_at: string
@@ -1299,6 +1427,68 @@ export type Database = {
           },
         ]
       }
+      inventory_items: {
+        Row: {
+          category: Database["public"]["Enums"]["item_category"]
+          cost_price: number | null
+          created_at: string | null
+          id: string
+          is_perishable: boolean | null
+          item_code: string
+          item_name: string
+          last_purchase_price: number | null
+          metadata: Json | null
+          reorder_level: number | null
+          shelf_life_days: number | null
+          supplier_id: string | null
+          tenant_id: string
+          unit: string
+          updated_at: string | null
+        }
+        Insert: {
+          category: Database["public"]["Enums"]["item_category"]
+          cost_price?: number | null
+          created_at?: string | null
+          id?: string
+          is_perishable?: boolean | null
+          item_code: string
+          item_name: string
+          last_purchase_price?: number | null
+          metadata?: Json | null
+          reorder_level?: number | null
+          shelf_life_days?: number | null
+          supplier_id?: string | null
+          tenant_id: string
+          unit: string
+          updated_at?: string | null
+        }
+        Update: {
+          category?: Database["public"]["Enums"]["item_category"]
+          cost_price?: number | null
+          created_at?: string | null
+          id?: string
+          is_perishable?: boolean | null
+          item_code?: string
+          item_name?: string
+          last_purchase_price?: number | null
+          metadata?: Json | null
+          reorder_level?: number | null
+          shelf_life_days?: number | null
+          supplier_id?: string | null
+          tenant_id?: string
+          unit?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "inventory_items_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       navigation_items: {
         Row: {
           allowed_roles: Database["public"]["Enums"]["app_role"][]
@@ -1678,6 +1868,99 @@ export type Database = {
           id?: string
         }
         Relationships: []
+      }
+      purchase_orders: {
+        Row: {
+          approved_by: string | null
+          created_at: string | null
+          created_by: string
+          delivery_date: string | null
+          id: string
+          items: Json
+          notes: string | null
+          po_number: string
+          received_by: string | null
+          status: string | null
+          subtotal: number | null
+          supplier_id: string
+          tax_amount: number | null
+          tenant_id: string
+          total_amount: number | null
+          updated_at: string | null
+        }
+        Insert: {
+          approved_by?: string | null
+          created_at?: string | null
+          created_by: string
+          delivery_date?: string | null
+          id?: string
+          items: Json
+          notes?: string | null
+          po_number: string
+          received_by?: string | null
+          status?: string | null
+          subtotal?: number | null
+          supplier_id: string
+          tax_amount?: number | null
+          tenant_id: string
+          total_amount?: number | null
+          updated_at?: string | null
+        }
+        Update: {
+          approved_by?: string | null
+          created_at?: string | null
+          created_by?: string
+          delivery_date?: string | null
+          id?: string
+          items?: Json
+          notes?: string | null
+          po_number?: string
+          received_by?: string | null
+          status?: string | null
+          subtotal?: number | null
+          supplier_id?: string
+          tax_amount?: number | null
+          tenant_id?: string
+          total_amount?: number | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "purchase_orders_approved_by_fkey"
+            columns: ["approved_by"]
+            isOneToOne: false
+            referencedRelation: "staff"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "purchase_orders_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "staff"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "purchase_orders_received_by_fkey"
+            columns: ["received_by"]
+            isOneToOne: false
+            referencedRelation: "staff"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "purchase_orders_supplier_id_fkey"
+            columns: ["supplier_id"]
+            isOneToOne: false
+            referencedRelation: "suppliers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "purchase_orders_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       receipt_print_logs: {
         Row: {
@@ -2427,6 +2710,184 @@ export type Database = {
           },
         ]
       }
+      stock_movements: {
+        Row: {
+          approved_by: string | null
+          created_at: string | null
+          created_by: string
+          destination: string | null
+          id: string
+          item_id: string
+          metadata: Json | null
+          movement_type: Database["public"]["Enums"]["movement_type"]
+          notes: string | null
+          quantity: number
+          reference_no: string | null
+          source: string | null
+          tenant_id: string
+          total_value: number | null
+          unit_cost: number | null
+        }
+        Insert: {
+          approved_by?: string | null
+          created_at?: string | null
+          created_by: string
+          destination?: string | null
+          id?: string
+          item_id: string
+          metadata?: Json | null
+          movement_type: Database["public"]["Enums"]["movement_type"]
+          notes?: string | null
+          quantity: number
+          reference_no?: string | null
+          source?: string | null
+          tenant_id: string
+          total_value?: number | null
+          unit_cost?: number | null
+        }
+        Update: {
+          approved_by?: string | null
+          created_at?: string | null
+          created_by?: string
+          destination?: string | null
+          id?: string
+          item_id?: string
+          metadata?: Json | null
+          movement_type?: Database["public"]["Enums"]["movement_type"]
+          notes?: string | null
+          quantity?: number
+          reference_no?: string | null
+          source?: string | null
+          tenant_id?: string
+          total_value?: number | null
+          unit_cost?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "stock_movements_approved_by_fkey"
+            columns: ["approved_by"]
+            isOneToOne: false
+            referencedRelation: "staff"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "stock_movements_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "staff"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "stock_movements_item_id_fkey"
+            columns: ["item_id"]
+            isOneToOne: false
+            referencedRelation: "inventory_items"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "stock_movements_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      store_stock: {
+        Row: {
+          id: string
+          item_id: string
+          last_updated: string | null
+          location: string | null
+          quantity: number
+          tenant_id: string
+        }
+        Insert: {
+          id?: string
+          item_id: string
+          last_updated?: string | null
+          location?: string | null
+          quantity?: number
+          tenant_id: string
+        }
+        Update: {
+          id?: string
+          item_id?: string
+          last_updated?: string | null
+          location?: string | null
+          quantity?: number
+          tenant_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "store_stock_item_id_fkey"
+            columns: ["item_id"]
+            isOneToOne: false
+            referencedRelation: "inventory_items"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "store_stock_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      suppliers: {
+        Row: {
+          active: boolean | null
+          address: string | null
+          contact_person: string | null
+          created_at: string | null
+          email: string | null
+          id: string
+          metadata: Json | null
+          name: string
+          payment_terms: string | null
+          phone: string | null
+          tenant_id: string
+          updated_at: string | null
+        }
+        Insert: {
+          active?: boolean | null
+          address?: string | null
+          contact_person?: string | null
+          created_at?: string | null
+          email?: string | null
+          id?: string
+          metadata?: Json | null
+          name: string
+          payment_terms?: string | null
+          phone?: string | null
+          tenant_id: string
+          updated_at?: string | null
+        }
+        Update: {
+          active?: boolean | null
+          address?: string | null
+          contact_person?: string | null
+          created_at?: string | null
+          email?: string | null
+          id?: string
+          metadata?: Json | null
+          name?: string
+          payment_terms?: string | null
+          phone?: string | null
+          tenant_id?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "suppliers_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       tenants: {
         Row: {
           brand_color: string | null
@@ -2705,6 +3166,10 @@ export type Database = {
         Args: { p_receipt_type: string; p_tenant_id: string }
         Returns: string
       }
+      generate_request_number: {
+        Args: { p_tenant_id: string }
+        Returns: string
+      }
       get_department_staff: {
         Args: { _tenant_id: string; _user_id: string }
         Returns: {
@@ -2715,6 +3180,15 @@ export type Database = {
           role: string
           staff_id: string
           status: string
+        }[]
+      }
+      get_low_stock_items: {
+        Args: { p_tenant_id: string }
+        Returns: {
+          current_qty: number
+          item_id: string
+          item_name: string
+          reorder_level: number
         }[]
       }
       get_tenant_by_domain: { Args: { _domain: string }; Returns: string }
@@ -2769,6 +3243,31 @@ export type Database = {
         | "spa"
         | "concierge"
         | "admin"
+      item_category:
+        | "food"
+        | "beverage"
+        | "cleaning"
+        | "linen"
+        | "amenities"
+        | "maintenance"
+        | "office"
+        | "kitchen_equipment"
+        | "other"
+      movement_type:
+        | "purchase"
+        | "issue"
+        | "return"
+        | "transfer"
+        | "adjustment"
+        | "wastage"
+        | "consumption"
+        | "expired"
+      request_status:
+        | "pending"
+        | "approved"
+        | "issued"
+        | "rejected"
+        | "cancelled"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -2924,6 +3423,34 @@ export const Constants = {
         "spa",
         "concierge",
         "admin",
+      ],
+      item_category: [
+        "food",
+        "beverage",
+        "cleaning",
+        "linen",
+        "amenities",
+        "maintenance",
+        "office",
+        "kitchen_equipment",
+        "other",
+      ],
+      movement_type: [
+        "purchase",
+        "issue",
+        "return",
+        "transfer",
+        "adjustment",
+        "wastage",
+        "consumption",
+        "expired",
+      ],
+      request_status: [
+        "pending",
+        "approved",
+        "issued",
+        "rejected",
+        "cancelled",
       ],
     },
   },
