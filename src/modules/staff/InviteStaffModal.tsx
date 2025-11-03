@@ -17,24 +17,12 @@ import { generateEmployeeId, validatePhoneNumber, formatPhoneNumber } from '@/li
 import { useStaffManagement } from '@/hooks/useStaffManagement';
 import { useAuth } from '@/contexts/AuthContext';
 import { useRole } from '@/hooks/useRole';
+import { DEPARTMENTS } from '@/lib/departments';
 
 interface InviteStaffModalProps {
   open: boolean;
   onClose: () => void;
 }
-
-const DEPARTMENTS = [
-  { value: 'front_office', label: 'Front Office' },
-  { value: 'housekeeping', label: 'Housekeeping' },
-  { value: 'food_beverage', label: 'Food & Beverage' },
-  { value: 'kitchen', label: 'Kitchen' },
-  { value: 'inventory', label: 'Inventory' },
-  { value: 'maintenance', label: 'Maintenance' },
-  { value: 'security', label: 'Security' },
-  { value: 'accounts', label: 'Accounts' },
-  { value: 'hr', label: 'HR' },
-  { value: 'management', label: 'Management' },
-];
 
 const ROLES = [
   { value: 'manager', label: 'Manager' },
@@ -98,21 +86,23 @@ export function InviteStaffModal({ open, onClose }: InviteStaffModalProps) {
       let sequence = 1;
       
       // Find next sequence for department and year
-      const deptPrefix = {
+      const deptPrefix: Record<string, string> = {
         front_office: 'FRD',
         housekeeping: 'HSK',
         food_beverage: 'FNB',
         kitchen: 'KIT',
         bar: 'BAR',
-        inventory: 'INV',
         maintenance: 'MNT',
         security: 'SEC',
-        accounts: 'ACC',
-        hr: 'HRD',
+        finance: 'FIN',
         management: 'MGT',
-      }[formData.department] || 'STF';
+        spa: 'SPA',
+        concierge: 'CON',
+        admin: 'ADM',
+      };
+      const prefix = deptPrefix[formData.department] || 'STF';
       
-      const pattern = `${deptPrefix}-${year}`;
+      const pattern = `${prefix}-${year}`;
       const matchingIds = existingIds.filter(id => id.startsWith(pattern));
       
       if (matchingIds.length > 0) {

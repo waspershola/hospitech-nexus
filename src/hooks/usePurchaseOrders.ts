@@ -23,9 +23,28 @@ export interface PurchaseOrder {
 }
 
 export function usePurchaseOrders() {
-  const { tenantId } = useAuth();
+  const { tenantId, user } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
+
+  // Fetch current user's staff ID
+  const { data: staffData } = useQuery({
+    queryKey: ['current-staff', tenantId, user?.id],
+    queryFn: async () => {
+      if (!user?.id || !tenantId) return null;
+      
+      const { data, error } = await supabase
+        .from('staff')
+        .select('id')
+        .eq('user_id', user.id)
+        .eq('tenant_id', tenantId)
+        .single();
+
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!user?.id && !!tenantId,
+  });
 
   const { data: orders, isLoading } = useQuery({
     queryKey: ['purchase-orders', tenantId],
@@ -49,13 +68,17 @@ export function usePurchaseOrders() {
   });
 
   const createOrder = useMutation({
-    mutationFn: async (orderData: Omit<PurchaseOrder, 'id' | 'tenant_id' | 'created_at' | 'updated_at' | 'created_by'> & { created_by?: string }) => {
+    mutationFn: async (orderData: Omit<PurchaseOrder, 'id' | 'tenant_id' | 'created_at' | 'updated_at' | 'created_by'>) => {
+      if (!staffData?.id) {
+        throw new Error('Staff record not found. Please contact your administrator.');
+      }
+
       const { data, error } = await supabase
         .from('purchase_orders')
         .insert([{
           ...orderData,
           tenant_id: tenantId,
-          created_by: orderData.created_by || (await supabase.auth.getUser()).data.user?.id,
+          created_by: staffData.id,
         }])
         .select()
         .single();
