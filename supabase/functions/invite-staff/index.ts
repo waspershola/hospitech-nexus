@@ -19,6 +19,27 @@ interface InviteStaffRequest {
   generate_password?: boolean;
 }
 
+// Map staff department roles to app roles
+function mapStaffRoleToAppRole(staffRole: string, department: string): string {
+  // Manager and owner roles map directly
+  if (staffRole === 'manager' || staffRole === 'owner') {
+    return staffRole;
+  }
+  
+  // Map department-specific roles to app roles based on department
+  const departmentRoleMap: Record<string, string> = {
+    'front_office': 'frontdesk',
+    'housekeeping': 'housekeeping',
+    'finance': 'finance',
+    'maintenance': 'maintenance',
+    'food_beverage': 'restaurant',
+    'bar': 'bar',
+    'management': 'manager',
+  };
+  
+  return departmentRoleMap[department] || 'frontdesk';
+}
+
 // Generate temporary password
 function generateTempPassword(length = 10): string {
   const charset = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*';
@@ -115,13 +136,14 @@ serve(async (req: Request): Promise<Response> => {
         );
       }
 
-      // Create user role
+      // Create user role (map staff role to app role)
+      const appRole = mapStaffRoleToAppRole(inviteData.role, inviteData.department);
       const { error: roleError } = await supabase
         .from('user_roles')
         .insert({
           user_id: authUser.user.id,
           tenant_id: userRole.tenant_id,
-          role: inviteData.role,
+          role: appRole,
         });
 
       if (roleError) {
