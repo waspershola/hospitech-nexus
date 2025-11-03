@@ -52,15 +52,22 @@ export function InviteStaffModal({ open, onClose }: InviteStaffModalProps) {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    await inviteStaff.mutateAsync(formData);
-    setFormData({
-      full_name: '',
-      email: '',
-      department: '',
-      role: '',
-      branch: '',
-    });
-    onClose();
+    try {
+      await inviteStaff.mutateAsync(formData);
+      // Only reset form and close modal on success
+      setFormData({
+        full_name: '',
+        email: '',
+        department: '',
+        role: '',
+        branch: '',
+      });
+      onClose();
+    } catch (error) {
+      // Error is already handled by mutation's onError
+      // Just prevent form reset and keep modal open
+      console.error('[InviteStaffModal] Invitation failed:', error);
+    }
   };
 
   return (
