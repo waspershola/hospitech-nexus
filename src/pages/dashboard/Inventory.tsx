@@ -15,6 +15,8 @@ import { StockMovementModal } from '@/modules/inventory/StockMovementModal';
 import { DepartmentRequestModal } from '@/modules/inventory/DepartmentRequestModal';
 import { DepartmentRequestsTab } from '@/modules/inventory/DepartmentRequestsTab';
 import { SuppliersTab } from '@/modules/inventory/SuppliersTab';
+import { StockMovementsTab } from '@/modules/inventory/StockMovementsTab';
+import { PurchaseOrdersTab } from '@/modules/inventory/PurchaseOrdersTab';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { useInventoryItems } from '@/hooks/useInventoryItems';
 
@@ -197,6 +199,7 @@ export default function Inventory() {
           <TabsTrigger value="items">Items</TabsTrigger>
           <TabsTrigger value="movements">Movements</TabsTrigger>
           <TabsTrigger value="requests">Requests</TabsTrigger>
+          <TabsTrigger value="purchase-orders">Purchase Orders</TabsTrigger>
           <TabsTrigger value="suppliers">Suppliers</TabsTrigger>
           <TabsTrigger value="low-stock">Low Stock</TabsTrigger>
         </TabsList>
@@ -310,21 +313,15 @@ export default function Inventory() {
         </TabsContent>
 
         <TabsContent value="movements">
-          <Card>
-            <CardHeader>
-              <CardTitle>Stock Movements</CardTitle>
-              <CardDescription>Complete movement history</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <p className="text-muted-foreground text-center py-8">
-                Movement history coming soon...
-              </p>
-            </CardContent>
-          </Card>
+          <StockMovementsTab />
         </TabsContent>
 
         <TabsContent value="requests">
           <DepartmentRequestsTab />
+        </TabsContent>
+
+        <TabsContent value="purchase-orders">
+          <PurchaseOrdersTab />
         </TabsContent>
 
         <TabsContent value="suppliers">
