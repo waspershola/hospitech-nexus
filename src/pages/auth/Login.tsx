@@ -26,10 +26,16 @@ export default function Login() {
 
       if (error) throw error;
 
-      // Check if user needs to reset password
+      // Check if user needs to reset password and get role info
       const { data: staffData } = await supabase
         .from('staff')
         .select('password_reset_required, department, role')
+        .eq('user_id', authData.user.id)
+        .single();
+
+      const { data: userRoleData } = await supabase
+        .from('user_roles')
+        .select('role')
         .eq('user_id', authData.user.id)
         .single();
 
@@ -38,24 +44,42 @@ export default function Login() {
         return;
       }
 
-      // Department-based redirect
-      const departmentRedirects: Record<string, string> = {
-        'front_office': '/dashboard/front-desk',
-        'housekeeping': '/dashboard/housekeeping-dashboard',
-        'kitchen': '/dashboard/kitchen-dashboard',
-        'restaurant': '/dashboard/kitchen-dashboard',
-        'bar': '/dashboard/bar-dashboard',
-        'maintenance': '/dashboard/maintenance-dashboard',
-        'accounts': '/dashboard/finance-dashboard',
-        'finance': '/dashboard/finance-dashboard',
+      // Role and department-based redirect using the new helper
+      const getDefaultDashboard = (role: string, department?: string): string => {
+        const dashboardMap: Record<string, string> = {
+          owner: '/dashboard',
+          manager: '/dashboard',
+          frontdesk: '/dashboard/front-desk',
+          housekeeping: '/dashboard/housekeeping-dashboard',
+          finance: '/dashboard/finance-dashboard',
+          accountant: '/dashboard/finance-center',
+          restaurant: '/dashboard/kitchen-dashboard',
+          bar: '/dashboard/bar-dashboard',
+          maintenance: '/dashboard/maintenance-dashboard',
+        };
+
+        if (role === 'supervisor' && department) {
+          const supervisorDashboards: Record<string, string> = {
+            front_office: '/dashboard/front-desk',
+            housekeeping: '/dashboard/housekeeping-dashboard',
+            food_beverage: '/dashboard/kitchen-dashboard',
+            kitchen: '/dashboard/kitchen-dashboard',
+            bar: '/dashboard/bar-dashboard',
+            maintenance: '/dashboard/maintenance-dashboard',
+            accounts: '/dashboard/finance-dashboard',
+          };
+          return supervisorDashboards[department] || '/dashboard';
+        }
+
+        return dashboardMap[role] || '/dashboard';
       };
 
-      const redirectPath = staffData?.department 
-        ? departmentRedirects[staffData.department] || '/dashboard'
+      const redirectPath = userRoleData?.role 
+        ? getDefaultDashboard(userRoleData.role, staffData?.department || undefined)
         : '/dashboard';
 
       toast({
-        title: `Welcome back${staffData?.department ? ', ' + staffData.department.replace('_', ' ') : ''}!`,
+        title: `Welcome back!`,
         description: 'Successfully signed in.',
       });
       
