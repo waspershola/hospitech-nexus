@@ -16,6 +16,19 @@ interface InviteStaffRequest {
   role: string;
   branch?: string;
   supervisor_id?: string;
+  generate_password?: boolean;
+}
+
+// Generate temporary password
+function generateTempPassword(length = 10): string {
+  const charset = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*';
+  let password = '';
+  const randomValues = new Uint8Array(length);
+  crypto.getRandomValues(randomValues);
+  for (let i = 0; i < length; i++) {
+    password += charset[randomValues[i] % charset.length];
+  }
+  return password;
 }
 
 serve(async (req: Request): Promise<Response> => {
@@ -80,6 +93,98 @@ serve(async (req: Request): Promise<Response> => {
       );
     }
 
+    // If manual password generation is requested, create account directly
+    if (inviteData.generate_password) {
+      const tempPassword = generateTempPassword();
+
+      // Create auth user with temp password
+      const { data: authUser, error: authError } = await supabase.auth.admin.createUser({
+        email: inviteData.email,
+        password: tempPassword,
+        email_confirm: true,
+        user_metadata: {
+          full_name: inviteData.full_name,
+        },
+      });
+
+      if (authError || !authUser.user) {
+        console.error('Error creating auth user:', authError);
+        return new Response(
+          JSON.stringify({ error: 'Failed to create user account' }),
+          { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      // Create user role
+      const { error: roleError } = await supabase
+        .from('user_roles')
+        .insert({
+          user_id: authUser.user.id,
+          tenant_id: userRole.tenant_id,
+          role: inviteData.role,
+        });
+
+      if (roleError) {
+        console.error('Error creating user role:', roleError);
+        // Clean up auth user
+        await supabase.auth.admin.deleteUser(authUser.user.id);
+        return new Response(
+          JSON.stringify({ error: 'Failed to assign user role' }),
+          { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      // Create staff record
+      const { error: staffError } = await supabase
+        .from('staff')
+        .insert({
+          tenant_id: userRole.tenant_id,
+          user_id: authUser.user.id,
+          full_name: inviteData.full_name,
+          email: inviteData.email,
+          department: inviteData.department,
+          role: inviteData.role,
+          status: 'active',
+          password_reset_required: true,
+        });
+
+      if (staffError) {
+        console.error('Error creating staff record:', staffError);
+        // Clean up
+        await supabase.auth.admin.deleteUser(authUser.user.id);
+        return new Response(
+          JSON.stringify({ error: 'Failed to create staff record' }),
+          { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      // Log activity
+      await supabase
+        .from('staff_activity')
+        .insert({
+          tenant_id: userRole.tenant_id,
+          staff_id: user.id,
+          action: 'staff_created',
+          description: `Created account for ${inviteData.full_name} (${inviteData.email}) with manual password`,
+          metadata: { user_id: authUser.user.id },
+        });
+
+      console.log(`Staff account created with manual password: ${authUser.user.id}`);
+
+      return new Response(
+        JSON.stringify({
+          success: true,
+          message: 'Staff account created successfully',
+          password: tempPassword,
+        }),
+        {
+          status: 200,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        }
+      );
+    }
+
+    // Otherwise, proceed with email invitation flow
     // Check for existing pending invitation
     const { data: existingInvitation } = await supabase
       .from('staff_invitations')

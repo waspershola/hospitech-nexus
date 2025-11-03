@@ -5,8 +5,9 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useStaffInvitations } from '@/hooks/useStaffInvitations';
-import { Mail, Loader2, AlertCircle } from 'lucide-react';
+import { Mail, Loader2, AlertCircle, Copy, Check, Key } from 'lucide-react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Switch } from '@/components/ui/switch';
 
 interface InviteStaffModalProps {
   open: boolean;
@@ -50,6 +51,9 @@ export function InviteStaffModal({ open, onClose }: InviteStaffModalProps) {
     role: '',
     branch: '',
   });
+  const [manualPassword, setManualPassword] = useState(false);
+  const [generatedPassword, setGeneratedPassword] = useState<string | null>(null);
+  const [copied, setCopied] = useState(false);
 
   // Check if email already has pending invitation
   const pendingInvitations = invitations?.filter(
@@ -60,38 +64,76 @@ export function InviteStaffModal({ open, onClose }: InviteStaffModalProps) {
     inv => inv.email.toLowerCase() === formData.email.toLowerCase()
   );
 
+  const handleCopy = async () => {
+    if (generatedPassword) {
+      await navigator.clipboard.writeText(generatedPassword);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      await inviteStaff.mutateAsync(formData);
-      // Only reset form and close modal on success
-      setFormData({
-        full_name: '',
-        email: '',
-        department: '',
-        role: '',
-        branch: '',
+      const result = await inviteStaff.mutateAsync({
+        ...formData,
+        generate_password: manualPassword,
       });
-      onClose();
+      
+      if (result?.password) {
+        // Password was generated, show it to the user
+        setGeneratedPassword(result.password);
+      } else {
+        // Normal email invitation sent, close modal
+        setFormData({
+          full_name: '',
+          email: '',
+          department: '',
+          role: '',
+          branch: '',
+        });
+        setManualPassword(false);
+        setGeneratedPassword(null);
+        onClose();
+      }
     } catch (error) {
-      // Error is already handled by mutation's onError
-      // Just prevent form reset and keep modal open
       console.error('[InviteStaffModal] Invitation failed:', error);
     }
   };
 
+  const handleClose = () => {
+    setFormData({
+      full_name: '',
+      email: '',
+      department: '',
+      role: '',
+      branch: '',
+    });
+    setManualPassword(false);
+    setGeneratedPassword(null);
+    setCopied(false);
+    onClose();
+  };
+
   return (
-    <Dialog open={open} onOpenChange={onClose}>
+    <Dialog open={open} onOpenChange={handleClose}>
       <DialogContent className="max-w-2xl">
         <DialogHeader>
           <div className="flex items-center gap-2">
-            <Mail className="h-5 w-5 text-primary" />
-            <DialogTitle>Invite Staff Member</DialogTitle>
+            {generatedPassword ? (
+              <Key className="h-5 w-5 text-amber-600" />
+            ) : (
+              <Mail className="h-5 w-5 text-primary" />
+            )}
+            <DialogTitle>
+              {generatedPassword ? 'Staff Account Created' : 'Invite Staff Member'}
+            </DialogTitle>
           </div>
         </DialogHeader>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="grid grid-cols-2 gap-4">
+        {!generatedPassword ? (
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label htmlFor="full_name">Full Name *</Label>
               <Input
@@ -162,46 +204,131 @@ export function InviteStaffModal({ open, onClose }: InviteStaffModalProps) {
             </div>
           </div>
 
-          {existingInvitation && (
-            <Alert variant="destructive">
-              <AlertCircle className="h-4 w-4" />
-              <AlertDescription>
-                This email already has a pending invitation sent on{' '}
-                {new Date(existingInvitation.created_at).toLocaleDateString()}.
-                Please cancel the existing invitation first or use the "Resend" button.
-              </AlertDescription>
-            </Alert>
-          )}
+            {existingInvitation && (
+              <Alert variant="destructive">
+                <AlertCircle className="h-4 w-4" />
+                <AlertDescription>
+                  This email already has a pending invitation sent on{' '}
+                  {new Date(existingInvitation.created_at).toLocaleDateString()}.
+                  Please cancel the existing invitation first or use the "Resend" button.
+                </AlertDescription>
+              </Alert>
+            )}
 
-          <div className="bg-muted rounded-lg p-4">
-            <p className="text-sm text-muted-foreground">
-              An invitation email will be sent to <strong>{formData.email || 'the email address'}</strong> with 
-              instructions to setup their account and join the team.
-            </p>
-          </div>
+            <div className="flex items-center justify-between p-4 border rounded-lg">
+              <div className="space-y-1">
+                <Label htmlFor="manual-password" className="text-base font-medium">
+                  Generate Password Manually
+                </Label>
+                <p className="text-sm text-muted-foreground">
+                  Create account with a temporary password instead of sending an email invitation
+                </p>
+              </div>
+              <Switch
+                id="manual-password"
+                checked={manualPassword}
+                onCheckedChange={setManualPassword}
+              />
+            </div>
 
-          <div className="flex justify-end gap-3 pt-4">
-            <Button type="button" variant="outline" onClick={onClose}>
-              Cancel
-            </Button>
-            <Button
-              type="submit"
-              disabled={inviteStaff.isPending || !!existingInvitation}
-            >
-              {inviteStaff.isPending ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Sending Invitation...
-                </>
-              ) : (
-                <>
-                  <Mail className="mr-2 h-4 w-4" />
-                  Send Invitation
-                </>
-              )}
+            <div className="bg-muted rounded-lg p-4">
+              <p className="text-sm text-muted-foreground">
+                {manualPassword ? (
+                  <>
+                    <strong>⚠️ Manual Setup:</strong> A staff account will be created with a temporary password that you'll need to share manually with <strong>{formData.email || 'the staff member'}</strong>.
+                  </>
+                ) : (
+                  <>
+                    An invitation email will be sent to <strong>{formData.email || 'the email address'}</strong> with 
+                    instructions to setup their account and join the team.
+                  </>
+                )}
+              </p>
+            </div>
+
+            <div className="flex justify-end gap-3 pt-4">
+              <Button type="button" variant="outline" onClick={handleClose}>
+                Cancel
+              </Button>
+              <Button
+                type="submit"
+                disabled={inviteStaff.isPending || !!existingInvitation}
+              >
+                {inviteStaff.isPending ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    {manualPassword ? 'Creating Account...' : 'Sending Invitation...'}
+                  </>
+                ) : (
+                  <>
+                    {manualPassword ? (
+                      <>
+                        <Key className="mr-2 h-4 w-4" />
+                        Create Account
+                      </>
+                    ) : (
+                      <>
+                        <Mail className="mr-2 h-4 w-4" />
+                        Send Invitation
+                      </>
+                    )}
+                  </>
+                )}
+              </Button>
+            </div>
+          </form>
+        ) : (
+          <div className="space-y-4">
+            <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+              <p className="text-sm text-green-800 font-medium">
+                ✓ Account created successfully for {formData.full_name}
+              </p>
+            </div>
+
+            <div className="bg-slate-50 border border-slate-200 rounded-lg p-4">
+              <p className="text-sm text-slate-700 font-medium mb-2">Temporary Password:</p>
+              <div className="flex items-center gap-2">
+                <code className="flex-1 bg-white border border-slate-300 rounded px-3 py-2 text-lg font-mono text-amber-600 font-bold">
+                  {generatedPassword}
+                </code>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={handleCopy}
+                  className="shrink-0"
+                >
+                  {copied ? (
+                    <>
+                      <Check className="h-4 w-4 mr-1 text-green-600" />
+                      Copied
+                    </>
+                  ) : (
+                    <>
+                      <Copy className="h-4 w-4 mr-1" />
+                      Copy
+                    </>
+                  )}
+                </Button>
+              </div>
+            </div>
+
+            <div className="bg-amber-50 border border-amber-200 rounded-lg p-3">
+              <p className="text-sm text-amber-800">
+                <strong>⚠️ Important:</strong> Please share this password with {formData.full_name} at {formData.email}. They must change it on their first login.
+              </p>
+            </div>
+
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+              <p className="text-sm text-blue-800">
+                <strong>🔒 Security:</strong> The staff member will be required to change this password on their next login.
+              </p>
+            </div>
+
+            <Button onClick={handleClose} className="w-full">
+              Close
             </Button>
           </div>
-        </form>
+        )}
       </DialogContent>
     </Dialog>
   );

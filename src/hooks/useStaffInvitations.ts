@@ -24,6 +24,7 @@ export interface InviteStaffData {
   role: string;
   branch?: string;
   supervisor_id?: string;
+  generate_password?: boolean;
 }
 
 export function useStaffInvitations() {
@@ -73,9 +74,12 @@ export function useStaffInvitations() {
       
       return data;
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['staff-invitations', tenantId] });
-      toast.success('Invitation sent successfully');
+      queryClient.invalidateQueries({ queryKey: ['staff'] }); // Refresh staff list
+      if (!data?.password) {
+        toast.success('Invitation sent successfully');
+      }
     },
     onError: (error: any) => {
       console.error('[inviteStaff] Error:', error);
