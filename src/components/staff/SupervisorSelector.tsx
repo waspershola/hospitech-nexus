@@ -28,6 +28,12 @@ export function SupervisorSelector({
   useEffect(() => {
     if (!staff) return;
 
+    // Define leadership roles per department
+    const leadershipRoles = [
+      'manager', 'supervisor', 'head', 'director', 'assistant_manager', 
+      'chief', 'executive_chef', 'sous_chef', 'bell_captain'
+    ];
+
     // Filter supervisors
     const supervisors = staff.filter((s) => {
       // Exclude current staff being edited
@@ -36,12 +42,24 @@ export function SupervisorSelector({
       // Only active staff
       if (s.status !== 'active') return false;
 
-      // Filter by department if specified
-      if (department && s.department !== department) return false;
+      // Filter by department (same dept OR management dept)
+      if (department) {
+        const sameDept = s.department === department;
+        const isManagement = s.department === 'management';
+        if (!sameDept && !isManagement) return false;
+      }
 
-      // Only show supervisors and managers
-      const accessLevel = s.metadata?.access_level;
-      return accessLevel === 'supervisor' || accessLevel === 'manager';
+      // Must have leadership role
+      const hasLeadershipRole = leadershipRoles.some(lr => 
+        s.role?.toLowerCase().includes(lr)
+      );
+      
+      // OR access_level is supervisor/manager
+      const hasLeadershipLevel = ['supervisor', 'manager'].includes(
+        s.metadata?.access_level
+      );
+
+      return hasLeadershipRole || hasLeadershipLevel;
     });
 
     setFilteredSupervisors(supervisors);

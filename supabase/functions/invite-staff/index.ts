@@ -28,7 +28,7 @@ function validateDepartment(department: string): boolean {
   const validDepartments = [
     'front_office', 'housekeeping', 'maintenance', 'food_beverage',
     'kitchen', 'bar', 'finance', 'management', 'security', 'spa',
-    'concierge', 'admin'
+    'concierge', 'admin', 'inventory', 'hr'
   ];
   return validDepartments.includes(department);
 }
@@ -144,10 +144,43 @@ function mapStaffRoleToAppRole(staffRole: string, department: string): string {
     
     // HR Department
     'hr': {
-      'admin_officer': 'manager',
+      'hr_officer': 'hr',
+      'hr_admin': 'hr',
+      'hr_assistant': 'hr',
+      'hr_coordinator': 'hr',
       'hr_supervisor': 'supervisor',
       'hr_manager': 'manager',
-      '_default': 'manager'
+      '_default': 'hr'
+    },
+    
+    // Spa Department
+    'spa': {
+      'therapist': 'spa',
+      'spa_staff': 'spa',
+      'spa_attendant': 'spa',
+      'spa_supervisor': 'supervisor',
+      'spa_manager': 'manager',
+      '_default': 'spa'
+    },
+    
+    // Concierge Department
+    'concierge': {
+      'concierge_agent': 'concierge',
+      'concierge_staff': 'concierge',
+      'bell_captain': 'supervisor',
+      'concierge_supervisor': 'supervisor',
+      'concierge_manager': 'manager',
+      '_default': 'concierge'
+    },
+    
+    // Admin Department
+    'admin': {
+      'admin_assistant': 'admin',
+      'admin_officer': 'admin',
+      'admin_coordinator': 'admin',
+      'admin_supervisor': 'supervisor',
+      'admin_manager': 'manager',
+      '_default': 'admin'
     },
     
     // Security Department
@@ -172,9 +205,26 @@ function mapStaffRoleToAppRole(staffRole: string, department: string): string {
     return appRole;
   }
   
-  // 3. Fallback to frontdesk for any unmapped combination
-  console.warn(`[Role Mapping] No mapping found for "${staffRole}" in "${department}", defaulting to frontdesk`);
-  return 'frontdesk';
+  // 3. Fallback based on department category
+  console.warn(`[Role Mapping] No mapping found for "${staffRole}" in "${department}"`);
+  
+  // Service departments → limited_ops
+  if (['spa', 'concierge'].includes(department)) {
+    return 'limited_ops';
+  }
+  
+  // Admin/HR → admin role
+  if (['admin', 'hr'].includes(department)) {
+    return 'admin';
+  }
+  
+  // Inventory-related → store_user
+  if (department === 'inventory') {
+    return 'store_user';
+  }
+  
+  // Last resort fallback
+  return 'guest_portal_access';
 }
 
 // Generate temporary password
@@ -239,7 +289,7 @@ serve(async (req: Request): Promise<Response> => {
     // Validate department
     if (!validateDepartment(inviteData.department)) {
       return new Response(
-        JSON.stringify({ error: `Invalid department. Must be one of: front_office, housekeeping, maintenance, food_beverage, kitchen, bar, finance, management, security, spa, concierge, admin` }),
+        JSON.stringify({ error: `Invalid department. Must be one of: front_office, housekeeping, maintenance, food_beverage, kitchen, bar, finance, management, security, spa, concierge, admin, inventory, hr` }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }

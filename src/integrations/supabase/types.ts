@@ -3230,6 +3230,13 @@ export type Database = {
         | "supervisor"
         | "store_manager"
         | "procurement"
+        | "spa"
+        | "concierge"
+        | "admin"
+        | "hr"
+        | "limited_ops"
+        | "guest_portal_access"
+        | "store_user"
       department_type:
         | "front_office"
         | "housekeeping"
@@ -3411,6 +3418,13 @@ export const Constants = {
         "supervisor",
         "store_manager",
         "procurement",
+        "spa",
+        "concierge",
+        "admin",
+        "hr",
+        "limited_ops",
+        "guest_portal_access",
+        "store_user",
       ],
       department_type: [
         "front_office",

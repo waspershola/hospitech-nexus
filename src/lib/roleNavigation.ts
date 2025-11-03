@@ -143,6 +143,49 @@ export function getNavigationForRole(role: string, department?: string): Navigat
       { path: '/dashboard/inventory', label: 'Inventory', icon: 'Package' },
       { path: '/dashboard/inventory/reports', label: 'Reports', icon: 'BarChart3' },
     ],
+
+    // Spa staff
+    spa: [
+      { path: '/dashboard', label: 'Overview', icon: 'Home' },
+      { path: '/dashboard/bookings', label: 'Appointments', icon: 'CalendarDays' },
+    ],
+
+    // Concierge staff
+    concierge: [
+      { path: '/dashboard', label: 'Overview', icon: 'Home' },
+      { path: '/dashboard/guests', label: 'Guests', icon: 'Users' },
+    ],
+
+    // Admin staff
+    admin: [
+      { path: '/dashboard', label: 'Overview', icon: 'Home' },
+      { path: '/dashboard/staff', label: 'Staff', icon: 'UserCog' },
+      { path: '/dashboard/reports', label: 'Reports', icon: 'FileText' },
+    ],
+
+    // HR staff
+    hr: [
+      { path: '/dashboard', label: 'Overview', icon: 'Home' },
+      { path: '/dashboard/staff', label: 'Staff', icon: 'UserCog' },
+      { path: '/dashboard/staff-activity', label: 'Staff Activity', icon: 'Activity' },
+    ],
+
+    // Limited ops (fallback for unmapped)
+    limited_ops: [
+      { path: '/dashboard', label: 'Overview', icon: 'Home' },
+    ],
+
+    // Guest portal access (very restricted)
+    guest_portal_access: [
+      { path: '/dashboard', label: 'Overview', icon: 'Home' },
+    ],
+
+    // Store user (inventory staff without manager permissions)
+    store_user: [
+      { path: '/dashboard', label: 'Overview', icon: 'Home' },
+      { path: '/dashboard/inventory', label: 'Inventory', icon: 'Package' },
+      { path: '/dashboard/inventory/requests', label: 'My Requests', icon: 'ClipboardList' },
+    ],
   };
 
   // For supervisors, add department-specific navigation + staff management
@@ -211,6 +254,13 @@ export function getDefaultDashboard(role: string, department?: string): string {
     maintenance: '/dashboard/maintenance-dashboard',
     store_manager: '/dashboard/inventory',
     procurement: '/dashboard/inventory/purchase-orders',
+    spa: '/dashboard',
+    concierge: '/dashboard',
+    admin: '/dashboard/staff',
+    hr: '/dashboard/staff',
+    limited_ops: '/dashboard',
+    guest_portal_access: '/dashboard',
+    store_user: '/dashboard/inventory',
   };
 
   // Supervisors go to their department dashboard

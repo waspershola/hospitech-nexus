@@ -17,6 +17,13 @@ export const ROLES = {
   GUEST: 'guest' as const,
   STORE_MANAGER: 'store_manager' as const,
   PROCUREMENT: 'procurement' as const,
+  SPA: 'spa' as const,
+  CONCIERGE: 'concierge' as const,
+  ADMIN: 'admin' as const,
+  HR: 'hr' as const,
+  LIMITED_OPS: 'limited_ops' as const,
+  GUEST_PORTAL_ACCESS: 'guest_portal_access' as const,
+  STORE_USER: 'store_user' as const,
 };
 
 export const PERMISSIONS = {
@@ -64,7 +71,7 @@ export const PERMISSIONS = {
   MANAGE_ROLES: [ROLES.OWNER],
   
   // Inventory Management
-  VIEW_INVENTORY: [ROLES.OWNER, ROLES.MANAGER, ROLES.STORE_MANAGER, ROLES.PROCUREMENT],
+  VIEW_INVENTORY: [ROLES.OWNER, ROLES.MANAGER, ROLES.STORE_MANAGER, ROLES.STORE_USER, ROLES.PROCUREMENT],
   MANAGE_INVENTORY_ITEMS: [ROLES.OWNER, ROLES.MANAGER, ROLES.STORE_MANAGER],
   RECEIVE_STOCK: [ROLES.OWNER, ROLES.MANAGER, ROLES.STORE_MANAGER],
   ISSUE_TO_DEPARTMENT: [ROLES.OWNER, ROLES.MANAGER, ROLES.STORE_MANAGER],
@@ -74,6 +81,23 @@ export const PERMISSIONS = {
   VIEW_STOCK_REPORTS: [ROLES.OWNER, ROLES.MANAGER, ROLES.STORE_MANAGER, ROLES.ACCOUNTANT],
   MANAGE_SUPPLIERS: [ROLES.OWNER, ROLES.MANAGER, ROLES.PROCUREMENT],
   MANAGE_PURCHASE_ORDERS: [ROLES.OWNER, ROLES.MANAGER, ROLES.PROCUREMENT, ROLES.STORE_MANAGER],
+  
+  // Spa Management
+  VIEW_SPA: [ROLES.OWNER, ROLES.MANAGER, ROLES.SPA],
+  MANAGE_SPA_BOOKINGS: [ROLES.OWNER, ROLES.MANAGER, ROLES.SPA],
+  
+  // Concierge Services
+  VIEW_CONCIERGE: [ROLES.OWNER, ROLES.MANAGER, ROLES.CONCIERGE],
+  MANAGE_GUEST_REQUESTS: [ROLES.OWNER, ROLES.MANAGER, ROLES.CONCIERGE, ROLES.FRONTDESK],
+  
+  // HR Management
+  VIEW_HR: [ROLES.OWNER, ROLES.MANAGER, ROLES.HR],
+  MANAGE_HR: [ROLES.OWNER, ROLES.HR],
+  MANAGE_PAYROLL: [ROLES.OWNER, ROLES.HR],
+  
+  // Admin Operations
+  VIEW_ADMIN: [ROLES.OWNER, ROLES.MANAGER, ROLES.ADMIN],
+  MANAGE_DOCUMENTS: [ROLES.OWNER, ROLES.MANAGER, ROLES.ADMIN],
 };
 
 /**
@@ -107,33 +131,3 @@ export function getRolePermissions(role: string): string[] {
   return rolePermissions;
 }
 
-// Department enum - must match database department_type enum
-export const DEPARTMENTS = [
-  'front_office',
-  'housekeeping',
-  'maintenance',
-  'food_beverage',
-  'kitchen',
-  'bar',
-  'finance',
-  'management',
-  'security',
-  'spa',
-  'concierge',
-  'admin',
-] as const;
-
-export const DEPARTMENT_LABELS: Record<string, string> = {
-  front_office: 'Front Office',
-  housekeeping: 'Housekeeping',
-  maintenance: 'Maintenance',
-  food_beverage: 'Food & Beverage',
-  kitchen: 'Kitchen',
-  bar: 'Bar',
-  finance: 'Finance',
-  management: 'Management',
-  security: 'Security',
-  spa: 'Spa & Wellness',
-  concierge: 'Concierge',
-  admin: 'Administration',
-};

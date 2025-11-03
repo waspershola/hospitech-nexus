@@ -18,26 +18,12 @@ import { useStaffManagement } from '@/hooks/useStaffManagement';
 import { useAuth } from '@/contexts/AuthContext';
 import { useRole } from '@/hooks/useRole';
 import { DEPARTMENTS } from '@/lib/departments';
+import { getRolesForDepartment } from '@/lib/departmentRoles';
 
 interface InviteStaffModalProps {
   open: boolean;
   onClose: () => void;
 }
-
-const ROLES = [
-  { value: 'manager', label: 'Manager' },
-  { value: 'supervisor', label: 'Supervisor' },
-  { value: 'receptionist', label: 'Receptionist' },
-  { value: 'guest_service_agent', label: 'Guest Service Agent' },
-  { value: 'room_attendant', label: 'Room Attendant' },
-  { value: 'waiter', label: 'Waiter' },
-  { value: 'bartender', label: 'Bartender' },
-  { value: 'cook', label: 'Cook' },
-  { value: 'store_clerk', label: 'Store Clerk' },
-  { value: 'technician', label: 'Technician' },
-  { value: 'cashier', label: 'Cashier' },
-  { value: 'admin_officer', label: 'Admin Officer' },
-];
 
 export function InviteStaffModal({ open, onClose }: InviteStaffModalProps) {
   const { inviteStaff, invitations } = useStaffInvitations();
@@ -77,6 +63,22 @@ export function InviteStaffModal({ open, onClose }: InviteStaffModalProps) {
   const [generatedPassword, setGeneratedPassword] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
   const [employeeIdManual, setEmployeeIdManual] = useState(false);
+  const [availableRoles, setAvailableRoles] = useState<{ value: string; label: string }[]>([]);
+
+  // Update roles when department changes
+  useEffect(() => {
+    if (formData.department) {
+      const roles = getRolesForDepartment(formData.department);
+      setAvailableRoles(roles);
+      
+      // Reset role if currently selected role is not valid for new department
+      if (formData.role && !roles.find(r => r.value === formData.role)) {
+        setFormData(prev => ({ ...prev, role: '' }));
+      }
+    } else {
+      setAvailableRoles([]);
+    }
+  }, [formData.department]);
 
   // Auto-generate employee ID when department changes
   useEffect(() => {
@@ -99,6 +101,8 @@ export function InviteStaffModal({ open, onClose }: InviteStaffModalProps) {
         spa: 'SPA',
         concierge: 'CON',
         admin: 'ADM',
+        inventory: 'INV',
+        hr: 'HRD',
       };
       const prefix = deptPrefix[formData.department] || 'STF';
       
@@ -417,13 +421,14 @@ export function InviteStaffModal({ open, onClose }: InviteStaffModalProps) {
                     <Select
                       value={formData.role}
                       onValueChange={(value) => setFormData({ ...formData, role: value })}
+                      disabled={!formData.department}
                       required
                     >
                       <SelectTrigger id="role">
-                        <SelectValue placeholder="Select role" />
+                        <SelectValue placeholder={formData.department ? "Select role" : "Select department first"} />
                       </SelectTrigger>
                       <SelectContent>
-                        {ROLES.map((role) => (
+                        {availableRoles.map((role) => (
                           <SelectItem key={role.value} value={role.value}>
                             {role.label}
                           </SelectItem>
