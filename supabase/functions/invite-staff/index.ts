@@ -9,13 +9,15 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type",
 };
 
-interface InviteStaffRequest {
+export interface InviteStaffRequest {
   full_name: string;
   email: string;
+  phone?: string;
   department: string;
   role: string;
   branch?: string;
   supervisor_id?: string;
+  metadata?: Record<string, any>;
   generate_password?: boolean;
 }
 
@@ -273,10 +275,14 @@ serve(async (req: Request): Promise<Response> => {
           user_id: authUser.user.id,
           full_name: inviteData.full_name,
           email: inviteData.email,
+          phone: inviteData.phone,
           department: inviteData.department,
           role: inviteData.role,
+          branch: inviteData.branch,
+          supervisor_id: inviteData.supervisor_id,
           status: 'active',
           password_reset_required: true,
+          metadata: inviteData.metadata || {},
         });
 
       if (staffError) {

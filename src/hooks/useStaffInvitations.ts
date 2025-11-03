@@ -20,10 +20,12 @@ export interface StaffInvitation {
 export interface InviteStaffData {
   full_name: string;
   email: string;
+  phone?: string;
   department: string;
   role: string;
   branch?: string;
   supervisor_id?: string;
+  metadata?: Record<string, any>;
   generate_password?: boolean;
 }
 

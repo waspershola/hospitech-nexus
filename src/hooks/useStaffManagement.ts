@@ -4,6 +4,29 @@ import { useAuth } from '@/contexts/AuthContext';
 import { toast } from '@/hooks/use-toast';
 import { useLogStaffActivity } from './useStaffActivity';
 
+export interface StaffMetadata {
+  employee_id?: string;
+  job_title?: string;
+  employment_type?: string;
+  hire_date?: string;
+  shift_group?: string;
+  access_level?: string;
+  gender?: string;
+  date_of_birth?: string;
+  national_id?: string;
+  profile_photo_url?: string;
+  bank_details?: {
+    bank_name: string;
+    account_number: string;
+  };
+  compensation?: {
+    salary_type: string;
+    base_salary: number;
+    currency: string;
+  };
+  onboarding_notes?: string;
+}
+
 export interface Staff {
   id: string;
   tenant_id: string;
@@ -16,6 +39,7 @@ export interface Staff {
   supervisor_id?: string;
   branch?: string;
   status: 'active' | 'suspended' | 'inactive';
+  metadata?: StaffMetadata;
   created_at: string;
   updated_at: string;
 }
@@ -98,16 +122,21 @@ export function useStaffManagement(filters?: StaffFilters) {
   // Update staff
   const updateStaff = useMutation({
     mutationFn: async ({ id, ...updates }: Partial<Staff> & { id: string }) => {
+      // Cast metadata to Json type for Supabase
+      const updateData = updates.metadata 
+        ? { ...updates, metadata: updates.metadata as any }
+        : updates;
+        
       const { data, error } = await supabase
         .from('staff')
-        .update(updates)
+        .update(updateData)
         .eq('id', id)
         .eq('tenant_id', tenantId!)
         .select()
         .single();
 
       if (error) throw error;
-      return data;
+      return data as Staff;
     },
     onSuccess: async (data) => {
       // Log the update activity
