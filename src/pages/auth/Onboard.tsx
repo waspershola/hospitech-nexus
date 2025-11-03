@@ -23,7 +23,10 @@ export default function Onboard() {
   const acceptInvitation = useAcceptInvitation();
 
   useEffect(() => {
+    console.log('[Onboard] Component mounted with token:', token ? 'present' : 'missing');
+    
     if (!token) {
+      console.error('[Onboard] No token provided in URL');
       setError('Invalid invitation link');
       setLoading(false);
       return;
@@ -31,6 +34,8 @@ export default function Onboard() {
 
     // Fetch invitation details
     const fetchInvitation = async () => {
+      console.log('[Onboard] Fetching invitation for token:', token);
+      
       const { data, error } = await supabase
         .from('staff_invitations')
         .select('*, tenants(name)')
@@ -39,9 +44,13 @@ export default function Onboard() {
         .gt('expires_at', new Date().toISOString())
         .single();
 
+      console.log('[Onboard] Invitation fetch result:', { data, error });
+
       if (error || !data) {
+        console.error('[Onboard] Invitation not found or expired:', error);
         setError('This invitation is invalid or has expired');
       } else {
+        console.log('[Onboard] Invitation found:', data);
         setInvitation(data);
       }
       setLoading(false);
