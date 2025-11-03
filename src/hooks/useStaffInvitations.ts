@@ -97,6 +97,18 @@ export function useStaffInvitations() {
       const invitation = invitations?.find(inv => inv.id === invitationId);
       if (!invitation) throw new Error('Invitation not found');
 
+      // First, cancel the existing invitation
+      const { error: cancelError } = await supabase
+        .from('staff_invitations')
+        .update({ status: 'expired' })
+        .eq('id', invitationId);
+
+      if (cancelError) {
+        console.error('[resendInvitation] Error cancelling old invitation:', cancelError);
+        throw new Error('Failed to cancel old invitation');
+      }
+
+      // Then create a new invitation
       const { data, error } = await supabase.functions.invoke('invite-staff', {
         body: {
           full_name: invitation.full_name,
@@ -106,7 +118,12 @@ export function useStaffInvitations() {
         },
       });
 
-      if (error) throw error;
+      // Handle error response from edge function
+      if (error) {
+        const errorMessage = data?.error || error.message || 'Failed to resend invitation';
+        throw new Error(errorMessage);
+      }
+
       return data;
     },
     onSuccess: () => {
@@ -114,6 +131,7 @@ export function useStaffInvitations() {
       toast.success('Invitation resent successfully');
     },
     onError: (error: any) => {
+      console.error('[resendInvitation] Error:', error);
       toast.error(error.message || 'Failed to resend invitation');
     },
   });
