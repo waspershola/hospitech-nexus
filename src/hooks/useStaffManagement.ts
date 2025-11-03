@@ -123,8 +123,8 @@ export function useStaffManagement(filters?: StaffFilters) {
   const updateStaff = useMutation({
     mutationFn: async ({ id, ...updates }: Partial<Staff> & { id: string }) => {
       // Cast metadata to Json type for Supabase
-      const updateData = updates.metadata 
-        ? { ...updates, metadata: updates.metadata as any }
+      const updateData: any = updates.metadata 
+        ? { ...updates, metadata: JSON.parse(JSON.stringify(updates.metadata)) }
         : updates;
         
       const { data, error } = await supabase
