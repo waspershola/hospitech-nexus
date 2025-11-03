@@ -70,7 +70,7 @@ async function sendWelcomeEmail(
       'Content-Type': 'application/json',
     },
     body: JSON.stringify({
-      from: `${hotelName} <onboarding@resend.dev>`,
+      from: 'LuxuryHotelPro <noreply@luxuryhotelpro.com>',
       to: [email],
       subject: `Welcome to ${hotelName} - Your Account Credentials`,
       html: emailHtml,

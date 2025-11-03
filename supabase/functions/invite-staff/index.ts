@@ -434,7 +434,7 @@ serve(async (req: Request): Promise<Response> => {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        from: `${tenant?.name || 'Hotel Management'} <onboarding@resend.dev>`,
+        from: 'LuxuryHotelPro <noreply@luxuryhotelpro.com>',
         to: [inviteData.email],
         subject: `You've been invited to join ${tenant?.name || 'our team'}`,
         html: emailHtml,
