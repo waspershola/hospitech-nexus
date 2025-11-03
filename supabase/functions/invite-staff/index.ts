@@ -19,25 +19,134 @@ interface InviteStaffRequest {
   generate_password?: boolean;
 }
 
-// Map staff department roles to app roles
+/**
+ * Map staff roles and departments to application-level roles
+ * Staff roles are granular job titles (receptionist, room_attendant, etc.)
+ * App roles are permission levels (frontdesk, housekeeping, manager, etc.)
+ */
 function mapStaffRoleToAppRole(staffRole: string, department: string): string {
-  // Manager and owner roles map directly
-  if (staffRole === 'manager' || staffRole === 'owner') {
-    return staffRole;
-  }
+  console.log(`[Role Mapping] Input - Role: "${staffRole}", Department: "${department}"`);
   
-  // Map department-specific roles to app roles based on department
-  const departmentRoleMap: Record<string, string> = {
-    'front_office': 'frontdesk',
-    'housekeeping': 'housekeeping',
-    'finance': 'finance',
-    'maintenance': 'maintenance',
-    'food_beverage': 'restaurant',
-    'bar': 'bar',
-    'management': 'manager',
+  // 1. Direct role mappings (roles that map 1:1 regardless of department)
+  const directRoleMap: Record<string, string> = {
+    'owner': 'owner',
+    'general_manager': 'manager',
+    'manager': 'manager',
+    'supervisor': 'supervisor',
   };
   
-  return departmentRoleMap[department] || 'frontdesk';
+  if (directRoleMap[staffRole]) {
+    console.log(`[Role Mapping] Direct map: ${staffRole} → ${directRoleMap[staffRole]}`);
+    return directRoleMap[staffRole];
+  }
+  
+  // 2. Department-based role mappings
+  const departmentRoleMap: Record<string, Record<string, string>> = {
+    // Front Office Department
+    'front_office': {
+      'receptionist': 'frontdesk',
+      'guest_service_agent': 'frontdesk',
+      'front_desk_supervisor': 'supervisor',
+      'front_office_manager': 'manager',
+      '_default': 'frontdesk'
+    },
+    
+    // Housekeeping Department
+    'housekeeping': {
+      'room_attendant': 'housekeeping',
+      'housekeeper': 'housekeeping',
+      'housekeeping_supervisor': 'supervisor',
+      'housekeeping_manager': 'manager',
+      '_default': 'housekeeping'
+    },
+    
+    // Food & Beverage Department
+    'food_beverage': {
+      'waiter': 'restaurant',
+      'server': 'restaurant',
+      'restaurant_supervisor': 'supervisor',
+      'fnb_manager': 'manager',
+      '_default': 'restaurant'
+    },
+    
+    // Kitchen Department
+    'kitchen': {
+      'cook': 'restaurant',
+      'chef': 'restaurant',
+      'kitchen_assistant': 'restaurant',
+      'sous_chef': 'supervisor',
+      'executive_chef': 'manager',
+      '_default': 'restaurant'
+    },
+    
+    // Bar Department
+    'bar': {
+      'bartender': 'bar',
+      'bar_supervisor': 'supervisor',
+      'bar_manager': 'manager',
+      '_default': 'bar'
+    },
+    
+    // Maintenance Department
+    'maintenance': {
+      'technician': 'maintenance',
+      'electrician': 'maintenance',
+      'plumber': 'maintenance',
+      'maintenance_supervisor': 'supervisor',
+      'maintenance_manager': 'manager',
+      '_default': 'maintenance'
+    },
+    
+    // Finance/Accounts Department
+    'accounts': {
+      'cashier': 'finance',
+      'accountant': 'accountant',
+      'finance_supervisor': 'supervisor',
+      'finance_manager': 'manager',
+      '_default': 'finance'
+    },
+    
+    // Inventory/Store Department
+    'inventory': {
+      'store_clerk': 'finance',
+      'inventory_supervisor': 'supervisor',
+      'inventory_manager': 'manager',
+      '_default': 'finance'
+    },
+    
+    // HR Department
+    'hr': {
+      'admin_officer': 'manager',
+      'hr_supervisor': 'supervisor',
+      'hr_manager': 'manager',
+      '_default': 'manager'
+    },
+    
+    // Security Department
+    'security': {
+      'security_staff': 'frontdesk',
+      'security_supervisor': 'supervisor',
+      'chief_security_officer': 'manager',
+      '_default': 'frontdesk'
+    },
+    
+    // Management Department
+    'management': {
+      '_default': 'manager'
+    },
+  };
+  
+  // Try to find department and role mapping
+  const deptMap = departmentRoleMap[department];
+  if (deptMap) {
+    const appRole = deptMap[staffRole] || deptMap['_default'] || 'frontdesk';
+    console.log(`[Role Mapping] Department map: ${department}.${staffRole} → ${appRole}`);
+    return appRole;
+  }
+  
+  // 3. Fallback to frontdesk for any unmapped combination
+  console.warn(`[Role Mapping] No mapping found for "${staffRole}" in "${department}", defaulting to frontdesk`);
+  return 'frontdesk';
 }
 
 // Generate temporary password
