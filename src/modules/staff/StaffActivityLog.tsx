@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
-import { useStaffActivity } from '@/hooks/useStaffActivity';
+import { useStaffActivities } from '@/hooks/useStaffActivity';
 import { formatDistanceToNow } from 'date-fns';
 import { Activity, Calendar } from 'lucide-react';
 
@@ -17,7 +17,7 @@ export function StaffActivityLog({ staffId }: StaffActivityLogProps) {
     action: '',
   });
 
-  const { data: activities, isLoading } = useStaffActivity(filters);
+  const { data: activities, isLoading } = useStaffActivities(filters);
 
   const actionColors: Record<string, string> = {
     staff_created: 'default',

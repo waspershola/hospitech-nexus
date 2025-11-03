@@ -289,15 +289,22 @@ serve(async (req: Request): Promise<Response> => {
         );
       }
 
-      // Log activity
+      // Log activity (log who performed the action and who was affected)
       await supabase
         .from('staff_activity')
         .insert({
           tenant_id: userRole.tenant_id,
-          staff_id: user.id,
+          staff_id: authUser.user.id, // The new staff member
+          department: inviteData.department,
+          role: inviteData.role,
           action: 'staff_created',
-          description: `Created account for ${inviteData.full_name} (${inviteData.email}) with manual password`,
-          metadata: { user_id: authUser.user.id },
+          description: `Account created by ${user.email} for ${inviteData.full_name} (${inviteData.email}) with manual password. App role: ${appRole}`,
+          metadata: { 
+            created_by: user.id,
+            created_by_email: user.email,
+            app_role: appRole,
+            staff_role: inviteData.role 
+          },
         });
 
       console.log(`Staff account created with manual password: ${authUser.user.id}`);
@@ -447,10 +454,16 @@ serve(async (req: Request): Promise<Response> => {
       .from('staff_activity')
       .insert({
         tenant_id: userRole.tenant_id,
-        staff_id: user.id,
+        staff_id: user.id, // The person who sent the invitation
+        department: inviteData.department,
+        role: inviteData.role,
         action: 'staff_invited',
-        description: `Invited ${inviteData.full_name} (${inviteData.email}) as ${inviteData.role}`,
-        metadata: { invitation_id: invitation.id },
+        description: `Invitation sent to ${inviteData.full_name} (${inviteData.email}) for role ${inviteData.role} in ${inviteData.department}`,
+        metadata: { 
+          invitation_id: invitation.id,
+          invited_by: user.id,
+          invited_email: inviteData.email 
+        },
       });
 
     console.log(`Staff invitation created: ${invitation.id} for ${inviteData.email}`);

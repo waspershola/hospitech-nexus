@@ -2,6 +2,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from '@/hooks/use-toast';
+import { useLogStaffActivity } from './useStaffActivity';
 
 export interface Staff {
   id: string;
@@ -27,8 +28,9 @@ export interface StaffFilters {
 }
 
 export function useStaffManagement(filters?: StaffFilters) {
-  const { tenantId } = useAuth();
+  const { tenantId, user } = useAuth();
   const queryClient = useQueryClient();
+  const { logActivity } = useLogStaffActivity();
 
   // Fetch staff list
   const { data: staff, isLoading } = useQuery({
@@ -107,7 +109,19 @@ export function useStaffManagement(filters?: StaffFilters) {
       if (error) throw error;
       return data;
     },
-    onSuccess: () => {
+    onSuccess: async (data) => {
+      // Log the update activity
+      if (user && data) {
+        await logActivity({
+          staff_id: data.id,
+          department: data.department,
+          role: data.role,
+          action: 'staff_updated',
+          description: `Staff member ${data.full_name} details updated`,
+          metadata: { updated_by: user.id },
+        }).catch(console.error);
+      }
+      
       queryClient.invalidateQueries({ queryKey: ['staff'] });
       toast({
         title: 'Success',
@@ -137,7 +151,22 @@ export function useStaffManagement(filters?: StaffFilters) {
       if (error) throw error;
       return data;
     },
-    onSuccess: () => {
+    onSuccess: async (data) => {
+      // Log the status change activity
+      if (user && data) {
+        await logActivity({
+          staff_id: data.id,
+          department: data.department,
+          role: data.role,
+          action: 'staff_status_changed',
+          description: `Staff member ${data.full_name} status changed to ${data.status}`,
+          metadata: { 
+            changed_by: user.id,
+            new_status: data.status 
+          },
+        }).catch(console.error);
+      }
+      
       queryClient.invalidateQueries({ queryKey: ['staff'] });
       toast({
         title: 'Success',
@@ -156,6 +185,14 @@ export function useStaffManagement(filters?: StaffFilters) {
   // Remove staff
   const removeStaff = useMutation({
     mutationFn: async (id: string) => {
+      // Get staff info before deleting for logging
+      const { data: staffData } = await supabase
+        .from('staff')
+        .select('*')
+        .eq('id', id)
+        .eq('tenant_id', tenantId!)
+        .single();
+      
       const { error } = await supabase
         .from('staff')
         .delete()
@@ -163,8 +200,25 @@ export function useStaffManagement(filters?: StaffFilters) {
         .eq('tenant_id', tenantId!);
 
       if (error) throw error;
+      return staffData;
     },
-    onSuccess: () => {
+    onSuccess: async (staffData) => {
+      // Log the removal activity
+      if (user && staffData) {
+        await logActivity({
+          staff_id: user.id, // Log who performed the deletion
+          department: staffData.department,
+          role: staffData.role,
+          action: 'staff_removed',
+          description: `Staff member ${staffData.full_name} (${staffData.email}) was removed from the system`,
+          metadata: { 
+            removed_by: user.id,
+            removed_staff_id: staffData.id,
+            removed_staff_email: staffData.email 
+          },
+        }).catch(console.error);
+      }
+      
       queryClient.invalidateQueries({ queryKey: ['staff'] });
       toast({
         title: 'Success',

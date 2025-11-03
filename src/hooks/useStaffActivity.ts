@@ -1,4 +1,4 @@
-import { useQuery } from '@tanstack/react-query';
+import { useMutation, useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 
@@ -11,28 +11,41 @@ export interface StaffActivity {
   action: string;
   entity?: string;
   entity_id?: string;
-  description?: string;
+  description: string;
   metadata?: any;
   timestamp: string;
 }
 
-export interface ActivityFilters {
+interface LogActivityParams {
+  staff_id: string;
+  action: string;
+  description: string;
+  department?: string;
+  role?: string;
+  entity?: string;
+  entity_id?: string;
+  metadata?: Record<string, any>;
+}
+
+interface ActivityFilters {
   staff_id?: string;
   department?: string;
   action?: string;
-  start_date?: string;
-  end_date?: string;
 }
 
-export function useStaffActivity(filters?: ActivityFilters) {
+/**
+ * Hook for fetching staff activities
+ * Used to display activity logs with filtering
+ */
+export function useStaffActivities(filters?: ActivityFilters) {
   const { tenantId } = useAuth();
 
   return useQuery({
-    queryKey: ['staff-activity', tenantId, filters],
+    queryKey: ['staff-activities', tenantId, filters],
     queryFn: async () => {
       let query = supabase
         .from('staff_activity')
-        .select('*, staff:staff_id(full_name, email)')
+        .select('*')
         .eq('tenant_id', tenantId!)
         .order('timestamp', { ascending: false })
         .limit(100);
@@ -46,12 +59,6 @@ export function useStaffActivity(filters?: ActivityFilters) {
       if (filters?.action) {
         query = query.eq('action', filters.action);
       }
-      if (filters?.start_date) {
-        query = query.gte('timestamp', filters.start_date);
-      }
-      if (filters?.end_date) {
-        query = query.lte('timestamp', filters.end_date);
-      }
 
       const { data, error } = await query;
       if (error) throw error;
@@ -59,4 +66,49 @@ export function useStaffActivity(filters?: ActivityFilters) {
     },
     enabled: !!tenantId,
   });
+}
+
+/**
+ * Hook for logging staff activities
+ * Used to track all staff-related actions for audit trail
+ */
+export function useLogStaffActivity() {
+  const { tenantId, user } = useAuth();
+
+  const logActivity = useMutation({
+    mutationFn: async (params: LogActivityParams) => {
+      if (!tenantId || !user) {
+        throw new Error('User not authenticated');
+      }
+
+      const { data, error } = await supabase
+        .from('staff_activity')
+        .insert({
+          tenant_id: tenantId,
+          staff_id: params.staff_id,
+          department: params.department,
+          role: params.role,
+          action: params.action,
+          entity: params.entity,
+          entity_id: params.entity_id,
+          description: params.description,
+          metadata: params.metadata,
+        })
+        .select()
+        .single();
+
+      if (error) {
+        console.error('Error logging activity:', error);
+        // Don't throw - we don't want to fail the main operation if logging fails
+        return null;
+      }
+
+      return data;
+    },
+  });
+
+  return {
+    logActivity: logActivity.mutateAsync,
+    isLogging: logActivity.isPending,
+  };
 }
