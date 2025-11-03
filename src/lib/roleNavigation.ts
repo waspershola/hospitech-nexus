@@ -29,6 +29,7 @@ export function getNavigationForRole(role: string, department?: string): Navigat
       { path: '/dashboard/room-categories', label: 'Categories', icon: 'LayoutGrid' },
       { path: '/dashboard/payments', label: 'Payments', icon: 'CreditCard' },
       { path: '/dashboard/wallets', label: 'Wallets', icon: 'Wallet' },
+      { path: '/dashboard/inventory', label: 'Inventory', icon: 'Package' },
       { path: '/dashboard/finance-center', label: 'Finance Center', icon: 'Building2' },
       { path: '/dashboard/finance-dashboard', label: 'Finance', icon: 'TrendingUp' },
       { path: '/dashboard/debtors', label: 'Debtors', icon: 'Receipt' },
@@ -51,6 +52,7 @@ export function getNavigationForRole(role: string, department?: string): Navigat
       { path: '/dashboard/rooms', label: 'Rooms', icon: 'Bed' },
       { path: '/dashboard/payments', label: 'Payments', icon: 'CreditCard' },
       { path: '/dashboard/wallets', label: 'Wallets', icon: 'Wallet' },
+      { path: '/dashboard/inventory', label: 'Inventory', icon: 'Package' },
       { path: '/dashboard/finance-center', label: 'Finance Center', icon: 'Building2' },
       { path: '/dashboard/finance-dashboard', label: 'Finance', icon: 'TrendingUp' },
       { path: '/dashboard/kitchen-dashboard', label: 'Kitchen', icon: 'UtensilsCrossed' },
@@ -122,6 +124,25 @@ export function getNavigationForRole(role: string, department?: string): Navigat
 
     // Supervisor has access to their department + staff management
     supervisor: [],
+
+    // Store Manager - Full inventory control
+    store_manager: [
+      { path: '/dashboard', label: 'Overview', icon: 'Home' },
+      { path: '/dashboard/inventory', label: 'Store', icon: 'Package' },
+      { path: '/dashboard/inventory/requests', label: 'Requests', icon: 'ClipboardList' },
+      { path: '/dashboard/inventory/movements', label: 'Movements', icon: 'ArrowLeftRight' },
+      { path: '/dashboard/inventory/suppliers', label: 'Suppliers', icon: 'Truck' },
+      { path: '/dashboard/inventory/reports', label: 'Reports', icon: 'FileText' },
+    ],
+
+    // Procurement - Purchase orders and suppliers
+    procurement: [
+      { path: '/dashboard', label: 'Overview', icon: 'Home' },
+      { path: '/dashboard/inventory/purchase-orders', label: 'Purchase Orders', icon: 'FileText' },
+      { path: '/dashboard/inventory/suppliers', label: 'Suppliers', icon: 'Truck' },
+      { path: '/dashboard/inventory', label: 'Inventory', icon: 'Package' },
+      { path: '/dashboard/inventory/reports', label: 'Reports', icon: 'BarChart3' },
+    ],
   };
 
   // For supervisors, add department-specific navigation + staff management
@@ -188,6 +209,8 @@ export function getDefaultDashboard(role: string, department?: string): string {
     restaurant: '/dashboard/kitchen-dashboard',
     bar: '/dashboard/bar-dashboard',
     maintenance: '/dashboard/maintenance-dashboard',
+    store_manager: '/dashboard/inventory',
+    procurement: '/dashboard/inventory/purchase-orders',
   };
 
   // Supervisors go to their department dashboard

@@ -77,6 +77,8 @@ export function useRole() {
     isBar: role === ROLES.BAR,
     isAccountant: role === ROLES.ACCOUNTANT,
     isSupervisor: role === ROLES.SUPERVISOR,
+    isStoreManager: role === ROLES.STORE_MANAGER,
+    isProcurement: role === ROLES.PROCUREMENT,
     
     // Helper for conditional rendering
     roleIn: (...allowedRoles: string[]) => role ? allowedRoles.includes(role) : false,
