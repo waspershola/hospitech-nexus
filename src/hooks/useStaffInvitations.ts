@@ -60,7 +60,11 @@ export function useStaffInvitations() {
         body: inviteData,
       });
 
-      if (error) throw error;
+      if (error) {
+        // Parse error message from edge function
+        const errorMessage = error.message || 'Failed to send invitation';
+        throw new Error(errorMessage);
+      }
       return data;
     },
     onSuccess: () => {
@@ -68,7 +72,16 @@ export function useStaffInvitations() {
       toast.success('Invitation sent successfully');
     },
     onError: (error: any) => {
-      toast.error(error.message || 'Failed to send invitation');
+      console.error('[inviteStaff] Error:', error);
+      
+      // Handle specific error cases
+      if (error.message?.includes('already exists')) {
+        toast.error('A pending invitation already exists for this email. Please cancel the existing invitation first or wait for it to expire.');
+      } else if (error.message?.includes('Unauthorized')) {
+        toast.error('You do not have permission to send invitations');
+      } else {
+        toast.error(error.message || 'Failed to send invitation');
+      }
     },
   });
 
