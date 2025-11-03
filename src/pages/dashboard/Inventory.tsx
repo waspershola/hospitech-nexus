@@ -13,6 +13,8 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { ItemFormModal } from '@/modules/inventory/ItemFormModal';
 import { StockMovementModal } from '@/modules/inventory/StockMovementModal';
 import { DepartmentRequestModal } from '@/modules/inventory/DepartmentRequestModal';
+import { DepartmentRequestsTab } from '@/modules/inventory/DepartmentRequestsTab';
+import { SuppliersTab } from '@/modules/inventory/SuppliersTab';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { useInventoryItems } from '@/hooks/useInventoryItems';
 
@@ -194,6 +196,8 @@ export default function Inventory() {
           <TabsTrigger value="overview">Overview</TabsTrigger>
           <TabsTrigger value="items">Items</TabsTrigger>
           <TabsTrigger value="movements">Movements</TabsTrigger>
+          <TabsTrigger value="requests">Requests</TabsTrigger>
+          <TabsTrigger value="suppliers">Suppliers</TabsTrigger>
           <TabsTrigger value="low-stock">Low Stock</TabsTrigger>
         </TabsList>
 
@@ -317,6 +321,14 @@ export default function Inventory() {
               </p>
             </CardContent>
           </Card>
+        </TabsContent>
+
+        <TabsContent value="requests">
+          <DepartmentRequestsTab />
+        </TabsContent>
+
+        <TabsContent value="suppliers">
+          <SuppliersTab />
         </TabsContent>
 
         <TabsContent value="low-stock">
