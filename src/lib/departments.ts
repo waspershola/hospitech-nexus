@@ -16,6 +16,8 @@ export const DEPARTMENTS = [
   { value: 'spa', label: 'Spa' },
   { value: 'concierge', label: 'Concierge' },
   { value: 'admin', label: 'Admin' },
+  { value: 'inventory', label: 'Inventory' },
+  { value: 'hr', label: 'HR' },
 ] as const;
 
 export type DepartmentValue = typeof DEPARTMENTS[number]['value'];

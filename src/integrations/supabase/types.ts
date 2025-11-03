@@ -3243,6 +3243,8 @@ export type Database = {
         | "spa"
         | "concierge"
         | "admin"
+        | "inventory"
+        | "hr"
       item_category:
         | "food"
         | "beverage"
@@ -3423,6 +3425,8 @@ export const Constants = {
         "spa",
         "concierge",
         "admin",
+        "inventory",
+        "hr",
       ],
       item_category: [
         "food",
