@@ -247,10 +247,8 @@ export function RoomActionDrawer({ roomId, contextDate, open, onClose, onOpenAss
     setSelectedBookingId(null);
   }, [roomId]);
   
-  // Phase 4: Detect transition state (room shows occupied/reserved but no booking data)
-  const isTransitioning = (room?.status === 'occupied' || room?.status === 'reserved') 
-    && !activeBooking 
-    && room?.current_reservation_id;
+  // No longer need isTransitioning check since we filter bookings to TODAY only
+  // If there's no activeBooking, it means the room genuinely has no TODAY-relevant booking
   
   // Fetch folio balance for active booking
   const { data: folio } = useBookingFolio(activeBooking?.id || null);
@@ -498,12 +496,10 @@ export function RoomActionDrawer({ roomId, contextDate, open, onClose, onOpenAss
     <>
       <Sheet open={open} onOpenChange={onClose}>
         <SheetContent className="w-full sm:max-w-lg overflow-y-auto">
-          {isLoading || isTransitioning ? (
+          {isLoading ? (
             <div className="flex flex-col items-center justify-center h-full gap-2">
               <Loader2 className="w-8 h-8 animate-spin text-primary" />
-              <p className="text-sm text-muted-foreground">
-                {isTransitioning ? 'Processing room transition...' : 'Loading...'}
-              </p>
+              <p className="text-sm text-muted-foreground">Loading...</p>
             </div>
           ) : room ? (
             <>
