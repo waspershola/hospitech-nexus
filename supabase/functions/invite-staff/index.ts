@@ -250,14 +250,33 @@ serve(async (req: Request): Promise<Response> => {
   try {
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
-    const supabase = createClient(supabaseUrl, supabaseServiceKey);
+    const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY')!;
+    
+    // Create client with service role for admin operations
+    const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey);
+    
+    // Create client with anon key for user authentication
+    const authHeader = req.headers.get('Authorization');
+    if (!authHeader) {
+      return new Response(
+        JSON.stringify({ error: 'Missing authorization header' }),
+        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+    
+    const supabase = createClient(supabaseUrl, supabaseAnonKey, {
+      global: {
+        headers: {
+          Authorization: authHeader
+        }
+      }
+    });
 
     // Get authenticated user
-    const authHeader = req.headers.get('Authorization')!;
-    const token = authHeader.replace('Bearer ', '');
-    const { data: { user }, error: userError } = await supabase.auth.getUser(token);
+    const { data: { user }, error: userError } = await supabase.auth.getUser();
 
     if (userError || !user) {
+      console.error('[Auth Error]', userError);
       return new Response(
         JSON.stringify({ error: 'Unauthorized' }),
         { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -316,7 +335,7 @@ serve(async (req: Request): Promise<Response> => {
       const tempPassword = generateTempPassword();
 
       // Create auth user with temp password
-      const { data: authUser, error: authError } = await supabase.auth.admin.createUser({
+      const { data: authUser, error: authError } = await supabaseAdmin.auth.admin.createUser({
         email: inviteData.email,
         password: tempPassword,
         email_confirm: true,
@@ -346,7 +365,7 @@ serve(async (req: Request): Promise<Response> => {
       if (roleError) {
         console.error('Error creating user role:', roleError);
         // Clean up auth user
-        await supabase.auth.admin.deleteUser(authUser.user.id);
+        await supabaseAdmin.auth.admin.deleteUser(authUser.user.id);
         return new Response(
           JSON.stringify({ error: 'Failed to assign user role' }),
           { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -374,7 +393,7 @@ serve(async (req: Request): Promise<Response> => {
       if (staffError) {
         console.error('Error creating staff record:', staffError);
         // Clean up
-        await supabase.auth.admin.deleteUser(authUser.user.id);
+        await supabaseAdmin.auth.admin.deleteUser(authUser.user.id);
         return new Response(
           JSON.stringify({ error: 'Failed to create staff record' }),
           { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
