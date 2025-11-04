@@ -71,11 +71,14 @@ export function RoomActionDrawer({ roomId, contextDate, open, onClose, onOpenAss
   const [selectedBookingId, setSelectedBookingId] = useState<string | null>(null);
 
   const { data: room, isLoading } = useQuery({
-    queryKey: ['room-detail', roomId],
+    queryKey: ['room-detail', roomId, contextDate ? format(contextDate, 'yyyy-MM-dd') : 'today'],
     queryFn: async () => {
       if (!roomId || !tenantId) return null;
       
       const now = new Date();
+      // Use contextDate if provided (from By Date view), otherwise use current date
+      const filterDate = contextDate ? new Date(contextDate) : now;
+      const filterDateStr = format(filterDate, 'yyyy-MM-dd');
       
       const { data, error } = await supabase
         .from('rooms')
@@ -100,9 +103,8 @@ export function RoomActionDrawer({ roomId, contextDate, open, onClose, onOpenAss
 
       if (error) throw error;
       
-      // Filter bookings to only show TODAY-relevant ones (not future bookings)
+      // Filter bookings based on filterDate (contextDate or today)
       if (data && data.bookings) {
-        const today = format(now, 'yyyy-MM-dd');
         const activeBookings = Array.isArray(data.bookings) 
           ? data.bookings.filter((b: any) => {
               if (['completed', 'cancelled'].includes(b.status)) return false;
@@ -110,18 +112,22 @@ export function RoomActionDrawer({ roomId, contextDate, open, onClose, onOpenAss
               const checkInDate = format(new Date(b.check_in), 'yyyy-MM-dd');
               const checkOutDate = format(new Date(b.check_out), 'yyyy-MM-dd');
               
-              // Show booking if:
-              // 1. Checked in and still active (check_in <= today AND check_out > today)
-              if (b.status === 'checked_in' && checkInDate <= today && checkOutDate > today) {
+              // Show booking if it overlaps with the filter date:
+              // 1. Checked in and still active on filter date
+              if (b.status === 'checked_in' && checkInDate <= filterDateStr && checkOutDate > filterDateStr) {
                 return true;
               }
               
-              // 2. Reserved and arriving TODAY
-              if (b.status === 'reserved' && checkInDate === today) {
+              // 2. Reserved and arriving on filter date
+              if (b.status === 'reserved' && checkInDate === filterDateStr) {
                 return true;
               }
               
-              // 3. IGNORE future bookings (arriving tomorrow or later)
+              // 3. For any date, also include reserved bookings that span the filter date
+              if (b.status === 'reserved' && checkInDate <= filterDateStr && checkOutDate > filterDateStr) {
+                return true;
+              }
+              
               return false;
             })
           : [];
@@ -254,12 +260,31 @@ export function RoomActionDrawer({ roomId, contextDate, open, onClose, onOpenAss
   
   // Compute real-time status based on current time and operations hours
   const { data: operationsHours } = useOperationsHours();
-  const computedStatus = room ? getRoomStatusNow(
-    room,
-    activeBooking as any, // Cast since query doesn't include room_id but we know the room context
-    operationsHours?.checkInTime,
-    operationsHours?.checkOutTime
-  ) : 'available';
+  const computedStatus = (() => {
+    if (!room) return 'available';
+    
+    // If viewing a specific date (not today), use different status logic
+    if (contextDate) {
+      const filterDateStr = format(contextDate, 'yyyy-MM-dd');
+      const today = format(new Date(), 'yyyy-MM-dd');
+      
+      // If viewing a future date, show booking status directly
+      if (filterDateStr !== today) {
+        if (activeBooking) {
+          return activeBooking.status === 'checked_in' ? 'occupied' : 'reserved';
+        }
+        return 'available';
+      }
+    }
+    
+    // For today or no context date, use real-time status
+    return getRoomStatusNow(
+      room,
+      activeBooking as any,
+      operationsHours?.checkInTime,
+      operationsHours?.checkOutTime
+    );
+  })();
   
   // Fetch folio balance for active booking
   const { data: folio } = useBookingFolio(activeBooking?.id || null);
@@ -432,6 +457,10 @@ export function RoomActionDrawer({ roomId, contextDate, open, onClose, onOpenAss
     if (!room) return [];
 
     const hasDND = room.notes?.includes('[DND]');
+    
+    // Check if we're viewing today or a different date
+    const isViewingToday = !contextDate || 
+      format(contextDate, 'yyyy-MM-dd') === format(new Date(), 'yyyy-MM-dd');
 
     // Use computedStatus instead of room.status for accurate, time-aware actions
     switch (computedStatus) {
@@ -444,8 +473,19 @@ export function RoomActionDrawer({ roomId, contextDate, open, onClose, onOpenAss
         ];
       case 'reserved':
       case 'checking_in':
-        // Reserved rooms - only allow check-in or reservation management
+        // Reserved rooms
         if (!activeBooking) return [];
+        
+        // For future dates, show informational actions only
+        if (!isViewingToday) {
+          return [
+            { label: 'View Reservation', action: () => setAmendmentDrawerOpen(true), variant: 'default' as const, icon: FileText, tooltip: 'View reservation details' },
+            { label: 'Booking Confirmation', action: () => setShowConfirmationDoc(true), variant: 'outline' as const, icon: FileText, tooltip: 'View booking confirmation' },
+            { label: 'Cancel Reservation', action: () => setCancelModalOpen(true), variant: 'destructive' as const, icon: AlertTriangle, tooltip: 'Cancel this reservation' },
+          ];
+        }
+        
+        // For today, show check-in actions
         return [
           { label: 'Check-In Guest', action: handleCheckIn, variant: 'default' as const, icon: LogIn, tooltip: 'Complete guest check-in' },
           { label: 'View Reservation', action: () => setAmendmentDrawerOpen(true), variant: 'outline' as const, icon: FileText, tooltip: 'View reservation details' },
@@ -454,6 +494,16 @@ export function RoomActionDrawer({ roomId, contextDate, open, onClose, onOpenAss
       case 'occupied':
       case 'checking_out':
         if (!activeBooking) return [];
+        
+        // For future dates, show informational actions only
+        if (!isViewingToday) {
+          return [
+            { label: 'View Booking', action: () => setAmendmentDrawerOpen(true), variant: 'default' as const, icon: FileText, tooltip: 'View booking details' },
+            { label: 'Booking Confirmation', action: () => setShowConfirmationDoc(true), variant: 'outline' as const, icon: FileText, tooltip: 'View booking confirmation' },
+          ];
+        }
+        
+        // For today, show all checkout and service actions
         const hasOutstandingBalance = folio && folio.balance > 0;
         const actions = [
           { label: 'Check-Out', action: handleExpressCheckout, variant: 'default' as const, icon: LogOut, tooltip: 'Complete guest checkout' },
@@ -511,7 +561,7 @@ export function RoomActionDrawer({ roomId, contextDate, open, onClose, onOpenAss
           ) : room ? (
             <>
               {/* Date Context Badge */}
-              {contextDate && (
+              {contextDate && format(contextDate, 'yyyy-MM-dd') !== format(new Date(), 'yyyy-MM-dd') && (
                 <div className="px-4 py-2 bg-blue-50 dark:bg-blue-900/20 border-b -mx-4 -mt-4 mb-4">
                   <p className="text-xs text-blue-700 dark:text-blue-300 flex items-center gap-1">
                     <Calendar className="h-3 w-3" />
