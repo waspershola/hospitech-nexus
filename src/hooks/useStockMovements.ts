@@ -53,7 +53,7 @@ export function useStockMovements() {
             category,
             unit
           ),
-          staff:created_by (
+          staff!stock_movements_created_by_fkey (
             id,
             full_name
           )
