@@ -48,7 +48,44 @@ export function useRoomActions() {
 
   const checkInMutation = useMutation({
     mutationFn: async (roomId: string) => {
-      // Update room status to occupied (not just in history)
+      // First, find and update the active booking
+      const { data: booking, error: bookingFetchError } = await supabase
+        .from('bookings')
+        .select('id, metadata')
+        .eq('room_id', roomId)
+        .in('status', ['reserved', 'checked_in'])
+        .order('check_in', { ascending: false })
+        .limit(1)
+        .single();
+
+      if (bookingFetchError) throw new Error('No active booking found for this room');
+
+      // Update booking status to checked_in with actual check-in timestamp
+      const updatedMetadata = {
+        ...(booking.metadata as object || {}),
+        actual_checkin: new Date().toISOString()
+      };
+
+      const { error: bookingUpdateError } = await supabase
+        .from('bookings')
+        .update({ 
+          status: 'checked_in',
+          metadata: updatedMetadata
+        })
+        .eq('id', booking.id);
+
+      if (bookingUpdateError) throw bookingUpdateError;
+
+      // Log booking status change
+      logAction({
+        action: 'UPDATE',
+        table_name: 'bookings',
+        record_id: booking.id,
+        before_data: { status: 'reserved' },
+        after_data: { status: 'checked_in', metadata: updatedMetadata },
+      });
+
+      // Then update room status to occupied
       const { data, error } = await supabase
         .from('rooms')
         .update({ status: 'occupied' })
