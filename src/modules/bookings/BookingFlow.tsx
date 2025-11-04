@@ -85,6 +85,18 @@ export function BookingFlow({ open, onClose, preselectedRoomId }: BookingFlowPro
   };
 
   const canProceed = () => {
+    // Validate check-in date is not in the past
+    const validateDates = () => {
+      if (!bookingData.checkIn) return true; // Let step validation handle this
+      
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const checkInDate = new Date(bookingData.checkIn);
+      checkInDate.setHours(0, 0, 0, 0);
+      
+      return checkInDate >= today;
+    };
+
     if (isGroupMode) {
       switch (step) {
         case 1:
@@ -92,14 +104,17 @@ export function BookingFlow({ open, onClose, preselectedRoomId }: BookingFlowPro
         case 2:
           return !!bookingData.groupName && !!bookingData.groupLeaderName && (bookingData.groupSize || 0) > 0;
         case 3:
-          return (bookingData.selectedRoomIds?.length || 0) > 0 && !!bookingData.checkIn && !!bookingData.checkOut;
+          return (bookingData.selectedRoomIds?.length || 0) > 0 && 
+                 !!bookingData.checkIn && 
+                 !!bookingData.checkOut && 
+                 validateDates();
         case 4:
           return true; // Options step is always optional
         case 5:
-          // Ensure essential data is present for confirmation
-          // totalAmount will be calculated in BookingConfirmation component
-          return !!bookingData.checkIn && !!bookingData.checkOut && 
-                 (bookingData.selectedRoomIds?.length || 0) > 0;
+          return !!bookingData.checkIn && 
+                 !!bookingData.checkOut && 
+                 (bookingData.selectedRoomIds?.length || 0) > 0 &&
+                 validateDates();
         default:
           return false;
       }
@@ -108,13 +123,17 @@ export function BookingFlow({ open, onClose, preselectedRoomId }: BookingFlowPro
         case 1:
           return !!bookingData.guestId;
         case 2:
-          return !!bookingData.roomId && !!bookingData.checkIn && !!bookingData.checkOut;
+          return !!bookingData.roomId && 
+                 !!bookingData.checkIn && 
+                 !!bookingData.checkOut &&
+                 validateDates();
         case 3:
           return true; // Options step is always optional
         case 4:
-          // Ensure essential data is present for confirmation
-          // totalAmount will be calculated in BookingConfirmation component
-          return !!bookingData.checkIn && !!bookingData.checkOut && !!bookingData.roomId;
+          return !!bookingData.checkIn && 
+                 !!bookingData.checkOut && 
+                 !!bookingData.roomId &&
+                 validateDates();
         default:
           return false;
       }

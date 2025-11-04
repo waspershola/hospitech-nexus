@@ -73,6 +73,8 @@ export function RoomActionDrawer({ roomId, contextDate, open, onClose, onOpenAss
     queryFn: async () => {
       if (!roomId || !tenantId) return null;
       
+      const now = new Date();
+      
       const { data, error } = await supabase
         .from('rooms')
         .select(`
@@ -95,9 +97,22 @@ export function RoomActionDrawer({ roomId, contextDate, open, onClose, onOpenAss
         .maybeSingle();
 
       if (error) throw error;
+      
+      // Filter bookings to only show active ones (not completed or cancelled)
+      if (data && data.bookings) {
+        const activeBookings = Array.isArray(data.bookings) 
+          ? data.bookings.filter((b: any) => 
+              !['completed', 'cancelled'].includes(b.status) &&
+              new Date(b.check_out) > now
+            )
+          : [];
+        
+        return { ...data, bookings: activeBookings };
+      }
+      
       return data;
     },
-    enabled: !!roomId && !!tenantId, // Phase 1: Remove 'open' for instant loading
+    enabled: !!roomId && !!tenantId,
   });
 
   // Phase 2: Debounced realtime subscription for room changes

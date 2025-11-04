@@ -5,7 +5,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Switch } from '@/components/ui/switch';
-import { Hotel, MapPin, Phone, ShieldCheck } from 'lucide-react';
+import { Hotel, MapPin, Phone, ShieldCheck, Clock } from 'lucide-react';
 
 export function GeneralTab() {
   const configurations = useConfigStore(state => state.configurations);
@@ -171,6 +171,45 @@ export function GeneralTab() {
                 placeholder="Nigeria"
               />
             </div>
+          </div>
+        </div>
+      </ConfigCard>
+
+      <ConfigCard
+        title="Operations Hours"
+        description="Set check-in and check-out times"
+        icon={Clock}
+        onSave={() => saveConfig('general')}
+        hasUnsavedChanges={hasGeneralUnsaved}
+        lastSaved={lastSaved}
+        error={sectionError}
+        sectionKey="general"
+      >
+        <div className="grid grid-cols-2 gap-6">
+          <div className="space-y-2">
+            <Label htmlFor="checkInTime">Check-In Time</Label>
+            <Input
+              id="checkInTime"
+              type="time"
+              value={general.checkInTime || '14:00'}
+              onChange={(e) => handleChange('checkInTime', e.target.value)}
+            />
+            <p className="text-xs text-muted-foreground">
+              Guests can check in from this time onwards
+            </p>
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="checkOutTime">Check-Out Time</Label>
+            <Input
+              id="checkOutTime"
+              type="time"
+              value={general.checkOutTime || '12:00'}
+              onChange={(e) => handleChange('checkOutTime', e.target.value)}
+            />
+            <p className="text-xs text-muted-foreground">
+              Guests must check out by this time
+            </p>
           </div>
         </div>
       </ConfigCard>

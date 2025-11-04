@@ -71,9 +71,35 @@ export const useConfigStore = create<ConfigStore>((set, get) => ({
         .eq('tenant_id', tenantId);
 
       const configurationsMap: Record<string, any> = {};
+      const generalConfig: Record<string, any> = {};
+      
       configs?.forEach(config => {
-        configurationsMap[config.key] = config.value;
+        // Parse JSON strings back to values
+        let parsedValue = config.value;
+        if (typeof config.value === 'string') {
+          try {
+            parsedValue = JSON.parse(config.value);
+          } catch {
+            parsedValue = config.value;
+          }
+        }
+        
+        // Group certain fields under 'general'
+        const generalFields = ['hotelName', 'timezone', 'dateFormat', 'phone', 'email', 
+                              'website', 'address', 'city', 'state', 'country', 
+                              'allowCheckoutWithoutPayment', 'checkInTime', 'checkOutTime'];
+        
+        if (generalFields.includes(config.key)) {
+          generalConfig[config.key] = parsedValue;
+        } else {
+          configurationsMap[config.key] = parsedValue;
+        }
       });
+      
+      // Add general config as a single object
+      if (Object.keys(generalConfig).length > 0) {
+        configurationsMap.general = generalConfig;
+      }
 
       // Load branding
       const { data: branding } = await supabase
@@ -222,14 +248,39 @@ export const useConfigStore = create<ConfigStore>((set, get) => ({
     try {
       const { data: { user } } = await supabase.auth.getUser();
       
-      const { error } = await supabase.from('hotel_configurations').upsert({
-        tenant_id: tenantId,
-        key,
-        value: configurations[key],
-        updated_by: user?.id,
-      });
+      // If key is 'general', save each field as separate configuration
+      if (key === 'general' && typeof configurations[key] === 'object') {
+        const generalConfig = configurations[key];
+        const savePromises = [];
+        
+        // Save each general config field separately
+        for (const [fieldKey, fieldValue] of Object.entries(generalConfig)) {
+          savePromises.push(
+            supabase.from('hotel_configurations').upsert({
+              tenant_id: tenantId,
+              key: fieldKey,
+              value: JSON.stringify(fieldValue),
+              updated_by: user?.id,
+            })
+          );
+        }
+        
+        const results = await Promise.all(savePromises);
+        const errors = results.filter(r => r.error);
+        if (errors.length > 0) {
+          throw errors[0].error;
+        }
+      } else {
+        // Single key-value save
+        const { error } = await supabase.from('hotel_configurations').upsert({
+          tenant_id: tenantId,
+          key,
+          value: configurations[key],
+          updated_by: user?.id,
+        });
 
-      if (error) throw error;
+        if (error) throw error;
+      }
       
       const now = new Date();
       set(state => ({

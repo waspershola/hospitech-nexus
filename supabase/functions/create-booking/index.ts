@@ -139,9 +139,26 @@ serve(async (req) => {
       .eq('id', room_id)
       .single();
 
-    // Calculate nights and base amount
+    // Validate check-in date is not in the past
     const checkInDate = new Date(check_in);
     const checkOutDate = new Date(check_out);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    checkInDate.setHours(0, 0, 0, 0);
+
+    if (checkInDate < today) {
+      console.error('Cannot create booking with past check-in date:', checkInDate);
+      return new Response(
+        JSON.stringify({ 
+          success: false, 
+          error: 'INVALID_CHECKIN_DATE',
+          message: 'Cannot create bookings with check-in dates in the past'
+        }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 400 }
+      );
+    }
+
+    // Calculate nights and base amount
     const nights = Math.ceil((checkOutDate.getTime() - checkInDate.getTime()) / (1000 * 60 * 60 * 24));
     const effectiveRate = rate_override || room?.category?.base_rate || room?.rate || 0;
     const baseAmount = effectiveRate * nights;

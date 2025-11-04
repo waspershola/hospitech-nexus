@@ -1,4 +1,4 @@
-import { format } from 'date-fns';
+import { format, isToday, isBefore, isAfter } from 'date-fns';
 
 export interface RoomBooking {
   id: string;
@@ -17,13 +17,84 @@ export interface Room {
 }
 
 /**
+ * Parse date string with time to create a full DateTime object
+ */
+function parseDateTime(dateStr: string, timeStr: string): Date {
+  const date = new Date(dateStr);
+  const [hours, minutes] = timeStr.split(':').map(Number);
+  date.setHours(hours, minutes, 0, 0);
+  return date;
+}
+
+/**
+ * Get current status for a room based on active booking and current time
+ * This is the SINGLE SOURCE OF TRUTH for room status logic
+ */
+export function getRoomStatusNow(
+  room: Room,
+  booking: RoomBooking | null | undefined,
+  checkInTime: string = '14:00',
+  checkOutTime: string = '12:00'
+): 'available' | 'reserved' | 'occupied' | 'checking_in' | 'checking_out' | 'overstay' | 'maintenance' | 'out_of_order' | 'cleaning' {
+  // Preserve manual maintenance/cleaning/out_of_order statuses
+  if (['maintenance', 'out_of_order', 'cleaning'].includes(room.status)) {
+    return room.status as any;
+  }
+
+  if (!booking || booking.status === 'cancelled' || booking.status === 'completed') {
+    return 'available';
+  }
+
+  const now = new Date();
+  const checkInDT = parseDateTime(booking.check_in, checkInTime);
+  const checkOutDT = parseDateTime(booking.check_out, checkOutTime);
+
+  // OVERSTAY: Past checkout time and still checked in
+  if (booking.status === 'checked_in' && isAfter(now, checkOutDT)) {
+    return 'overstay';
+  }
+
+  // Check-in day logic
+  if (isToday(new Date(booking.check_in))) {
+    if (isBefore(now, checkInDT)) {
+      return 'reserved'; // Before check-in time
+    }
+    if (booking.status === 'checked_in') {
+      return 'occupied'; // Guest has checked in
+    }
+    return 'checking_in'; // Check-in time passed but not checked in yet
+  }
+
+  // Check-out day logic
+  if (isToday(new Date(booking.check_out))) {
+    if (isAfter(now, checkOutDT)) {
+      // Past checkout time
+      if (booking.status === 'checked_in') {
+        return 'overstay'; // Still occupied after checkout time
+      }
+      return 'available'; // Already checked out
+    }
+    return 'checking_out'; // Still before checkout time
+  }
+
+  // Mid-stay (between check-in and check-out)
+  if (booking.status === 'checked_in') {
+    return 'occupied';
+  }
+
+  // Future reservation
+  return 'reserved';
+}
+
+/**
  * Determines the correct room status for a specific date based on bookings
- * This ensures consistency between "Room Status" and "By Date" views
+ * Used for historical/future date views (By Date view)
  */
 export function getRoomStatusForDate(
   room: Room,
   date: Date,
-  bookings: RoomBooking[]
+  bookings: RoomBooking[],
+  checkOutTime: string = '12:00'
 ): 'available' | 'reserved' | 'occupied' | 'check-in' | 'check-out' | 'maintenance' | 'out_of_order' | 'cleaning' {
   // Preserve maintenance/cleaning/out_of_order statuses
   if (['maintenance', 'out_of_order', 'cleaning'].includes(room.status)) {
@@ -34,9 +105,8 @@ export function getRoomStatusForDate(
   
   // Find booking active on this date
   const activeBooking = bookings.find(b => {
-    if (b.room_id !== room.id || b.status === 'cancelled') return false;
+    if (b.room_id !== room.id || b.status === 'cancelled' || b.status === 'completed') return false;
     
-    // Normalize ISO timestamps to yyyy-MM-dd for proper comparison
     const checkInDate = format(new Date(b.check_in), 'yyyy-MM-dd');
     const checkOutDate = format(new Date(b.check_out), 'yyyy-MM-dd');
     
@@ -47,16 +117,15 @@ export function getRoomStatusForDate(
     return 'available';
   }
   
-  // Normalize dates for check-in/check-out day comparison
   const checkInDate = format(new Date(activeBooking.check_in), 'yyyy-MM-dd');
   const checkOutDate = format(new Date(activeBooking.check_out), 'yyyy-MM-dd');
   
-  // Check if it's check-in day
+  // Check-in day
   if (checkInDate === dateStr) {
     return activeBooking.status === 'checked_in' ? 'check-in' : 'reserved';
   }
   
-  // Check if it's check-out day
+  // Check-out day
   if (checkOutDate === dateStr) {
     return 'check-out';
   }

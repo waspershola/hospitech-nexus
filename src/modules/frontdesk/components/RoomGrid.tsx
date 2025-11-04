@@ -4,6 +4,8 @@ import { useAuth } from '@/contexts/AuthContext';
 import { RoomTile } from './RoomTile';
 import { Loader2, AlertTriangle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { getRoomStatusNow } from '@/lib/roomAvailability';
+import { useOperationsHours } from '@/hooks/useOperationsHours';
 
 interface RoomGridProps {
   searchQuery?: string;
@@ -19,13 +21,12 @@ interface RoomGridProps {
 
 export function RoomGrid({ searchQuery, statusFilter, categoryFilter, floorFilter, organizationFilter, onRoomClick, isSelectionMode, selectedRoomIds = [], onRoomSelectionChange }: RoomGridProps) {
   const { tenantId } = useAuth();
+  const { data: operationsHours } = useOperationsHours();
 
   const { data: rooms, isLoading, error } = useQuery({
     queryKey: ['rooms-grid', tenantId, searchQuery, statusFilter, categoryFilter, floorFilter, organizationFilter],
     queryFn: async () => {
       if (!tenantId) return [];
-      
-      const today = new Date().toISOString().split('T')[0];
       
       let query = supabase
         .from('rooms')
@@ -50,37 +51,35 @@ export function RoomGrid({ searchQuery, statusFilter, categoryFilter, floorFilte
       const { data, error } = await query;
       if (error) throw error;
       
-      // Filter to only show TODAY's active bookings and update room status accordingly
+      const checkInTime = operationsHours?.checkInTime || '14:00';
+      const checkOutTime = operationsHours?.checkOutTime || '12:00';
+      const now = new Date();
+      
+      // Process rooms with time-aware status logic
       let filteredData = (data || []).map(room => {
         if (!room.bookings || room.bookings.length === 0) return room;
         
-        const activeBookings = room.bookings.filter((b: any) => {
-          // Exclude completed and cancelled
-          if (['completed', 'cancelled'].includes(b.status)) return false;
-          
-          // Show if check-in is today or before, and check-out is today or after
-          const checkIn = new Date(b.check_in);
-          const checkOut = new Date(b.check_out);
-          const todayDate = new Date(today);
-          
-          checkIn.setHours(0, 0, 0, 0);
-          checkOut.setHours(0, 0, 0, 0);
-          todayDate.setHours(0, 0, 0, 0);
-          
-          // Check-out day means room is available (guest has left)
-          return checkIn <= todayDate && checkOut > todayDate;
-        });
+        // Find the active booking for NOW (current time)
+        const activeBooking = room.bookings
+          .filter((b: any) => !['completed', 'cancelled'].includes(b.status))
+          .find((b: any) => {
+            const checkInDT = new Date(b.check_in);
+            const checkOutDT = new Date(b.check_out);
+            return checkInDT <= now && checkOutDT > now;
+          });
         
-        // If room has no active bookings for today but status is reserved, make it available
-        const updatedRoom = { ...room, bookings: activeBookings };
-        if (activeBookings.length === 0 && room.status === 'reserved') {
-          updatedRoom.status = 'available';
-        }
+        // Use centralized status logic (pass the booking with room_id added)
+        const bookingWithRoomId = activeBooking ? { ...activeBooking, room_id: room.id } : null;
+        const currentStatus = getRoomStatusNow(room, bookingWithRoomId, checkInTime, checkOutTime);
         
-        return updatedRoom;
+        return { 
+          ...room, 
+          bookings: activeBooking ? [activeBooking] : [],
+          status: currentStatus 
+        };
       });
 
-      // Apply room-level filters (not booking-level)
+      // Apply room-level filters
       if (statusFilter && statusFilter !== 'overstay' && statusFilter !== 'pending_payments') {
         filteredData = filteredData.filter(room => room.status === statusFilter);
       }
@@ -111,20 +110,9 @@ export function RoomGrid({ searchQuery, statusFilter, categoryFilter, floorFilte
         });
       }
       
-      // Handle overstay filtering
+      // Handle overstay filtering - already handled by getRoomStatusNow
       if (statusFilter === 'overstay') {
-        const todayDate = new Date(today);
-        todayDate.setHours(0, 0, 0, 0);
-        
-        filteredData = filteredData.filter(room => {
-          if (!room.bookings || room.bookings.length === 0) return false;
-          
-          return room.bookings.some((b: any) => {
-            const checkOut = new Date(b.check_out);
-            checkOut.setHours(0, 0, 0, 0);
-            return b.status === 'checked_in' && checkOut < todayDate;
-          });
-        });
+        filteredData = filteredData.filter(room => room.status === 'overstay');
       }
       
       // Handle pending payments filtering

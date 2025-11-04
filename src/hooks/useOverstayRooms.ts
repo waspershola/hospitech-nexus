@@ -18,11 +18,20 @@ export function useOverstayRooms() {
     queryFn: async () => {
       if (!tenantId) return [];
 
-      const today = new Date();
-      today.setHours(0, 0, 0, 0);
+      // Get checkout time configuration
+      const { data: configData } = await supabase
+        .from('hotel_configurations')
+        .select('value')
+        .eq('tenant_id', tenantId)
+        .eq('key', 'check_out_time')
+        .single();
 
-      // Get all checked-in bookings that are past check-out date
-      const { data: overstayBookings } = await supabase
+      const checkoutTime = configData?.value ? String(configData.value).replace(/"/g, '') : '12:00';
+      const [hours, minutes] = checkoutTime.split(':').map(Number);
+      const now = new Date();
+
+      // Get all checked-in bookings that might be overdue
+      const { data: potentialOverstay } = await supabase
         .from('bookings')
         .select(`
           id,
@@ -33,12 +42,21 @@ export function useOverstayRooms() {
         `)
         .eq('tenant_id', tenantId)
         .eq('status', 'checked_in')
-        .lt('check_out', today.toISOString());
+        .lt('check_out', now.toISOString());
 
-      if (!overstayBookings || overstayBookings.length === 0) return [];
+      if (!potentialOverstay || potentialOverstay.length === 0) return [];
+
+      // Filter for bookings actually past checkout time
+      const overstayBookings = potentialOverstay.filter((booking: any) => {
+        const checkoutDateTime = new Date(booking.check_out);
+        checkoutDateTime.setHours(hours, minutes, 0, 0);
+        return now > checkoutDateTime;
+      });
+
+      if (overstayBookings.length === 0) return [];
 
       // Get folio balances for these bookings
-      const bookingIds = overstayBookings.map(b => b.id);
+      const bookingIds = overstayBookings.map((b: any) => b.id);
       const { data: payments } = await supabase
         .from('payments')
         .select('booking_id, amount')
@@ -54,7 +72,7 @@ export function useOverstayRooms() {
           number: booking.room?.number || '',
           guest_name: booking.guest?.name || 'Unknown Guest',
           check_out: booking.check_out,
-          balance: 0 - totalPaid, // Simplified - would need to calculate charges
+          balance: 0 - totalPaid,
         };
       });
 
