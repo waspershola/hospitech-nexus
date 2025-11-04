@@ -251,12 +251,19 @@ serve(async (req: Request): Promise<Response> => {
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     
-    // Create admin client for all operations
-    const supabase = createClient(supabaseUrl, supabaseServiceKey);
+    // Create admin client with proper auth configuration
+    const supabase = createClient(supabaseUrl, supabaseServiceKey, {
+      auth: {
+        autoRefreshToken: false,
+        persistSession: false,
+        detectSessionInUrl: false
+      }
+    });
 
     // Get and validate JWT token
     const authHeader = req.headers.get('Authorization');
     if (!authHeader) {
+      console.error('[Auth Error] Missing authorization header');
       return new Response(
         JSON.stringify({ error: 'Missing authorization header' }),
         { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -265,16 +272,19 @@ serve(async (req: Request): Promise<Response> => {
     
     const token = authHeader.replace('Bearer ', '');
     
-    // Verify the JWT token and get user
+    // Verify the JWT token and get user using the token parameter
     const { data: { user }, error: userError } = await supabase.auth.getUser(token);
 
     if (userError || !user) {
-      console.error('[Auth Error]', userError);
+      console.error('[Auth Error]', userError?.message || 'No user found');
       return new Response(
         JSON.stringify({ error: 'Unauthorized - Invalid token' }),
         { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
+    
+    console.log(`[Auth Success] User authenticated: ${user.email}`);
+
 
     // Get user's tenant and role
     const { data: userRole, error: roleError } = await supabase
