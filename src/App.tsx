@@ -75,10 +75,10 @@ const App = () => (
               
               {/* Department-specific dashboards */}
               <Route path="finance-dashboard" element={<RoleGuard allowedRoles={['owner', 'manager', 'finance', 'accountant']}><FinanceDashboard /></RoleGuard>} />
-              <Route path="housekeeping-dashboard" element={<RoleGuard allowedRoles={['owner', 'manager', 'housekeeping']}><HousekeepingDashboard /></RoleGuard>} />
-              <Route path="maintenance-dashboard" element={<RoleGuard allowedRoles={['owner', 'manager', 'maintenance']}><MaintenanceDashboard /></RoleGuard>} />
-              <Route path="kitchen-dashboard" element={<RoleGuard allowedRoles={['owner', 'manager', 'restaurant']}><KitchenDashboard /></RoleGuard>} />
-              <Route path="bar-dashboard" element={<RoleGuard allowedRoles={['owner', 'manager', 'bar']}><BarDashboard /></RoleGuard>} />
+              <Route path="housekeeping-dashboard" element={<RoleGuard allowedRoles={['owner', 'manager', 'housekeeping', 'supervisor']}><HousekeepingDashboard /></RoleGuard>} />
+              <Route path="maintenance-dashboard" element={<RoleGuard allowedRoles={['owner', 'manager', 'maintenance', 'supervisor']}><MaintenanceDashboard /></RoleGuard>} />
+              <Route path="kitchen-dashboard" element={<RoleGuard allowedRoles={['owner', 'manager', 'restaurant', 'kitchen', 'supervisor']}><KitchenDashboard /></RoleGuard>} />
+              <Route path="bar-dashboard" element={<RoleGuard allowedRoles={['owner', 'manager', 'bar', 'supervisor']}><BarDashboard /></RoleGuard>} />
               
           <Route path="settings" element={<Settings />} />
           <Route path="user-roles" element={<RoleGuard allowedRoles={['owner', 'manager']}><UserRoles /></RoleGuard>} />
