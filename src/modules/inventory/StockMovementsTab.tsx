@@ -112,7 +112,7 @@ export function StockMovementsTab() {
                 <TableCell>
                   {movement.total_value ? `₦${movement.total_value.toLocaleString()}` : '-'}
                 </TableCell>
-                <TableCell>-</TableCell>
+                <TableCell>{movement.staff?.full_name || '-'}</TableCell>
               </TableRow>
             ))}
             {!filteredMovements?.length && (
