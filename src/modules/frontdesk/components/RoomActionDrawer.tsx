@@ -98,14 +98,36 @@ export function RoomActionDrawer({ roomId, contextDate, open, onClose, onOpenAss
 
       if (error) throw error;
       
-      // Filter bookings to only show active ones (not completed or cancelled)
+      // Filter bookings to only show TODAY-relevant ones (not future bookings)
       if (data && data.bookings) {
+        const today = format(now, 'yyyy-MM-dd');
         const activeBookings = Array.isArray(data.bookings) 
-          ? data.bookings.filter((b: any) => 
-              !['completed', 'cancelled'].includes(b.status) &&
-              new Date(b.check_out) > now
-            )
+          ? data.bookings.filter((b: any) => {
+              if (['completed', 'cancelled'].includes(b.status)) return false;
+              
+              const checkInDate = format(new Date(b.check_in), 'yyyy-MM-dd');
+              const checkOutDate = format(new Date(b.check_out), 'yyyy-MM-dd');
+              
+              // Show booking if:
+              // 1. Checked in and still active (check_in <= today AND check_out > today)
+              if (b.status === 'checked_in' && checkInDate <= today && checkOutDate > today) {
+                return true;
+              }
+              
+              // 2. Reserved and arriving TODAY
+              if (b.status === 'reserved' && checkInDate === today) {
+                return true;
+              }
+              
+              // 3. IGNORE future bookings (arriving tomorrow or later)
+              return false;
+            })
           : [];
+        
+        // Sort by check_in date (earliest first) to prioritize today's arrivals
+        activeBookings.sort((a: any, b: any) => 
+          new Date(a.check_in).getTime() - new Date(b.check_in).getTime()
+        );
         
         return { ...data, bookings: activeBookings };
       }

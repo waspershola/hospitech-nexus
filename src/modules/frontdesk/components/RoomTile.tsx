@@ -62,10 +62,8 @@ export function RoomTile({ room, onClick, isSelectionMode, isSelected, onSelecti
     );
   }
   
-  // Priority 3: Use canonical booking (fallback for future bookings)
-  if (!activeBooking && room.current_reservation_id) {
-    activeBooking = bookingsArray.find((b: any) => b.id === room.current_reservation_id);
-  }
+  // Priority 3: DO NOT use canonical booking if it's in the future
+  // This prevents showing future bookings on today's room status view
   
   // Calculate current status using centralized logic
   const currentStatus = getRoomStatusNow(
