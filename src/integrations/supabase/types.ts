@@ -1491,11 +1491,14 @@ export type Database = {
       }
       navigation_items: {
         Row: {
+          allowed_departments: string[] | null
           allowed_roles: Database["public"]["Enums"]["app_role"][]
           created_at: string | null
+          description: string | null
           icon: string
           id: string
           is_active: boolean | null
+          metadata: Json | null
           name: string
           order_index: number
           parent_id: string | null
@@ -1504,11 +1507,14 @@ export type Database = {
           updated_at: string | null
         }
         Insert: {
+          allowed_departments?: string[] | null
           allowed_roles: Database["public"]["Enums"]["app_role"][]
           created_at?: string | null
+          description?: string | null
           icon: string
           id?: string
           is_active?: boolean | null
+          metadata?: Json | null
           name: string
           order_index?: number
           parent_id?: string | null
@@ -1517,11 +1523,14 @@ export type Database = {
           updated_at?: string | null
         }
         Update: {
+          allowed_departments?: string[] | null
           allowed_roles?: Database["public"]["Enums"]["app_role"][]
           created_at?: string | null
+          description?: string | null
           icon?: string
           id?: string
           is_active?: boolean | null
+          metadata?: Json | null
           name?: string
           order_index?: number
           parent_id?: string | null
