@@ -80,6 +80,51 @@ const filtered = data.filter(item => {
 | `inventory` | Store and inventory control | store_manager, procurement |
 | `management` | Executive and admin | owner, manager, finance, accountant |
 
+### Department Hierarchy & Relationships
+
+Some departments have **parent-child relationships** that affect navigation visibility:
+
+#### F&B Department Structure
+
+```
+food_beverage (Parent)
+├── kitchen (Child)
+└── bar (Child)
+```
+
+**Key Points:**
+- `food_beverage` is the **supervisory department** for F&B operations
+- F&B managers and supervisors have `department = 'food_beverage'`
+- Kitchen staff have `department = 'kitchen'`
+- Bar staff have `department = 'bar'`
+
+**Navigation Best Practice:**
+- When granting access to Kitchen or Bar dashboards, **also include `food_beverage`**
+- This ensures F&B supervisors can see both operational dashboards
+- Example: `allowed_departments: ['kitchen', 'bar', 'food_beverage', 'management']`
+
+#### Common Department Mismatch Issue
+
+❌ **Wrong Configuration:**
+```json
+{
+  "name": "Kitchen Dashboard",
+  "allowed_departments": ["kitchen", "bar"]  // Missing food_beverage!
+}
+```
+
+**Result:** F&B managers (department='food_beverage') cannot see Kitchen Dashboard
+
+✅ **Correct Configuration:**
+```json
+{
+  "name": "Kitchen Dashboard",
+  "allowed_departments": ["kitchen", "bar", "food_beverage", "management"]
+}
+```
+
+**Result:** Kitchen staff, Bar staff, F&B managers, and Management can all see it
+
 ---
 
 ## Role-Department Relationship
@@ -259,17 +304,44 @@ USING (tenant_id = get_user_tenant(auth.uid()) AND has_role(auth.uid(), tenant_i
 2. **Check their department**: Verify `staff.department` matches `allowed_departments`
 3. **Check item is active**: `is_active = true` in database
 4. **Check tenant_id**: Item belongs to user's tenant
+5. **Check parent departments**: If item is for `kitchen` or `bar`, make sure `food_beverage` is also included
+
+### Common Issue: F&B Manager Can't See Kitchen/Bar Items
+
+**Problem:** F&B manager has `department = 'food_beverage'` but navigation item only includes `['kitchen', 'bar']`
+
+**Solution:** 
+1. Go to Navigation Manager (`/dashboard/navigation-manager`)
+2. Edit the navigation item
+3. Add `food_beverage` to the allowed departments
+4. The system will show a **smart suggestion** warning if you forget
+
+**Quick Fix SQL:**
+```sql
+UPDATE navigation_items 
+SET allowed_departments = array_append(allowed_departments, 'food_beverage')
+WHERE 'kitchen' = ANY(allowed_departments) 
+  AND NOT 'food_beverage' = ANY(allowed_departments);
+```
 
 ### Item Appears for Wrong Department
 
 1. **Check `allowed_departments`**: Empty array = all departments
 2. **Update via Navigation Manager**: Edit and save with correct departments
+3. **Use Quick Select Presets**: "All F&B Departments" automatically includes food_beverage + kitchen + bar
 
 ### Navigation Not Updating
 
 1. **Clear React Query cache**: Logout and login again
 2. **Check database**: Verify changes saved in `navigation_items` table
 3. **Check console**: Look for errors in `useNavigation` hook
+
+### Smart Suggestions Not Working
+
+The Navigation Manager now includes **smart department suggestions**:
+- When you select `kitchen` or `bar`, it warns if `food_beverage` is missing
+- Click "Add Suggested Departments" to automatically include parent departments
+- Use Quick Select Presets for common patterns
 
 ---
 

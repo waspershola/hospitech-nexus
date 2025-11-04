@@ -12,7 +12,7 @@ import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { toast } from 'sonner';
-import { Edit, Trash2, Eye, EyeOff, Info, AlertTriangle, CheckCircle2 } from 'lucide-react';
+import { Edit, Trash2, Eye, EyeOff, Info, AlertTriangle, CheckCircle2, Lightbulb } from 'lucide-react';
 import {
   Dialog,
   DialogContent,
@@ -29,6 +29,7 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { Checkbox } from '@/components/ui/checkbox';
+import { suggestDepartments, DEPARTMENT_PRESETS, DEPARTMENT_RELATIONSHIPS } from '@/lib/departmentRelationships';
 
 const ALL_ROLES = [
   'owner', 'manager', 'frontdesk', 'housekeeping', 'kitchen', 'bar',
@@ -38,7 +39,8 @@ const ALL_ROLES = [
 
 const ALL_DEPARTMENTS = [
   'front_office', 'housekeeping', 'kitchen', 'bar', 'food_beverage',
-  'maintenance', 'inventory', 'management'
+  'maintenance', 'inventory', 'management', 'finance', 'security', 
+  'spa', 'concierge', 'admin', 'hr'
 ];
 
 interface NavigationItem {
@@ -60,6 +62,10 @@ export default function NavigationManager() {
   const [editingItem, setEditingItem] = useState<NavigationItem | null>(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [showDebugPanel, setShowDebugPanel] = useState(false);
+  const [departmentSuggestions, setDepartmentSuggestions] = useState<{ suggested: string[]; warnings: string[] }>({ 
+    suggested: [], 
+    warnings: [] 
+  });
 
   const { data: navItems, isLoading } = useQuery({
     queryKey: ['navigation-admin', tenantId],
@@ -91,6 +97,7 @@ export default function NavigationManager() {
       toast.success('Navigation item updated');
       setIsDialogOpen(false);
       setEditingItem(null);
+      setDepartmentSuggestions({ suggested: [], warnings: [] });
     },
     onError: (error) => {
       toast.error('Failed to update navigation item');
@@ -136,6 +143,9 @@ export default function NavigationManager() {
 
   const handleEdit = (item: NavigationItem) => {
     setEditingItem(item);
+    // Calculate suggestions when opening dialog
+    const suggestions = suggestDepartments(item.allowed_departments || []);
+    setDepartmentSuggestions(suggestions);
     setIsDialogOpen(true);
   };
 
@@ -152,6 +162,20 @@ export default function NavigationManager() {
     if (allowedDepts.length === 0) return true; // Visible to all departments
     
     return department ? allowedDepts.includes(department) : false;
+  };
+
+  const handleDepartmentChange = (checked: boolean, dept: string) => {
+    if (!editingItem) return;
+    
+    const updatedDepts = checked
+      ? [...editingItem.allowed_departments, dept]
+      : editingItem.allowed_departments.filter((d) => d !== dept);
+    
+    setEditingItem({ ...editingItem, allowed_departments: updatedDepts });
+    
+    // Recalculate suggestions
+    const suggestions = suggestDepartments(updatedDepts);
+    setDepartmentSuggestions(suggestions);
   };
 
   if (isLoading) {
@@ -539,49 +563,106 @@ export default function NavigationManager() {
                       Leave all unchecked for "All Departments"
                     </p>
                     <div className="grid grid-cols-2 gap-2">
-                      {ALL_DEPARTMENTS.map((dept) => (
-                        <div key={dept} className="flex items-center space-x-2">
-                          <Checkbox
-                            id={`dept-${dept}`}
-                            checked={editingItem.allowed_departments.includes(dept)}
-                            onCheckedChange={(checked) => {
-                              if (checked) {
-                                setEditingItem({
-                                  ...editingItem,
-                                  allowed_departments: [
-                                    ...editingItem.allowed_departments,
-                                    dept,
-                                  ],
-                                });
-                              } else {
-                                setEditingItem({
-                                  ...editingItem,
-                                  allowed_departments:
-                                    editingItem.allowed_departments.filter(
-                                      (d) => d !== dept
-                                    ),
-                                });
-                              }
-                            }}
-                          />
-                          <label
-                            htmlFor={`dept-${dept}`}
-                            className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
-                          >
-                            {dept}
-                          </label>
-                        </div>
-                      ))}
+                      {ALL_DEPARTMENTS.map((dept) => {
+                        const deptInfo = DEPARTMENT_RELATIONSHIPS[dept];
+                        const isParent = deptInfo?.parent;
+                        const isChild = !!deptInfo?.parentDept;
+                        
+                        return (
+                          <div key={dept} className="flex items-center space-x-2">
+                            <Checkbox
+                              id={`dept-${dept}`}
+                              checked={editingItem.allowed_departments.includes(dept)}
+                              onCheckedChange={(checked) => handleDepartmentChange(!!checked, dept)}
+                            />
+                            <label
+                              htmlFor={`dept-${dept}`}
+                              className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                            >
+                              {dept}
+                              {isChild && <span className="text-xs text-muted-foreground ml-1">↳</span>}
+                            </label>
+                            {deptInfo && (
+                              <Tooltip>
+                                <TooltipTrigger>
+                                  <Info className="w-3 h-3 text-muted-foreground" />
+                                </TooltipTrigger>
+                                <TooltipContent>
+                                  <p className="text-xs max-w-xs">{deptInfo.description}</p>
+                                </TooltipContent>
+                              </Tooltip>
+                            )}
+                          </div>
+                        );
+                      })}
                     </div>
                   </div>
                 </div>
 
-                <div className="flex justify-end gap-2">
+                {/* Smart Suggestions */}
+                {departmentSuggestions.warnings.length > 0 && (
+                  <Alert className="bg-yellow-50 dark:bg-yellow-950/20 border-yellow-200 dark:border-yellow-800">
+                    <Lightbulb className="h-4 w-4 text-yellow-600 dark:text-yellow-500" />
+                    <AlertDescription className="text-sm text-yellow-800 dark:text-yellow-200">
+                      <div className="font-medium mb-2">Department Suggestions:</div>
+                      <ul className="list-disc list-inside space-y-1">
+                        {departmentSuggestions.warnings.map((warning, idx) => (
+                          <li key={idx}>{warning}</li>
+                        ))}
+                      </ul>
+                      {departmentSuggestions.suggested.length > 0 && (
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          className="mt-3"
+                          onClick={() => {
+                            const updatedDepts = Array.from(new Set([
+                              ...(editingItem?.allowed_departments || []),
+                              ...departmentSuggestions.suggested
+                            ]));
+                            setEditingItem({ ...editingItem!, allowed_departments: updatedDepts });
+                            setDepartmentSuggestions({ suggested: [], warnings: [] });
+                            toast.success('Suggested departments added');
+                          }}
+                        >
+                          <Lightbulb className="h-4 w-4 mr-2" />
+                          Add Suggested Departments
+                        </Button>
+                      )}
+                    </AlertDescription>
+                  </Alert>
+                )}
+
+                {/* Quick Select Presets */}
+                <div>
+                  <Label className="text-sm font-medium mb-2 block">Quick Select Presets:</Label>
+                  <div className="flex flex-wrap gap-2">
+                    {Object.entries(DEPARTMENT_PRESETS).map(([presetName, depts]) => (
+                      <Button
+                        key={presetName}
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={() => {
+                          setEditingItem({ ...editingItem!, allowed_departments: depts });
+                          setDepartmentSuggestions({ suggested: [], warnings: [] });
+                          toast.success(`Applied "${presetName}" preset`);
+                        }}
+                      >
+                        {presetName}
+                      </Button>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="flex justify-end gap-2 pt-4">
                   <Button
                     variant="outline"
                     onClick={() => {
                       setIsDialogOpen(false);
                       setEditingItem(null);
+                      setDepartmentSuggestions({ suggested: [], warnings: [] });
                     }}
                   >
                     Cancel
