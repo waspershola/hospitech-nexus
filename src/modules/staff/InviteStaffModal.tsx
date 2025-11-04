@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -256,6 +256,11 @@ export function InviteStaffModal({ open, onClose }: InviteStaffModalProps) {
               {generatedPassword ? 'Staff Account Created' : 'Invite Staff Member'}
             </DialogTitle>
           </div>
+          <DialogDescription>
+            {generatedPassword 
+              ? 'Save the password below and share it securely with the staff member.'
+              : 'Fill in the staff member details to send them an invitation email or create their account with a manual password.'}
+          </DialogDescription>
         </DialogHeader>
 
         {!generatedPassword ? (

@@ -74,6 +74,7 @@ export function useRole() {
     isFinance: role === ROLES.FINANCE,
     isMaintenance: role === ROLES.MAINTENANCE,
     isRestaurant: role === ROLES.RESTAURANT,
+    isKitchen: role === ROLES.KITCHEN,
     isBar: role === ROLES.BAR,
     isAccountant: role === ROLES.ACCOUNTANT,
     isSupervisor: role === ROLES.SUPERVISOR,

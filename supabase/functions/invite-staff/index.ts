@@ -87,14 +87,16 @@ function mapStaffRoleToAppRole(staffRole: string, department: string): string {
       '_default': 'restaurant'
     },
     
-    // Kitchen Department
+    // Kitchen Department - separate from restaurant
     'kitchen': {
-      'cook': 'restaurant',
-      'chef': 'restaurant',
-      'kitchen_assistant': 'restaurant',
+      'cook': 'kitchen',
+      'chef': 'kitchen',
+      'kitchen_assistant': 'kitchen',
+      'kitchen_supervisor': 'supervisor',
       'sous_chef': 'supervisor',
       'executive_chef': 'manager',
-      '_default': 'restaurant'
+      'kitchen_manager': 'manager',
+      '_default': 'kitchen'
     },
     
     // Bar Department

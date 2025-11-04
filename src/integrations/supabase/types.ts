@@ -3237,6 +3237,7 @@ export type Database = {
         | "limited_ops"
         | "guest_portal_access"
         | "store_user"
+        | "kitchen"
       department_type:
         | "front_office"
         | "housekeeping"
@@ -3425,6 +3426,7 @@ export const Constants = {
         "limited_ops",
         "guest_portal_access",
         "store_user",
+        "kitchen",
       ],
       department_type: [
         "front_office",

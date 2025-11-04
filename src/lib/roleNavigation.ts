@@ -75,11 +75,12 @@ export function getNavigationForRole(role: string, department?: string): Navigat
     ],
 
     // Housekeeping staff
-    housekeeping: [
-      { path: '/dashboard', label: 'Overview', icon: 'Home' },
-      { path: '/dashboard/housekeeping-dashboard', label: 'Housekeeping', icon: 'Sparkles' },
-      { path: '/dashboard/rooms', label: 'Rooms', icon: 'Bed' },
-    ],
+  housekeeping: [
+    { path: '/dashboard', label: 'Overview', icon: 'Home' },
+    { path: '/dashboard/housekeeping-dashboard', label: 'Housekeeping', icon: 'Sparkles' },
+    { path: '/dashboard/rooms', label: 'Rooms', icon: 'Bed' },
+    { path: '/dashboard/inventory/requests', label: 'Stock Requests', icon: 'Package' },
+  ],
 
     // Finance/Accountant
     finance: [
@@ -102,25 +103,36 @@ export function getNavigationForRole(role: string, department?: string): Navigat
     ],
 
     // Restaurant staff
-    restaurant: [
-      { path: '/dashboard', label: 'Overview', icon: 'Home' },
-      { path: '/dashboard/kitchen-dashboard', label: 'Kitchen', icon: 'UtensilsCrossed' },
-      { path: '/dashboard/payments', label: 'Payments', icon: 'CreditCard' },
-    ],
+  restaurant: [
+    { path: '/dashboard', label: 'Overview', icon: 'Home' },
+    { path: '/dashboard/kitchen-dashboard', label: 'Kitchen', icon: 'UtensilsCrossed' },
+    { path: '/dashboard/inventory/requests', label: 'Stock Requests', icon: 'Package' },
+    { path: '/dashboard/payments', label: 'Payments', icon: 'CreditCard' },
+  ],
+
+  // Kitchen staff (separate from restaurant)
+  kitchen: [
+    { path: '/dashboard', label: 'Overview', icon: 'Home' },
+    { path: '/dashboard/kitchen-dashboard', label: 'Kitchen', icon: 'UtensilsCrossed' },
+    { path: '/dashboard/inventory/requests', label: 'Stock Requests', icon: 'Package' },
+    { path: '/dashboard/payments', label: 'Payments', icon: 'CreditCard' },
+  ],
 
     // Bar staff
-    bar: [
-      { path: '/dashboard', label: 'Overview', icon: 'Home' },
-      { path: '/dashboard/bar-dashboard', label: 'Bar', icon: 'Wine' },
-      { path: '/dashboard/payments', label: 'Payments', icon: 'CreditCard' },
-    ],
+  bar: [
+    { path: '/dashboard', label: 'Overview', icon: 'Home' },
+    { path: '/dashboard/bar-dashboard', label: 'Bar', icon: 'Wine' },
+    { path: '/dashboard/inventory/requests', label: 'Stock Requests', icon: 'Package' },
+    { path: '/dashboard/payments', label: 'Payments', icon: 'CreditCard' },
+  ],
 
     // Maintenance staff
-    maintenance: [
-      { path: '/dashboard', label: 'Overview', icon: 'Home' },
-      { path: '/dashboard/maintenance-dashboard', label: 'Maintenance', icon: 'Wrench' },
-      { path: '/dashboard/rooms', label: 'Rooms', icon: 'Bed' },
-    ],
+  maintenance: [
+    { path: '/dashboard', label: 'Overview', icon: 'Home' },
+    { path: '/dashboard/maintenance-dashboard', label: 'Maintenance', icon: 'Wrench' },
+    { path: '/dashboard/rooms', label: 'Rooms', icon: 'Bed' },
+    { path: '/dashboard/inventory/requests', label: 'Stock Requests', icon: 'Package' },
+  ],
 
     // Supervisor has access to their department + staff management
     supervisor: [],
@@ -215,23 +227,51 @@ function getDepartmentNavigation(department: string): NavigationItem[] {
     housekeeping: [
       { path: '/dashboard/housekeeping-dashboard', label: 'Housekeeping', icon: 'Sparkles' },
       { path: '/dashboard/rooms', label: 'Rooms', icon: 'Bed' },
+      { path: '/dashboard/inventory/requests', label: 'Stock Requests', icon: 'Package' },
     ],
     food_beverage: [
       { path: '/dashboard/kitchen-dashboard', label: 'Restaurant', icon: 'UtensilsCrossed' },
+      { path: '/dashboard/inventory/requests', label: 'Stock Requests', icon: 'Package' },
     ],
     kitchen: [
       { path: '/dashboard/kitchen-dashboard', label: 'Kitchen', icon: 'UtensilsCrossed' },
+      { path: '/dashboard/inventory/requests', label: 'Stock Requests', icon: 'Package' },
     ],
     bar: [
       { path: '/dashboard/bar-dashboard', label: 'Bar', icon: 'Wine' },
+      { path: '/dashboard/inventory/requests', label: 'Stock Requests', icon: 'Package' },
     ],
     maintenance: [
       { path: '/dashboard/maintenance-dashboard', label: 'Maintenance', icon: 'Wrench' },
       { path: '/dashboard/rooms', label: 'Rooms', icon: 'Bed' },
+      { path: '/dashboard/inventory/requests', label: 'Stock Requests', icon: 'Package' },
     ],
     accounts: [
       { path: '/dashboard/payments', label: 'Payments', icon: 'CreditCard' },
       { path: '/dashboard/finance-dashboard', label: 'Finance', icon: 'TrendingUp' },
+    ],
+    inventory: [
+      { path: '/dashboard/inventory', label: 'Inventory', icon: 'Package' },
+      { path: '/dashboard/inventory/requests', label: 'Requests', icon: 'ClipboardList' },
+      { path: '/dashboard/inventory/movements', label: 'Movements', icon: 'ArrowLeftRight' },
+    ],
+    hr: [
+      { path: '/dashboard/staff', label: 'Staff', icon: 'UserCog' },
+      { path: '/dashboard/staff-activity', label: 'Staff Activity', icon: 'Activity' },
+    ],
+    spa: [
+      { path: '/dashboard/bookings', label: 'Appointments', icon: 'CalendarDays' },
+    ],
+    concierge: [
+      { path: '/dashboard/guests', label: 'Guests', icon: 'Users' },
+    ],
+    admin: [
+      { path: '/dashboard/staff', label: 'Staff', icon: 'UserCog' },
+      { path: '/dashboard/reports', label: 'Reports', icon: 'FileText' },
+    ],
+    security: [
+      { path: '/dashboard/front-desk', label: 'Front Desk', icon: 'Hotel' },
+      { path: '/dashboard/rooms', label: 'Rooms', icon: 'Bed' },
     ],
   };
 
@@ -250,6 +290,7 @@ export function getDefaultDashboard(role: string, department?: string): string {
     finance: '/dashboard/finance-dashboard',
     accountant: '/dashboard/finance-center',
     restaurant: '/dashboard/kitchen-dashboard',
+    kitchen: '/dashboard/kitchen-dashboard',
     bar: '/dashboard/bar-dashboard',
     maintenance: '/dashboard/maintenance-dashboard',
     store_manager: '/dashboard/inventory',
@@ -273,6 +314,12 @@ export function getDefaultDashboard(role: string, department?: string): string {
       bar: '/dashboard/bar-dashboard',
       maintenance: '/dashboard/maintenance-dashboard',
       accounts: '/dashboard/finance-dashboard',
+      inventory: '/dashboard/inventory',
+      hr: '/dashboard/staff',
+      spa: '/dashboard',
+      concierge: '/dashboard',
+      admin: '/dashboard/staff',
+      security: '/dashboard/front-desk',
     };
     return supervisorDashboards[department] || '/dashboard';
   }
