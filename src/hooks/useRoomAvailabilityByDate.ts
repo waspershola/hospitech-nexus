@@ -93,8 +93,15 @@ export function useRoomAvailabilityByDate(startDate: Date | null, endDate: Date 
           checkOutTime
         );
 
-        // Find active booking for additional details
-        const booking = bookings?.find(b => b.room_id === room.id);
+        // Find the booking that's actually active on the selected date
+        const dateStr = format(startDate, 'yyyy-MM-dd');
+        const booking = bookings?.find(b => {
+          if (b.room_id !== room.id) return false;
+          const checkInDate = format(new Date(b.check_in), 'yyyy-MM-dd');
+          const checkOutDate = format(new Date(b.check_out), 'yyyy-MM-dd');
+          // Booking is active if: check-in <= selected date < check-out
+          return checkInDate <= dateStr && checkOutDate > dateStr;
+        });
 
         // Map status names to match the expected format
         const mappedStatus: RoomAvailabilityData['status'] = 
