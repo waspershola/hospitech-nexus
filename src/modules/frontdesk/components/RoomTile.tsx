@@ -5,6 +5,8 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/comp
 import { Sparkles, CreditCard, IdCard, Wrench, Building2, AlertTriangle, BellOff } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useOrganizationWallet } from '@/hooks/useOrganizationWallet';
+import { getRoomStatusNow } from '@/lib/roomAvailability';
+import { useOperationsHours } from '@/hooks/useOperationsHours';
 
 interface RoomTileProps {
   room: any;
@@ -21,6 +23,9 @@ const statusColors = {
   cleaning: 'bg-[hsl(var(--status-dirty))] text-white',
   maintenance: 'bg-[hsl(var(--status-oos))] text-white',
   overstay: 'bg-[hsl(var(--status-overstay))] text-white',
+  checking_in: 'bg-blue-600 text-white',
+  checking_out: 'bg-purple-600 text-white',
+  out_of_order: 'bg-[hsl(var(--status-oos))] text-white',
 };
 
 const statusBorderColors = {
@@ -30,12 +35,14 @@ const statusBorderColors = {
   cleaning: 'border-[hsl(var(--status-dirty)/0.3)] hover:border-[hsl(var(--status-dirty))]',
   maintenance: 'border-[hsl(var(--status-oos)/0.3)] hover:border-[hsl(var(--status-oos))]',
   overstay: 'border-[hsl(var(--status-overstay)/0.3)] hover:border-[hsl(var(--status-overstay))]',
+  checking_in: 'border-blue-600/30 hover:border-blue-600',
+  checking_out: 'border-purple-600/30 hover:border-purple-600',
+  out_of_order: 'border-[hsl(var(--status-oos)/0.3)] hover:border-[hsl(var(--status-oos))]',
 };
 
 export function RoomTile({ room, onClick, isSelectionMode, isSelected, onSelectionChange }: RoomTileProps) {
-  const statusColor = statusColors[room.status as keyof typeof statusColors] || statusColors.available;
-  const borderColor = statusBorderColors[room.status as keyof typeof statusBorderColors] || statusBorderColors.available;
-
+  const { data: operationsHours } = useOperationsHours();
+  
   // Phase 2: Prioritize TODAY's active booking over canonical fields
   const bookingsArray = Array.isArray(room.bookings) ? room.bookings : room.bookings ? [room.bookings] : [];
   const today = new Date().toISOString().split('T')[0];
@@ -59,6 +66,17 @@ export function RoomTile({ room, onClick, isSelectionMode, isSelected, onSelecti
   if (!activeBooking && room.current_reservation_id) {
     activeBooking = bookingsArray.find((b: any) => b.id === room.current_reservation_id);
   }
+  
+  // Calculate current status using centralized logic
+  const currentStatus = getRoomStatusNow(
+    room,
+    activeBooking,
+    operationsHours?.checkInTime,
+    operationsHours?.checkOutTime
+  );
+  
+  const statusColor = statusColors[currentStatus as keyof typeof statusColors] || statusColors.available;
+  const borderColor = statusBorderColors[currentStatus as keyof typeof statusBorderColors] || statusBorderColors.available;
   
   const organization = activeBooking?.organization;
   const guest = activeBooking?.guest;
@@ -142,11 +160,11 @@ export function RoomTile({ room, onClick, isSelectionMode, isSelected, onSelecti
             )}
           </div>
           <Badge className={cn(statusColor, 'capitalize shrink-0')}>
-            {room.status}
+            {currentStatus.replace(/_/g, ' ')}
           </Badge>
         </div>
 
-        {(room.status === 'occupied' || room.status === 'overstay') && guest && (
+        {(currentStatus === 'occupied' || currentStatus === 'overstay') && guest && (
           <div className="mt-2 pt-2 border-t border-border">
             {organization && (
               <div className="mb-1.5">
@@ -179,7 +197,7 @@ export function RoomTile({ room, onClick, isSelectionMode, isSelected, onSelecti
         )}
 
         <div className="flex gap-1.5 mt-2">
-          {room.status === 'cleaning' && (
+          {currentStatus === 'cleaning' && (
             <Tooltip>
               <TooltipTrigger asChild>
                 <div className="p-1 rounded bg-[hsl(var(--status-dirty)/0.1)] cursor-help">
@@ -189,7 +207,7 @@ export function RoomTile({ room, onClick, isSelectionMode, isSelected, onSelecti
               <TooltipContent>Needs housekeeping</TooltipContent>
             </Tooltip>
           )}
-          {(room.status === 'occupied' || room.status === 'overstay') && (
+          {(currentStatus === 'occupied' || currentStatus === 'overstay') && (
             <>
               <Tooltip>
                 <TooltipTrigger asChild>
@@ -209,7 +227,7 @@ export function RoomTile({ room, onClick, isSelectionMode, isSelected, onSelecti
               </Tooltip>
             </>
           )}
-          {room.status === 'maintenance' && (
+          {currentStatus === 'maintenance' && (
             <Tooltip>
               <TooltipTrigger asChild>
                 <div className="p-1 rounded bg-[hsl(var(--status-oos)/0.1)] cursor-help">

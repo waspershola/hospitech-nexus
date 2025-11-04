@@ -1,6 +1,8 @@
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
+import { getRoomStatusForDate } from '@/lib/roomAvailability';
+import { format } from 'date-fns';
 
 interface RoomAvailabilityData {
   roomId: string;
@@ -59,67 +61,46 @@ export function useRoomAvailabilityByDate(startDate: Date | null, endDate: Date 
 
       if (bookingsError) throw bookingsError;
 
-      // Get actual today's date for comparison
-      const today = new Date();
-      today.setHours(0, 0, 0, 0);
-      
-      const selectedDay = new Date(startDate);
-      selectedDay.setHours(0, 0, 0, 0);
-      
-      // Check if the selected day is actually today
-      const isSelectedDayToday = today.toDateString() === selectedDay.toDateString();
+      // Fetch hotel check-out time configuration
+      const { data: checkOutConfig } = await supabase
+        .from('hotel_configurations')
+        .select('value')
+        .eq('tenant_id', tenantId)
+        .eq('key', 'check_out_time')
+        .single();
 
-      // Create a map of room availability
+      const checkOutTime = checkOutConfig?.value 
+        ? String(checkOutConfig.value).replace(/"/g, '') 
+        : '12:00';
+
+      // Create a map of room availability using centralized logic
       const roomAvailability: RoomAvailabilityData[] = (rooms || []).map((room) => {
-        // Find if this room has a booking in the selected date range
+        // Convert room bookings to array format expected by getRoomStatusForDate
+        const roomBookings = bookings?.filter(b => b.room_id === room.id).map(b => ({
+          id: b.id,
+          room_id: b.room_id,
+          check_in: b.check_in,
+          check_out: b.check_out,
+          status: b.status,
+          guest_id: b.guest?.name || undefined,
+        })) || [];
+
+        // Use centralized status logic
+        const status = getRoomStatusForDate(
+          { ...room, status: room.status },
+          startDate,
+          roomBookings as any,
+          checkOutTime
+        );
+
+        // Find active booking for additional details
         const booking = bookings?.find(b => b.room_id === room.id);
 
-        if (!booking) {
-          return {
-            roomId: room.id,
-            roomNumber: room.number,
-            roomType: room.type,
-            categoryName: room.category?.name,
-            floor: room.floor,
-            status: 'available' as const,
-          };
-        }
-
-        const checkInDate = new Date(booking.check_in);
-        checkInDate.setHours(0, 0, 0, 0);
-        const checkOutDate = new Date(booking.check_out);
-        checkOutDate.setHours(0, 0, 0, 0);
-        
-        const isCheckInDay = checkInDate.toDateString() === selectedDay.toDateString();
-        const isCheckOutDay = checkOutDate.toDateString() === selectedDay.toDateString();
-
-        let availabilityStatus: RoomAvailabilityData['status'];
-        
-        // If check-in is on the selected day
-        if (isCheckInDay) {
-          // Only show "checking_in" if:
-          // 1. The selected date is actually today AND
-          // 2. Booking is still in 'reserved' status
-          if (isSelectedDayToday && booking.status === 'reserved') {
-            availabilityStatus = 'checking_in';
-          } else if (booking.status === 'checked_in') {
-            availabilityStatus = 'occupied';
-          } else {
-            // Future check-in - show as reserved
-            availabilityStatus = 'reserved';
-          }
-        } 
-        // If check-out is on the selected day
-        else if (isCheckOutDay) {
-          // Only show "checking_out" if the selected date is today
-          availabilityStatus = isSelectedDayToday ? 'checking_out' : 'occupied';
-        } 
-        // Mid-stay (guest is staying multiple days)
-        else {
-          // If guest has checked in, show as occupied
-          // Otherwise show as reserved (future reservation)
-          availabilityStatus = booking.status === 'checked_in' ? 'occupied' : 'reserved';
-        }
+        // Map status names to match the expected format
+        const mappedStatus: RoomAvailabilityData['status'] = 
+          status === 'check-in' ? 'checking_in' :
+          status === 'check-out' ? 'checking_out' :
+          status as RoomAvailabilityData['status'];
 
         return {
           roomId: room.id,
@@ -127,11 +108,11 @@ export function useRoomAvailabilityByDate(startDate: Date | null, endDate: Date 
           roomType: room.type,
           categoryName: room.category?.name,
           floor: room.floor,
-          status: availabilityStatus,
-          bookingId: booking.id,
-          guestName: booking.guest?.name,
-          checkIn: booking.check_in,
-          checkOut: booking.check_out,
+          status: mappedStatus,
+          bookingId: booking?.id,
+          guestName: booking?.guest?.name,
+          checkIn: booking?.check_in,
+          checkOut: booking?.check_out,
         };
       });
 
