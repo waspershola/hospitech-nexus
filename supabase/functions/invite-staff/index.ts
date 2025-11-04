@@ -250,12 +250,11 @@ serve(async (req: Request): Promise<Response> => {
   try {
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
-    const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY')!;
     
-    // Create client with service role for admin operations
-    const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey);
-    
-    // Create client with anon key for user authentication
+    // Create admin client for all operations
+    const supabase = createClient(supabaseUrl, supabaseServiceKey);
+
+    // Get and validate JWT token
     const authHeader = req.headers.get('Authorization');
     if (!authHeader) {
       return new Response(
@@ -264,21 +263,15 @@ serve(async (req: Request): Promise<Response> => {
       );
     }
     
-    const supabase = createClient(supabaseUrl, supabaseAnonKey, {
-      global: {
-        headers: {
-          Authorization: authHeader
-        }
-      }
-    });
-
-    // Get authenticated user
-    const { data: { user }, error: userError } = await supabase.auth.getUser();
+    const token = authHeader.replace('Bearer ', '');
+    
+    // Verify the JWT token and get user
+    const { data: { user }, error: userError } = await supabase.auth.getUser(token);
 
     if (userError || !user) {
       console.error('[Auth Error]', userError);
       return new Response(
-        JSON.stringify({ error: 'Unauthorized' }),
+        JSON.stringify({ error: 'Unauthorized - Invalid token' }),
         { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
@@ -335,7 +328,7 @@ serve(async (req: Request): Promise<Response> => {
       const tempPassword = generateTempPassword();
 
       // Create auth user with temp password
-      const { data: authUser, error: authError } = await supabaseAdmin.auth.admin.createUser({
+      const { data: authUser, error: authError } = await supabase.auth.admin.createUser({
         email: inviteData.email,
         password: tempPassword,
         email_confirm: true,
@@ -365,7 +358,7 @@ serve(async (req: Request): Promise<Response> => {
       if (roleError) {
         console.error('Error creating user role:', roleError);
         // Clean up auth user
-        await supabaseAdmin.auth.admin.deleteUser(authUser.user.id);
+        await supabase.auth.admin.deleteUser(authUser.user.id);
         return new Response(
           JSON.stringify({ error: 'Failed to assign user role' }),
           { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -393,7 +386,7 @@ serve(async (req: Request): Promise<Response> => {
       if (staffError) {
         console.error('Error creating staff record:', staffError);
         // Clean up
-        await supabaseAdmin.auth.admin.deleteUser(authUser.user.id);
+        await supabase.auth.admin.deleteUser(authUser.user.id);
         return new Response(
           JSON.stringify({ error: 'Failed to create staff record' }),
           { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
