@@ -23,7 +23,7 @@ export default function Settings() {
         <AlertDescription>
           For hotel-wide settings like branding, financials, and email configuration, please visit
           the{' '}
-          <a href="/dashboard/configuration" className="font-medium underline">
+          <a href="/dashboard/configuration-center" className="font-medium underline">
             Configuration Center
           </a>
           .

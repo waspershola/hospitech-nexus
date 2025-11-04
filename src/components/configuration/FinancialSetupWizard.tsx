@@ -277,7 +277,7 @@ export function FinancialSetupWizard({
                       <Button
                         variant="outline"
                         size="sm"
-                        onClick={() => window.open('/dashboard/finance?tab=providers', '_blank')}
+                        onClick={() => window.open('/dashboard/finance-center?tab=providers', '_blank')}
                       >
                         Open Finance Center
                         <ArrowRight className="ml-2 h-4 w-4" />
