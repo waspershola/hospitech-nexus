@@ -1,10 +1,18 @@
 import { useWidgets } from '@/config/widgetRegistry';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { DollarSign } from 'lucide-react';
+import { useRole } from '@/hooks/useRole';
+import { Navigate } from 'react-router-dom';
 
 export default function FinanceDashboard() {
+  const { role, staffInfo } = useRole();
   const widgets = useWidgets();
   const financeWidgets = widgets.filter(w => w.category === 'finance');
+  
+  // Supervisors can only access if in accounts/finance department
+  if (role === 'supervisor' && staffInfo?.department !== 'accounts' && staffInfo?.department !== 'finance') {
+    return <Navigate to="/dashboard" replace />;
+  }
   
   return (
     <div className="space-y-6">

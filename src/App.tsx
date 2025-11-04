@@ -37,6 +37,7 @@ import Payments from './pages/dashboard/Payments';
 import Wallets from './pages/dashboard/Wallets';
 import Debtors from './pages/dashboard/Debtors';
 import Inventory from './pages/dashboard/Inventory';
+import { DepartmentRequestsTab } from './modules/inventory/DepartmentRequestsTab';
 import PortalHome from "./pages/portal/Home";
 import PortalRequests from "./pages/portal/Requests";
 import PortalPayments from "./pages/portal/Payments";
@@ -68,6 +69,7 @@ const App = () => (
               <Route path="payments" element={<Payments />} />
               <Route path="wallets" element={<Wallets />} />
               <Route path="inventory" element={<RoleGuard allowedRoles={['owner', 'manager', 'store_manager', 'procurement']}><Inventory /></RoleGuard>} />
+              <Route path="inventory/requests" element={<RoleGuard allowedRoles={['housekeeping','maintenance','restaurant','kitchen','bar','supervisor']}><DepartmentRequestsTab /></RoleGuard>} />
               <Route path="debtors" element={<RoleGuard allowedRoles={['owner', 'manager', 'finance', 'accountant']}><Debtors /></RoleGuard>} />
               <Route path="reports" element={<RoleGuard allowedRoles={['owner', 'manager', 'finance', 'accountant']}><Reports /></RoleGuard>} />
               {/* Redirects for backward compatibility */}
@@ -85,7 +87,7 @@ const App = () => (
               <Route path="bar-dashboard" element={<RoleGuard allowedRoles={['owner', 'manager', 'bar', 'supervisor']}><BarDashboard /></RoleGuard>} />
               
           <Route path="settings" element={<Settings />} />
-          <Route path="user-roles" element={<RoleGuard allowedRoles={['owner', 'manager']}><UserRoles /></RoleGuard>} />
+          <Route path="user-roles" element={<RoleGuard allowedRoles={['owner']}><UserRoles /></RoleGuard>} />
           <Route path="staff" element={<RoleGuard allowedRoles={['owner', 'manager', 'supervisor']}><Staff /></RoleGuard>} />
           <Route path="staff-activity" element={<RoleGuard allowedRoles={['owner', 'manager', 'supervisor']}><StaffActivity /></RoleGuard>} />
             </Route>
