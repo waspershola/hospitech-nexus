@@ -48,17 +48,22 @@ export function useRoomActions() {
 
   const checkInMutation = useMutation({
     mutationFn: async (roomId: string) => {
-      // First, find and update the active booking
+      const today = new Date().toISOString().split('T')[0];
+      
+      // Find the booking that is active TODAY (check-in is today or in the past, checkout is today or in the future)
       const { data: booking, error: bookingFetchError } = await supabase
         .from('bookings')
-        .select('id, metadata')
+        .select('id, status, metadata')
         .eq('room_id', roomId)
         .in('status', ['reserved', 'checked_in'])
+        .lte('check_in', `${today}T23:59:59`)
+        .gte('check_out', `${today}T00:00:00`)
         .order('check_in', { ascending: false })
         .limit(1)
-        .single();
+        .maybeSingle();
 
-      if (bookingFetchError) throw new Error('No active booking found for this room');
+      if (bookingFetchError) throw bookingFetchError;
+      if (!booking) throw new Error('No active booking found for this room today');
 
       // Update booking status to checked_in with actual check-in timestamp
       const updatedMetadata = {
@@ -81,7 +86,7 @@ export function useRoomActions() {
         action: 'UPDATE',
         table_name: 'bookings',
         record_id: booking.id,
-        before_data: { status: 'reserved' },
+        before_data: { status: booking.status },
         after_data: { status: 'checked_in', metadata: updatedMetadata },
       });
 
