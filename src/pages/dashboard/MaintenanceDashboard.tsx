@@ -1,7 +1,15 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Wrench } from 'lucide-react';
+import { useRole } from '@/hooks/useRole';
+import { Navigate } from 'react-router-dom';
 
 export default function MaintenanceDashboard() {
+  const { role, staffInfo } = useRole();
+  
+  // Supervisors can only access their own department
+  if (role === 'supervisor' && staffInfo?.department !== 'maintenance') {
+    return <Navigate to="/dashboard" replace />;
+  }
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">

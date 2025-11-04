@@ -1,10 +1,18 @@
 import { useWidgets } from '@/config/widgetRegistry';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Sparkles } from 'lucide-react';
+import { useRole } from '@/hooks/useRole';
+import { Navigate } from 'react-router-dom';
 
 export default function HousekeepingDashboard() {
+  const { role, staffInfo } = useRole();
   const widgets = useWidgets();
   const housekeepingWidgets = widgets.filter(w => w.category === 'housekeeping');
+  
+  // Supervisors can only access their own department
+  if (role === 'supervisor' && staffInfo?.department !== 'housekeeping') {
+    return <Navigate to="/dashboard" replace />;
+  }
   
   return (
     <div className="space-y-6">

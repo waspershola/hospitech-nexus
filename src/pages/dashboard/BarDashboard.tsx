@@ -1,10 +1,18 @@
 import { useWidgets } from '@/config/widgetRegistry';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Wine } from 'lucide-react';
+import { useRole } from '@/hooks/useRole';
+import { Navigate } from 'react-router-dom';
 
 export default function BarDashboard() {
+  const { role, staffInfo } = useRole();
   const widgets = useWidgets();
   const barWidgets = widgets.filter(w => w.category === 'restaurant');
+  
+  // Supervisors can only access their own department
+  if (role === 'supervisor' && staffInfo?.department !== 'food_beverage') {
+    return <Navigate to="/dashboard" replace />;
+  }
   
   return (
     <div className="space-y-6">
