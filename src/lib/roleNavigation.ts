@@ -1,6 +1,16 @@
 /**
- * Role-based navigation configuration
- * Defines what navigation items each role can access
+ * @deprecated This file is kept for reference only.
+ * 
+ * Navigation is now database-driven via the navigation_items table.
+ * See useNavigation() hook in src/hooks/useNavigation.ts for current implementation.
+ * 
+ * Migration completed: The system now uses allowed_roles[] and allowed_departments[]
+ * columns in the navigation_items table for dynamic, tenant-customizable navigation.
+ * 
+ * This file may still be used for:
+ * - Default dashboard path logic (getDefaultDashboard)
+ * - Path access checks (canAccessPath)
+ * - Reference during migration to new tenants
  */
 
 export interface NavigationItem {
