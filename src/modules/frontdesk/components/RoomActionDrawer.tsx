@@ -21,6 +21,8 @@ import { useForceCheckout } from '@/hooks/useForceCheckout';
 import { usePaymentPreferences } from '@/hooks/usePaymentPreferences';
 import { usePrintReceipt } from '@/hooks/usePrintReceipt';
 import { useReceiptSettings } from '@/hooks/useReceiptSettings';
+import { getRoomStatusNow } from '@/lib/roomAvailability';
+import { useOperationsHours } from '@/hooks/useOperationsHours';
 import { ExtendStayModal } from './ExtendStayModal';
 import { AddChargeModal } from './AddChargeModal';
 import { ChargeToOrgModal } from './ChargeToOrgModal';
@@ -250,6 +252,15 @@ export function RoomActionDrawer({ roomId, contextDate, open, onClose, onOpenAss
   // No longer need isTransitioning check since we filter bookings to TODAY only
   // If there's no activeBooking, it means the room genuinely has no TODAY-relevant booking
   
+  // Compute real-time status based on current time and operations hours
+  const { data: operationsHours } = useOperationsHours();
+  const computedStatus = room ? getRoomStatusNow(
+    room,
+    activeBooking as any, // Cast since query doesn't include room_id but we know the room context
+    operationsHours?.checkInTime,
+    operationsHours?.checkOutTime
+  ) : 'available';
+  
   // Fetch folio balance for active booking
   const { data: folio } = useBookingFolio(activeBooking?.id || null);
   
@@ -422,24 +433,27 @@ export function RoomActionDrawer({ roomId, contextDate, open, onClose, onOpenAss
 
     const hasDND = room.notes?.includes('[DND]');
 
-    switch (room.status) {
+    // Use computedStatus instead of room.status for accurate, time-aware actions
+    switch (computedStatus) {
       case 'available':
-        // Only show new booking actions if room is truly available (no active reservation)
-        const hasActiveReservation = room.current_reservation_id;
-        
-        if (hasActiveReservation) {
-          // Room shows available but has reservation - shouldn't happen but prevent duplicate bookings
-          return [
-            { label: 'Check-In Guest', action: handleCheckIn, variant: 'default' as const, icon: LogIn, tooltip: 'Complete guest check-in' },
-          ];
-        }
-        
+        // Room is genuinely available - show new booking actions
         return [
           { label: 'Assign Room', action: () => room && onOpenAssignDrawer?.(room.id, room.number), variant: 'default' as const, icon: UserPlus, tooltip: 'Full booking with guest details' },
           { label: 'Walk-in Check-In', action: handleQuickCheckIn, variant: 'outline' as const, icon: LogIn, tooltip: 'Express walk-in check-in' },
           { label: 'Set Out of Service', action: handleMarkMaintenance, variant: 'outline' as const, icon: Wrench, tooltip: 'Mark as out of service' },
         ];
+      case 'reserved':
+      case 'checking_in':
+        // Reserved rooms - only allow check-in or reservation management
+        if (!activeBooking) return [];
+        return [
+          { label: 'Check-In Guest', action: handleCheckIn, variant: 'default' as const, icon: LogIn, tooltip: 'Complete guest check-in' },
+          { label: 'View Reservation', action: () => setAmendmentDrawerOpen(true), variant: 'outline' as const, icon: FileText, tooltip: 'View reservation details' },
+          { label: 'Cancel Reservation', action: () => setCancelModalOpen(true), variant: 'destructive' as const, icon: AlertTriangle, tooltip: 'Cancel this reservation' },
+        ];
       case 'occupied':
+      case 'checking_out':
+        if (!activeBooking) return [];
         const hasOutstandingBalance = folio && folio.balance > 0;
         const actions = [
           { label: 'Check-Out', action: handleExpressCheckout, variant: 'default' as const, icon: LogOut, tooltip: 'Complete guest checkout' },
@@ -462,15 +476,8 @@ export function RoomActionDrawer({ roomId, contextDate, open, onClose, onOpenAss
         }
         
         return actions;
-      case 'reserved':
-        // Reserved rooms should only allow check-in, modification, or cancellation
-        // NOT new bookings to prevent double-booking
-        return [
-          { label: 'Check-In Guest', action: handleCheckIn, variant: 'default' as const, icon: LogIn, tooltip: 'Complete guest check-in' },
-          { label: 'View Reservation', action: () => setAmendmentDrawerOpen(true), variant: 'outline' as const, icon: FileText, tooltip: 'View reservation details' },
-          { label: 'Cancel Reservation', action: () => setCancelModalOpen(true), variant: 'destructive' as const, icon: AlertTriangle, tooltip: 'Cancel this reservation' },
-        ];
       case 'overstay':
+        if (!activeBooking) return [];
         return [
           { label: 'Extend Stay', action: () => setExtendModalOpen(true), variant: 'default' as const, icon: Calendar, tooltip: 'Extend guest stay' },
           { label: 'Apply Overstay Charge', action: handleRoomService, variant: 'outline' as const, icon: CreditCard, tooltip: 'Apply overstay fees' },
@@ -518,7 +525,7 @@ export function RoomActionDrawer({ roomId, contextDate, open, onClose, onOpenAss
                   <div>
                     <SheetTitle className="text-2xl font-display">Room {room.number}</SheetTitle>
                     <div className="flex items-center gap-2 mt-1">
-                      <Badge className="capitalize">{room.status}</Badge>
+                      <Badge className="capitalize">{computedStatus.replace('_', ' ')}</Badge>
                       <span className="text-sm text-muted-foreground">
                         {room.category?.name || room.type}
                       </span>
@@ -545,6 +552,14 @@ export function RoomActionDrawer({ roomId, contextDate, open, onClose, onOpenAss
                 </TabsList>
 
                 <TabsContent value="details" className="space-y-6 mt-6">
+                  {!currentBooking && computedStatus === 'available' && (
+                    <div className="text-center py-8">
+                      <p className="text-muted-foreground">
+                        No booking active for today. Room is available.
+                      </p>
+                    </div>
+                  )}
+                  
                   {currentBooking && (
                     <>
                       {currentBooking.organization && (
