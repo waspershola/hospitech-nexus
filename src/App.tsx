@@ -37,6 +37,7 @@ import Payments from './pages/dashboard/Payments';
 import Wallets from './pages/dashboard/Wallets';
 import Debtors from './pages/dashboard/Debtors';
 import Inventory from './pages/dashboard/Inventory';
+import NavigationManager from './pages/dashboard/NavigationManager';
 import { DepartmentRequestsTab } from './modules/inventory/DepartmentRequestsTab';
 import PortalHome from "./pages/portal/Home";
 import PortalRequests from "./pages/portal/Requests";
@@ -88,6 +89,7 @@ const App = () => (
               
           <Route path="settings" element={<Settings />} />
           <Route path="user-roles" element={<RoleGuard allowedRoles={['owner']}><UserRoles /></RoleGuard>} />
+          <Route path="navigation-manager" element={<RoleGuard allowedRoles={['owner']}><NavigationManager /></RoleGuard>} />
           <Route path="staff" element={<RoleGuard allowedRoles={['owner', 'manager', 'supervisor']}><Staff /></RoleGuard>} />
           <Route path="staff-activity" element={<RoleGuard allowedRoles={['owner', 'manager', 'supervisor']}><StaffActivity /></RoleGuard>} />
             </Route>
