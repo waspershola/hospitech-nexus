@@ -68,8 +68,10 @@ const App = () => (
               <Route path="guests/:id" element={<GuestProfile />} />
               <Route path="payments" element={<Payments />} />
               <Route path="wallets" element={<Wallets />} />
-              <Route path="inventory" element={<RoleGuard allowedRoles={['owner', 'manager', 'store_manager', 'procurement']}><Inventory /></RoleGuard>} />
-              <Route path="inventory/requests" element={<RoleGuard allowedRoles={['housekeeping','maintenance','restaurant','kitchen','bar','supervisor']}><DepartmentRequestsTab /></RoleGuard>} />
+              <Route path="inventory">
+                <Route index element={<RoleGuard allowedRoles={['owner', 'manager', 'store_manager', 'procurement']}><Inventory /></RoleGuard>} />
+                <Route path="requests" element={<RoleGuard allowedRoles={['housekeeping','maintenance','restaurant','kitchen','bar','supervisor']}><DepartmentRequestsTab /></RoleGuard>} />
+              </Route>
               <Route path="debtors" element={<RoleGuard allowedRoles={['owner', 'manager', 'finance', 'accountant']}><Debtors /></RoleGuard>} />
               <Route path="reports" element={<RoleGuard allowedRoles={['owner', 'manager', 'finance', 'accountant']}><Reports /></RoleGuard>} />
               {/* Redirects for backward compatibility */}
