@@ -108,8 +108,8 @@ export function usePlatformInvoices(tenantId?: string) {
     queryKey: ['billing-invoices', tenantId],
     queryFn: async () => {
       let query = supabase
-        .from('platform_invoices')
-        .select('*, tenants(name)')
+        .from('platform_billing')
+        .select('*, platform_tenants(name)')
         .order('created_at', { ascending: false });
 
       if (tenantId) {
@@ -119,15 +119,21 @@ export function usePlatformInvoices(tenantId?: string) {
       const { data, error } = await query;
 
       if (error) throw error;
-      return data as Invoice[];
+      return data;
     },
   });
 
   const updateInvoiceStatus = useMutation({
-    mutationFn: async ({ id, status }: { id: string; status: Invoice['status'] }) => {
+    mutationFn: async ({ id, status, amountPaid }: { id: string; status: string; amountPaid?: number }) => {
+      const updateData: any = { status };
+      
+      if (status === 'paid' && amountPaid !== undefined) {
+        updateData.amount_paid = amountPaid;
+      }
+
       const { data, error } = await supabase
-        .from('platform_invoices')
-        .update({ status })
+        .from('platform_billing')
+        .update(updateData)
         .eq('id', id)
         .select()
         .single();

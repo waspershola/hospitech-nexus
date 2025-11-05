@@ -40,9 +40,9 @@ export function PlatformBillingTab() {
     );
   };
 
-  const totalRevenue = invoices?.reduce((sum, inv) => sum + inv.total_amount, 0) || 0;
-  const paidRevenue = invoices?.filter(inv => inv.status === 'paid').reduce((sum, inv) => sum + inv.total_amount, 0) || 0;
-  const pendingRevenue = invoices?.filter(inv => inv.status === 'pending').reduce((sum, inv) => sum + inv.total_amount, 0) || 0;
+  const totalRevenue = invoices?.reduce((sum, inv) => sum + (inv.amount_due || 0), 0) || 0;
+  const paidRevenue = invoices?.filter(inv => inv.status === 'paid').reduce((sum, inv) => sum + (inv.amount_paid || 0), 0) || 0;
+  const pendingRevenue = invoices?.filter(inv => inv.status === 'pending').reduce((sum, inv) => sum + (inv.amount_due || 0), 0) || 0;
 
   if (isLoading) {
     return <div className="p-8">Loading billing data...</div>;
@@ -131,49 +131,55 @@ export function PlatformBillingTab() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {invoices.map((invoice: any) => (
-                  <TableRow key={invoice.id}>
-                    <TableCell className="font-medium">
-                      {invoice.tenants?.name || 'Unknown'}
-                    </TableCell>
-                    <TableCell className="text-sm">
-                      {format(new Date(invoice.period_start), 'MMM yyyy')}
-                    </TableCell>
-                    <TableCell>₦{invoice.base_amount.toLocaleString()}</TableCell>
-                    <TableCell>
-                      {invoice.overage_amount > 0 ? (
-                        <span className="text-orange-600">
-                          +₦{invoice.overage_amount.toLocaleString()}
-                        </span>
-                      ) : (
-                        '₦0'
-                      )}
-                    </TableCell>
-                    <TableCell className="font-semibold">
-                      ₦{invoice.total_amount.toLocaleString()}
-                    </TableCell>
-                    <TableCell>{getStatusBadge(invoice.status)}</TableCell>
-                    <TableCell className="text-sm text-muted-foreground">
-                      {format(new Date(invoice.created_at), 'MMM dd, yyyy')}
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <Select
-                        value={invoice.status}
-                        onValueChange={(value) => handleStatusChange(invoice.id, value)}
-                      >
-                        <SelectTrigger className="w-32">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="pending">Pending</SelectItem>
-                          <SelectItem value="paid">Paid</SelectItem>
-                          <SelectItem value="overdue">Overdue</SelectItem>
-                          <SelectItem value="cancelled">Cancelled</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </TableCell>
-                  </TableRow>
-                ))}
+                 {invoices.map((invoice: any) => {
+                  const baseAmount = invoice.invoice_payload?.base_amount || 0;
+                  const overageAmount = invoice.invoice_payload?.sms_overage_cost || 0;
+                  const totalAmount = invoice.amount_due || 0;
+
+                  return (
+                    <TableRow key={invoice.id}>
+                      <TableCell className="font-medium">
+                        {invoice.platform_tenants?.name || 'Unknown'}
+                      </TableCell>
+                      <TableCell className="text-sm">
+                        {format(new Date(invoice.cycle_start), 'MMM dd')} - {format(new Date(invoice.cycle_end), 'MMM dd, yyyy')}
+                      </TableCell>
+                      <TableCell>₦{baseAmount.toLocaleString()}</TableCell>
+                      <TableCell>
+                        {overageAmount > 0 ? (
+                          <span className="text-orange-600">
+                            +₦{overageAmount.toLocaleString()}
+                          </span>
+                        ) : (
+                          '₦0'
+                        )}
+                      </TableCell>
+                      <TableCell className="font-semibold">
+                        ₦{totalAmount.toLocaleString()}
+                      </TableCell>
+                      <TableCell>{getStatusBadge(invoice.status)}</TableCell>
+                      <TableCell className="text-sm text-muted-foreground">
+                        {format(new Date(invoice.created_at), 'MMM dd, yyyy')}
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <Select
+                          value={invoice.status}
+                          onValueChange={(value) => handleStatusChange(invoice.id, value)}
+                        >
+                          <SelectTrigger className="w-32">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="pending">Pending</SelectItem>
+                            <SelectItem value="paid">Paid</SelectItem>
+                            <SelectItem value="overdue">Overdue</SelectItem>
+                            <SelectItem value="cancelled">Cancelled</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
               </TableBody>
             </Table>
           )}
