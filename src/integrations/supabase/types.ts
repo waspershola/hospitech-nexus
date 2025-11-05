@@ -3059,6 +3059,97 @@ export type Database = {
           },
         ]
       }
+      tenant_sms_alert_logs: {
+        Row: {
+          alert_type: string
+          id: string
+          message: string | null
+          quota_remaining: number
+          quota_total: number
+          recipients: Json | null
+          sent_at: string
+          tenant_id: string
+        }
+        Insert: {
+          alert_type: string
+          id?: string
+          message?: string | null
+          quota_remaining: number
+          quota_total: number
+          recipients?: Json | null
+          sent_at?: string
+          tenant_id: string
+        }
+        Update: {
+          alert_type?: string
+          id?: string
+          message?: string | null
+          quota_remaining?: number
+          quota_total?: number
+          recipients?: Json | null
+          sent_at?: string
+          tenant_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tenant_sms_alert_logs_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      tenant_sms_alert_settings: {
+        Row: {
+          alert_enabled: boolean
+          alert_recipients: Json
+          alert_threshold_absolute: number | null
+          alert_threshold_percent: number
+          created_at: string
+          id: string
+          last_alert_sent_at: string | null
+          notify_email: boolean
+          notify_sms: boolean
+          tenant_id: string
+          updated_at: string
+        }
+        Insert: {
+          alert_enabled?: boolean
+          alert_recipients?: Json
+          alert_threshold_absolute?: number | null
+          alert_threshold_percent?: number
+          created_at?: string
+          id?: string
+          last_alert_sent_at?: string | null
+          notify_email?: boolean
+          notify_sms?: boolean
+          tenant_id: string
+          updated_at?: string
+        }
+        Update: {
+          alert_enabled?: boolean
+          alert_recipients?: Json
+          alert_threshold_absolute?: number | null
+          alert_threshold_percent?: number
+          created_at?: string
+          id?: string
+          last_alert_sent_at?: string | null
+          notify_email?: boolean
+          notify_sms?: boolean
+          tenant_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tenant_sms_alert_settings_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       tenant_sms_purchases: {
         Row: {
           amount_paid: number

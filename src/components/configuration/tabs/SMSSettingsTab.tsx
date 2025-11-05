@@ -10,12 +10,16 @@ import { Progress } from '@/components/ui/progress';
 import { Textarea } from '@/components/ui/textarea';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { MessageSquare, Send, Settings, ShoppingCart, Zap, Package } from 'lucide-react';
+import { MessageSquare, Send, Settings, ShoppingCart, Zap, Package, Bell, AlertTriangle as AlertIcon } from 'lucide-react';
 import { useSMSSettings } from '@/hooks/useSMSSettings';
+import { useSMSAlertSettings } from '@/hooks/useSMSAlertSettings';
+import { SMSAlertsTab } from './SMSAlertsTab';
 import { ConfigSection } from '../shared/ConfigSection';
 import { useTenant } from '@/contexts/TenantContext';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import { Separator } from '@/components/ui/separator';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 
 export function SMSSettingsTab() {
   const { tenantId } = useTenant();
@@ -83,9 +87,10 @@ export function SMSSettingsTab() {
   return (
     <div className="space-y-6">
       <Tabs defaultValue="provider" className="w-full">
-        <TabsList className="grid w-full grid-cols-4">
+        <TabsList className="grid w-full grid-cols-5">
           <TabsTrigger value="provider">Provider</TabsTrigger>
           <TabsTrigger value="quota">Quota & Usage</TabsTrigger>
+          <TabsTrigger value="alerts">Alerts</TabsTrigger>
           <TabsTrigger value="templates">Templates</TabsTrigger>
           <TabsTrigger value="marketplace">Marketplace</TabsTrigger>
         </TabsList>
@@ -297,6 +302,10 @@ export function SMSSettingsTab() {
               )}
             </CardContent>
           </Card>
+        </TabsContent>
+
+        <TabsContent value="alerts" className="space-y-6">
+          <SMSAlertsTab />
         </TabsContent>
 
         <TabsContent value="templates" className="space-y-6">
