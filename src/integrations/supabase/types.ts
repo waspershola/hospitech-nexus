@@ -2095,29 +2095,35 @@ export type Database = {
       platform_feature_flags: {
         Row: {
           created_at: string
-          default_enabled: boolean
           description: string | null
+          enabled_globally: boolean | null
+          flag_key: string
+          flag_name: string
           id: string
-          key: string
-          rollout_rules: Json | null
+          metadata: Json | null
+          tenant_id: string | null
           updated_at: string
         }
         Insert: {
           created_at?: string
-          default_enabled?: boolean
           description?: string | null
+          enabled_globally?: boolean | null
+          flag_key: string
+          flag_name: string
           id?: string
-          key: string
-          rollout_rules?: Json | null
+          metadata?: Json | null
+          tenant_id?: string | null
           updated_at?: string
         }
         Update: {
           created_at?: string
-          default_enabled?: boolean
           description?: string | null
+          enabled_globally?: boolean | null
+          flag_key?: string
+          flag_name?: string
           id?: string
-          key?: string
-          rollout_rules?: Json | null
+          metadata?: Json | null
+          tenant_id?: string | null
           updated_at?: string
         }
         Relationships: []
