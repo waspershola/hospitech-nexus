@@ -1,4 +1,3 @@
-import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.76.1';
 
 const corsHeaders = {
@@ -6,8 +5,12 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-serve(async (req) => {
-  // Handle CORS preflight requests
+interface AssignPlanRequest {
+  tenant_id: string;
+  plan_id: string;
+}
+
+Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
@@ -15,151 +18,112 @@ serve(async (req) => {
   try {
     const supabase = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
-      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '',
-      {
-        auth: {
-          persistSession: false,
-        },
-      }
+      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
     );
 
-    // Verify user is platform admin
-    const authHeader = req.headers.get('Authorization')!;
-    const token = authHeader.replace('Bearer ', '');
-    const { data: { user }, error: userError } = await supabase.auth.getUser(token);
-
-    if (userError || !user) {
-      return new Response(
-        JSON.stringify({ error: 'Unauthorized' }),
-        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
+    // Get user from JWT
+    const authHeader = req.headers.get('Authorization');
+    if (!authHeader) {
+      throw new Error('Missing authorization header');
     }
 
-    // Check if user is platform admin
-    const { data: platformUser, error: platformError } = await supabase
+    const { data: { user }, error: userError } = await supabase.auth.getUser(
+      authHeader.replace('Bearer ', '')
+    );
+
+    if (userError || !user) {
+      throw new Error('Unauthorized');
+    }
+
+    // Check platform admin role
+    const { data: platformUser } = await supabase
       .from('platform_users')
       .select('role')
       .eq('id', user.id)
       .single();
 
-    if (platformError || !platformUser || !['super_admin', 'billing_bot'].includes(platformUser.role)) {
-      return new Response(
-        JSON.stringify({ error: 'Forbidden: Platform admin access required' }),
-        { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
+    if (!platformUser || !['super_admin', 'billing_bot'].includes(platformUser.role)) {
+      throw new Error('Insufficient permissions');
     }
 
-    const { tenant_id, plan_id, apply_pro_rata = false } = await req.json();
+    const { tenant_id, plan_id }: AssignPlanRequest = await req.json();
 
-    if (!tenant_id || !plan_id) {
-      return new Response(
-        JSON.stringify({ error: 'tenant_id and plan_id are required' }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
+    console.log('Assigning plan:', { tenant_id, plan_id });
 
-    // Get old plan
-    const { data: oldTenant, error: oldTenantError } = await supabase
-      .from('platform_tenants')
-      .select('plan_id, platform_plans!inner(monthly_price)')
-      .eq('id', tenant_id)
-      .single();
-
-    if (oldTenantError) throw oldTenantError;
-
-    // Get new plan
-    const { data: newPlan, error: newPlanError } = await supabase
+    // Verify plan exists and is active
+    const { data: plan, error: planError } = await supabase
       .from('platform_plans')
       .select('*')
       .eq('id', plan_id)
+      .eq('is_active', true)
       .single();
 
-    if (newPlanError) throw newPlanError;
-
-    // Calculate pro-rata adjustment if needed
-    let adjustmentAmount = 0;
-    let adjustmentNote = '';
-
-    if (apply_pro_rata && oldTenant.plan_id) {
-      const today = new Date();
-      const daysInMonth = new Date(today.getFullYear(), today.getMonth() + 1, 0).getDate();
-      const daysRemaining = daysInMonth - today.getDate();
-      const oldPlanData: any = oldTenant.platform_plans;
-      const dailyRateOld = (oldPlanData?.monthly_price || 0) / daysInMonth;
-      const dailyRateNew = newPlan.monthly_price / daysInMonth;
-      
-      adjustmentAmount = (dailyRateNew - dailyRateOld) * daysRemaining;
-      adjustmentNote = `Pro-rata adjustment for ${daysRemaining} days remaining in current cycle`;
+    if (planError || !plan) {
+      throw new Error('Plan not found or inactive');
     }
 
-    // Update tenant plan
+    // Verify tenant exists
+    const { data: tenant, error: tenantError } = await supabase
+      .from('tenants')
+      .select('id, name')
+      .eq('id', tenant_id)
+      .single();
+
+    if (tenantError || !tenant) {
+      throw new Error('Tenant not found');
+    }
+
+    // Update tenant with plan assignment
     const { error: updateError } = await supabase
-      .from('platform_tenants')
-      .update({ plan_id: plan_id })
+      .from('tenants')
+      .update({
+        plan_id: plan_id,
+        plan_assigned_at: new Date().toISOString(),
+        trial_ends_at: plan.trial_days > 0 
+          ? new Date(Date.now() + plan.trial_days * 24 * 60 * 60 * 1000).toISOString()
+          : null,
+        updated_at: new Date().toISOString(),
+      })
       .eq('id', tenant_id);
 
-    if (updateError) throw updateError;
-
-    // Create billing adjustment if pro-rata
-    if (apply_pro_rata && adjustmentAmount !== 0) {
-      const { error: billingError } = await supabase
-        .from('platform_billing')
-        .insert({
-          tenant_id: tenant_id,
-          invoice_type: 'adjustment',
-          amount_due: adjustmentAmount,
-          amount_paid: 0,
-          status: 'pending',
-          billing_period_start: new Date().toISOString(),
-          billing_period_end: new Date(new Date().setMonth(new Date().getMonth() + 1)).toISOString(),
-          payload: {
-            type: 'plan_change',
-            old_plan_id: oldTenant.plan_id,
-            new_plan_id: plan_id,
-            note: adjustmentNote,
-          },
-        });
-
-      if (billingError) throw billingError;
+    if (updateError) {
+      throw updateError;
     }
 
     // Log audit event
-    const { error: auditError } = await supabase
-      .from('platform_audit_stream')
-      .insert({
-        action: 'plan_assigned',
-        resource_type: 'tenant',
-        resource_id: tenant_id,
-        actor_id: user.id,
-        actor_role: platformUser.role,
-        payload: {
-          tenant_id,
-          old_plan_id: oldTenant.plan_id,
-          new_plan_id: plan_id,
-          adjustment_amount: adjustmentAmount,
-          pro_rata_applied: apply_pro_rata,
-        },
-      });
+    await supabase.from('platform_audit_events').insert({
+      event_type: 'plan_assigned',
+      user_id: user.id,
+      target_id: tenant_id,
+      payload: {
+        plan_id,
+        plan_name: plan.name,
+        tenant_name: tenant.name,
+        trial_days: plan.trial_days,
+      },
+    });
 
-    if (auditError) console.error('Audit log error:', auditError);
+    console.log('Plan assigned successfully');
 
     return new Response(
       JSON.stringify({
         success: true,
-        tenant_id,
-        plan_id,
-        adjustment: {
-          amount: adjustmentAmount,
-          note: adjustmentNote,
-        },
+        message: 'Plan assigned successfully',
+        plan: plan.name,
       }),
-      { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        status: 200,
+      }
     );
-  } catch (error: any) {
-    console.error('Assign plan error:', error);
+  } catch (error) {
+    console.error('Error assigning plan:', error);
     return new Response(
-      JSON.stringify({ error: error?.message || 'Unknown error' }),
-      { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      JSON.stringify({ error: error instanceof Error ? error.message : 'Failed to assign plan' }),
+      {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        status: 400,
+      }
     );
   }
 });

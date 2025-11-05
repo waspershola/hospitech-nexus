@@ -12,9 +12,11 @@ import { useForm } from 'react-hook-form';
 
 interface PlanFormData {
   name: string;
-  monthly_price: number;
+  description?: string;
+  price: number;
+  billing_cycle: 'monthly' | 'yearly';
   trial_days: number;
-  included_sms: number;
+  sms_limit: number;
   max_rooms: number | null;
   max_staff: number | null;
   features: string[];
@@ -28,9 +30,11 @@ export function PlatformPlansTab() {
   const { register, handleSubmit, reset, watch } = useForm<PlanFormData>({
     defaultValues: {
       name: '',
-      monthly_price: 0,
+      description: '',
+      price: 0,
+      billing_cycle: 'monthly',
       trial_days: 0,
-      included_sms: 0,
+      sms_limit: 0,
       max_rooms: null,
       max_staff: null,
       features: [],
@@ -39,18 +43,19 @@ export function PlatformPlansTab() {
 
   const handleCreateOrUpdate = async (data: PlanFormData) => {
     try {
-      const featureFlags = {
-        max_rooms: data.max_rooms || -1,
-        max_staff: data.max_staff || -1,
-        features: data.features,
-      };
-
       const planData = {
         name: data.name,
-        monthly_price: data.monthly_price,
+        description: data.description,
+        price: data.price,
+        billing_cycle: data.billing_cycle,
         trial_days: data.trial_days,
-        included_sms: data.included_sms,
-        feature_flags: featureFlags,
+        limits: {
+          sms_sent: data.sms_limit,
+          max_rooms: data.max_rooms || -1,
+          max_staff: data.max_staff || -1,
+        },
+        features: data.features,
+        is_active: true,
       };
 
       if (editingPlan) {
@@ -68,15 +73,17 @@ export function PlatformPlansTab() {
 
   const handleEdit = (plan: any) => {
     setEditingPlan(plan.id);
-    const featureFlags = plan.feature_flags || {};
+    const limits = plan.limits || {};
     reset({
       name: plan.name,
-      monthly_price: plan.monthly_price,
+      description: plan.description || '',
+      price: plan.price,
+      billing_cycle: plan.billing_cycle || 'monthly',
       trial_days: plan.trial_days,
-      included_sms: plan.included_sms,
-      max_rooms: featureFlags.max_rooms === -1 ? null : featureFlags.max_rooms,
-      max_staff: featureFlags.max_staff === -1 ? null : featureFlags.max_staff,
-      features: featureFlags.features || [],
+      sms_limit: limits.sms_sent || 0,
+      max_rooms: limits.max_rooms === -1 ? null : limits.max_rooms,
+      max_staff: limits.max_staff === -1 ? null : limits.max_staff,
+      features: plan.features || [],
     });
     setIsDialogOpen(true);
   };
@@ -119,12 +126,17 @@ export function PlatformPlansTab() {
                   <Input id="name" {...register('name', { required: true })} placeholder="e.g., Starter" />
                 </div>
 
+                <div className="col-span-2">
+                  <Label htmlFor="description">Description</Label>
+                  <Textarea id="description" {...register('description')} placeholder="Plan description..." />
+                </div>
+
                 <div>
-                  <Label htmlFor="monthly_price">Monthly Price (₦) *</Label>
+                  <Label htmlFor="price">Price (₦) *</Label>
                   <Input 
-                    id="monthly_price" 
+                    id="price" 
                     type="number" 
-                    {...register('monthly_price', { required: true, valueAsNumber: true })} 
+                    {...register('price', { required: true, valueAsNumber: true })} 
                     placeholder="10000" 
                   />
                 </div>
@@ -140,11 +152,11 @@ export function PlatformPlansTab() {
                 </div>
 
                 <div>
-                  <Label htmlFor="included_sms">Included SMS *</Label>
+                  <Label htmlFor="sms_limit">Included SMS *</Label>
                   <Input 
-                    id="included_sms" 
+                    id="sms_limit" 
                     type="number" 
-                    {...register('included_sms', { required: true, valueAsNumber: true })} 
+                    {...register('sms_limit', { required: true, valueAsNumber: true })} 
                     placeholder="100" 
                   />
                 </div>
@@ -190,9 +202,9 @@ export function PlatformPlansTab() {
       {/* Plans Grid */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
         {plans.map((plan) => {
-          const featureFlags: any = plan.feature_flags || {};
-          const maxRooms = featureFlags.max_rooms === -1 ? 'Unlimited' : featureFlags.max_rooms;
-          const maxStaff = featureFlags.max_staff === -1 ? 'Unlimited' : featureFlags.max_staff;
+          const limits: any = plan.limits || {};
+          const maxRooms = limits.max_rooms === -1 ? 'Unlimited' : limits.max_rooms;
+          const maxStaff = limits.max_staff === -1 ? 'Unlimited' : limits.max_staff;
 
           return (
             <Card key={plan.id}>
@@ -200,19 +212,23 @@ export function PlatformPlansTab() {
                 <div className="flex justify-between items-start">
                   <div>
                     <CardTitle>{plan.name}</CardTitle>
+                    {plan.description && (
+                      <CardDescription>{plan.description}</CardDescription>
+                    )}
                   </div>
-                  <Badge variant="default">
-                    <Check className="h-3 w-3 mr-1" />
-                    Active
+                  <Badge variant={plan.is_active ? "default" : "secondary"}>
+                    {plan.is_active ? (
+                      <><Check className="h-3 w-3 mr-1" />Active</>
+                    ) : 'Inactive'}
                   </Badge>
                 </div>
               </CardHeader>
               <CardContent className="space-y-4">
                 <div>
                   <div className="text-3xl font-bold">
-                    ₦{plan.monthly_price.toLocaleString()}
+                    ₦{plan.price.toLocaleString()}
                     <span className="text-sm font-normal text-muted-foreground">
-                      /month
+                      /{plan.billing_cycle}
                     </span>
                   </div>
                 </div>
@@ -228,7 +244,7 @@ export function PlatformPlansTab() {
                   </div>
                   <div className="flex justify-between">
                     <span className="text-muted-foreground">SMS:</span>
-                    <span className="font-medium">{plan.included_sms.toLocaleString()}</span>
+                    <span className="font-medium">{limits.sms_sent?.toLocaleString() || 0}</span>
                   </div>
                   {plan.trial_days > 0 && (
                     <div className="flex justify-between">
