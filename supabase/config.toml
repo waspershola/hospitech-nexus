@@ -95,3 +95,6 @@ verify_jwt = true
 
 [functions.email-provider]
 verify_jwt = true
+
+[functions.feature-flags]
+verify_jwt = true
