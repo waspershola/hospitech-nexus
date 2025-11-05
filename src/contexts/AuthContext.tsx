@@ -133,7 +133,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const { data, error } = await (supabase as any)
         .from('platform_users')
         .select('role')
-        .eq('user_id', userId)
+        .eq('id', userId)
         .maybeSingle();
 
       if (error && error.code !== 'PGRST116') {
@@ -149,38 +149,39 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const fetchUserRoleAndTenant = async (userId: string) => {
     try {
-      // Fetch both platform role and tenant role in parallel
-      const [platformRolePromise] = [fetchPlatformRole(userId)];
+      // Fetch platform role first
+      await fetchPlatformRole(userId);
       
+      // Try to fetch tenant role (may be null for platform admins)
       const { data, error } = await supabase
         .from('user_roles')
         .select('tenant_id, role, tenants(name)')
         .eq('user_id', userId)
-        .single();
+        .maybeSingle();
 
-      if (error) throw error;
+      if (error && error.code !== 'PGRST116') {
+        console.error('Error fetching tenant role:', error);
+      }
 
+      // Set tenant info (may be null for platform-only users)
       setTenantId(data?.tenant_id || null);
       setRole(data?.role || null);
       setTenantName((data?.tenants as any)?.name || null);
       
-      // Fetch staff information if available
+      // Fetch staff information only if tenant exists
       if (data?.tenant_id) {
         const { data: staffData } = await supabase
           .from('staff')
           .select('department, password_reset_required')
           .eq('user_id', userId)
           .eq('tenant_id', data.tenant_id)
-          .single();
+          .maybeSingle();
         
         if (staffData) {
           setDepartment(staffData.department);
           setPasswordResetRequired(staffData.password_reset_required || false);
         }
       }
-      
-      // Wait for platform role fetch to complete
-      await platformRolePromise;
     } catch (error) {
       console.error('Error fetching user role:', error);
     } finally {
