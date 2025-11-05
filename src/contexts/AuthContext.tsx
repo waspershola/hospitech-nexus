@@ -1,7 +1,6 @@
 import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
 import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
-import { useCheckoutReminderScheduler } from '@/hooks/useCheckoutReminderScheduler';
 
 interface AuthContextType {
   user: User | null;
@@ -27,8 +26,67 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [passwordResetRequired, setPasswordResetRequired] = useState(false);
   const [loading, setLoading] = useState(true);
 
-  // Initialize checkout reminder scheduler
-  useCheckoutReminderScheduler();
+  // Checkout reminder scheduler - runs daily at 10 AM
+  useEffect(() => {
+    if (!tenantId) return;
+
+    const sendReminders = async (hoursBefore: number) => {
+      try {
+        const { data, error } = await supabase.functions.invoke('send-checkout-reminder', {
+          body: {
+            tenant_id: tenantId,
+            hours_before: hoursBefore,
+          },
+        });
+
+        if (error) {
+          console.error(`Error sending ${hoursBefore}h reminders:`, error);
+        } else {
+          console.log(`Sent ${hoursBefore}h checkout reminders:`, data);
+        }
+      } catch (err) {
+        console.error(`Failed to send ${hoursBefore}h reminders:`, err);
+      }
+    };
+
+    const now = new Date();
+    
+    // Schedule for 10 AM daily
+    const next24h = new Date(now);
+    next24h.setHours(10, 0, 0, 0);
+    if (now > next24h) {
+      next24h.setDate(next24h.getDate() + 1);
+    }
+    const ms24h = next24h.getTime() - now.getTime();
+
+    const next2h = new Date(now);
+    next2h.setHours(10, 0, 0, 0);
+    if (now > next2h) {
+      next2h.setDate(next2h.getDate() + 1);
+    }
+    const ms2h = next2h.getTime() - now.getTime();
+
+    // Schedule 24h reminders
+    const timer24h = setTimeout(() => {
+      sendReminders(24);
+      const interval24h = setInterval(() => sendReminders(24), 24 * 60 * 60 * 1000);
+      return () => clearInterval(interval24h);
+    }, ms24h);
+
+    // Schedule 2h reminders
+    const timer2h = setTimeout(() => {
+      sendReminders(2);
+      const interval2h = setInterval(() => sendReminders(2), 24 * 60 * 60 * 1000);
+      return () => clearInterval(interval2h);
+    }, ms2h);
+
+    console.log(`Checkout reminders scheduled: 24h in ${Math.round(ms24h / 1000 / 60)} min, 2h in ${Math.round(ms2h / 1000 / 60)} min`);
+
+    return () => {
+      clearTimeout(timer24h);
+      clearTimeout(timer2h);
+    };
+  }, [tenantId]);
 
   useEffect(() => {
     // Set up auth state listener FIRST
