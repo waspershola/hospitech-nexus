@@ -101,3 +101,9 @@ verify_jwt = true
 
 [functions.platform-navigation]
 verify_jwt = true
+
+[functions.track-usage-metrics]
+verify_jwt = true
+
+[functions.process-billing-cycle]
+verify_jwt = false

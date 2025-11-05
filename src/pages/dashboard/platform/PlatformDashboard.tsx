@@ -9,7 +9,8 @@ import { PlatformSupportTab } from './tabs/PlatformSupportTab';
 import { PlatformEmailProvidersTab } from './tabs/PlatformEmailProvidersTab';
 import { PlatformFeatureFlagsTab } from './tabs/PlatformFeatureFlagsTab';
 import { PlatformNavigationTab } from './tabs/PlatformNavigationTab';
-import { Server, Users, ShoppingCart, CreditCard, Shield, MessageSquare, Mail, Flag, Navigation2 } from 'lucide-react';
+import { PlatformBillingTab } from './tabs/PlatformBillingTab';
+import { Server, Users, ShoppingCart, CreditCard, Shield, MessageSquare, Mail, Flag, Navigation2, Receipt } from 'lucide-react';
 
 export default function PlatformDashboard() {
   return (
@@ -55,6 +56,10 @@ export default function PlatformDashboard() {
             <Navigation2 className="h-4 w-4" />
             Navigation
           </TabsTrigger>
+          <TabsTrigger value="billing" className="gap-2">
+            <Receipt className="h-4 w-4" />
+            Billing
+          </TabsTrigger>
           <TabsTrigger value="marketplace" className="gap-2">
             <ShoppingCart className="h-4 w-4" />
             Marketplace
@@ -91,6 +96,10 @@ export default function PlatformDashboard() {
 
         <TabsContent value="navigation">
           <PlatformNavigationTab />
+        </TabsContent>
+
+        <TabsContent value="billing">
+          <PlatformBillingTab />
         </TabsContent>
 
         <TabsContent value="marketplace">
