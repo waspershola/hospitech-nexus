@@ -14,6 +14,7 @@ import { BookingFlow } from '@/modules/bookings/BookingFlow';
 import { MobileBottomNav } from '@/modules/frontdesk/components/MobileBottomNav';
 import { AvailabilityCalendar } from '@/modules/frontdesk/components/AvailabilityCalendar';
 import { StatusSyncMonitor } from '@/components/StatusSyncMonitor';
+import { BulkCheckInDrawer } from '@/modules/frontdesk/components/BulkCheckInDrawer';
 import { useOverstayRooms } from '@/hooks/useOverstayRooms';
 import { useRoomActions } from '@/modules/frontdesk/hooks/useRoomActions';
 import { useRoomRealtime, useBookingRealtime, usePaymentRealtime } from '@/hooks/useRoomRealtime';
@@ -35,6 +36,7 @@ export default function FrontDesk() {
   const [hasShownOverstayAlert, setHasShownOverstayAlert] = useState(false);
   const [assignDrawerOpen, setAssignDrawerOpen] = useState(false);
   const [assignRoomData, setAssignRoomData] = useState<{ roomId: string; roomNumber: string } | null>(null);
+  const [bulkCheckInOpen, setBulkCheckInOpen] = useState(false);
   
   const { data: overstayRooms = [] } = useOverstayRooms();
   const { checkOut } = useRoomActions();
@@ -131,6 +133,7 @@ export default function FrontDesk() {
               <QuickKPIs 
                 onFilterClick={handleFilterToggle} 
                 activeFilter={statusFilter}
+                onArrivalsClick={() => setBulkCheckInOpen(true)}
               />
             </div>
             
@@ -209,6 +212,11 @@ export default function FrontDesk() {
 
       <MobileBottomNav 
         onNewBooking={() => setIsBookingFlowOpen(true)}
+      />
+
+      <BulkCheckInDrawer
+        open={bulkCheckInOpen}
+        onClose={() => setBulkCheckInOpen(false)}
       />
     </div>
   );

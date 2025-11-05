@@ -19,9 +19,10 @@ import { useNavigate } from 'react-router-dom';
 interface QuickKPIsProps {
   onFilterClick: (status: string | null) => void;
   activeFilter: string | null;
+  onArrivalsClick?: () => void;
 }
 
-export function QuickKPIs({ onFilterClick, activeFilter }: QuickKPIsProps) {
+export function QuickKPIs({ onFilterClick, activeFilter, onArrivalsClick }: QuickKPIsProps) {
   const navigate = useNavigate();
   const { kpis, isLoading, error } = useFrontDeskKPIs();
   const { data: pendingPaymentsData } = usePendingPaymentsRooms();
@@ -51,7 +52,9 @@ export function QuickKPIs({ onFilterClick, activeFilter }: QuickKPIsProps) {
       value: kpis?.arrivals || 0, 
       icon: LogIn, 
       color: 'text-[hsl(var(--status-reserved))]', 
-      bg: 'bg-[hsl(var(--status-reserved)/0.1)]'
+      bg: 'bg-[hsl(var(--status-reserved)/0.1)]',
+      clickable: true,
+      onClick: onArrivalsClick
     },
     { 
       label: 'Expected Departures', 
@@ -122,13 +125,19 @@ export function QuickKPIs({ onFilterClick, activeFilter }: QuickKPIsProps) {
           <Card 
             key={card.label}
             className={`p-2 md:p-3 cursor-pointer transition-all duration-300 rounded-xl relative ${
-              card.filter ? 'hover:scale-105' : ''
+              (card.filter || card.clickable) ? 'hover:scale-105' : ''
             } ${
               activeFilter === card.filter 
                 ? 'ring-2 ring-primary shadow-xl scale-105' 
                 : 'hover:shadow-lg'
             }`}
-            onClick={() => card.filter && onFilterClick(card.filter)}
+            onClick={() => {
+              if (card.onClick) {
+                card.onClick();
+              } else if (card.filter) {
+                onFilterClick(card.filter);
+              }
+            }}
           >
             {card.showBadge && (
               <Badge 
