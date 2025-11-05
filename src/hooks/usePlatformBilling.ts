@@ -2,114 +2,16 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 
-export interface UsageRecord {
-  id: string;
-  tenant_id: string;
-  metric_type: string;
-  total_quantity: number;
-  record_count: number;
-  period_start: string;
-  period_end: string;
-  created_at: string;
-}
-
-export interface Invoice {
-  id: string;
-  tenant_id: string;
-  period_start: string;
-  period_end: string;
-  base_amount: number;
-  overage_amount: number;
-  total_amount: number;
-  status: 'pending' | 'paid' | 'overdue' | 'cancelled';
-  line_items: any[];
-  metadata?: any;
-  created_at: string;
-  updated_at: string;
-}
-
-export function usePlatformBillingMetrics() {
+export function usePlatformBilling(tenantId?: string) {
   const queryClient = useQueryClient();
 
-  const fetchUsage = (tenantId: string, metricType?: string, startDate?: string, endDate?: string) => {
-    return useQuery({
-      queryKey: ['billing-usage', tenantId, metricType, startDate, endDate],
-      queryFn: async () => {
-        const params = new URLSearchParams({
-          tenant_id: tenantId,
-        });
-
-        if (metricType) params.append('metric_type', metricType);
-        if (startDate) params.append('start_date', startDate);
-        if (endDate) params.append('end_date', endDate);
-
-        const { data, error } = await supabase.functions.invoke(
-          `track-usage-metrics?${params.toString()}`,
-          { method: 'GET' }
-        );
-
-        if (error) throw error;
-        return data as UsageRecord[];
-      },
-      enabled: !!tenantId,
-    });
-  };
-
-  const trackUsage = useMutation({
-    mutationFn: async (usageData: {
-      tenant_id: string;
-      metric_type: string;
-      quantity: number;
-      metadata?: any;
-    }) => {
-      const { data, error } = await supabase.functions.invoke('track-usage-metrics', {
-        method: 'POST',
-        body: usageData,
-      });
-
-      if (error) throw error;
-      return data;
-    },
-    onError: (error: Error) => {
-      console.error('Failed to track usage:', error);
-    },
-  });
-
-  const processBillingCycle = useMutation({
-    mutationFn: async () => {
-      const { data, error } = await supabase.functions.invoke('process-billing-cycle', {
-        method: 'POST',
-      });
-
-      if (error) throw error;
-      return data;
-    },
-    onSuccess: (data) => {
-      queryClient.invalidateQueries({ queryKey: ['billing-usage'] });
-      queryClient.invalidateQueries({ queryKey: ['billing-invoices'] });
-      toast.success(`Billing cycle processed. ${data.invoices_generated} invoices generated.`);
-    },
-    onError: (error: Error) => {
-      toast.error(error.message || 'Failed to process billing cycle');
-    },
-  });
-
-  return {
-    fetchUsage,
-    trackUsage,
-    processBillingCycle,
-  };
-}
-
-export function usePlatformInvoices(tenantId?: string) {
-  const queryClient = useQueryClient();
-
-  const { data: invoices, isLoading, error } = useQuery({
-    queryKey: ['billing-invoices', tenantId],
+  // Get invoices
+  const { data: invoices, isLoading: invoicesLoading } = useQuery({
+    queryKey: ['platform-invoices', tenantId],
     queryFn: async () => {
       let query = supabase
-        .from('platform_billing')
-        .select('*, platform_tenants(name)')
+        .from('platform_invoices')
+        .select('*')
         .order('created_at', { ascending: false });
 
       if (tenantId) {
@@ -117,43 +19,98 @@ export function usePlatformInvoices(tenantId?: string) {
       }
 
       const { data, error } = await query;
-
       if (error) throw error;
       return data;
     },
   });
 
-  const updateInvoiceStatus = useMutation({
-    mutationFn: async ({ id, status, amountPaid }: { id: string; status: string; amountPaid?: number }) => {
-      const updateData: any = { status };
+  // Get usage records
+  const { data: usageRecords, isLoading: usageLoading } = useQuery({
+    queryKey: ['platform-usage', tenantId],
+    queryFn: async () => {
+      const startDate = new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString();
       
-      if (status === 'paid' && amountPaid !== undefined) {
-        updateData.amount_paid = amountPaid;
+      let query = supabase
+        .from('platform_usage_records')
+        .select('*')
+        .gte('period_start', startDate)
+        .order('created_at', { ascending: false });
+
+      if (tenantId) {
+        query = query.eq('tenant_id', tenantId);
       }
 
-      const { data, error } = await supabase
-        .from('platform_billing')
-        .update(updateData)
-        .eq('id', id)
-        .select()
-        .single();
+      const { data, error } = await query;
+      if (error) throw error;
+      return data;
+    },
+  });
+
+  // Sync usage
+  const syncUsage = useMutation({
+    mutationFn: async (dateRange?: { start: string; end: string }) => {
+      const { data, error } = await supabase.functions.invoke('platform-usage-sync', {
+        body: {
+          action: 'sync_sms_usage',
+          date_range: dateRange,
+        },
+      });
 
       if (error) throw error;
       return data;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['billing-invoices'] });
-      toast.success('Invoice status updated');
+      queryClient.invalidateQueries({ queryKey: ['platform-usage'] });
+      toast.success('Usage synced successfully');
     },
-    onError: (error: Error) => {
+    onError: (error: any) => {
+      toast.error(error.message || 'Failed to sync usage');
+    },
+  });
+
+  // Mark invoice as paid
+  const markInvoicePaid = useMutation({
+    mutationFn: async (invoiceId: string) => {
+      const { error } = await supabase
+        .from('platform_invoices')
+        .update({
+          status: 'paid',
+          paid_at: new Date().toISOString(),
+        })
+        .eq('id', invoiceId);
+
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['platform-invoices'] });
+      toast.success('Invoice marked as paid');
+    },
+    onError: (error: any) => {
       toast.error(error.message || 'Failed to update invoice');
     },
   });
 
+  // Calculate summary statistics
+  const summary = invoices ? {
+    total: invoices.length,
+    pending: invoices.filter(inv => inv.status === 'pending').length,
+    paid: invoices.filter(inv => inv.status === 'paid').length,
+    overdue: invoices.filter(inv => 
+      inv.status === 'pending' && new Date(inv.due_date) < new Date()
+    ).length,
+    totalAmount: invoices.reduce((sum, inv) => sum + Number(inv.total_amount), 0),
+    pendingAmount: invoices
+      .filter(inv => inv.status === 'pending')
+      .reduce((sum, inv) => sum + Number(inv.total_amount), 0),
+  } : null;
+
   return {
     invoices,
-    isLoading,
-    error,
-    updateInvoiceStatus,
+    usageRecords,
+    summary,
+    isLoading: invoicesLoading || usageLoading,
+    syncUsage,
+    markInvoicePaid,
+    isSyncing: syncUsage.isPending,
   };
 }
