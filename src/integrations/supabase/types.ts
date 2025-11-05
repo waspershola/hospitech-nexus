@@ -3315,6 +3315,71 @@ export type Database = {
           },
         ]
       }
+      tenant_sms_usage_logs: {
+        Row: {
+          booking_id: string | null
+          cost: number
+          delivered_at: string | null
+          error_message: string | null
+          event_key: string
+          failed_at: string | null
+          guest_id: string | null
+          id: string
+          message_preview: string | null
+          metadata: Json | null
+          provider: string | null
+          recipient: string
+          segments: number
+          sent_at: string
+          status: string
+          tenant_id: string
+        }
+        Insert: {
+          booking_id?: string | null
+          cost?: number
+          delivered_at?: string | null
+          error_message?: string | null
+          event_key: string
+          failed_at?: string | null
+          guest_id?: string | null
+          id?: string
+          message_preview?: string | null
+          metadata?: Json | null
+          provider?: string | null
+          recipient: string
+          segments?: number
+          sent_at?: string
+          status?: string
+          tenant_id: string
+        }
+        Update: {
+          booking_id?: string | null
+          cost?: number
+          delivered_at?: string | null
+          error_message?: string | null
+          event_key?: string
+          failed_at?: string | null
+          guest_id?: string | null
+          id?: string
+          message_preview?: string | null
+          metadata?: Json | null
+          provider?: string | null
+          recipient?: string
+          segments?: number
+          sent_at?: string
+          status?: string
+          tenant_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tenant_sms_usage_logs_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       tenants: {
         Row: {
           brand_color: string | null
@@ -3506,6 +3571,28 @@ export type Database = {
       }
     }
     Views: {
+      sms_analytics_summary: {
+        Row: {
+          avg_delivery_time_seconds: number | null
+          date: string | null
+          delivered: number | null
+          event_key: string | null
+          failed: number | null
+          tenant_id: string | null
+          total_cost: number | null
+          total_segments: number | null
+          total_sent: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tenant_sms_usage_logs_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       v_debtors_creditors: {
         Row: {
           entity_id: string | null

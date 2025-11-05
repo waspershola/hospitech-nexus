@@ -14,6 +14,7 @@ import { MessageSquare, Send, Settings, ShoppingCart, Zap, Package, Bell, AlertT
 import { useSMSSettings } from '@/hooks/useSMSSettings';
 import { useSMSAlertSettings } from '@/hooks/useSMSAlertSettings';
 import { SMSAlertsTab } from './SMSAlertsTab';
+import { SMSAnalyticsTab } from './SMSAnalyticsTab';
 import { ConfigSection } from '../shared/ConfigSection';
 import { useTenant } from '@/contexts/TenantContext';
 import { supabase } from '@/integrations/supabase/client';
@@ -87,10 +88,11 @@ export function SMSSettingsTab() {
   return (
     <div className="space-y-6">
       <Tabs defaultValue="provider" className="w-full">
-        <TabsList className="grid w-full grid-cols-5">
+        <TabsList className="grid w-full grid-cols-6">
           <TabsTrigger value="provider">Provider</TabsTrigger>
           <TabsTrigger value="quota">Quota & Usage</TabsTrigger>
           <TabsTrigger value="alerts">Alerts</TabsTrigger>
+          <TabsTrigger value="analytics">Analytics</TabsTrigger>
           <TabsTrigger value="templates">Templates</TabsTrigger>
           <TabsTrigger value="marketplace">Marketplace</TabsTrigger>
         </TabsList>
@@ -306,6 +308,10 @@ export function SMSSettingsTab() {
 
         <TabsContent value="alerts" className="space-y-6">
           <SMSAlertsTab />
+        </TabsContent>
+
+        <TabsContent value="analytics" className="space-y-6">
+          <SMSAnalyticsTab />
         </TabsContent>
 
         <TabsContent value="templates" className="space-y-6">

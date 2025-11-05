@@ -158,7 +158,7 @@ serve(async (req: Request) => {
 
               const smsResult = await supabase.functions.invoke('send-sms', {
                 body: {
-                  tenant_id,
+                  tenant_id: tenant_id,
                   to: guest.phone,
                   message: smsMessage,
                   event_key: 'checkout_reminder',
@@ -172,6 +172,17 @@ serve(async (req: Request) => {
               } else {
                 sentCount++;
                 console.log(`Sent SMS reminder to ${guest.phone}`);
+                
+                // Log usage for analytics
+                await supabase.from('tenant_sms_usage_logs').insert({
+                  tenant_id: tenant_id,
+                  event_key: 'checkout_reminder',
+                  recipient: guest.phone,
+                  message_preview: smsMessage.substring(0, 100),
+                  status: 'sent',
+                  booking_id: booking.id,
+                  guest_id: guest.id,
+                });
               }
             }
           } catch (smsError: any) {
