@@ -4,25 +4,31 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { usePlatformInvoices, usePlatformBillingMetrics } from '@/hooks/usePlatformBilling';
+import { usePlatformBilling } from '@/hooks/usePlatformBilling';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { supabase } from '@/integrations/supabase/client';
+import { toast } from 'sonner';
 import { DollarSign, FileText, TrendingUp, Calendar, PlayCircle } from 'lucide-react';
 import { format } from 'date-fns';
 
 export function PlatformBillingTab() {
-  const { invoices, isLoading, updateInvoiceStatus } = usePlatformInvoices();
-  const { processBillingCycle } = usePlatformBillingMetrics();
+  const { invoices, isLoading, markInvoicePaid } = usePlatformBilling();
   const [selectedInvoice, setSelectedInvoice] = useState<string | null>(null);
 
   const handleStatusChange = async (invoiceId: string, status: string) => {
-    await updateInvoiceStatus.mutateAsync({ 
-      id: invoiceId, 
-      status: status as any 
-    });
+    if (status === 'paid') {
+      await markInvoicePaid.mutateAsync(invoiceId);
+    }
   };
 
   const handleProcessBilling = async () => {
-    await processBillingCycle.mutateAsync();
+    // Trigger the billing cycle edge function manually
+    const { error } = await supabase.functions.invoke('platform-billing-cycle');
+    if (error) {
+      toast.error('Failed to process billing cycle');
+    } else {
+      toast.success('Billing cycle processed successfully');
+    }
   };
 
   const getStatusBadge = (status: string) => {
@@ -40,9 +46,9 @@ export function PlatformBillingTab() {
     );
   };
 
-  const totalRevenue = invoices?.reduce((sum, inv) => sum + (inv.amount_due || 0), 0) || 0;
-  const paidRevenue = invoices?.filter(inv => inv.status === 'paid').reduce((sum, inv) => sum + (inv.amount_paid || 0), 0) || 0;
-  const pendingRevenue = invoices?.filter(inv => inv.status === 'pending').reduce((sum, inv) => sum + (inv.amount_due || 0), 0) || 0;
+  const totalRevenue = invoices?.reduce((sum, inv) => sum + Number(inv.total_amount), 0) || 0;
+  const paidRevenue = invoices?.filter(inv => inv.status === 'paid').reduce((sum, inv) => sum + Number(inv.total_amount), 0) || 0;
+  const pendingRevenue = invoices?.filter(inv => inv.status === 'pending').reduce((sum, inv) => sum + Number(inv.total_amount), 0) || 0;
 
   if (isLoading) {
     return <div className="p-8">Loading billing data...</div>;
@@ -57,9 +63,9 @@ export function PlatformBillingTab() {
             Manage invoices, usage tracking, and revenue
           </p>
         </div>
-        <Button onClick={handleProcessBilling} disabled={processBillingCycle.isPending}>
+        <Button onClick={handleProcessBilling}>
           <PlayCircle className="mr-2 h-4 w-4" />
-          {processBillingCycle.isPending ? 'Processing...' : 'Process Billing Cycle'}
+          Process Billing Cycle
         </Button>
       </div>
 
@@ -120,66 +126,47 @@ export function PlatformBillingTab() {
             <Table>
               <TableHeader>
                 <TableRow>
+                  <TableHead>Invoice #</TableHead>
                   <TableHead>Tenant</TableHead>
                   <TableHead>Period</TableHead>
-                  <TableHead>Base Amount</TableHead>
-                  <TableHead>Overage</TableHead>
                   <TableHead>Total</TableHead>
+                  <TableHead>Due Date</TableHead>
                   <TableHead>Status</TableHead>
-                  <TableHead>Date</TableHead>
                   <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                 {invoices.map((invoice: any) => {
-                  const baseAmount = invoice.invoice_payload?.base_amount || 0;
-                  const overageAmount = invoice.invoice_payload?.sms_overage_cost || 0;
-                  const totalAmount = invoice.amount_due || 0;
-
-                  return (
+                 {invoices.map((invoice: any) => (
                     <TableRow key={invoice.id}>
+                      <TableCell className="font-mono text-sm">
+                        {invoice.invoice_number}
+                      </TableCell>
                       <TableCell className="font-medium">
-                        {invoice.platform_tenants?.name || 'Unknown'}
+                        Tenant #{invoice.tenant_id.substring(0, 8)}
                       </TableCell>
                       <TableCell className="text-sm">
-                        {format(new Date(invoice.cycle_start), 'MMM dd')} - {format(new Date(invoice.cycle_end), 'MMM dd, yyyy')}
-                      </TableCell>
-                      <TableCell>₦{baseAmount.toLocaleString()}</TableCell>
-                      <TableCell>
-                        {overageAmount > 0 ? (
-                          <span className="text-orange-600">
-                            +₦{overageAmount.toLocaleString()}
-                          </span>
-                        ) : (
-                          '₦0'
-                        )}
+                        {format(new Date(invoice.period_start), 'MMM dd')} - {format(new Date(invoice.period_end), 'MMM dd, yyyy')}
                       </TableCell>
                       <TableCell className="font-semibold">
-                        ₦{totalAmount.toLocaleString()}
+                        ₦{Number(invoice.total_amount).toLocaleString()}
+                      </TableCell>
+                      <TableCell className="text-sm">
+                        {format(new Date(invoice.due_date), 'MMM dd, yyyy')}
                       </TableCell>
                       <TableCell>{getStatusBadge(invoice.status)}</TableCell>
-                      <TableCell className="text-sm text-muted-foreground">
-                        {format(new Date(invoice.created_at), 'MMM dd, yyyy')}
-                      </TableCell>
                       <TableCell className="text-right">
-                        <Select
-                          value={invoice.status}
-                          onValueChange={(value) => handleStatusChange(invoice.id, value)}
-                        >
-                          <SelectTrigger className="w-32">
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="pending">Pending</SelectItem>
-                            <SelectItem value="paid">Paid</SelectItem>
-                            <SelectItem value="overdue">Overdue</SelectItem>
-                            <SelectItem value="cancelled">Cancelled</SelectItem>
-                          </SelectContent>
-                        </Select>
+                        {invoice.status === 'pending' && (
+                          <Button
+                            size="sm"
+                            variant="default"
+                            onClick={() => handleStatusChange(invoice.id, 'paid')}
+                          >
+                            Mark Paid
+                          </Button>
+                        )}
                       </TableCell>
                     </TableRow>
-                  );
-                })}
+                  ))}
               </TableBody>
             </Table>
           )}

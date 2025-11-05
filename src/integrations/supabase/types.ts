@@ -2140,12 +2140,13 @@ export type Database = {
       }
       platform_invoices: {
         Row: {
-          base_amount: number
           created_at: string
+          due_date: string
           id: string
-          line_items: Json | null
+          invoice_number: string
+          line_items: Json
           metadata: Json | null
-          overage_amount: number
+          paid_at: string | null
           period_end: string
           period_start: string
           status: string
@@ -2154,26 +2155,28 @@ export type Database = {
           updated_at: string
         }
         Insert: {
-          base_amount?: number
           created_at?: string
+          due_date: string
           id?: string
-          line_items?: Json | null
+          invoice_number: string
+          line_items?: Json
           metadata?: Json | null
-          overage_amount?: number
+          paid_at?: string | null
           period_end: string
           period_start: string
           status?: string
           tenant_id: string
-          total_amount?: number
+          total_amount: number
           updated_at?: string
         }
         Update: {
-          base_amount?: number
           created_at?: string
+          due_date?: string
           id?: string
-          line_items?: Json | null
+          invoice_number?: string
+          line_items?: Json
           metadata?: Json | null
-          overage_amount?: number
+          paid_at?: string | null
           period_end?: string
           period_start?: string
           status?: string
@@ -2181,7 +2184,15 @@ export type Database = {
           total_amount?: number
           updated_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "platform_invoices_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       platform_nav_items: {
         Row: {
@@ -2678,36 +2689,50 @@ export type Database = {
       }
       platform_usage_records: {
         Row: {
+          cost: number
           created_at: string
           id: string
           metadata: Json | null
-          metric_type: string
           period_end: string
           period_start: string
           quantity: number
           tenant_id: string
+          updated_at: string
+          usage_type: string
         }
         Insert: {
+          cost?: number
           created_at?: string
           id?: string
           metadata?: Json | null
-          metric_type: string
           period_end: string
           period_start: string
-          quantity: number
+          quantity?: number
           tenant_id: string
+          updated_at?: string
+          usage_type: string
         }
         Update: {
+          cost?: number
           created_at?: string
           id?: string
           metadata?: Json | null
-          metric_type?: string
           period_end?: string
           period_start?: string
           quantity?: number
           tenant_id?: string
+          updated_at?: string
+          usage_type?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "platform_usage_records_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       platform_users: {
         Row: {

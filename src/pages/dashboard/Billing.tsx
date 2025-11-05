@@ -12,7 +12,7 @@ export default function Billing() {
   const [selectedInvoice, setSelectedInvoice] = useState<any>(null);
 
   const handleSyncUsage = () => {
-    syncUsage.mutate();
+    syncUsage.mutate(undefined);
   };
 
   if (isLoading) {
@@ -75,12 +75,12 @@ export default function Billing() {
             <CardContent>
               {usageRecords && usageRecords.length > 0 ? (
                 <div className="space-y-4">
-                  {usageRecords.map((record) => (
+                  {usageRecords.map((record: any) => (
                     <div key={record.id} className="flex items-center justify-between p-4 border rounded-lg">
                       <div>
-                        <p className="font-medium">{record.usage_type.toUpperCase()}</p>
+                        <p className="font-medium">{record.usage_type?.toUpperCase() || 'UNKNOWN'}</p>
                         <p className="text-sm text-muted-foreground">
-                          Quantity: {record.quantity} | Cost: ₦{Number(record.cost).toLocaleString()}
+                          Quantity: {record.quantity} | Cost: ₦{Number(record.cost || 0).toLocaleString()}
                         </p>
                       </div>
                       <div className="text-right text-sm text-muted-foreground">
