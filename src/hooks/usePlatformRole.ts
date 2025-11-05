@@ -20,7 +20,7 @@ export function usePlatformRole() {
         const { data, error } = await (supabase as any)
           .from('platform_users')
           .select('role')
-          .eq('user_id', user.id)
+          .eq('id', user.id)
           .maybeSingle();
 
         if (error && error.code !== 'PGRST116') {
