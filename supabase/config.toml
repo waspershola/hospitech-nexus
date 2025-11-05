@@ -15,6 +15,12 @@ verify_jwt = false
 [functions.assign-plan]
 verify_jwt = true
 
+[functions.tenant-management]
+verify_jwt = true
+
+[functions.onboard-tenant]
+verify_jwt = false
+
 [functions.migrate-sms-providers]
 verify_jwt = true
 
