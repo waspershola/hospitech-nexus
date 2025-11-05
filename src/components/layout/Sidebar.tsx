@@ -1,8 +1,9 @@
-import { Hotel } from 'lucide-react';
+import { Hotel, Server } from 'lucide-react';
 import * as Icons from 'lucide-react';
 import { NavLink } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { useNavigation } from '@/hooks/useNavigation';
+import { usePlatformRole } from '@/hooks/usePlatformRole';
 import { Skeleton } from '@/components/ui/skeleton';
 import {
   Sidebar,
@@ -21,6 +22,7 @@ export function AppSidebar() {
   const { tenantName } = useAuth();
   const { open } = useSidebar();
   const { data: navItems, isLoading } = useNavigation();
+  const { isPlatformAdmin } = usePlatformRole();
 
   return (
     <Sidebar collapsible="icon" className="border-r border-sidebar-border">
@@ -85,6 +87,36 @@ export function AppSidebar() {
             )}
           </SidebarGroupContent>
         </SidebarGroup>
+
+        {/* Platform Admin Section */}
+        {isPlatformAdmin && (
+          <SidebarGroup>
+            <SidebarGroupLabel className="text-sidebar-foreground/70">
+              {open ? 'Platform Admin' : ''}
+            </SidebarGroupLabel>
+            <SidebarGroupContent>
+              <SidebarMenu>
+                <SidebarMenuItem>
+                  <SidebarMenuButton asChild tooltip="Platform Admin">
+                    <NavLink
+                      to="/dashboard/platform-admin"
+                      className={({ isActive }) =>
+                        `flex items-center gap-3 px-3 py-2 rounded-xl transition-colors ${
+                          isActive
+                            ? 'bg-sidebar-primary/20 text-sidebar-primary font-semibold'
+                            : 'text-sidebar-foreground hover:bg-sidebar-accent/20 hover:text-sidebar-primary'
+                        }`
+                      }
+                    >
+                      <Server className="h-5 w-5 shrink-0" />
+                      {open && <span>Platform Admin</span>}
+                    </NavLink>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              </SidebarMenu>
+            </SidebarGroupContent>
+          </SidebarGroup>
+        )}
       </SidebarContent>
     </Sidebar>
   );

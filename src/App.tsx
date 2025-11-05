@@ -42,6 +42,17 @@ import { DepartmentRequestsTab } from './modules/inventory/DepartmentRequestsTab
 import PortalHome from "./pages/portal/Home";
 import PortalRequests from "./pages/portal/Requests";
 import PortalPayments from "./pages/portal/Payments";
+import PlatformDashboard from "./pages/dashboard/platform/PlatformDashboard";
+import { usePlatformRole } from "./hooks/usePlatformRole";
+
+function PlatformGuard({ children }: { children: React.ReactNode }) {
+  const { isPlatformAdmin, isLoading } = usePlatformRole();
+  
+  if (isLoading) return <div>Loading...</div>;
+  if (!isPlatformAdmin) return <Navigate to="/dashboard" replace />;
+  
+  return <>{children}</>;
+}
 
 const queryClient = new QueryClient();
 
@@ -92,6 +103,9 @@ const App = () => (
           <Route path="navigation-manager" element={<RoleGuard allowedRoles={['owner']}><NavigationManager /></RoleGuard>} />
           <Route path="staff" element={<RoleGuard allowedRoles={['owner', 'manager', 'supervisor']}><Staff /></RoleGuard>} />
           <Route path="staff-activity" element={<RoleGuard allowedRoles={['owner', 'manager', 'supervisor']}><StaffActivity /></RoleGuard>} />
+          
+          {/* Platform Admin */}
+          <Route path="platform-admin" element={<PlatformGuard><PlatformDashboard /></PlatformGuard>} />
             </Route>
 
             <Route path="/portal" element={<ProtectedRoute><GuestPortalShell /></ProtectedRoute>}>
