@@ -55,7 +55,7 @@ serve(async (req) => {
 
     // CREATE TENANT
     if (method === 'POST' && url.pathname === '/tenant-management/create') {
-      const { hotel_name, owner_email, plan_id, domain } = await req.json();
+      const { hotel_name, owner_email, plan_id, domain, owner_password } = await req.json();
 
       if (!hotel_name || !owner_email || !plan_id) {
         return new Response(
@@ -63,6 +63,8 @@ serve(async (req) => {
           { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
       }
+
+      console.log('🏗️ Creating tenant:', { hotel_name, owner_email, plan_id, domain });
 
       // Create tenant
       const slug = hotel_name.toLowerCase().replace(/[^a-z0-9]+/g, '-');
@@ -72,7 +74,48 @@ serve(async (req) => {
         .select()
         .single();
 
-      if (tenantError) throw tenantError;
+      if (tenantError) {
+        console.error('❌ Tenant creation error:', tenantError);
+        throw tenantError;
+      }
+
+      console.log('✅ Tenant created:', tenant.id);
+
+      // Create admin user for tenant
+      let adminUser = null;
+      try {
+        const password = owner_password || Math.random().toString(36).slice(-12) + 'A1!';
+        const { data: authUser, error: authError } = await supabase.auth.admin.createUser({
+          email: owner_email,
+          password,
+          email_confirm: true,
+          user_metadata: {
+            full_name: 'Admin',
+            hotel_name,
+          },
+        });
+
+        if (authError) {
+          console.error('❌ User creation error:', authError);
+          throw authError;
+        }
+
+        adminUser = authUser.user;
+        console.log('✅ Admin user created:', adminUser.id);
+
+        // Assign owner role
+        await supabase
+          .from('user_roles')
+          .insert({
+            user_id: adminUser.id,
+            tenant_id: tenant.id,
+            role: 'owner',
+          });
+
+        console.log('✅ Owner role assigned');
+      } catch (err) {
+        console.error('⚠️ User creation failed, continuing:', err);
+      }
 
       // Create platform tenant entry
       const { error: platformTenantError } = await supabase
@@ -83,9 +126,57 @@ serve(async (req) => {
           status: 'trial',
           plan_id,
           owner_email,
+          settings: {
+            admin_user_id: adminUser?.id,
+          },
         });
 
-      if (platformTenantError) throw platformTenantError;
+      if (platformTenantError) {
+        console.error('❌ Platform tenant error:', platformTenantError);
+        throw platformTenantError;
+      }
+
+      console.log('✅ Platform tenant entry created');
+
+      // Initialize SMS credit pool (100 free trial credits)
+      try {
+        await supabase
+          .from('platform_sms_credit_pool')
+          .insert({
+            tenant_id: tenant.id,
+            total_credits: 100,
+            consumed_credits: 0,
+            last_topup_at: new Date().toISOString(),
+            billing_reference: 'Trial credits',
+          });
+        console.log('✅ SMS credit pool initialized (100 credits)');
+      } catch (err) {
+        console.error('⚠️ SMS credit pool creation failed:', err);
+      }
+
+      // Seed default navigation items (53 items from platform_nav_items where tenant_id is null)
+      try {
+        const { data: defaultNav } = await supabase
+          .from('platform_nav_items')
+          .select('*')
+          .is('tenant_id', null);
+
+        if (defaultNav && defaultNav.length > 0) {
+          const tenantNav = defaultNav.map(item => ({
+            ...item,
+            id: undefined, // Generate new IDs
+            tenant_id: tenant.id,
+          }));
+
+          await supabase
+            .from('platform_nav_items')
+            .insert(tenantNav);
+
+          console.log(`✅ Seeded ${tenantNav.length} default navigation items`);
+        }
+      } catch (err) {
+        console.error('⚠️ Navigation seeding failed:', err);
+      }
 
       // Create default financial settings
       const { error: financialError } = await supabase
@@ -104,7 +195,7 @@ serve(async (req) => {
           decimal_places: 2,
         });
 
-      if (financialError) console.error('Financial settings error:', financialError);
+      if (financialError) console.error('⚠️ Financial settings error:', financialError);
 
       // Create default branding
       const { error: brandingError } = await supabase
@@ -146,11 +237,21 @@ serve(async (req) => {
             owner_email,
             plan_id,
             domain,
+            admin_user_id: adminUser?.id,
           },
         });
 
+      console.log('✅ Tenant creation complete:', tenant.id);
+
       return new Response(
-        JSON.stringify({ success: true, tenant }),
+        JSON.stringify({ 
+          success: true, 
+          tenant: {
+            ...tenant,
+            admin_email: owner_email,
+            admin_user_id: adminUser?.id,
+          }
+        }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }

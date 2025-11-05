@@ -42,6 +42,30 @@ export function usePlatformTenants() {
     },
   });
 
+  const createTenant = useMutation({
+    mutationFn: async (tenantData: {
+      hotel_name: string;
+      owner_email: string;
+      owner_password?: string;
+      plan_id: string;
+      domain?: string;
+    }) => {
+      const { data, error } = await supabase.functions.invoke('tenant-management/create', {
+        body: tenantData,
+      });
+
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['platform-tenants'] });
+      toast.success('Tenant created successfully');
+    },
+    onError: (error: any) => {
+      toast.error(error.message || 'Failed to create tenant');
+    },
+  });
+
   const updateTenantPlan = useMutation({
     mutationFn: async ({
       id,
@@ -66,6 +90,60 @@ export function usePlatformTenants() {
     },
     onError: (error: any) => {
       toast.error(error.message || 'Failed to update tenant plan');
+    },
+  });
+
+  const suspendTenant = useMutation({
+    mutationFn: async (tenantId: string) => {
+      const { data, error } = await supabase.functions.invoke(`tenant-management/${tenantId}/suspend`, {
+        method: 'POST',
+      });
+
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['platform-tenants'] });
+      toast.success('Tenant suspended');
+    },
+    onError: (error: any) => {
+      toast.error(error.message || 'Failed to suspend tenant');
+    },
+  });
+
+  const activateTenant = useMutation({
+    mutationFn: async (tenantId: string) => {
+      const { data, error } = await supabase.functions.invoke(`tenant-management/${tenantId}/activate`, {
+        method: 'POST',
+      });
+
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['platform-tenants'] });
+      toast.success('Tenant activated');
+    },
+    onError: (error: any) => {
+      toast.error(error.message || 'Failed to activate tenant');
+    },
+  });
+
+  const deleteTenant = useMutation({
+    mutationFn: async (tenantId: string) => {
+      const { data, error } = await supabase.functions.invoke(`tenant-management/${tenantId}`, {
+        method: 'DELETE',
+      });
+
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['platform-tenants'] });
+      toast.success('Tenant deleted');
+    },
+    onError: (error: any) => {
+      toast.error(error.message || 'Failed to delete tenant');
     },
   });
 
@@ -151,7 +229,11 @@ export function usePlatformTenants() {
   return {
     tenants,
     isLoading,
+    createTenant,
     updateTenantPlan,
+    suspendTenant,
+    activateTenant,
+    deleteTenant,
     assignProvider,
     addCredits,
   };
