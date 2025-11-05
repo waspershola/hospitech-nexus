@@ -70,10 +70,15 @@ export function useSMSSettings() {
     mutationFn: async (settingsData: any) => {
       const { error } = await supabase
         .from('tenant_sms_settings')
-        .upsert({
-          tenant_id: tenantId,
-          ...settingsData,
-        });
+        .upsert(
+          {
+            tenant_id: tenantId,
+            ...settingsData,
+          },
+          {
+            onConflict: 'tenant_id',
+          }
+        );
 
       if (error) throw error;
     },
