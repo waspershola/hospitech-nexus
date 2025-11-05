@@ -30,28 +30,9 @@ export function useNavigation() {
   return useQuery({
     queryKey: ['platform-navigation', tenantId, role, department, platformRole],
     queryFn: async () => {
-      // Super admins get all navigation items without tenant filtering
-      if (platformRole === 'super_admin') {
-        console.log('Super admin detected - fetching global navigation');
-        
-        const { data, error } = await supabase.functions.invoke('platform-nav-sync', {
-          method: 'POST',
-        });
-        
-        if (error) throw error;
-        if (!data?.data) throw new Error('No navigation data received');
-        
-        return data.data as NavigationItem[];
-      }
+      // Fetch navigation items via edge function
+      console.log('Fetching navigation - platformRole:', platformRole, 'tenantId:', tenantId, 'role:', role, 'department:', department);
 
-      // Regular tenant-based navigation for non-super-admins
-      if (!tenantId) {
-        throw new Error('Tenant ID required for navigation');
-      }
-
-      console.log('Fetching navigation for tenant:', tenantId, 'role:', role, 'department:', department);
-
-      // Call platform navigation sync edge function with query params
       const { data, error } = await supabase.functions.invoke('platform-nav-sync', {
         body: {},
         method: 'POST',
@@ -70,27 +51,42 @@ export function useNavigation() {
       const navItems = data.data as NavigationItem[];
       console.log('Received navigation items:', navItems.length);
       
-      // Filter by role AND department on client side
+      // Define platform roles and tenant roles
+      const platformRoles = ['super_admin', 'admin', 'support_admin', 'billing_admin'];
+      const tenantRoles = ['owner', 'manager', 'frontdesk', 'finance', 'accountant', 'housekeeping', 'maintenance', 'kitchen', 'bar', 'staff'];
+      
+      // Filter based on user's role type
       const filtered = navItems.filter(item => {
-        // Check role access
-        const hasRole = role && item.roles_allowed.includes(role);
-        if (!hasRole) {
-          console.log(`Item ${item.name} filtered out - role mismatch. Required: ${item.roles_allowed}, User has: ${role}`);
-          return false;
+        // Check if this is a platform item (has platform roles in roles_allowed)
+        const isPlatformItem = item.roles_allowed.some(r => platformRoles.includes(r));
+        
+        if (isPlatformItem) {
+          // Platform item - check platform role
+          const hasPlatformAccess = platformRole && item.roles_allowed.includes(platformRole);
+          if (!hasPlatformAccess) {
+            console.log(`Platform item ${item.name} filtered out - platform role mismatch. Required: ${item.roles_allowed}, User has: ${platformRole}`);
+          }
+          return hasPlatformAccess;
+        } else {
+          // Tenant item - check tenant role AND department
+          const hasRole = role && item.roles_allowed.includes(role);
+          if (!hasRole) {
+            console.log(`Tenant item ${item.name} filtered out - role mismatch. Required: ${item.roles_allowed}, User has: ${role}`);
+            return false;
+          }
+          
+          // Check department access (empty array means visible to all departments)
+          const allowedDepts = item.departments_allowed || [];
+          const hasAccess = 
+            allowedDepts.length === 0 || // All departments
+            (department && allowedDepts.includes(department)); // Specific department match
+          
+          if (!hasAccess) {
+            console.log(`Tenant item ${item.name} filtered out - department mismatch. Required: ${allowedDepts}, User has: ${department}`);
+          }
+          
+          return hasAccess;
         }
-        
-        // Check department access
-        // Empty array means visible to all departments
-        const allowedDepts = item.departments_allowed || [];
-        const hasAccess = 
-          allowedDepts.length === 0 || // All departments
-          (department && allowedDepts.includes(department)); // Specific department match
-        
-        if (!hasAccess) {
-          console.log(`Item ${item.name} filtered out - department mismatch. Required: ${allowedDepts}, User has: ${department}`);
-        }
-        
-        return hasAccess;
       });
       
       console.log('Filtered navigation items:', filtered.length);

@@ -50,13 +50,14 @@ Deno.serve(async (req) => {
           .eq('id', user.id)
           .maybeSingle();
 
-        // If super_admin, return all navigation items (global scope)
+        // If super_admin, return only platform (global) navigation items
         if (platformUser?.role === 'super_admin') {
-          console.log('Super admin detected - fetching global navigation');
+          console.log('Super admin detected - fetching platform navigation only');
           
-          const { data: allNavItems, error } = await supabase
+          const { data: platformNavItems, error } = await supabase
             .from('platform_nav_items')
             .select('*')
+            .is('tenant_id', null) // Only global platform items
             .eq('is_active', true)
             .order('order_index');
             
@@ -65,10 +66,10 @@ Deno.serve(async (req) => {
             throw error;
           }
           
-          console.log(`Found ${allNavItems?.length || 0} navigation items for super admin`);
+          console.log(`Found ${platformNavItems?.length || 0} platform navigation items for super admin`);
           
           return new Response(
-            JSON.stringify({ data: allNavItems }),
+            JSON.stringify({ data: platformNavItems }),
             { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
           );
         }
