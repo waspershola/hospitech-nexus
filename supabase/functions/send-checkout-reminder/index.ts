@@ -1,9 +1,6 @@
 import { serve } from 'https://deno.land/std@0.190.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.3';
 import { Resend } from 'npm:resend@4.0.0';
-import React from 'npm:react@18.3.1';
-import { renderAsync } from 'npm:@react-email/components@0.0.22';
-import { CheckoutReminderEmail } from './_templates/checkout-reminder.tsx';
 
 const resend = new Resend(Deno.env.get('RESEND_API_KEY') as string);
 
@@ -88,7 +85,7 @@ serve(async (req: Request) => {
     const fromEmail = emailSettings?.from_email || 'noreply@hotel.com';
     const fromName = emailSettings?.from_name || hotelName;
 
-    // Get bookings checking out on target date
+    // Get bookings checking out on target date with phone numbers
     const { data: bookings, error: bookingsError } = await supabase
       .from('bookings')
       .select(`
@@ -96,7 +93,7 @@ serve(async (req: Request) => {
         check_out,
         total_amount,
         room:rooms(number),
-        guest:guests(name, email)
+        guest:guests(id, name, email, phone)
       `)
       .eq('tenant_id', tenant_id)
       .eq('status', 'checked_in')
@@ -144,33 +141,87 @@ serve(async (req: Request) => {
           day: 'numeric'
         });
 
-        const html = await renderAsync(
-          React.createElement(CheckoutReminderEmail, {
-            guestName: guest.name || 'Guest',
-            hotelName,
-            roomNumber: room?.number || '',
-            checkoutDate: formattedDate,
-            checkoutTime,
-            hoursUntilCheckout: hours_before,
-            balance: balance > 0 ? balance : 0,
-            currency: '₦',
-            hotelPhone: hotelMeta?.contact_phone,
-            hotelEmail: hotelMeta?.contact_email,
-          })
-        );
+        // Simple HTML email template
+        const html = `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Checkout Reminder</title>
+</head>
+<body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
+  <div style="max-width: 600px; margin: 0 auto; padding: 20px;">
+    <h2 style="color: #2563eb;">Checkout Reminder</h2>
+    <p>Dear ${guest.name || 'Guest'},</p>
+    <p>This is a friendly reminder that your checkout from <strong>${hotelName}</strong> is ${hours_before === 24 ? 'tomorrow' : 'in 2 hours'}.</p>
+    <div style="background-color: #f3f4f6; padding: 15px; border-radius: 8px; margin: 20px 0;">
+      <p style="margin: 5px 0;"><strong>Room Number:</strong> ${room?.number || 'N/A'}</p>
+      <p style="margin: 5px 0;"><strong>Checkout Date:</strong> ${formattedDate}</p>
+      <p style="margin: 5px 0;"><strong>Checkout Time:</strong> ${checkoutTime}</p>
+      ${balance > 0 ? `<p style="margin: 5px 0;"><strong>Outstanding Balance:</strong> ₦${balance.toLocaleString()}</p>` : ''}
+    </div>
+    <p>Please ensure all personal belongings are collected and the room is vacated by the checkout time.</p>
+    ${balance > 0 ? '<p style="color: #dc2626;"><strong>Note:</strong> Please settle your outstanding balance before checkout.</p>' : ''}
+    <p>Thank you for staying with us!</p>
+    <hr style="border: none; border-top: 1px solid #e5e7eb; margin: 20px 0;">
+    <p style="font-size: 12px; color: #6b7280;">
+      ${hotelName}<br>
+      ${hotelMeta?.contact_phone ? `Phone: ${hotelMeta.contact_phone}<br>` : ''}
+      ${hotelMeta?.contact_email ? `Email: ${hotelMeta.contact_email}` : ''}
+    </p>
+  </div>
+</body>
+</html>`;
 
-        const { error: emailError } = await resend.emails.send({
-          from: `${fromName} <${fromEmail}>`,
-          to: [guest.email],
-          subject: `Checkout Reminder - ${hours_before === 24 ? 'Tomorrow' : 'In 2 Hours'} at ${hotelName}`,
-          html,
-        });
+        // Send email
+        if (sendEmail) {
+          const { error: emailError } = await resend.emails.send({
+            from: `${fromName} <${fromEmail}>`,
+            to: [guest.email],
+            subject: `Checkout Reminder - ${hours_before === 24 ? 'Tomorrow' : 'In 2 Hours'} at ${hotelName}`,
+            html,
+          });
 
-        if (emailError) {
-          errors.push(`Failed to send to ${guest.email}: ${emailError.message}`);
-        } else {
-          sentCount++;
-          console.log(`Sent reminder to ${guest.email} for room ${room?.number}`);
+          if (emailError) {
+            errors.push(`Failed to send email to ${guest.email}: ${emailError.message}`);
+          } else {
+            sentCount++;
+            console.log(`Sent email reminder to ${guest.email} for room ${room?.number}`);
+          }
+        }
+
+        // Send SMS if enabled
+        const sendSms = configMap.get('send_sms') === true;
+        if (sendSms && guest.phone) {
+          try {
+            const { data: smsSettings } = await supabase
+              .from('tenant_sms_settings')
+              .select('enabled, auto_send_checkout_reminder')
+              .eq('tenant_id', tenant_id)
+              .maybeSingle();
+
+            if (smsSettings?.enabled && smsSettings.auto_send_checkout_reminder) {
+              const smsMessage = balance > 0
+                ? `Hi ${guest.name}, checkout from ${hotelName} Room ${room?.number} is ${hours_before === 24 ? 'tomorrow' : 'in 2 hours'} at ${checkoutTime}. Outstanding balance: ₦${balance.toLocaleString()}. Safe travels!`
+                : `Hi ${guest.name}, checkout from ${hotelName} Room ${room?.number} is ${hours_before === 24 ? 'tomorrow' : 'in 2 hours'} at ${checkoutTime}. Safe travels!`;
+
+              await supabase.functions.invoke('send-sms', {
+                body: {
+                  tenant_id,
+                  to: guest.phone,
+                  message: smsMessage,
+                  event_key: 'checkout_reminder',
+                  booking_id: booking.id,
+                  guest_id: guest.id,
+                },
+              });
+
+              console.log(`Sent SMS reminder to ${guest.phone}`);
+            }
+          } catch (smsError: any) {
+            console.error('SMS send error:', smsError);
+            // Don't fail the whole process if SMS fails
+          }
         }
       } catch (error: any) {
         errors.push(`Error processing booking ${booking.id}: ${error.message}`);
