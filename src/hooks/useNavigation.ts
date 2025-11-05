@@ -8,8 +8,8 @@ export interface NavigationItem {
   name: string;
   path: string;
   icon: string;
-  allowed_roles: string[];
-  allowed_departments: string[];
+  roles_allowed: string[];
+  departments_allowed: string[];
   parent_id: string | null;
   order_index: number;
   is_active: boolean;
@@ -56,15 +56,15 @@ export function useNavigation() {
       // Filter by role AND department on client side
       const filtered = navItems.filter(item => {
         // Check role access
-        const hasRole = role && item.allowed_roles.includes(role);
+        const hasRole = role && item.roles_allowed.includes(role);
         if (!hasRole) {
-          console.log(`Item ${item.name} filtered out - role mismatch. Required: ${item.allowed_roles}, User has: ${role}`);
+          console.log(`Item ${item.name} filtered out - role mismatch. Required: ${item.roles_allowed}, User has: ${role}`);
           return false;
         }
         
         // Check department access
         // Empty array means visible to all departments
-        const allowedDepts = item.allowed_departments || [];
+        const allowedDepts = item.departments_allowed || [];
         const hasAccess = 
           allowedDepts.length === 0 || // All departments
           (department && allowedDepts.includes(department)); // Specific department match
