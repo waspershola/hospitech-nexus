@@ -8,7 +8,8 @@ import { PlatformUsersTab } from './tabs/PlatformUsersTab';
 import { PlatformSupportTab } from './tabs/PlatformSupportTab';
 import { PlatformEmailProvidersTab } from './tabs/PlatformEmailProvidersTab';
 import { PlatformFeatureFlagsTab } from './tabs/PlatformFeatureFlagsTab';
-import { Server, Users, ShoppingCart, CreditCard, Shield, MessageSquare, Mail, Flag } from 'lucide-react';
+import { PlatformNavigationTab } from './tabs/PlatformNavigationTab';
+import { Server, Users, ShoppingCart, CreditCard, Shield, MessageSquare, Mail, Flag, Navigation2 } from 'lucide-react';
 
 export default function PlatformDashboard() {
   return (
@@ -50,6 +51,10 @@ export default function PlatformDashboard() {
             <Flag className="h-4 w-4" />
             Feature Flags
           </TabsTrigger>
+          <TabsTrigger value="navigation" className="gap-2">
+            <Navigation2 className="h-4 w-4" />
+            Navigation
+          </TabsTrigger>
           <TabsTrigger value="marketplace" className="gap-2">
             <ShoppingCart className="h-4 w-4" />
             Marketplace
@@ -82,6 +87,10 @@ export default function PlatformDashboard() {
 
         <TabsContent value="feature-flags">
           <PlatformFeatureFlagsTab />
+        </TabsContent>
+
+        <TabsContent value="navigation">
+          <PlatformNavigationTab />
         </TabsContent>
 
         <TabsContent value="marketplace">

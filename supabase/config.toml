@@ -98,3 +98,6 @@ verify_jwt = true
 
 [functions.feature-flags]
 verify_jwt = true
+
+[functions.platform-navigation]
+verify_jwt = true
