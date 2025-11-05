@@ -9,7 +9,9 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
-import { AlertCircle, CheckCircle2, Users, Loader2 } from 'lucide-react';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { AlertCircle, CheckCircle2, Users, Loader2, DollarSign } from 'lucide-react';
 import { format } from 'date-fns';
 
 interface BulkCheckInDrawerProps {
@@ -41,9 +43,11 @@ interface ArrivalBooking {
 }
 
 export function BulkCheckInDrawer({ open, onClose }: BulkCheckInDrawerProps) {
-  const { tenantId } = useAuth();
+  const { tenantId, user } = useAuth();
   const queryClient = useQueryClient();
   const [selectedBookings, setSelectedBookings] = useState<string[]>([]);
+  const [step, setStep] = useState<'selection' | 'payment'>('selection');
+  const [paymentAmounts, setPaymentAmounts] = useState<Record<string, string>>({});
 
   const today = new Date();
   today.setHours(0, 0, 0, 0);
@@ -73,8 +77,7 @@ export function BulkCheckInDrawer({ open, onClose }: BulkCheckInDrawerProps) {
           )
         `)
         .eq('tenant_id', tenantId)
-        .gte('check_in', todayISO + 'T00:00:00')
-        .lt('check_in', todayISO + 'T23:59:59')
+        .eq('check_in', todayISO)
         .in('status', ['reserved', 'confirmed'])
         .order('check_in', { ascending: true });
 
@@ -143,12 +146,74 @@ export function BulkCheckInDrawer({ open, onClose }: BulkCheckInDrawerProps) {
       }
 
       setSelectedBookings([]);
+      setPaymentAmounts({});
+      setStep('selection');
       if (data.failed === 0) {
         onClose();
       }
     },
     onError: (error: Error) => {
       toast.error('Bulk check-in failed', {
+        description: error.message,
+      });
+    },
+  });
+
+  // Record payments mutation
+  const recordPaymentsMutation = useMutation({
+    mutationFn: async (payments: Array<{ bookingId: string; amount: number; guestId: string }>) => {
+      if (!tenantId || !user) throw new Error('Not authenticated');
+
+      const results = await Promise.allSettled(
+        payments.map(async ({ bookingId, amount, guestId }) => {
+          const { data, error } = await supabase.functions.invoke('create-payment', {
+            body: {
+              tenant_id: tenantId,
+              booking_id: bookingId,
+              guest_id: guestId,
+              amount,
+              payment_method: 'cash',
+              payment_provider: 'cash',
+              status: 'completed',
+              description: 'Bulk check-in payment',
+              metadata: {
+                collected_by: user.id,
+                collection_type: 'bulk_checkin',
+              },
+            },
+          });
+
+          if (error) throw error;
+          if (!data?.success) throw new Error(data?.error || 'Payment failed');
+
+          return { bookingId, success: true };
+        })
+      );
+
+      const successful = results.filter(r => r.status === 'fulfilled').length;
+      const failed = results.filter(r => r.status === 'rejected').length;
+
+      return { successful, failed, total: payments.length };
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ['booking-folio'] });
+      queryClient.invalidateQueries({ queryKey: ['payments'] });
+
+      if (data.failed === 0) {
+        toast.success(`Successfully recorded ${data.successful} payment${data.successful > 1 ? 's' : ''}`);
+      } else {
+        toast.warning(`Recorded ${data.successful} payments, ${data.failed} failed`, {
+          description: 'Some payments could not be recorded',
+        });
+      }
+
+      setStep('selection');
+      setSelectedBookings([]);
+      setPaymentAmounts({});
+      onClose();
+    },
+    onError: (error: Error) => {
+      toast.error('Payment recording failed', {
         description: error.message,
       });
     },
@@ -178,20 +243,82 @@ export function BulkCheckInDrawer({ open, onClose }: BulkCheckInDrawerProps) {
     bulkCheckInMutation.mutate(selectedBookings);
   };
 
+  const handleProceedToPayment = () => {
+    if (selectedBookings.length === 0) {
+      toast.error('Please select at least one guest');
+      return;
+    }
+    
+    // Initialize payment amounts with total amounts
+    const initialAmounts: Record<string, string> = {};
+    selectedBookings.forEach(bookingId => {
+      const arrival = arrivals.find(a => a.id === bookingId);
+      if (arrival) {
+        initialAmounts[bookingId] = arrival.total_amount.toString();
+      }
+    });
+    setPaymentAmounts(initialAmounts);
+    setStep('payment');
+  };
+
+  const handleRecordPayments = () => {
+    const payments = selectedBookings
+      .map(bookingId => {
+        const arrival = arrivals.find(a => a.id === bookingId);
+        const amount = parseFloat(paymentAmounts[bookingId] || '0');
+        
+        if (!arrival || amount <= 0) return null;
+        
+        return {
+          bookingId,
+          amount,
+          guestId: arrival.guest_id,
+        };
+      })
+      .filter((p): p is NonNullable<typeof p> => p !== null);
+
+    if (payments.length === 0) {
+      toast.error('Please enter valid payment amounts');
+      return;
+    }
+
+    recordPaymentsMutation.mutate(payments);
+  };
+
+  const handleSkipPayment = () => {
+    setStep('selection');
+    setSelectedBookings([]);
+    setPaymentAmounts({});
+    onClose();
+  };
+
   return (
     <Sheet open={open} onOpenChange={onClose}>
-      <SheetContent side="right" className="w-full sm:max-w-xl">
+      <SheetContent side="right" className="w-full sm:max-w-2xl">
         <SheetHeader>
           <SheetTitle className="flex items-center gap-2">
-            <Users className="w-5 h-5" />
-            Bulk Check-In - Today's Arrivals
+            {step === 'selection' ? (
+              <>
+                <Users className="w-5 h-5" />
+                Bulk Check-In - Today's Arrivals
+              </>
+            ) : (
+              <>
+                <DollarSign className="w-5 h-5" />
+                Collect Payments
+              </>
+            )}
           </SheetTitle>
           <SheetDescription>
-            Check in multiple guests at once. Select guests from the list below.
+            {step === 'selection' 
+              ? 'Check in multiple guests at once. Select guests from the list below.'
+              : 'Record payments for selected guests. Enter full or partial amounts.'
+            }
           </SheetDescription>
         </SheetHeader>
 
-        <div className="mt-6 space-y-4">
+        {step === 'selection' ? (
+          <div className="mt-6 space-y-4">
           {/* Summary */}
           <div className="flex items-center justify-between p-4 bg-muted/50 rounded-lg">
             <div className="space-y-1">
@@ -302,6 +429,15 @@ export function BulkCheckInDrawer({ open, onClose }: BulkCheckInDrawerProps) {
               Cancel
             </Button>
             <Button
+              variant="secondary"
+              onClick={handleProceedToPayment}
+              className="flex-1"
+              disabled={selectedBookings.length === 0 || bulkCheckInMutation.isPending}
+            >
+              <DollarSign className="w-4 h-4 mr-2" />
+              Collect Payments ({selectedBookings.length})
+            </Button>
+            <Button
               onClick={handleBulkCheckIn}
               className="flex-1"
               disabled={selectedBookings.length === 0 || bulkCheckInMutation.isPending}
@@ -320,6 +456,131 @@ export function BulkCheckInDrawer({ open, onClose }: BulkCheckInDrawerProps) {
             </Button>
           </div>
         </div>
+        ) : (
+          // Payment Step
+          <div className="mt-6 space-y-4">
+            <div className="p-4 bg-muted/50 rounded-lg">
+              <p className="text-sm font-medium mb-1">Recording payments for {selectedBookings.length} guest{selectedBookings.length > 1 ? 's' : ''}</p>
+              <p className="text-xs text-muted-foreground">Enter the amount collected for each guest below</p>
+            </div>
+
+            <ScrollArea className="h-[calc(100vh-400px)]">
+              <div className="space-y-3 pr-4">
+                {selectedBookings.map(bookingId => {
+                  const arrival = arrivals.find(a => a.id === bookingId);
+                  if (!arrival) return null;
+
+                  return (
+                    <div key={bookingId} className="p-4 border rounded-lg space-y-3">
+                      <div className="flex items-start justify-between gap-2">
+                        <div>
+                          <p className="font-medium">{arrival.guest.name}</p>
+                          <p className="text-sm text-muted-foreground">
+                            Room {arrival.room.number}
+                          </p>
+                        </div>
+                        <Badge variant="outline">
+                          Total: ₦{arrival.total_amount.toLocaleString()}
+                        </Badge>
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label htmlFor={`payment-${bookingId}`}>
+                          Payment Amount
+                        </Label>
+                        <div className="flex gap-2">
+                          <div className="relative flex-1">
+                            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">
+                              ₦
+                            </span>
+                            <Input
+                              id={`payment-${bookingId}`}
+                              type="number"
+                              min="0"
+                              max={arrival.total_amount}
+                              step="0.01"
+                              value={paymentAmounts[bookingId] || ''}
+                              onChange={(e) => setPaymentAmounts(prev => ({
+                                ...prev,
+                                [bookingId]: e.target.value
+                              }))}
+                              className="pl-8"
+                              placeholder="0.00"
+                            />
+                          </div>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => setPaymentAmounts(prev => ({
+                              ...prev,
+                              [bookingId]: arrival.total_amount.toString()
+                            }))}
+                          >
+                            Full
+                          </Button>
+                        </div>
+                        {paymentAmounts[bookingId] && parseFloat(paymentAmounts[bookingId]) < arrival.total_amount && (
+                          <p className="text-xs text-amber-600">
+                            Partial payment: Balance of ₦{(arrival.total_amount - parseFloat(paymentAmounts[bookingId])).toLocaleString()} will be due
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </ScrollArea>
+
+            <Separator />
+
+            <div className="p-4 bg-primary/5 rounded-lg">
+              <div className="flex justify-between items-center">
+                <span className="font-medium">Total Collecting:</span>
+                <span className="text-lg font-bold">
+                  ₦{Object.values(paymentAmounts)
+                    .reduce((sum, val) => sum + (parseFloat(val) || 0), 0)
+                    .toLocaleString()}
+                </span>
+              </div>
+            </div>
+
+            {/* Payment Actions */}
+            <div className="flex gap-3 pt-4 border-t">
+              <Button
+                variant="outline"
+                onClick={() => setStep('selection')}
+                disabled={recordPaymentsMutation.isPending}
+              >
+                Back
+              </Button>
+              <Button
+                variant="secondary"
+                onClick={handleSkipPayment}
+                className="flex-1"
+                disabled={recordPaymentsMutation.isPending}
+              >
+                Skip Payment
+              </Button>
+              <Button
+                onClick={handleRecordPayments}
+                className="flex-1"
+                disabled={recordPaymentsMutation.isPending}
+              >
+                {recordPaymentsMutation.isPending ? (
+                  <>
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    Recording...
+                  </>
+                ) : (
+                  <>
+                    <CheckCircle2 className="w-4 h-4 mr-2" />
+                    Record Payments
+                  </>
+                )}
+              </Button>
+            </div>
+          </div>
+        )}
       </SheetContent>
     </Sheet>
   );
