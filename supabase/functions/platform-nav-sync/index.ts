@@ -42,13 +42,17 @@ Deno.serve(async (req) => {
       // Check for authentication and super admin status
       const { data: { user } } = await supabase.auth.getUser();
       
+      console.log('Auth user ID:', user?.id);
+      
       if (user) {
         // Check if user is super_admin (bypasses tenant filtering)
-        const { data: platformUser } = await supabase
+        const { data: platformUser, error: platformUserError } = await supabase
           .from('platform_users')
           .select('role, system_locked')
           .eq('id', user.id)
           .maybeSingle();
+        
+        console.log('Platform user query result:', { platformUser, error: platformUserError });
 
         // If super_admin, return only platform (global) navigation items
         if (platformUser?.role === 'super_admin') {
