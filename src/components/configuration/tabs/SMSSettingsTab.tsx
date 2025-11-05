@@ -13,8 +13,12 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { MessageSquare, Send, Settings, ShoppingCart, Zap, Package } from 'lucide-react';
 import { useSMSSettings } from '@/hooks/useSMSSettings';
 import { ConfigSection } from '../shared/ConfigSection';
+import { useTenant } from '@/contexts/TenantContext';
+import { supabase } from '@/integrations/supabase/client';
+import { toast } from 'sonner';
 
 export function SMSSettingsTab() {
+  const { tenantId } = useTenant();
   const { settings, quota, templates, marketplaceItems, isLoading, saveSettings, saveTemplate, purchaseBundle } = useSMSSettings();
   
   const [provider, setProvider] = useState(settings?.provider || 'twilio');
@@ -25,6 +29,10 @@ export function SMSSettingsTab() {
   const [autoBookingConfirm, setAutoBookingConfirm] = useState(settings?.auto_send_booking_confirmation || false);
   const [autoCheckinReminder, setAutoCheckinReminder] = useState(settings?.auto_send_checkin_reminder || false);
   const [autoCheckoutReminder, setAutoCheckoutReminder] = useState(settings?.auto_send_checkout_reminder || false);
+  const [testPhone, setTestPhone] = useState('');
+  const [testMessage, setTestMessage] = useState('This is a test message from your hotel SMS system.');
+  const [isSendingTest, setIsSendingTest] = useState(false);
+  const [showTestDialog, setShowTestDialog] = useState(false);
 
   const handleSaveSettings = () => {
     saveSettings.mutate({
@@ -37,6 +45,36 @@ export function SMSSettingsTab() {
       auto_send_checkin_reminder: autoCheckinReminder,
       auto_send_checkout_reminder: autoCheckoutReminder,
     });
+  };
+
+  const handleSendTestSMS = async () => {
+    if (!testPhone || !testMessage) {
+      toast.error('Please enter phone number and message');
+      return;
+    }
+
+    setIsSendingTest(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('send-sms', {
+        body: {
+          tenant_id: tenantId,
+          to: testPhone,
+          message: testMessage,
+          event_key: 'manual_test',
+        },
+      });
+
+      if (error) throw error;
+
+      toast.success('Test SMS sent successfully!');
+      setShowTestDialog(false);
+      setTestPhone('');
+    } catch (error: any) {
+      console.error('Test SMS error:', error);
+      toast.error(error.message || 'Failed to send test SMS');
+    } finally {
+      setIsSendingTest(false);
+    }
   };
 
   const quotaUsagePercent = quota ? (quota.quota_used / quota.quota_total) * 100 : 0;
@@ -148,6 +186,63 @@ export function SMSSettingsTab() {
                   </div>
                   <Switch checked={autoCheckoutReminder} onCheckedChange={setAutoCheckoutReminder} />
                 </div>
+              </div>
+
+              <div className="pt-4 border-t space-y-3">
+                <h4 className="font-medium">Test SMS Configuration</h4>
+                <p className="text-sm text-muted-foreground">
+                  Send a test SMS to verify your configuration is working correctly.
+                </p>
+                
+                <Dialog open={showTestDialog} onOpenChange={setShowTestDialog}>
+                  <DialogTrigger asChild>
+                    <Button variant="outline" className="w-full sm:w-auto">
+                      <Send className="mr-2 h-4 w-4" />
+                      Send Test SMS
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent>
+                    <DialogHeader>
+                      <DialogTitle>Send Test SMS</DialogTitle>
+                      <DialogDescription>
+                        Send a test message to verify your SMS configuration.
+                      </DialogDescription>
+                    </DialogHeader>
+                    <div className="space-y-4 py-4">
+                      <div className="space-y-2">
+                        <Label htmlFor="test-phone">Phone Number</Label>
+                        <Input
+                          id="test-phone"
+                          placeholder="+234XXXXXXXXXX"
+                          value={testPhone}
+                          onChange={(e) => setTestPhone(e.target.value)}
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="test-message">Message</Label>
+                        <Textarea
+                          id="test-message"
+                          placeholder="Enter test message..."
+                          value={testMessage}
+                          onChange={(e) => setTestMessage(e.target.value)}
+                          rows={4}
+                        />
+                      </div>
+                    </div>
+                    <DialogFooter>
+                      <Button
+                        variant="outline"
+                        onClick={() => setShowTestDialog(false)}
+                        disabled={isSendingTest}
+                      >
+                        Cancel
+                      </Button>
+                      <Button onClick={handleSendTestSMS} disabled={isSendingTest}>
+                        {isSendingTest ? 'Sending...' : 'Send Test'}
+                      </Button>
+                    </DialogFooter>
+                  </DialogContent>
+                </Dialog>
               </div>
 
               <Button onClick={handleSaveSettings} disabled={saveSettings.isPending}>
