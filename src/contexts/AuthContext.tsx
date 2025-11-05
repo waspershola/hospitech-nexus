@@ -1,6 +1,7 @@
 import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
 import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
+import { useCheckoutReminderScheduler } from '@/hooks/useCheckoutReminderScheduler';
 
 interface AuthContextType {
   user: User | null;
@@ -25,6 +26,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [department, setDepartment] = useState<string | null>(null);
   const [passwordResetRequired, setPasswordResetRequired] = useState(false);
   const [loading, setLoading] = useState(true);
+
+  // Initialize checkout reminder scheduler
+  useCheckoutReminderScheduler();
 
   useEffect(() => {
     // Set up auth state listener FIRST

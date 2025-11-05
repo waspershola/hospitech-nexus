@@ -34,11 +34,11 @@ export function useLateCheckoutFees() {
         .from('hotel_configurations')
         .select('key, value')
         .eq('tenant_id', tenantId)
-        .in('key', ['late_checkout_hourly_rate', 'late_checkout_daily_rate', 'late_checkout_grace_period']);
+        .in('key', ['hourlyRate', 'dailyRate', 'gracePeriodHours']);
 
-      const hourlyConfig = data?.find(c => c.key === 'late_checkout_hourly_rate');
-      const dailyConfig = data?.find(c => c.key === 'late_checkout_daily_rate');
-      const graceConfig = data?.find(c => c.key === 'late_checkout_grace_period');
+      const hourlyConfig = data?.find(c => c.key === 'hourlyRate');
+      const dailyConfig = data?.find(c => c.key === 'dailyRate');
+      const graceConfig = data?.find(c => c.key === 'gracePeriodHours');
 
       return {
         hourlyRate: hourlyConfig?.value ? Number(hourlyConfig.value) : 1000,

@@ -12,6 +12,7 @@ import { BrandingTab } from '@/components/configuration/tabs/BrandingTab';
 import { MetaTab } from '@/components/configuration/tabs/MetaTab';
 import { DocumentsTab } from '@/components/configuration/tabs/DocumentsTab';
 import { GuestExperienceTab } from '@/components/configuration/tabs/GuestExperienceTab';
+import { CheckoutPolicyTab } from '@/components/configuration/tabs/CheckoutPolicyTab';
 import { PermissionsTab } from '@/components/configuration/tabs/PermissionsTab';
 import { AuditLogsTab } from '@/components/configuration/tabs/AuditLogsTab';
 import { EmailSettingsTab } from '@/components/configuration/tabs/EmailSettingsTab';
@@ -31,6 +32,7 @@ const tabs = [
   { id: 'domains', label: 'Domains', icon: Globe },
   { id: 'documents', label: 'Documents', icon: FileText },
   { id: 'guest', label: 'Guest Experience', icon: Users },
+  { id: 'checkout', label: 'Checkout Policy', icon: Clock },
   { id: 'permissions', label: 'Permissions', icon: Lock },
   { id: 'audit', label: 'Audit Logs', icon: Clock },
   { id: 'email', label: 'Email Settings', icon: Mail },
@@ -229,6 +231,10 @@ export default function ConfigurationCenter() {
 
           <TabsContent value="guest" className="space-y-6 animate-fade-in">
             <GuestExperienceTab />
+          </TabsContent>
+
+          <TabsContent value="checkout" className="space-y-6 animate-fade-in">
+            <CheckoutPolicyTab />
           </TabsContent>
 
           <TabsContent value="domains" className="space-y-6 animate-fade-in">
