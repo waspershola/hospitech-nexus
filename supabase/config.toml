@@ -1,5 +1,8 @@
 project_id = "akchmpmzcupzjaeewdui"
 
+[functions.migrate-sms-providers]
+verify_jwt = true
+
 [functions.purchase-sms-bundle]
 verify_jwt = true
 
