@@ -3,11 +3,12 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { ShoppingCart, Package, History, CreditCard, CheckCircle2 } from 'lucide-react';
+import { ShoppingCart, Package, History, CheckCircle2 } from 'lucide-react';
 import { usePlatformAddons } from '@/hooks/usePlatformAddons';
 import { AddonPurchaseDialog } from '@/components/marketplace/AddonPurchaseDialog';
 import { useTenantSMSCredits } from '@/hooks/useTenantSMSCredits';
 import { Skeleton } from '@/components/ui/skeleton';
+import { SMSCreditsCard } from '@/components/marketplace/SMSCreditsCard';
 
 export default function Marketplace() {
   const { addons, isLoading: addonsLoading } = usePlatformAddons();
@@ -55,47 +56,12 @@ export default function Marketplace() {
         <p className="text-muted-foreground">Purchase SMS bundles and manage your credits</p>
       </div>
 
-      {/* Credits Overview */}
-      <div className="grid gap-4 md:grid-cols-3">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Available Credits</CardTitle>
-            <Package className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">
-              {credits?.credits_available?.toLocaleString() || 0}
-            </div>
-            <p className="text-xs text-muted-foreground">SMS credits ready to use</p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Used Credits</CardTitle>
-            <History className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">
-              {credits?.credits_used?.toLocaleString() || 0}
-            </div>
-            <p className="text-xs text-muted-foreground">Total SMS sent</p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Purchased</CardTitle>
-            <CreditCard className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">
-              {credits?.total_purchased?.toLocaleString() || 0}
-            </div>
-            <p className="text-xs text-muted-foreground">Lifetime purchases</p>
-          </CardContent>
-        </Card>
-      </div>
+      {/* Credits Overview Card */}
+      <SMSCreditsCard
+        creditsAvailable={credits?.credits_available || 0}
+        creditsUsed={credits?.credits_used || 0}
+        totalPurchased={credits?.total_purchased || 0}
+      />
 
       <Tabs defaultValue="bundles" className="space-y-4">
         <TabsList>

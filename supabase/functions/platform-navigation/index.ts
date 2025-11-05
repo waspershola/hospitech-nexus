@@ -68,8 +68,9 @@ Deno.serve(async (req) => {
         { label: 'Guests', path: '/dashboard/guests', icon: 'Users', allowed_roles: ['owner', 'admin', 'frontdesk_staff'], order_index: 4 },
         { label: 'Rooms', path: '/dashboard/rooms', icon: 'DoorOpen', allowed_roles: ['owner', 'admin'], order_index: 5 },
         { label: 'Finance Center', path: '/dashboard/finance-center', icon: 'DollarSign', allowed_roles: ['owner', 'admin', 'finance_staff'], order_index: 6 },
-        { label: 'Staff', path: '/dashboard/staff', icon: 'UserCog', allowed_roles: ['owner', 'admin'], order_index: 7 },
-        { label: 'Configuration', path: '/dashboard/configuration', icon: 'Settings', allowed_roles: ['owner', 'admin'], order_index: 8 },
+        { label: 'Marketplace', path: '/dashboard/marketplace', icon: 'ShoppingCart', allowed_roles: ['owner', 'admin', 'manager'], order_index: 7 },
+        { label: 'Staff', path: '/dashboard/staff', icon: 'UserCog', allowed_roles: ['owner', 'admin'], order_index: 8 },
+        { label: 'Configuration', path: '/dashboard/configuration', icon: 'Settings', allowed_roles: ['owner', 'admin'], order_index: 9 },
         { label: 'Platform Admin', path: '/dashboard/platform-admin?tab=payment-providers', icon: 'ShieldCheck', allowed_roles: ['super_admin', 'support_admin'], order_index: 100 },
       ];
 
