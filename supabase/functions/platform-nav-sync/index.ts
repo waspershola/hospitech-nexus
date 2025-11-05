@@ -41,52 +41,23 @@ Deno.serve(async (req) => {
       
       if (!tenantId) {
         console.log('No tenant_id provided, attempting to get from auth');
-        
-        // Check if we have authorization
-        const authHeader = req.headers.get('Authorization');
-        if (!authHeader) {
-          console.error('No Authorization header found');
+        // Try to get tenant from authenticated user
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) {
           return new Response(
-            JSON.stringify({ error: 'tenant_id required or Authorization header required' }),
+            JSON.stringify({ error: 'tenant_id required or user must be authenticated' }),
             { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
           );
         }
         
-        // Try to get tenant from authenticated user
-        const { data: { user }, error: userError } = await supabase.auth.getUser();
-        
-        if (userError || !user) {
-          console.error('Failed to get user:', userError?.message || 'No user found');
-          return new Response(
-            JSON.stringify({ 
-              error: 'Authentication failed',
-              details: userError?.message || 'User not found'
-            }),
-            { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-          );
-        }
-        
-        console.log('Authenticated user:', user.id);
-        
         // Get tenant from user_roles
-        const { data: userRole, error: roleError } = await supabase
+        const { data: userRole } = await supabase
           .from('user_roles')
           .select('tenant_id')
           .eq('user_id', user.id)
           .single();
         
-        if (roleError || !userRole) {
-          console.error('Failed to get user role:', roleError?.message || 'No role found');
-          return new Response(
-            JSON.stringify({ 
-              error: 'No tenant found for user',
-              details: roleError?.message || 'User has no tenant assigned'
-            }),
-            { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-          );
-        }
-        
-        tenantId = userRole.tenant_id;
+        tenantId = userRole?.tenant_id;
       }
 
       console.log('Fetching navigation for tenant:', tenantId);
