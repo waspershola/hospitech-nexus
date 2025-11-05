@@ -3,12 +3,13 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { ShoppingCart, Package, History, CheckCircle2 } from 'lucide-react';
+import { ShoppingCart, Package, History, CheckCircle2, TrendingUp } from 'lucide-react';
 import { usePlatformAddons } from '@/hooks/usePlatformAddons';
 import { AddonPurchaseDialog } from '@/components/marketplace/AddonPurchaseDialog';
 import { useTenantSMSCredits } from '@/hooks/useTenantSMSCredits';
 import { Skeleton } from '@/components/ui/skeleton';
 import { SMSCreditsCard } from '@/components/marketplace/SMSCreditsCard';
+import { SMSUsageChart } from '@/components/marketplace/SMSUsageChart';
 
 export default function Marketplace() {
   const { addons, isLoading: addonsLoading } = usePlatformAddons();
@@ -68,6 +69,10 @@ export default function Marketplace() {
           <TabsTrigger value="bundles">
             <ShoppingCart className="h-4 w-4 mr-2" />
             SMS Bundles
+          </TabsTrigger>
+          <TabsTrigger value="analytics">
+            <TrendingUp className="h-4 w-4 mr-2" />
+            Usage Analytics
           </TabsTrigger>
           <TabsTrigger value="history">
             <History className="h-4 w-4 mr-2" />
@@ -133,6 +138,10 @@ export default function Marketplace() {
               })}
             </div>
           )}
+        </TabsContent>
+
+        <TabsContent value="analytics" className="space-y-4">
+          <SMSUsageChart />
         </TabsContent>
 
         <TabsContent value="history" className="space-y-4">
