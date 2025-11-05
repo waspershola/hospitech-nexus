@@ -4,7 +4,7 @@ import { useConfigStore } from '@/stores/configStore';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card } from '@/components/ui/card';
-import { Save, RotateCcw, Settings, DollarSign, Palette, FileText, Users, Lock, Clock, Mail, Database, Globe, Building2 } from 'lucide-react';
+import { Save, RotateCcw, Settings, DollarSign, Palette, FileText, Users, Lock, Clock, Mail, Database, Globe, Building2, MessageSquare } from 'lucide-react';
 import { toast } from 'sonner';
 import { ConfigurationStatus } from '@/components/configuration/shared/ConfigurationStatus';
 import { GeneralTab } from '@/components/configuration/tabs/GeneralTab';
@@ -19,6 +19,7 @@ import { EmailSettingsTab } from '@/components/configuration/tabs/EmailSettingsT
 import { MaintenanceTab } from '@/components/configuration/tabs/MaintenanceTab';
 import { DomainsTab } from '@/components/configuration/tabs/DomainsTab';
 import { FinancialOverviewTab } from '@/components/configuration/tabs/FinancialOverviewTab';
+import { SMSSettingsTab } from '@/components/configuration/tabs/SMSSettingsTab';
 import { useConfigCompleteness } from '@/hooks/useConfigCompleteness';
 import { Progress } from '@/components/ui/progress';
 import { Badge } from '@/components/ui/badge';
@@ -36,6 +37,7 @@ const tabs = [
   { id: 'permissions', label: 'Permissions', icon: Lock },
   { id: 'audit', label: 'Audit Logs', icon: Clock },
   { id: 'email', label: 'Email Settings', icon: Mail },
+  { id: 'sms', label: 'SMS Notifications', icon: MessageSquare },
   { id: 'maintenance', label: 'Maintenance', icon: Database },
 ];
 
@@ -192,7 +194,7 @@ export default function ConfigurationCenter() {
       {/* Content */}
       <div className="max-w-7xl mx-auto px-6 py-8">
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-          <TabsList className="grid grid-cols-3 lg:grid-cols-6 xl:grid-cols-11 gap-2 h-auto p-2 bg-muted/50 overflow-x-auto">
+          <TabsList className="grid grid-cols-3 lg:grid-cols-6 xl:grid-cols-12 gap-2 h-auto p-2 bg-muted/50 overflow-x-auto">
             {tabs.map((tab) => {
               const Icon = tab.icon;
               return (
@@ -251,6 +253,10 @@ export default function ConfigurationCenter() {
 
           <TabsContent value="email" className="space-y-6 animate-fade-in">
             <EmailSettingsTab />
+          </TabsContent>
+
+          <TabsContent value="sms" className="space-y-6 animate-fade-in">
+            <SMSSettingsTab />
           </TabsContent>
 
           <TabsContent value="maintenance" className="space-y-6 animate-fade-in">
