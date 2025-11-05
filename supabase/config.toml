@@ -12,6 +12,9 @@ verify_jwt = false
 [functions.track-usage]
 verify_jwt = false
 
+[functions.assign-plan]
+verify_jwt = true
+
 [functions.migrate-sms-providers]
 verify_jwt = true
 
@@ -77,4 +80,3 @@ verify_jwt = true
 
 [functions.verify-payment]
 verify_jwt = true
-
