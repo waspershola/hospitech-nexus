@@ -44,10 +44,11 @@ class TwilioProvider {
         messageId: data.sid,
         cost: data.num_segments || 1,
       };
-    } catch (error: any) {
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
       return {
         success: false,
-        error: error.message,
+        error: errorMessage,
       };
     }
   }
@@ -85,10 +86,11 @@ class TermiiProvider {
         success: false,
         error: data.message || 'Termii API error',
       };
-    } catch (error: any) {
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
       return {
         success: false,
-        error: error.message,
+        error: errorMessage,
       };
     }
   }
@@ -137,75 +139,172 @@ serve(async (req) => {
 
     console.log(`SMS send request for tenant ${tenant_id} to ${to}`);
 
-    // Check quota
-    const { data: quota, error: quotaError } = await supabase
-      .from('tenant_sms_quota')
-      .select('quota_total, quota_used')
+    // PHASE 2: Fetch platform provider via tenant assignment
+    const { data: assignment, error: assignmentError } = await supabase
+      .from('tenant_provider_assignments')
+      .select(`
+        id,
+        sender_id,
+        is_default,
+        provider:platform_sms_providers(
+          id,
+          provider_type,
+          api_key_encrypted,
+          api_secret_encrypted,
+          is_active
+        )
+      `)
       .eq('tenant_id', tenant_id)
-      .maybeSingle();
+      .eq('is_default', true)
+      .single();
 
-    if (quotaError) {
-      console.error('Quota check error:', quotaError);
-      return new Response(JSON.stringify({ error: 'Failed to check quota' }), {
+    if (assignmentError || !assignment) {
+      console.error('Provider assignment error:', assignmentError);
+      
+      // Fallback to legacy tenant_sms_settings for backwards compatibility
+      const { data: legacySettings } = await supabase
+        .from('tenant_sms_settings')
+        .select('provider, sender_id, api_key_encrypted, api_secret_encrypted, enabled')
+        .eq('tenant_id', tenant_id)
+        .maybeSingle();
+
+      if (legacySettings?.enabled) {
+        console.log('Using legacy SMS settings (not yet migrated)');
+        // Use legacy flow (original code path)
+        const apiKey = legacySettings.api_key_encrypted;
+        const apiSecret = legacySettings.api_secret_encrypted;
+
+        if (!apiKey) {
+          return new Response(JSON.stringify({ error: 'SMS provider credentials not configured' }), {
+            status: 403,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          });
+        }
+
+        // Legacy quota check
+        const { data: quota } = await supabase
+          .from('tenant_sms_quota')
+          .select('quota_total, quota_used')
+          .eq('tenant_id', tenant_id)
+          .maybeSingle();
+
+        if (!quota || quota.quota_used >= quota.quota_total) {
+          return new Response(JSON.stringify({
+            error: 'SMS quota exceeded',
+            quota: quota || { quota_total: 0, quota_used: 0 },
+          }), {
+            status: 429,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          });
+        }
+
+        // Send via legacy provider
+        let result: SMSResult;
+        if (legacySettings.provider === 'twilio') {
+          const provider = new TwilioProvider(apiKey, apiSecret);
+          result = await provider.send(to, legacySettings.sender_id, message);
+        } else if (legacySettings.provider === 'termii') {
+          const provider = new TermiiProvider(apiKey);
+          result = await provider.send(to, legacySettings.sender_id, message);
+        } else {
+          return new Response(JSON.stringify({ error: 'Unsupported SMS provider' }), {
+            status: 400,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          });
+        }
+
+        const segments = result.cost || Math.ceil(message.length / 160);
+
+        // Deduct legacy quota if successful
+        if (result.success) {
+          await supabase
+            .from('tenant_sms_quota')
+            .update({ 
+              quota_used: quota.quota_used + segments,
+              updated_at: new Date().toISOString()
+            })
+            .eq('tenant_id', tenant_id);
+        }
+
+        return new Response(JSON.stringify({
+          success: result.success,
+          messageId: result.messageId,
+          creditsUsed: result.success ? segments : 0,
+          remainingQuota: quota.quota_total - quota.quota_used - segments,
+          error: result.error,
+          legacy: true,
+        }), {
+          status: result.success ? 200 : 500,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+
+      return new Response(JSON.stringify({ error: 'No SMS provider configured for tenant' }), {
+        status: 403,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    const provider = assignment.provider as any;
+
+    if (!provider?.is_active) {
+      return new Response(JSON.stringify({ error: 'SMS provider is inactive' }), {
+        status: 403,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    // PHASE 2: Check platform credit pool
+    const { data: creditPool, error: poolError } = await supabase
+      .from('platform_sms_credit_pool')
+      .select('id, total_credits, consumed_credits')
+      .eq('tenant_id', tenant_id)
+      .single();
+
+    if (poolError || !creditPool) {
+      console.error('Credit pool error:', poolError);
+      return new Response(JSON.stringify({ error: 'SMS credit pool not found' }), {
         status: 500,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
 
-    if (!quota || quota.quota_used >= quota.quota_total) {
-      console.log('SMS quota exceeded:', quota);
+    const availableCredits = creditPool.total_credits - creditPool.consumed_credits;
+    const estimatedCost = Math.ceil(message.length / 160);
+
+    if (availableCredits < estimatedCost) {
+      console.log(`Insufficient credits: ${availableCredits} available, ${estimatedCost} required`);
       return new Response(JSON.stringify({
-        error: 'SMS quota exceeded',
-        quota: quota || { quota_total: 0, quota_used: 0 },
+        error: 'INSUFFICIENT_SMS_CREDITS',
+        available: availableCredits,
+        required: estimatedCost,
       }), {
         status: 429,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
 
-    // Get SMS settings
-    const { data: settings, error: settingsError } = await supabase
-      .from('tenant_sms_settings')
-      .select('provider, sender_id, api_key_encrypted, api_secret_encrypted, enabled')
-      .eq('tenant_id', tenant_id)
-      .maybeSingle();
-
-    if (settingsError) {
-      console.error('Settings fetch error:', settingsError);
-      return new Response(JSON.stringify({ error: 'Failed to fetch SMS settings' }), {
-        status: 500,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
-    }
-
-    if (!settings?.enabled) {
-      return new Response(JSON.stringify({ error: 'SMS not enabled for tenant' }), {
-        status: 403,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
-    }
-
-    // TODO: Decrypt API keys from Supabase vault
-    // For now, assuming plaintext storage (INSECURE - fix in production)
-    const apiKey = settings.api_key_encrypted;
-    const apiSecret = settings.api_secret_encrypted;
+    // TODO: Decrypt API keys from Supabase vault in production
+    const apiKey = provider.api_key_encrypted;
+    const apiSecret = provider.api_secret_encrypted;
 
     if (!apiKey) {
       return new Response(JSON.stringify({ error: 'SMS provider credentials not configured' }), {
-        status: 403,
+        status: 500,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
 
     // Initialize provider and send SMS
     let result: SMSResult;
+    const senderId = assignment.sender_id || provider.default_sender_id || 'SMS';
     
-    if (settings.provider === 'twilio') {
-      const provider = new TwilioProvider(apiKey, apiSecret);
-      result = await provider.send(to, settings.sender_id, message);
-    } else if (settings.provider === 'termii') {
-      const provider = new TermiiProvider(apiKey);
-      result = await provider.send(to, settings.sender_id, message);
+    if (provider.provider_type === 'twilio') {
+      const twilioProvider = new TwilioProvider(apiKey, apiSecret);
+      result = await twilioProvider.send(to, senderId, message);
+    } else if (provider.provider_type === 'termii') {
+      const termiiProvider = new TermiiProvider(apiKey);
+      result = await termiiProvider.send(to, senderId, message);
     } else {
       return new Response(JSON.stringify({ error: 'Unsupported SMS provider' }), {
         status: 400,
@@ -215,8 +314,54 @@ serve(async (req) => {
 
     console.log('SMS send result:', result);
 
-    // Calculate segments for cost
-    const segments = result.cost || Math.ceil(message.length / 160);
+    const segments = result.cost || estimatedCost;
+
+    // PHASE 2: Deduct from platform credit pool if successful
+    if (result.success) {
+      const { error: deductError } = await supabase
+        .from('platform_sms_credit_pool')
+        .update({ 
+          consumed_credits: creditPool.consumed_credits + segments,
+          updated_at: new Date().toISOString()
+        })
+        .eq('tenant_id', tenant_id);
+
+      if (deductError) {
+        console.error('Credit deduction error:', deductError);
+      } else {
+        console.log(`Credits deducted: ${segments}, remaining: ${availableCredits - segments}`);
+      }
+
+      // Update platform usage tracking
+      await supabase
+        .from('platform_usage')
+        .upsert({
+          tenant_id,
+          sms_sent: segments,
+          last_sync: new Date().toISOString(),
+        }, {
+          onConflict: 'tenant_id',
+          ignoreDuplicates: false,
+        });
+    }
+
+    // Log to platform audit stream
+    await supabase.from('platform_audit_stream').insert({
+      actor_id: user.id,
+      action: 'sms_sent',
+      resource_type: 'sms',
+      resource_id: creditPool.id,
+      payload: {
+        tenant_id,
+        recipient: to,
+        status: result.success ? 'sent' : 'failed',
+        provider: provider.provider_type,
+        credits_used: result.success ? segments : 0,
+        event_key,
+        booking_id,
+        guest_id,
+      },
+    });
 
     // Log to analytics table
     await supabase.from('tenant_sms_usage_logs').insert({
@@ -225,7 +370,7 @@ serve(async (req) => {
       recipient: to,
       message_preview: message.substring(0, 100),
       status: result.success ? 'sent' : 'failed',
-      provider: settings.provider,
+      provider: provider.provider_type,
       cost: segments,
       segments: segments,
       sent_at: new Date().toISOString(),
@@ -236,72 +381,29 @@ serve(async (req) => {
       metadata: {
         provider_message_id: result.messageId,
         message_length: message.length,
+        platform_provider_id: provider.id,
       },
     });
 
-    // Legacy log for backwards compatibility
-    supabase.from('sms_logs').insert({
-      tenant_id,
-      to_number: to,
-      message_body: message,
-      status: result.success ? 'sent' : 'failed',
-      provider: settings.provider,
-      provider_message_id: result.messageId,
-      cost_credits: segments,
-      event_key,
-      booking_id,
-      guest_id,
-      sent_at: result.success ? new Date().toISOString() : null,
-      error_message: result.error,
-    }).then(() => {
-      console.log('Legacy SMS log created');
-    }, (err: any) => {
-      console.error('Legacy log error (non-critical):', err);
-    });
-
-    // Deduct quota if successful
-    if (result.success) {
-      const newQuotaUsed = quota.quota_used + segments;
-      await supabase
-        .from('tenant_sms_quota')
-        .update({ 
-          quota_used: newQuotaUsed,
-          updated_at: new Date().toISOString()
-        })
-        .eq('tenant_id', tenant_id);
-
-      console.log(`Quota updated: ${newQuotaUsed}/${quota.quota_total}`);
-      
-      // Check if quota is low and trigger alert check
-      const remainingPercent = ((quota.quota_total - newQuotaUsed) / quota.quota_total) * 100;
-      if (remainingPercent <= 25) {
-        // Trigger quota alert check asynchronously (don't wait for it)
-        supabase.functions.invoke('check-sms-quota-alerts', {
-          body: { tenant_id }
-        }).then(() => {
-          console.log('Quota alert check triggered');
-        }, (err: any) => {
-          console.error('Quota alert check failed (non-critical):', err);
-        });
-      }
-    }
-
     const creditsUsed = result.success ? segments : 0;
+    const remainingCredits = availableCredits - creditsUsed;
     
     return new Response(JSON.stringify({
       success: result.success,
       messageId: result.messageId,
       creditsUsed: creditsUsed,
-      remainingQuota: quota.quota_total - quota.quota_used - creditsUsed,
+      remainingCredits: remainingCredits,
       error: result.error,
+      platform: true, // Indicates using platform providers
     }), {
       status: result.success ? 200 : 500,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
 
-  } catch (error: any) {
+  } catch (error) {
     console.error('SMS send error:', error);
-    return new Response(JSON.stringify({ error: error.message }), {
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    return new Response(JSON.stringify({ error: errorMessage }), {
       status: 500,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
