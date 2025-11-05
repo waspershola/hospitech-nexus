@@ -2058,33 +2058,36 @@ export type Database = {
       }
       platform_email_providers: {
         Row: {
-          api_key_encrypted: string | null
+          config: Json
           created_at: string
-          default_from: string | null
+          enabled: boolean | null
           id: string
-          is_active: boolean
+          is_default: boolean | null
+          name: string
           provider_type: string
-          settings: Json | null
+          tenant_id: string | null
           updated_at: string
         }
         Insert: {
-          api_key_encrypted?: string | null
+          config: Json
           created_at?: string
-          default_from?: string | null
+          enabled?: boolean | null
           id?: string
-          is_active?: boolean
+          is_default?: boolean | null
+          name: string
           provider_type: string
-          settings?: Json | null
+          tenant_id?: string | null
           updated_at?: string
         }
         Update: {
-          api_key_encrypted?: string | null
+          config?: Json
           created_at?: string
-          default_from?: string | null
+          enabled?: boolean | null
           id?: string
-          is_active?: boolean
+          is_default?: boolean | null
+          name?: string
           provider_type?: string
-          settings?: Json | null
+          tenant_id?: string | null
           updated_at?: string
         }
         Relationships: []
