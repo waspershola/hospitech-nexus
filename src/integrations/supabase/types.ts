@@ -2540,6 +2540,168 @@ export type Database = {
           },
         ]
       }
+      sms_logs: {
+        Row: {
+          booking_id: string | null
+          cost_credits: number | null
+          created_at: string | null
+          delivered_at: string | null
+          error_message: string | null
+          event_key: string | null
+          guest_id: string | null
+          id: string
+          message_body: string
+          provider: string | null
+          provider_message_id: string | null
+          sent_at: string | null
+          status: string
+          tenant_id: string
+          to_number: string
+        }
+        Insert: {
+          booking_id?: string | null
+          cost_credits?: number | null
+          created_at?: string | null
+          delivered_at?: string | null
+          error_message?: string | null
+          event_key?: string | null
+          guest_id?: string | null
+          id?: string
+          message_body: string
+          provider?: string | null
+          provider_message_id?: string | null
+          sent_at?: string | null
+          status?: string
+          tenant_id: string
+          to_number: string
+        }
+        Update: {
+          booking_id?: string | null
+          cost_credits?: number | null
+          created_at?: string | null
+          delivered_at?: string | null
+          error_message?: string | null
+          event_key?: string | null
+          guest_id?: string | null
+          id?: string
+          message_body?: string
+          provider?: string | null
+          provider_message_id?: string | null
+          sent_at?: string | null
+          status?: string
+          tenant_id?: string
+          to_number?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sms_logs_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: false
+            referencedRelation: "bookings"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sms_logs_guest_id_fkey"
+            columns: ["guest_id"]
+            isOneToOne: false
+            referencedRelation: "guests"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sms_logs_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      sms_marketplace_items: {
+        Row: {
+          created_at: string | null
+          credits_amount: number
+          currency: string | null
+          description: string | null
+          id: string
+          is_active: boolean | null
+          item_type: string
+          key: string
+          name: string
+          price_amount: number
+          updated_at: string | null
+          validity_days: number | null
+        }
+        Insert: {
+          created_at?: string | null
+          credits_amount: number
+          currency?: string | null
+          description?: string | null
+          id?: string
+          is_active?: boolean | null
+          item_type?: string
+          key: string
+          name: string
+          price_amount: number
+          updated_at?: string | null
+          validity_days?: number | null
+        }
+        Update: {
+          created_at?: string | null
+          credits_amount?: number
+          currency?: string | null
+          description?: string | null
+          id?: string
+          is_active?: boolean | null
+          item_type?: string
+          key?: string
+          name?: string
+          price_amount?: number
+          updated_at?: string | null
+          validity_days?: number | null
+        }
+        Relationships: []
+      }
+      sms_templates: {
+        Row: {
+          created_at: string | null
+          event_key: string
+          id: string
+          is_active: boolean | null
+          language: string | null
+          template_body: string
+          tenant_id: string
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          event_key: string
+          id?: string
+          is_active?: boolean | null
+          language?: string | null
+          template_body: string
+          tenant_id: string
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          event_key?: string
+          id?: string
+          is_active?: boolean | null
+          language?: string | null
+          template_body?: string
+          tenant_id?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sms_templates_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       staff: {
         Row: {
           branch: string | null
@@ -2892,6 +3054,171 @@ export type Database = {
             foreignKeyName: "suppliers_tenant_id_fkey"
             columns: ["tenant_id"]
             isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      tenant_sms_purchases: {
+        Row: {
+          amount_paid: number
+          credits_purchased: number
+          currency: string | null
+          expires_at: string | null
+          id: string
+          marketplace_item_id: string | null
+          payment_id: string | null
+          purchased_at: string | null
+          purchased_by: string | null
+          status: string | null
+          tenant_id: string
+        }
+        Insert: {
+          amount_paid: number
+          credits_purchased: number
+          currency?: string | null
+          expires_at?: string | null
+          id?: string
+          marketplace_item_id?: string | null
+          payment_id?: string | null
+          purchased_at?: string | null
+          purchased_by?: string | null
+          status?: string | null
+          tenant_id: string
+        }
+        Update: {
+          amount_paid?: number
+          credits_purchased?: number
+          currency?: string | null
+          expires_at?: string | null
+          id?: string
+          marketplace_item_id?: string | null
+          payment_id?: string | null
+          purchased_at?: string | null
+          purchased_by?: string | null
+          status?: string | null
+          tenant_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tenant_sms_purchases_marketplace_item_id_fkey"
+            columns: ["marketplace_item_id"]
+            isOneToOne: false
+            referencedRelation: "sms_marketplace_items"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tenant_sms_purchases_payment_id_fkey"
+            columns: ["payment_id"]
+            isOneToOne: false
+            referencedRelation: "payments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tenant_sms_purchases_payment_id_fkey"
+            columns: ["payment_id"]
+            isOneToOne: false
+            referencedRelation: "v_today_payments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tenant_sms_purchases_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      tenant_sms_quota: {
+        Row: {
+          created_at: string | null
+          id: string
+          last_purchase_at: string | null
+          quota_reset_date: string | null
+          quota_total: number
+          quota_used: number
+          tenant_id: string
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          last_purchase_at?: string | null
+          quota_reset_date?: string | null
+          quota_total?: number
+          quota_used?: number
+          tenant_id: string
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          last_purchase_at?: string | null
+          quota_reset_date?: string | null
+          quota_total?: number
+          quota_used?: number
+          tenant_id?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tenant_sms_quota_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: true
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      tenant_sms_settings: {
+        Row: {
+          api_key_encrypted: string | null
+          api_secret_encrypted: string | null
+          auto_send_booking_confirmation: boolean | null
+          auto_send_checkin_reminder: boolean | null
+          auto_send_checkout_reminder: boolean | null
+          created_at: string | null
+          enabled: boolean | null
+          id: string
+          provider: string
+          sender_id: string | null
+          tenant_id: string
+          updated_at: string | null
+        }
+        Insert: {
+          api_key_encrypted?: string | null
+          api_secret_encrypted?: string | null
+          auto_send_booking_confirmation?: boolean | null
+          auto_send_checkin_reminder?: boolean | null
+          auto_send_checkout_reminder?: boolean | null
+          created_at?: string | null
+          enabled?: boolean | null
+          id?: string
+          provider?: string
+          sender_id?: string | null
+          tenant_id: string
+          updated_at?: string | null
+        }
+        Update: {
+          api_key_encrypted?: string | null
+          api_secret_encrypted?: string | null
+          auto_send_booking_confirmation?: boolean | null
+          auto_send_checkin_reminder?: boolean | null
+          auto_send_checkout_reminder?: boolean | null
+          created_at?: string | null
+          enabled?: boolean | null
+          id?: string
+          provider?: string
+          sender_id?: string | null
+          tenant_id?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tenant_sms_settings_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: true
             referencedRelation: "tenants"
             referencedColumns: ["id"]
           },
