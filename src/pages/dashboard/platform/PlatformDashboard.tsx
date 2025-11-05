@@ -5,7 +5,8 @@ import { PlatformTenantsTab } from './tabs/PlatformTenantsTab';
 import { PlatformMarketplaceTab } from './tabs/PlatformMarketplaceTab';
 import { PlatformPlansTab } from './tabs/PlatformPlansTab';
 import { PlatformUsersTab } from './tabs/PlatformUsersTab';
-import { Server, Users, ShoppingCart, CreditCard, Shield } from 'lucide-react';
+import { PlatformSupportTab } from './tabs/PlatformSupportTab';
+import { Server, Users, ShoppingCart, CreditCard, Shield, MessageSquare } from 'lucide-react';
 
 export default function PlatformDashboard() {
   return (
@@ -22,6 +23,10 @@ export default function PlatformDashboard() {
           <TabsTrigger value="users" className="gap-2">
             <Shield className="h-4 w-4" />
             Platform Users
+          </TabsTrigger>
+          <TabsTrigger value="support" className="gap-2">
+            <MessageSquare className="h-4 w-4" />
+            Support
           </TabsTrigger>
           <TabsTrigger value="tenants" className="gap-2">
             <Users className="h-4 w-4" />
@@ -43,6 +48,10 @@ export default function PlatformDashboard() {
 
         <TabsContent value="users">
           <PlatformUsersTab />
+        </TabsContent>
+
+        <TabsContent value="support">
+          <PlatformSupportTab />
         </TabsContent>
 
         <TabsContent value="tenants">

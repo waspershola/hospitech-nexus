@@ -89,3 +89,6 @@ verify_jwt = true
 
 [functions.platform-user-management]
 verify_jwt = true
+
+[functions.support-ticket]
+verify_jwt = true
