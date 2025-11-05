@@ -44,6 +44,8 @@ import PortalRequests from "./pages/portal/Requests";
 import PortalPayments from "./pages/portal/Payments";
 import PlatformDashboard from "./pages/dashboard/platform/PlatformDashboard";
 import PlatformBilling from "./pages/dashboard/platform/PlatformBilling";
+import PaymentSuccess from "./pages/PaymentSuccess";
+import PaymentCancel from "./pages/PaymentCancel";
 import { usePlatformRole } from "./hooks/usePlatformRole";
 
 function PlatformGuard({ children }: { children: React.ReactNode }) {
@@ -127,6 +129,10 @@ const App = () => (
               <Route path="requests" element={<PortalRequests />} />
               <Route path="payments" element={<PortalPayments />} />
             </Route>
+
+            {/* Payment callback routes */}
+            <Route path="/payment/success" element={<PaymentSuccess />} />
+            <Route path="/payment/cancel" element={<PaymentCancel />} />
 
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
