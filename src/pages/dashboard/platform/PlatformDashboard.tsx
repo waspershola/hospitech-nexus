@@ -1,5 +1,6 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { useSearchParams } from 'react-router-dom';
 import { PlatformProvidersTab } from './tabs/PlatformProvidersTab';
 import { PlatformTenantsTab } from './tabs/PlatformTenantsTab';
 import { PlatformMarketplaceTab } from './tabs/PlatformMarketplaceTab';
@@ -13,6 +14,9 @@ import { PlatformBillingTab } from './tabs/PlatformBillingTab';
 import { Server, Users, ShoppingCart, CreditCard, Shield, MessageSquare, Mail, Flag, Navigation2, Receipt } from 'lucide-react';
 
 export default function PlatformDashboard() {
+  const [searchParams] = useSearchParams();
+  const defaultTab = searchParams.get('tab') || 'users';
+
   return (
     <div className="space-y-6">
       <div>
@@ -22,7 +26,7 @@ export default function PlatformDashboard() {
         </p>
       </div>
 
-      <Tabs defaultValue="users" className="space-y-4">
+      <Tabs defaultValue={defaultTab} className="space-y-4">
         <TabsList>
           <TabsTrigger value="users" className="gap-2">
             <Shield className="h-4 w-4" />

@@ -105,8 +105,20 @@ const App = () => (
           <Route path="staff" element={<RoleGuard allowedRoles={['owner', 'manager', 'supervisor']}><Staff /></RoleGuard>} />
           <Route path="staff-activity" element={<RoleGuard allowedRoles={['owner', 'manager', 'supervisor']}><StaffActivity /></RoleGuard>} />
           
-          {/* Platform Admin */}
+          {/* Platform Admin - Main Dashboard */}
           <Route path="platform-admin" element={<PlatformGuard><PlatformDashboard /></PlatformGuard>} />
+          
+          {/* Platform Admin - Specific Sections (redirect to main dashboard with tab) */}
+          <Route path="platform-users" element={<Navigate to="/dashboard/platform-admin?tab=users" replace />} />
+          <Route path="platform-tenants" element={<Navigate to="/dashboard/platform-admin?tab=tenants" replace />} />
+          <Route path="platform-plans" element={<Navigate to="/dashboard/platform-admin?tab=plans" replace />} />
+          <Route path="platform-marketplace" element={<Navigate to="/dashboard/platform-admin?tab=marketplace" replace />} />
+          <Route path="platform-email" element={<Navigate to="/dashboard/platform-admin?tab=email-providers" replace />} />
+          <Route path="platform-features" element={<Navigate to="/dashboard/platform-admin?tab=feature-flags" replace />} />
+          <Route path="platform-navigation" element={<Navigate to="/dashboard/platform-admin?tab=navigation" replace />} />
+          <Route path="platform-support" element={<Navigate to="/dashboard/platform-admin?tab=support" replace />} />
+          
+          {/* Platform Billing - Separate Page */}
           <Route path="platform-billing" element={<PlatformGuard><PlatformBilling /></PlatformGuard>} />
             </Route>
 
