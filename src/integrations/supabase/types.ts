@@ -3752,6 +3752,11 @@ export type Database = {
         | "guest_portal_access"
         | "store_user"
         | "kitchen"
+        | "super_admin"
+        | "support_admin"
+        | "billing_bot"
+        | "marketplace_admin"
+        | "monitoring_bot"
       department_type:
         | "front_office"
         | "housekeeping"
@@ -3941,6 +3946,11 @@ export const Constants = {
         "guest_portal_access",
         "store_user",
         "kitchen",
+        "super_admin",
+        "support_admin",
+        "billing_bot",
+        "marketplace_admin",
+        "monitoring_bot",
       ],
       department_type: [
         "front_office",
