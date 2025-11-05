@@ -24,12 +24,13 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 
 export function SMSSettingsTab() {
   const { tenantId } = useAuth();
-  const { settings, quota, templates, marketplaceItems, isLoading, saveSettings, saveTemplate, purchaseBundle } = useSMSSettings();
+  const { settings, providerAssignment, creditPool, quota, templates, marketplaceItems, isLoading, saveSettings, saveTemplate, purchaseBundle } = useSMSSettings();
   
-  const [provider, setProvider] = useState(settings?.provider || 'twilio');
-  const [senderId, setSenderId] = useState(settings?.sender_id || '');
-  const [apiKey, setApiKey] = useState('');
-  const [apiSecret, setApiSecret] = useState('');
+  // Use provider info from platform assignment
+  const provider = (providerAssignment?.provider as any)?.provider_type || settings?.provider || 'twilio';
+  const assignedSenderId = providerAssignment?.sender_id || settings?.sender_id || '';
+  
+  const [senderId, setSenderId] = useState(assignedSenderId);
   const [enabled, setEnabled] = useState(settings?.enabled || false);
   const [autoBookingConfirm, setAutoBookingConfirm] = useState(settings?.auto_send_booking_confirmation || false);
   const [autoCheckinReminder, setAutoCheckinReminder] = useState(settings?.auto_send_checkin_reminder || false);
@@ -41,10 +42,7 @@ export function SMSSettingsTab() {
 
   const handleSaveSettings = () => {
     saveSettings.mutate({
-      provider,
       sender_id: senderId,
-      api_key_encrypted: apiKey,
-      api_secret_encrypted: apiSecret,
       enabled,
       auto_send_booking_confirmation: autoBookingConfirm,
       auto_send_checkin_reminder: autoCheckinReminder,
@@ -104,18 +102,37 @@ export function SMSSettingsTab() {
             icon={Settings}
           >
             <div className="space-y-4">
-              <div>
-                <Label>Provider</Label>
-                <Select value={provider} onValueChange={setProvider}>
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="twilio">Twilio</SelectItem>
-                    <SelectItem value="termii">Termii</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
+              {/* PHASE 2: Show provider info (read-only from platform assignment) */}
+              {providerAssignment ? (
+                <Alert>
+                  <AlertDescription>
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between">
+                        <span className="font-medium">Provider:</span>
+                        <Badge variant="secondary" className="capitalize">
+                          {(providerAssignment.provider as any)?.provider_type}
+                        </Badge>
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <span className="font-medium">Status:</span>
+                        <Badge variant={(providerAssignment.provider as any)?.is_active ? "default" : "destructive"}>
+                          {(providerAssignment.provider as any)?.is_active ? 'Active' : 'Inactive'}
+                        </Badge>
+                      </div>
+                      <p className="text-xs text-muted-foreground mt-2">
+                        SMS provider is managed by platform administrators. Contact support to change providers.
+                      </p>
+                    </div>
+                  </AlertDescription>
+                </Alert>
+              ) : (
+                <Alert variant="destructive">
+                  <AlertIcon className="h-4 w-4" />
+                  <AlertDescription>
+                    No SMS provider configured. Platform administrators need to assign a provider to your account.
+                  </AlertDescription>
+                </Alert>
+              )}
 
               <div>
                 <Label>Sender ID / From Number</Label>
@@ -124,42 +141,10 @@ export function SMSSettingsTab() {
                   onChange={(e) => setSenderId(e.target.value)}
                   placeholder="+1234567890 or YourBrand"
                 />
+                <p className="text-xs text-muted-foreground mt-1">
+                  This will be displayed as the sender when guests receive SMS messages.
+                </p>
               </div>
-
-              {provider === 'twilio' && (
-                <>
-                  <div>
-                    <Label>Account SID</Label>
-                    <Input
-                      type="password"
-                      value={apiKey}
-                      onChange={(e) => setApiKey(e.target.value)}
-                      placeholder="Enter Twilio Account SID"
-                    />
-                  </div>
-                  <div>
-                    <Label>Auth Token</Label>
-                    <Input
-                      type="password"
-                      value={apiSecret}
-                      onChange={(e) => setApiSecret(e.target.value)}
-                      placeholder="Enter Twilio Auth Token"
-                    />
-                  </div>
-                </>
-              )}
-
-              {provider === 'termii' && (
-                <div>
-                  <Label>API Key</Label>
-                  <Input
-                    type="password"
-                    value={apiKey}
-                    onChange={(e) => setApiKey(e.target.value)}
-                    placeholder="Enter Termii API Key"
-                  />
-                </div>
-              )}
 
               <div className="space-y-4 pt-4 border-t">
                 <div className="flex items-center justify-between">
@@ -345,7 +330,7 @@ export function SMSSettingsTab() {
                     item={item}
                     onPurchase={(paymentMethod, reference) => {
                       purchaseBundle.mutate({
-                        marketplace_item_id: item.id,
+                        addon_id: item.id,
                         payment_method: paymentMethod,
                         payment_reference: reference,
                       });
@@ -401,31 +386,30 @@ function BundleCard({ item, onPurchase, isPurchasing }: any) {
     setShowDialog(false);
   };
 
+  // Parse pricing from platform_addons JSONB
+  const pricing = typeof item.pricing === 'string' ? JSON.parse(item.pricing) : item.pricing;
+  const amount = pricing?.amount || 0;
+  const currency = pricing?.currency || 'NGN';
+
   return (
     <Card>
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
           <Package className="w-5 h-5" />
-          {item.name}
+          {item.title}
         </CardTitle>
         <CardDescription>{item.description}</CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
         <div className="flex justify-between items-center">
           <div>
-            <p className="text-3xl font-bold">{item.credits_amount}</p>
+            <p className="text-3xl font-bold">{item.units_available}</p>
             <p className="text-sm text-muted-foreground">SMS Credits</p>
           </div>
           <Badge variant="secondary" className="text-lg">
-            {item.currency} {item.price_amount.toLocaleString()}
+            {currency} {amount.toLocaleString()}
           </Badge>
         </div>
-
-        {item.validity_days && (
-          <p className="text-sm text-muted-foreground">
-            Valid for {item.validity_days} days
-          </p>
-        )}
 
         <Dialog open={showDialog} onOpenChange={setShowDialog}>
           <DialogTrigger asChild>
