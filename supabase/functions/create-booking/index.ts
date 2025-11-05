@@ -485,6 +485,57 @@ serve(async (req) => {
       });
     }
 
+    // Send SMS booking confirmation if enabled
+    try {
+      const { data: smsSettings } = await supabaseClient
+        .from('tenant_sms_settings')
+        .select('auto_send_booking_confirmation, enabled')
+        .eq('tenant_id', tenant_id)
+        .maybeSingle();
+
+      if (smsSettings?.enabled && smsSettings.auto_send_booking_confirmation) {
+        const { data: guest } = await supabaseClient
+          .from('guests')
+          .select('name, phone')
+          .eq('id', guest_id)
+          .maybeSingle();
+
+        const { data: hotelMeta } = await supabaseClient
+          .from('hotel_meta')
+          .select('hotel_name')
+          .eq('tenant_id', tenant_id)
+          .maybeSingle();
+
+        if (guest?.phone && hotelMeta?.hotel_name) {
+          const checkInDate = new Date(check_in).toLocaleDateString();
+          const message = `Hi ${guest.name}, your booking at ${hotelMeta.hotel_name} is confirmed! Room: ${room?.number || 'TBD'}, Check-in: ${checkInDate}. Ref: ${newBooking.booking_reference || newBooking.id.substring(0, 8)}`;
+
+          // Fire-and-forget SMS send (don't block booking response)
+          supabaseClient.functions.invoke('send-sms', {
+            body: {
+              tenant_id,
+              to: guest.phone,
+              message,
+              event_key: 'booking_confirmed',
+              booking_id: newBooking.id,
+              guest_id,
+            },
+          }).then((result) => {
+            if (result.error) {
+              console.error('SMS send failed:', result.error);
+            } else {
+              console.log('SMS booking confirmation sent:', result.data);
+            }
+          }).catch((error) => {
+            console.error('SMS send exception:', error);
+          });
+        }
+      }
+    } catch (smsError) {
+      // Log but don't fail booking if SMS fails
+      console.error('SMS notification error:', smsError);
+    }
+
     return new Response(
       JSON.stringify({ 
         success: true, 
