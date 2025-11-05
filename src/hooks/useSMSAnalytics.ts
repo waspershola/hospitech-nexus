@@ -1,10 +1,10 @@
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
-import { useTenant } from '@/contexts/TenantContext';
+import { useAuth } from '@/contexts/AuthContext';
 import { subDays, format } from 'date-fns';
 
 export function useSMSAnalytics(days = 30) {
-  const { tenantId } = useTenant();
+  const { tenantId } = useAuth();
 
   const startDate = subDays(new Date(), days);
 

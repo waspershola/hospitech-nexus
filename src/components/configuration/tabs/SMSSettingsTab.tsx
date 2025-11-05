@@ -16,14 +16,14 @@ import { useSMSAlertSettings } from '@/hooks/useSMSAlertSettings';
 import { SMSAlertsTab } from './SMSAlertsTab';
 import { SMSAnalyticsTab } from './SMSAnalyticsTab';
 import { ConfigSection } from '../shared/ConfigSection';
-import { useTenant } from '@/contexts/TenantContext';
+import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { Separator } from '@/components/ui/separator';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 
 export function SMSSettingsTab() {
-  const { tenantId } = useTenant();
+  const { tenantId } = useAuth();
   const { settings, quota, templates, marketplaceItems, isLoading, saveSettings, saveTemplate, purchaseBundle } = useSMSSettings();
   
   const [provider, setProvider] = useState(settings?.provider || 'twilio');
