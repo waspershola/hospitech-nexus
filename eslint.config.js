@@ -21,6 +21,18 @@ export default tseslint.config(
       ...reactHooks.configs.recommended.rules,
       "react-refresh/only-export-components": ["warn", { allowConstantExport: true }],
       "@typescript-eslint/no-unused-vars": "off",
+      "no-restricted-imports": ["error", {
+        "paths": [
+          {
+            "name": "@/lib/roleNavigation",
+            "message": "❌ DEPRECATED: Use database navigation (@/hooks/useNavigation) instead."
+          },
+          {
+            "name": "@/hooks/useRoleNavigation",
+            "message": "❌ DEPRECATED: Use database navigation (@/hooks/useNavigation) instead."
+          }
+        ]
+      }]
     },
   },
 );

@@ -262,6 +262,27 @@ if (requestData.tenant_id && requestData.tenant_id !== userRole.tenant_id) {
 
 ---
 
+## 🎯 **NAVIGATION SYSTEM - COMPLETE** ✅
+
+### Decommissioning Complete (2025-11-05)
+- ✅ Deleted `src/lib/roleNavigation.ts` (347 lines)
+- ✅ Deleted `src/hooks/useRoleNavigation.ts` (31 lines)
+- ✅ Updated `Login.tsx` - removed hard-coded role→dashboard mapping
+- ✅ Added ESLint protection - blocks imports of deprecated modules
+- ✅ Created `/docs/architecture/navigation-system.md`
+- ✅ Updated existing documentation
+- [ ] TODO: Create seeding script for new tenants
+- [ ] TODO: Verify all existing tenants have navigation items
+
+### Current State
+- 100% database-driven navigation
+- Zero code-based navigation fallbacks
+- ESLint enforces no deprecated imports
+- All users redirect to `/dashboard` after login
+- Navigation filtered by role + department from DB
+
+---
+
 ## 🚨 **SECURITY STATUS**
 
 ### ✅ **SECURE**
@@ -269,6 +290,7 @@ if (requestData.tenant_id && requestData.tenant_id !== userRole.tenant_id) {
 - RLS policies enforce tenant isolation
 - `has_role()` and `get_user_tenant()` functions use SECURITY DEFINER correctly
 - Room access properly scoped by role
+- Navigation system fully database-driven with RLS protection
 
 ### ❌ **INSECURE** (MUST FIX)
 - **6 edge functions lack role validation** - Anyone can call them!

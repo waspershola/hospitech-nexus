@@ -1,5 +1,8 @@
 # Navigation Architecture Documentation
 
+> **✅ MIGRATION COMPLETE (2025-11-05)**  
+> This project now uses **100% database-driven navigation**. All code-based navigation systems have been permanently decommissioned.
+
 ## Overview
 
 The application uses a **database-driven, role and department-aware navigation system** that provides dynamic, tenant-customizable menu items. This architecture ensures each user sees only the navigation items relevant to their role and department.
@@ -203,25 +206,51 @@ food_beverage (Parent)
 
 ## Migration Path
 
+### ✅ Migration Complete (2025-11-05)
+
+**What Was Removed:**
+- `src/lib/roleNavigation.ts` - Hard-coded navigation mappings (**DELETED**)
+- `src/hooks/useRoleNavigation.ts` - Code-based navigation hook (**DELETED**)
+- Hard-coded dashboard redirects in `Login.tsx` (**REPLACED**)
+
+**Current State:**
+- All navigation is loaded from `navigation_items` table
+- ESLint enforces no imports of deprecated modules
+- Login redirects to `/dashboard` for all users
+- Sidebar automatically filters navigation based on role/department
+
 ### For New Tenants
 
-When onboarding a new tenant, navigation items are automatically created via SQL:
+Default navigation items must be seeded during tenant creation:
 
 ```sql
 -- Insert default navigation for new tenant
 INSERT INTO navigation_items (tenant_id, name, path, icon, allowed_roles, allowed_departments, order_index)
 VALUES 
-  (new_tenant_id, 'Overview', '/dashboard', 'Home', '{owner,manager,...}', '{}', 1),
-  (new_tenant_id, 'Front Desk', '/dashboard/front-desk', 'Hotel', '{owner,manager,frontdesk}', '{front_office,management}', 2),
+  (new_tenant_id, 'Overview', '/dashboard', 'Home', '{owner,manager,frontdesk}', '{}', 1),
+  (new_tenant_id, 'Front Desk', '/dashboard/front-desk', 'Hotel', '{owner,manager,frontdesk}', '{front_office}', 2),
   -- ... etc
 ```
 
-### Backward Compatibility
+### For Existing Tenants
 
-- `roleNavigation.ts` is **deprecated** but kept for reference
-- All navigation now uses `useNavigation()` hook
-- Sidebar component uses database navigation exclusively
-- Login redirects use `getDefaultDashboard()` from `roleNavigation.ts`
+Verify all tenants have navigation items:
+
+```sql
+SELECT 
+  t.name as tenant,
+  COUNT(ni.id) as nav_items
+FROM tenants t
+LEFT JOIN navigation_items ni ON ni.tenant_id = t.id
+GROUP BY t.id, t.name
+HAVING COUNT(ni.id) = 0;
+```
+
+If any tenants have 0 items, seed them with default navigation structure.
+
+### No Backward Compatibility
+
+This is a **hard cutover**. There is no fallback to code-based navigation. All tenants MUST have navigation items in the database.
 
 ---
 

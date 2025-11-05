@@ -44,39 +44,9 @@ export default function Login() {
         return;
       }
 
-      // Role and department-based redirect using the new helper
-      const getDefaultDashboard = (role: string, department?: string): string => {
-        const dashboardMap: Record<string, string> = {
-          owner: '/dashboard',
-          manager: '/dashboard',
-          frontdesk: '/dashboard/front-desk',
-          housekeeping: '/dashboard/housekeeping-dashboard',
-          finance: '/dashboard/finance-dashboard',
-          accountant: '/dashboard/finance-center',
-          restaurant: '/dashboard/kitchen-dashboard',
-          bar: '/dashboard/bar-dashboard',
-          maintenance: '/dashboard/maintenance-dashboard',
-        };
-
-        if (role === 'supervisor' && department) {
-          const supervisorDashboards: Record<string, string> = {
-            front_office: '/dashboard/front-desk',
-            housekeeping: '/dashboard/housekeeping-dashboard',
-            food_beverage: '/dashboard/kitchen-dashboard',
-            kitchen: '/dashboard/kitchen-dashboard',
-            bar: '/dashboard/bar-dashboard',
-            maintenance: '/dashboard/maintenance-dashboard',
-            accounts: '/dashboard/finance-dashboard',
-          };
-          return supervisorDashboards[department] || '/dashboard';
-        }
-
-        return dashboardMap[role] || '/dashboard';
-      };
-
-      const redirectPath = userRoleData?.role 
-        ? getDefaultDashboard(userRoleData.role, staffData?.department || undefined)
-        : '/dashboard';
+      // Database-driven navigation - redirect to /dashboard
+      // Actual dashboard content is controlled by navigation_items table
+      const redirectPath = '/dashboard';
 
       toast({
         title: `Welcome back!`,
