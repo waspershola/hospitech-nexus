@@ -21,7 +21,15 @@ import {
 export function AppSidebar() {
   const { tenantName } = useAuth();
   const { open } = useSidebar();
-  const { data: navItems, isLoading } = useNavigation();
+  const { data: navItems, isLoading, error } = useNavigation();
+
+  // Debug logging
+  console.log('📱 [Sidebar] Render:', { 
+    navItemsCount: navItems?.length, 
+    isLoading, 
+    hasError: !!error,
+    errorMessage: error?.message 
+  });
 
   return (
     <Sidebar collapsible="icon" className="border-r border-sidebar-border">
@@ -57,9 +65,14 @@ export function AppSidebar() {
                   <Skeleton key={i} className="h-10 w-full" />
                 ))}
               </div>
-            ) : (
+            ) : error ? (
+              <div className="px-4 py-3 text-sm text-destructive">
+                <p className="font-semibold">Navigation Error</p>
+                <p className="text-xs mt-1">{error.message}</p>
+              </div>
+            ) : navItems && navItems.length > 0 ? (
               <SidebarMenu>
-                {navItems?.map((item) => {
+                {navItems.map((item) => {
                   const IconComponent = Icons[item.icon as keyof typeof Icons] as any;
                   return (
                     <SidebarMenuItem key={item.id}>
@@ -83,6 +96,10 @@ export function AppSidebar() {
                   );
                 })}
               </SidebarMenu>
+            ) : (
+              <div className="px-4 py-3 text-sm text-muted-foreground">
+                No navigation items
+              </div>
             )}
           </SidebarGroupContent>
         </SidebarGroup>

@@ -30,26 +30,48 @@ export function useNavigation() {
   return useQuery({
     queryKey: ['platform-navigation', tenantId, role, department, platformRole],
     queryFn: async () => {
-      // Fetch navigation items via edge function
-      console.log('Fetching navigation - platformRole:', platformRole, 'tenantId:', tenantId, 'role:', role, 'department:', department);
+      console.log('🔍 [Navigation] Starting fetch...');
+      console.log('🔍 [Navigation] Auth context:', { platformRole, tenantId, role, department });
 
-      const { data, error } = await supabase.functions.invoke('platform-nav-sync', {
-        body: {},
-        method: 'POST',
-      });
-      
-      if (error) {
-        console.error('Navigation fetch error:', error);
-        throw error;
-      }
-      
-      if (!data?.data) {
-        console.warn('No navigation data received from edge function');
-        throw new Error('No navigation data received');
-      }
-      
-      const navItems = data.data as NavigationItem[];
-      console.log('Received navigation items:', navItems.length);
+      try {
+        // Verify we have a session with proper auth token
+        const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+        
+        if (sessionError) {
+          console.error('❌ [Navigation] Session error:', sessionError);
+          throw new Error(`Session error: ${sessionError.message}`);
+        }
+
+        if (!session) {
+          console.error('❌ [Navigation] No active session found');
+          throw new Error('No active session');
+        }
+
+        console.log('✅ [Navigation] Session valid, user ID:', session.user.id);
+
+        // Invoke edge function with explicit auth header
+        const { data, error } = await supabase.functions.invoke('platform-nav-sync', {
+          body: {},
+          method: 'POST',
+          headers: {
+            Authorization: `Bearer ${session.access_token}`,
+          },
+        });
+        
+        if (error) {
+          console.error('❌ [Navigation] Edge function error:', error);
+          throw new Error(`Navigation fetch failed: ${error.message}`);
+        }
+
+        console.log('✅ [Navigation] Edge function response:', data);
+        
+        if (!data?.data) {
+          console.error('❌ [Navigation] Invalid response structure:', data);
+          throw new Error('Invalid navigation response structure');
+        }
+        
+        const navItems = data.data as NavigationItem[];
+        console.log('✅ [Navigation] Received navigation items:', navItems.length);
       
       // Define platform roles and tenant roles
       const platformRoles = ['super_admin', 'admin', 'support_admin', 'billing_admin'];
@@ -89,11 +111,18 @@ export function useNavigation() {
         }
       });
       
-      console.log('Filtered navigation items:', filtered.length);
+      console.log('✅ [Navigation] Filtered navigation items:', filtered.length);
+      console.log('✅ [Navigation] Items:', filtered.map(item => item.name).join(', '));
       return filtered;
+      } catch (error) {
+        console.error('❌ [Navigation] Fatal error:', error);
+        throw error;
+      }
     },
     enabled: !!platformRole || (!!tenantId && !!role),
     staleTime: 5 * 60 * 1000, // Cache for 5 minutes
     gcTime: 10 * 60 * 1000, // Keep in cache for 10 minutes
+    retry: 3,
+    retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 30000),
   });
 }
