@@ -1,8 +1,12 @@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { AlertTriangle, Clock, User, DollarSign } from 'lucide-react';
+import { AlertTriangle, Clock, User, DollarSign, Calendar, TrendingUp } from 'lucide-react';
 import { differenceInHours, format } from 'date-fns';
+import { useLateCheckoutFees } from '@/hooks/useLateCheckoutFees';
+import { useQuery } from '@tanstack/react-query';
+import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/contexts/AuthContext';
 
 interface OverstayRoom {
   id: string;
@@ -27,8 +31,36 @@ export function OverstayAlertModal({
   onExtendStay,
   onCheckOut,
 }: OverstayAlertModalProps) {
+  const { tenantId } = useAuth();
+  const { calculateLateFee } = useLateCheckoutFees();
+
+  // Check for booking conflicts - rooms with new reservations for today
+  const { data: conflictingBookings } = useQuery({
+    queryKey: ['booking-conflicts', overstayRooms],
+    queryFn: async () => {
+      if (overstayRooms.length === 0 || !tenantId) return [];
+
+      const roomIds = overstayRooms.map(r => r.id);
+      const today = new Date().toISOString().split('T')[0];
+
+      const { data } = await supabase
+        .from('bookings')
+        .select('id, room_id, guest:guests(name), check_in')
+        .in('room_id', roomIds)
+        .eq('status', 'reserved')
+        .eq('check_in', today);
+
+      return data || [];
+    },
+    enabled: open && overstayRooms.length > 0,
+  });
+
   const getHoursOverdue = (checkOut: string) => {
     return Math.abs(differenceInHours(new Date(), new Date(checkOut)));
+  };
+
+  const hasConflict = (roomId: string) => {
+    return conflictingBookings?.some((b: any) => b.room_id === roomId);
   };
 
   return (
@@ -48,19 +80,32 @@ export function OverstayAlertModal({
           {overstayRooms.map((room) => {
             const hoursOverdue = getHoursOverdue(room.check_out);
             const daysOverdue = Math.floor(hoursOverdue / 24);
+            const lateFee = calculateLateFee(room.check_out);
+            const conflict = hasConflict(room.id);
+            const conflictBooking = conflictingBookings?.find((b: any) => b.room_id === room.id);
 
             return (
               <div
                 key={room.id}
-                className="border border-warning/30 rounded-xl p-4 bg-warning/5 space-y-3"
+                className={`border rounded-xl p-4 space-y-3 ${
+                  conflict 
+                    ? 'border-destructive bg-destructive/10' 
+                    : 'border-warning/30 bg-warning/5'
+                }`}
               >
                 <div className="flex items-start justify-between">
                   <div className="space-y-2 flex-1">
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2 flex-wrap">
                       <h3 className="font-bold text-lg">Room {room.number}</h3>
                       <Badge variant="destructive" className="capitalize">
                         Overstay
                       </Badge>
+                      {conflict && (
+                        <Badge variant="destructive" className="bg-destructive/90">
+                          <AlertTriangle className="w-3 h-3 mr-1" />
+                          New Arrival Today
+                        </Badge>
+                      )}
                     </div>
 
                     <div className="flex items-center gap-2 text-sm text-muted-foreground">
@@ -89,6 +134,24 @@ export function OverstayAlertModal({
                         <DollarSign className="w-4 h-4 text-destructive" />
                         <span className="font-medium text-destructive">
                           Outstanding Balance: ₦{room.balance.toLocaleString()}
+                        </span>
+                      </div>
+                    )}
+
+                    {lateFee.feeAmount > 0 && (
+                      <div className="flex items-center gap-2 text-sm mt-2 p-2 bg-yellow-50 dark:bg-yellow-900/20 rounded border border-yellow-200 dark:border-yellow-800">
+                        <TrendingUp className="w-4 h-4 text-yellow-600 dark:text-yellow-500" />
+                        <span className="font-medium text-yellow-700 dark:text-yellow-400">
+                          Late Checkout Fee: ₦{lateFee.feeAmount.toLocaleString()}
+                        </span>
+                      </div>
+                    )}
+
+                    {conflict && conflictBooking && (
+                      <div className="flex items-center gap-2 text-sm mt-2 p-2 bg-destructive/10 rounded border border-destructive/30">
+                        <Calendar className="w-4 h-4 text-destructive" />
+                        <span className="font-medium text-destructive">
+                          {conflictBooking.guest?.name} arriving today - URGENT ACTION REQUIRED
                         </span>
                       </div>
                     )}

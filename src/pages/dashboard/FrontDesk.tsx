@@ -9,6 +9,7 @@ import { RoomLegend } from '@/modules/frontdesk/components/RoomLegend';
 import { RoomActionDrawer } from '@/modules/frontdesk/components/RoomActionDrawer';
 import { AssignRoomDrawer } from '@/modules/frontdesk/components/AssignRoomDrawer';
 import { OverstayAlertModal } from '@/modules/frontdesk/components/OverstayAlertModal';
+import { CheckoutRemindersWidget } from '@/modules/frontdesk/components/CheckoutRemindersWidget';
 import { BookingFlow } from '@/modules/bookings/BookingFlow';
 import { MobileBottomNav } from '@/modules/frontdesk/components/MobileBottomNav';
 import { AvailabilityCalendar } from '@/modules/frontdesk/components/AvailabilityCalendar';
@@ -124,8 +125,9 @@ export default function FrontDesk() {
           </div>
 
           <TabsContent value="status" className="flex-1 flex flex-col m-0 overflow-hidden data-[state=inactive]:absolute data-[state=inactive]:invisible data-[state=inactive]:pointer-events-none">
-            <div className="px-3 sm:px-4 lg:px-6 pt-3 sm:pt-4">
+            <div className="px-3 sm:px-4 lg:px-6 pt-3 sm:pt-4 space-y-4">
               <StatusSyncMonitor />
+              <CheckoutRemindersWidget />
               <QuickKPIs 
                 onFilterClick={handleFilterToggle} 
                 activeFilter={statusFilter}

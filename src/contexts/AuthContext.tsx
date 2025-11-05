@@ -1,7 +1,6 @@
 import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
 import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
-import { autoCompleteOverdueBookings } from '@/lib/roomStatusSync';
 
 interface AuthContextType {
   user: User | null;
@@ -62,47 +61,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return () => subscription.unsubscribe();
   }, []);
 
-  // Daily background sync at midnight for overdue bookings
-  useEffect(() => {
-    if (!tenantId) return;
-
-    console.log('[Background Sync] Setting up daily booking cleanup scheduler');
-    
-    // Calculate time until next midnight
-    const now = new Date();
-    const midnight = new Date(now);
-    midnight.setHours(24, 0, 0, 0);
-    const msUntilMidnight = midnight.getTime() - now.getTime();
-    
-    console.log(`[Background Sync] Next cleanup in ${Math.round(msUntilMidnight / 1000 / 60)} minutes`);
-    
-    // Run at midnight
-    const midnightTimer = setTimeout(() => {
-      console.log('[Background Sync] Running midnight cleanup...');
-      
-      // Auto-complete overdue bookings
-      autoCompleteOverdueBookings(tenantId).then((result) => {
-        if (result.completed > 0) {
-          console.log(`[Midnight Sync] Completed ${result.completed} overdue bookings`);
-        }
-      }).catch(err => {
-        console.error('[Midnight Sync] Error auto-completing:', err);
-      });
-      
-      // Then run every 24 hours
-      const dailyInterval = setInterval(() => {
-        console.log('[Daily Sync] Running scheduled cleanup...');
-        autoCompleteOverdueBookings(tenantId);
-      }, 24 * 60 * 60 * 1000); // 24 hours
-      
-      return () => clearInterval(dailyInterval);
-    }, msUntilMidnight);
-    
-    return () => {
-      console.log('[Background Sync] Cleaning up scheduler');
-      clearTimeout(midnightTimer);
-    };
-  }, [tenantId]);
+  // Auto-checkout disabled - Front desk must manually process checkouts
 
   const fetchUserRoleAndTenant = async (userId: string) => {
     try {
@@ -131,15 +90,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           setDepartment(staffData.department);
           setPasswordResetRequired(staffData.password_reset_required || false);
         }
-        
-        // Auto-complete overdue bookings when user logs in
-        autoCompleteOverdueBookings(data.tenant_id).then((result) => {
-          if (result.completed > 0) {
-            console.log(`[Auto-Complete] Completed ${result.completed} overdue bookings`);
-          }
-        }).catch(err => {
-          console.error('Error auto-completing overdue bookings:', err);
-        });
       }
     } catch (error) {
       console.error('Error fetching user role:', error);
