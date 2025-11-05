@@ -4447,31 +4447,49 @@ export type Database = {
       }
       tenants: {
         Row: {
+          activated_at: string | null
           brand_color: string | null
           created_at: string | null
+          deactivated_at: string | null
           domain: string | null
           id: string
           logo_url: string | null
+          metadata: Json | null
           name: string
           slug: string
+          status: string | null
+          suspended_at: string | null
+          suspension_reason: string | null
         }
         Insert: {
+          activated_at?: string | null
           brand_color?: string | null
           created_at?: string | null
+          deactivated_at?: string | null
           domain?: string | null
           id?: string
           logo_url?: string | null
+          metadata?: Json | null
           name: string
           slug: string
+          status?: string | null
+          suspended_at?: string | null
+          suspension_reason?: string | null
         }
         Update: {
+          activated_at?: string | null
           brand_color?: string | null
           created_at?: string | null
+          deactivated_at?: string | null
           domain?: string | null
           id?: string
           logo_url?: string | null
+          metadata?: Json | null
           name?: string
           slug?: string
+          status?: string | null
+          suspended_at?: string | null
+          suspension_reason?: string | null
         }
         Relationships: []
       }

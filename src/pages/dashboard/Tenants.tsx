@@ -54,7 +54,7 @@ export default function Tenants() {
             </CardHeader>
             <CardContent>
               <TenantLifecycleTable
-                tenants={tenants || []}
+                tenants={(tenants || []) as any}
                 onActivate={(id) => activateTenant.mutate(id)}
                 onSuspend={(id) => suspendTenant.mutate({ tenantId: id })}
                 onDeactivate={(id) => deactivateTenant.mutate(id)}
@@ -73,7 +73,7 @@ export default function Tenants() {
             </CardHeader>
             <CardContent>
               <TenantLifecycleTable
-                tenants={tenants?.filter(t => t.status === 'active') || []}
+                tenants={(tenants?.filter((t: any) => t.status === 'active') || []) as any}
                 onSuspend={(id) => suspendTenant.mutate({ tenantId: id })}
                 onDeactivate={(id) => deactivateTenant.mutate(id)}
               />
@@ -91,7 +91,7 @@ export default function Tenants() {
             </CardHeader>
             <CardContent>
               <TenantLifecycleTable
-                tenants={tenants?.filter(t => t.status === 'pending') || []}
+                tenants={(tenants?.filter((t: any) => t.status === 'pending') || []) as any}
                 onActivate={(id) => activateTenant.mutate(id)}
               />
             </CardContent>
@@ -109,7 +109,7 @@ export default function Tenants() {
             <CardContent>
               <TenantLifecycleTable
                 tenants={
-                  tenants?.filter(t => ['suspended', 'inactive'].includes(t.status)) || []
+                  (tenants?.filter((t: any) => ['suspended', 'inactive'].includes(t.status)) || []) as any
                 }
                 onActivate={(id) => activateTenant.mutate(id)}
               />
