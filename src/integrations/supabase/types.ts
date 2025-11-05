@@ -4083,6 +4083,44 @@ export type Database = {
           },
         ]
       }
+      tenant_sms_credits: {
+        Row: {
+          created_at: string
+          credits_available: number
+          credits_used: number
+          id: string
+          tenant_id: string
+          total_purchased: number
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          credits_available?: number
+          credits_used?: number
+          id?: string
+          tenant_id: string
+          total_purchased?: number
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          credits_available?: number
+          credits_used?: number
+          id?: string
+          tenant_id?: string
+          total_purchased?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tenant_sms_credits_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: true
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       tenant_sms_purchases: {
         Row: {
           amount_paid: number

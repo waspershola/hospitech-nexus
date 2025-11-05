@@ -37,6 +37,7 @@ import Payments from './pages/dashboard/Payments';
 import Wallets from './pages/dashboard/Wallets';
 import Debtors from './pages/dashboard/Debtors';
 import Inventory from './pages/dashboard/Inventory';
+import Marketplace from './pages/dashboard/Marketplace';
 import NavigationManager from './pages/dashboard/NavigationManager';
 import { DepartmentRequestsTab } from './modules/inventory/DepartmentRequestsTab';
 import PortalHome from "./pages/portal/Home";
@@ -83,6 +84,7 @@ const App = () => (
               <Route path="guests/:id" element={<GuestProfile />} />
               <Route path="payments" element={<Payments />} />
               <Route path="wallets" element={<Wallets />} />
+              <Route path="marketplace" element={<Marketplace />} />
               <Route path="inventory" element={<RoleGuard allowedRoles={['owner', 'manager', 'store_manager', 'procurement']}><Inventory /></RoleGuard>} />
               <Route path="stock-requests" element={<RoleGuard allowedRoles={['housekeeping','maintenance','restaurant','kitchen','bar','supervisor']}><DepartmentRequestsTab /></RoleGuard>} />
               <Route path="debtors" element={<RoleGuard allowedRoles={['owner', 'manager', 'finance', 'accountant']}><Debtors /></RoleGuard>} />
