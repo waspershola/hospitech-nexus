@@ -4,12 +4,12 @@ import { useAuth } from '@/contexts/AuthContext';
 
 export interface NavigationItem {
   id: string;
-  tenant_id: string;
+  tenant_id: string | null;
   name: string;
   path: string;
   icon: string;
-  allowed_roles: string[];
-  allowed_departments: string[];
+  roles_allowed: string[];
+  departments_allowed: string[];
   parent_id: string | null;
   order_index: number;
   is_active: boolean;
@@ -55,22 +55,23 @@ export function useNavigation() {
       
       // Filter by role AND department on client side
       const filtered = navItems.filter(item => {
-        // Check role access
-        const hasRole = role && item.allowed_roles.includes(role);
+        // Check role access - roles_allowed is the correct field name
+        const rolesAllowed = item.roles_allowed || [];
+        const hasRole = role && rolesAllowed.includes(role);
         if (!hasRole) {
-          console.log(`Item ${item.name} filtered out - role mismatch. Required: ${item.allowed_roles}, User has: ${role}`);
+          console.log(`Item ${item.name} filtered out - role mismatch. Required: ${rolesAllowed.join(', ')}, User has: ${role}`);
           return false;
         }
         
         // Check department access
-        // Empty array means visible to all departments
-        const allowedDepts = item.allowed_departments || [];
+        // Empty array or null means visible to all departments
+        const allowedDepts = item.departments_allowed || [];
         const hasAccess = 
           allowedDepts.length === 0 || // All departments
           (department && allowedDepts.includes(department)); // Specific department match
         
         if (!hasAccess) {
-          console.log(`Item ${item.name} filtered out - department mismatch. Required: ${allowedDepts}, User has: ${department}`);
+          console.log(`Item ${item.name} filtered out - department mismatch. Required: ${allowedDepts.join(', ')}, User has: ${department}`);
         }
         
         return hasAccess;
