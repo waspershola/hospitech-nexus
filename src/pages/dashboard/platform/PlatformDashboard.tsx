@@ -6,7 +6,8 @@ import { PlatformMarketplaceTab } from './tabs/PlatformMarketplaceTab';
 import { PlatformPlansTab } from './tabs/PlatformPlansTab';
 import { PlatformUsersTab } from './tabs/PlatformUsersTab';
 import { PlatformSupportTab } from './tabs/PlatformSupportTab';
-import { Server, Users, ShoppingCart, CreditCard, Shield, MessageSquare } from 'lucide-react';
+import { PlatformEmailProvidersTab } from './tabs/PlatformEmailProvidersTab';
+import { Server, Users, ShoppingCart, CreditCard, Shield, MessageSquare, Mail } from 'lucide-react';
 
 export default function PlatformDashboard() {
   return (
@@ -40,6 +41,10 @@ export default function PlatformDashboard() {
             <Server className="h-4 w-4" />
             SMS Providers
           </TabsTrigger>
+          <TabsTrigger value="email-providers" className="gap-2">
+            <Mail className="h-4 w-4" />
+            Email Providers
+          </TabsTrigger>
           <TabsTrigger value="marketplace" className="gap-2">
             <ShoppingCart className="h-4 w-4" />
             Marketplace
@@ -64,6 +69,10 @@ export default function PlatformDashboard() {
 
         <TabsContent value="providers">
           <PlatformProvidersTab />
+        </TabsContent>
+
+        <TabsContent value="email-providers">
+          <PlatformEmailProvidersTab />
         </TabsContent>
 
         <TabsContent value="marketplace">
