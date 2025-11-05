@@ -1,12 +1,13 @@
 import { Card } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
 import { useAuth } from '@/contexts/AuthContext';
-import { User, Shield, Info } from 'lucide-react';
+import { User, Shield, Info, AlertTriangle } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import { formatPlatformRole } from '@/lib/roleFormatter';
 
 export default function Settings() {
-  const { user, role, tenantId, tenantName } = useAuth();
+  const { user, role, tenantId, tenantName, platformRole } = useAuth();
 
   return (
     <div className="space-y-6">
@@ -16,6 +17,16 @@ export default function Settings() {
           View your personal account information and role permissions
         </p>
       </div>
+
+      {/* Role Sync Alert - Show if no roles assigned */}
+      {!platformRole && !role && (
+        <Alert variant="destructive">
+          <AlertTriangle className="h-4 w-4" />
+          <AlertDescription>
+            <strong>No role assigned.</strong> If you just signed in, please sign out completely and sign back in to refresh your session. Clear your browser cache if the issue persists.
+          </AlertDescription>
+        </Alert>
+      )}
 
       {/* Info Alert */}
       <Alert>
@@ -68,24 +79,53 @@ export default function Settings() {
             <h3 className="text-lg font-display text-foreground">Role & Permissions</h3>
           </div>
           <div className="space-y-4">
-            <div className="pb-3 border-b">
-              <Label className="text-sm text-muted-foreground">Current Role</Label>
-              <div className="mt-1">
-                <Badge variant="secondary" className="capitalize">
-                  {role}
-                </Badge>
+            {/* Platform Role */}
+            {platformRole && (
+              <div className="pb-3 border-b">
+                <Label className="text-sm text-muted-foreground">Platform Role</Label>
+                <div className="mt-1">
+                  <Badge variant="destructive" className="capitalize">
+                    {formatPlatformRole(platformRole)}
+                  </Badge>
+                </div>
               </div>
-            </div>
-            <div className="pb-3 border-b">
-              <Label className="text-sm text-muted-foreground">Hotel / Tenant</Label>
-              <p className="font-medium text-foreground mt-1">{tenantName || 'Not assigned'}</p>
-            </div>
-            <div>
-              <Label className="text-sm text-muted-foreground">Tenant ID</Label>
-              <p className="font-mono text-xs text-muted-foreground mt-1 break-all">
-                {tenantId || 'N/A'}
-              </p>
-            </div>
+            )}
+
+            {/* Tenant Role */}
+            {role && (
+              <div className="pb-3 border-b">
+                <Label className="text-sm text-muted-foreground">Tenant Role</Label>
+                <div className="mt-1">
+                  <Badge variant="secondary" className="capitalize">
+                    {role}
+                  </Badge>
+                </div>
+              </div>
+            )}
+
+            {/* Show message if no roles */}
+            {!platformRole && !role && (
+              <div className="pb-3 border-b">
+                <Label className="text-sm text-muted-foreground">Current Role</Label>
+                <p className="text-sm text-muted-foreground mt-1">No role assigned</p>
+              </div>
+            )}
+
+            {/* Tenant Info - only show if tenant role exists */}
+            {role && (
+              <>
+                <div className="pb-3 border-b">
+                  <Label className="text-sm text-muted-foreground">Hotel / Tenant</Label>
+                  <p className="font-medium text-foreground mt-1">{tenantName || 'Not assigned'}</p>
+                </div>
+                <div>
+                  <Label className="text-sm text-muted-foreground">Tenant ID</Label>
+                  <p className="font-mono text-xs text-muted-foreground mt-1 break-all">
+                    {tenantId || 'N/A'}
+                  </p>
+                </div>
+              </>
+            )}
           </div>
         </Card>
       </div>
@@ -94,6 +134,44 @@ export default function Settings() {
       <Card className="p-6">
         <h3 className="text-lg font-display text-foreground mb-4">Your Permissions</h3>
         <div className="space-y-3 text-sm">
+          {/* Platform Role Permissions */}
+          {platformRole === 'super_admin' && (
+            <div className="p-3 bg-destructive/5 border border-destructive/20 rounded-lg">
+              <p className="font-medium text-foreground mb-1">Super Admin Access</p>
+              <p className="text-muted-foreground">
+                You have full platform access including all tenants, users, billing, platform settings,
+                navigation management, and system configuration. Highest level of access.
+              </p>
+            </div>
+          )}
+          {platformRole === 'admin' && (
+            <div className="p-3 bg-primary/5 border border-primary/20 rounded-lg">
+              <p className="font-medium text-foreground mb-1">Platform Admin Access</p>
+              <p className="text-muted-foreground">
+                You can manage tenants, platform configuration, and system settings. Limited access
+                to billing and super admin functions.
+              </p>
+            </div>
+          )}
+          {platformRole === 'support' && (
+            <div className="p-3 bg-accent/5 border border-accent/20 rounded-lg">
+              <p className="font-medium text-foreground mb-1">Support Admin Access</p>
+              <p className="text-muted-foreground">
+                You can manage support tickets, assist tenants, and access support tools. Limited
+                access to platform configuration.
+              </p>
+            </div>
+          )}
+          {platformRole === 'billing_admin' && (
+            <div className="p-3 bg-accent/5 border border-accent/20 rounded-lg">
+              <p className="font-medium text-foreground mb-1">Billing Admin Access</p>
+              <p className="text-muted-foreground">
+                You can manage billing, subscriptions, and payment operations for all tenants.
+              </p>
+            </div>
+          )}
+
+          {/* Tenant Role Permissions */}
           {role === 'owner' && (
             <div className="p-3 bg-primary/5 border border-primary/20 rounded-lg">
               <p className="font-medium text-foreground mb-1">Owner Access</p>
@@ -139,8 +217,16 @@ export default function Settings() {
               </p>
             </div>
           )}
+          {!platformRole && !role && (
+            <p className="text-sm text-muted-foreground">
+              No permissions assigned. Please contact your administrator or sign out and sign back in.
+            </p>
+          )}
+          
           <p className="text-xs text-muted-foreground pt-2">
-            Contact your hotel administrator if you need different permissions or access levels.
+            {platformRole 
+              ? 'Contact the platform super admin if you need different permissions.'
+              : 'Contact your hotel administrator if you need different permissions or access levels.'}
           </p>
         </div>
       </Card>
