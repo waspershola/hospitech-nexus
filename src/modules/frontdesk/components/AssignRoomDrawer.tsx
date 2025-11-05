@@ -40,6 +40,7 @@ import { GuestQuickForm } from '@/modules/bookings/components/GuestQuickForm';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { cn } from '@/lib/utils';
 import { OrganizationWalletStatus } from '@/components/shared/OrganizationWalletStatus';
+import { QuickPayment } from '@/modules/payments/QuickPayment';
 
 interface AssignRoomDrawerProps {
   open: boolean;
@@ -66,6 +67,9 @@ export function AssignRoomDrawer({ open, onClose, roomId, roomNumber }: AssignRo
   const [showNewGuestDialog, setShowNewGuestDialog] = useState(false);
   const [guestSearchOpen, setGuestSearchOpen] = useState(false);
   const [guestSearchTerm, setGuestSearchTerm] = useState('');
+  const [collectPaymentNow, setCollectPaymentNow] = useState(false);
+  const [createdBooking, setCreatedBooking] = useState<any>(null);
+  const [showPaymentDialog, setShowPaymentDialog] = useState(false);
 
   // Fetch guests with search
   const { data: guests = [] } = useQuery({
@@ -172,7 +176,7 @@ export function AssignRoomDrawer({ open, onClose, roomId, roomNumber }: AssignRo
 
       return data;
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['rooms-grid'] });
       queryClient.invalidateQueries({ queryKey: ['frontdesk-kpis'] });
       queryClient.invalidateQueries({ queryKey: ['bookings'] });
@@ -182,13 +186,21 @@ export function AssignRoomDrawer({ open, onClose, roomId, roomNumber }: AssignRo
           ? `Room ${roomNumber} reserved successfully` 
           : `Guest checked in to Room ${roomNumber}`
       );
-      onClose();
+      
+      // If user wants to collect payment now, show payment dialog
+      if (collectPaymentNow && data.booking) {
+        setCreatedBooking(data.booking);
+        setShowPaymentDialog(true);
+      } else {
+        onClose();
+      }
       
       // Reset form
       setGuestId('');
       setOrganizationId('');
       setOrganizationBooking(false);
       setActionType('reserve');
+      setCollectPaymentNow(false);
     },
     onError: (error: any) => {
       console.error('Assignment error:', error);
@@ -265,7 +277,7 @@ export function AssignRoomDrawer({ open, onClose, roomId, roomNumber }: AssignRo
                   </Button>
                 </PopoverTrigger>
                 <PopoverContent className="w-[400px] p-0">
-                  <Command>
+                  <Command shouldFilter={false}>
                     <CommandInput 
                       placeholder="Search guests..." 
                       value={guestSearchTerm}
@@ -274,10 +286,10 @@ export function AssignRoomDrawer({ open, onClose, roomId, roomNumber }: AssignRo
                     <CommandEmpty>No guests found.</CommandEmpty>
                     <CommandList>
                       <CommandGroup>
-                        {guests.map((guest) => (
+                         {guests.map((guest) => (
                           <CommandItem
                             key={guest.id}
-                            value={guest.id}
+                            value={guest.name}
                             onSelect={() => {
                               setGuestId(guest.id);
                               setGuestSearchOpen(false);
@@ -449,6 +461,24 @@ export function AssignRoomDrawer({ open, onClose, roomId, roomNumber }: AssignRo
 
             <Separator />
 
+            {/* Collect Payment Now Toggle */}
+            {!organizationBooking && (
+              <div className="flex items-center justify-between">
+                <div className="space-y-0.5">
+                  <Label className="text-base font-medium">Collect Payment Now</Label>
+                  <p className="text-sm text-muted-foreground">
+                    Open payment form immediately after booking
+                  </p>
+                </div>
+                <Switch
+                  checked={collectPaymentNow}
+                  onCheckedChange={setCollectPaymentNow}
+                />
+              </div>
+            )}
+
+            {collectPaymentNow && !organizationBooking && <Separator />}
+
             {/* Price Breakdown */}
             {pricing && (
               <div className="bg-muted/50 rounded-lg p-4 space-y-3">
@@ -520,6 +550,22 @@ export function AssignRoomDrawer({ open, onClose, roomId, roomNumber }: AssignRo
           />
         </DialogContent>
       </Dialog>
+
+      {/* Payment Dialog */}
+      {createdBooking && (
+        <QuickPayment
+          open={showPaymentDialog}
+          onClose={() => {
+            setShowPaymentDialog(false);
+            setCreatedBooking(null);
+            onClose();
+          }}
+          guestId={createdBooking.guest_id}
+          bookingId={createdBooking.id}
+          expectedAmount={createdBooking.total_amount}
+          isBookingPayment={true}
+        />
+      )}
     </>
   );
 }
