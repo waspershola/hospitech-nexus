@@ -14,6 +14,7 @@ import { useQuery } from '@tanstack/react-query';
 import { format, isToday, isYesterday, differenceInDays } from 'date-fns';
 import { Badge } from '@/components/ui/badge';
 import { Link } from 'react-router-dom';
+import { TenantStatusWidget } from '@/components/TenantStatusWidget';
 
 export default function Overview() {
   const { tenantId } = useAuth();
@@ -152,6 +153,8 @@ export default function Overview() {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        <TenantStatusWidget />
+        
         <Card className="p-6 bg-gradient-to-br from-primary/10 to-primary/5 border-primary/20">
           <div className="flex items-center justify-between">
             <div>
