@@ -2191,6 +2191,56 @@ export type Database = {
           },
         ]
       }
+      platform_navigation_items: {
+        Row: {
+          allowed_roles: string[] | null
+          created_at: string
+          icon: string | null
+          id: string
+          is_active: boolean | null
+          label: string
+          order_index: number | null
+          parent_id: string | null
+          path: string
+          tenant_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          allowed_roles?: string[] | null
+          created_at?: string
+          icon?: string | null
+          id?: string
+          is_active?: boolean | null
+          label: string
+          order_index?: number | null
+          parent_id?: string | null
+          path: string
+          tenant_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          allowed_roles?: string[] | null
+          created_at?: string
+          icon?: string | null
+          id?: string
+          is_active?: boolean | null
+          label?: string
+          order_index?: number | null
+          parent_id?: string | null
+          path?: string
+          tenant_id?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "platform_navigation_items_parent_id_fkey"
+            columns: ["parent_id"]
+            isOneToOne: false
+            referencedRelation: "platform_navigation_items"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       platform_plans: {
         Row: {
           created_at: string
