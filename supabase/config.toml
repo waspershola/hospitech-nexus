@@ -86,3 +86,6 @@ verify_jwt = true
 
 [functions.verify-payment]
 verify_jwt = true
+
+[functions.platform-user-management]
+verify_jwt = true
