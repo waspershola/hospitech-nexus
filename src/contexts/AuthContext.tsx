@@ -8,6 +8,7 @@ interface AuthContextType {
   tenantId: string | null;
   tenantName: string | null;
   role: string | null;
+  platformRole: string | null;
   department: string | null;
   passwordResetRequired: boolean;
   loading: boolean;
@@ -22,6 +23,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [tenantId, setTenantId] = useState<string | null>(null);
   const [tenantName, setTenantName] = useState<string | null>(null);
   const [role, setRole] = useState<string | null>(null);
+  const [platformRole, setPlatformRole] = useState<string | null>(null);
   const [department, setDepartment] = useState<string | null>(null);
   const [passwordResetRequired, setPasswordResetRequired] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -125,8 +127,31 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   // Auto-checkout disabled - Front desk must manually process checkouts
 
+  const fetchPlatformRole = async (userId: string) => {
+    try {
+      // Using any to bypass TypeScript complexity with platform_users table
+      const { data, error } = await (supabase as any)
+        .from('platform_users')
+        .select('role')
+        .eq('user_id', userId)
+        .maybeSingle();
+
+      if (error && error.code !== 'PGRST116') {
+        console.error('Error fetching platform role:', error);
+      }
+
+      setPlatformRole(data?.role || null);
+    } catch (err) {
+      console.error('Failed to fetch platform role:', err);
+      setPlatformRole(null);
+    }
+  };
+
   const fetchUserRoleAndTenant = async (userId: string) => {
     try {
+      // Fetch both platform role and tenant role in parallel
+      const [platformRolePromise] = [fetchPlatformRole(userId)];
+      
       const { data, error } = await supabase
         .from('user_roles')
         .select('tenant_id, role, tenants(name)')
@@ -153,6 +178,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           setPasswordResetRequired(staffData.password_reset_required || false);
         }
       }
+      
+      // Wait for platform role fetch to complete
+      await platformRolePromise;
     } catch (error) {
       console.error('Error fetching user role:', error);
     } finally {
@@ -167,12 +195,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setTenantId(null);
     setTenantName(null);
     setRole(null);
+    setPlatformRole(null);
     setDepartment(null);
     setPasswordResetRequired(false);
   };
 
   return (
-    <AuthContext.Provider value={{ user, session, tenantId, tenantName, role, department, passwordResetRequired, loading, signOut }}>
+    <AuthContext.Provider value={{ user, session, tenantId, tenantName, role, platformRole, department, passwordResetRequired, loading, signOut }}>
       {children}
     </AuthContext.Provider>
   );
