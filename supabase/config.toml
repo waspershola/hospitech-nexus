@@ -1,5 +1,11 @@
 project_id = "akchmpmzcupzjaeewdui"
 
+[functions.platform-nav-sync]
+verify_jwt = true
+
+[functions.migrate-navigation]
+verify_jwt = false
+
 [functions.migrate-sms-providers]
 verify_jwt = true
 
