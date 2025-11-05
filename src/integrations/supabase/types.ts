@@ -2351,44 +2351,50 @@ export type Database = {
       }
       platform_plans: {
         Row: {
-          billing_cycle: string
           created_at: string
           description: string | null
-          features: string[] | null
+          features: Json
           id: string
           is_active: boolean | null
-          limits: Json | null
+          is_public: boolean | null
+          limits: Json
+          metadata: Json | null
           name: string
-          overage_rates: Json | null
-          price: number
+          price_monthly: number
+          price_yearly: number
+          slug: string
           trial_days: number | null
           updated_at: string
         }
         Insert: {
-          billing_cycle?: string
           created_at?: string
           description?: string | null
-          features?: string[] | null
+          features?: Json
           id?: string
           is_active?: boolean | null
-          limits?: Json | null
+          is_public?: boolean | null
+          limits?: Json
+          metadata?: Json | null
           name: string
-          overage_rates?: Json | null
-          price?: number
+          price_monthly?: number
+          price_yearly?: number
+          slug: string
           trial_days?: number | null
           updated_at?: string
         }
         Update: {
-          billing_cycle?: string
           created_at?: string
           description?: string | null
-          features?: string[] | null
+          features?: Json
           id?: string
           is_active?: boolean | null
-          limits?: Json | null
+          is_public?: boolean | null
+          limits?: Json
+          metadata?: Json | null
           name?: string
-          overage_rates?: Json | null
-          price?: number
+          price_monthly?: number
+          price_yearly?: number
+          slug?: string
           trial_days?: number | null
           updated_at?: string
         }
@@ -4371,6 +4377,69 @@ export type Database = {
             foreignKeyName: "tenant_sms_usage_logs_tenant_id_fkey"
             columns: ["tenant_id"]
             isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      tenant_subscriptions: {
+        Row: {
+          billing_cycle: string
+          cancelled_at: string | null
+          created_at: string
+          current_period_end: string
+          current_period_start: string
+          id: string
+          metadata: Json | null
+          plan_id: string
+          status: string
+          tenant_id: string
+          trial_end: string | null
+          trial_start: string | null
+          updated_at: string
+        }
+        Insert: {
+          billing_cycle?: string
+          cancelled_at?: string | null
+          created_at?: string
+          current_period_end: string
+          current_period_start?: string
+          id?: string
+          metadata?: Json | null
+          plan_id: string
+          status?: string
+          tenant_id: string
+          trial_end?: string | null
+          trial_start?: string | null
+          updated_at?: string
+        }
+        Update: {
+          billing_cycle?: string
+          cancelled_at?: string | null
+          created_at?: string
+          current_period_end?: string
+          current_period_start?: string
+          id?: string
+          metadata?: Json | null
+          plan_id?: string
+          status?: string
+          tenant_id?: string
+          trial_end?: string | null
+          trial_start?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tenant_subscriptions_plan_id_fkey"
+            columns: ["plan_id"]
+            isOneToOne: false
+            referencedRelation: "platform_plans"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tenant_subscriptions_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: true
             referencedRelation: "tenants"
             referencedColumns: ["id"]
           },
