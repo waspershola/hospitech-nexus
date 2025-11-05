@@ -56,13 +56,16 @@ export function getRoomStatusNow(
 
   // Check-in day logic
   if (isToday(new Date(booking.check_in))) {
-    if (isBefore(now, checkInDT)) {
-      return 'reserved'; // Before check-in time
-    }
+    // Priority 1: If guest has checked in, show occupied immediately
     if (booking.status === 'checked_in') {
-      return 'occupied'; // Guest has checked in
+      return 'occupied';
     }
-    return 'checking_in'; // Check-in time passed but not checked in yet
+    // Priority 2: Before check-in time and not checked in
+    if (isBefore(now, checkInDT)) {
+      return 'reserved';
+    }
+    // Priority 3: Check-in time passed but not checked in yet
+    return 'checking_in';
   }
 
   // Check-out day logic
