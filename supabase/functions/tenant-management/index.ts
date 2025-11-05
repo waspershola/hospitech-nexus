@@ -50,12 +50,14 @@ serve(async (req) => {
     }
 
     const method = req.method;
-    const url = new URL(req.url);
-    const tenantId = url.pathname.split('/').pop();
+    const body = method !== 'GET' ? await req.json() : {};
+    const { action, tenant_id } = body;
+
+    console.log('📍 Request:', { method, action, tenant_id });
 
     // CREATE TENANT
-    if (method === 'POST' && url.pathname === '/tenant-management/create') {
-      const { hotel_name, owner_email, plan_id, domain, owner_password } = await req.json();
+    if (action === 'create') {
+      const { hotel_name, owner_email, plan_id, domain, owner_password } = body;
 
       if (!hotel_name || !owner_email || !plan_id) {
         return new Response(
@@ -257,13 +259,11 @@ serve(async (req) => {
     }
 
     // UPDATE TENANT
-    if (method === 'PATCH' && tenantId) {
-      const updates = await req.json();
-
+    if (action === 'update' && tenant_id) {
       const { error: updateError } = await supabase
         .from('platform_tenants')
-        .update(updates)
-        .eq('id', tenantId);
+        .update(body.updates)
+        .eq('id', tenant_id);
 
       if (updateError) throw updateError;
 
@@ -273,10 +273,10 @@ serve(async (req) => {
         .insert({
           action: 'tenant_updated',
           resource_type: 'tenant',
-          resource_id: tenantId,
+          resource_id: tenant_id,
           actor_id: user.id,
           actor_role: platformUser.role,
-          payload: { tenant_id: tenantId, updates },
+          payload: { tenant_id, updates: body.updates },
         });
 
       return new Response(
@@ -286,11 +286,11 @@ serve(async (req) => {
     }
 
     // SUSPEND TENANT
-    if (method === 'POST' && url.pathname.includes('/suspend')) {
+    if (action === 'suspend' && tenant_id) {
       const { error: suspendError } = await supabase
         .from('platform_tenants')
         .update({ status: 'suspended' })
-        .eq('id', tenantId);
+        .eq('id', tenant_id);
 
       if (suspendError) throw suspendError;
 
@@ -300,10 +300,10 @@ serve(async (req) => {
         .insert({
           action: 'tenant_suspended',
           resource_type: 'tenant',
-          resource_id: tenantId,
+          resource_id: tenant_id,
           actor_id: user.id,
           actor_role: platformUser.role,
-          payload: { tenant_id: tenantId },
+          payload: { tenant_id },
         });
 
       return new Response(
@@ -313,11 +313,11 @@ serve(async (req) => {
     }
 
     // ACTIVATE TENANT
-    if (method === 'POST' && url.pathname.includes('/activate')) {
+    if (action === 'activate' && tenant_id) {
       const { error: activateError } = await supabase
         .from('platform_tenants')
         .update({ status: 'active' })
-        .eq('id', tenantId);
+        .eq('id', tenant_id);
 
       if (activateError) throw activateError;
 
@@ -327,10 +327,10 @@ serve(async (req) => {
         .insert({
           action: 'tenant_activated',
           resource_type: 'tenant',
-          resource_id: tenantId,
+          resource_id: tenant_id,
           actor_id: user.id,
           actor_role: platformUser.role,
-          payload: { tenant_id: tenantId },
+          payload: { tenant_id },
         });
 
       return new Response(
@@ -340,11 +340,11 @@ serve(async (req) => {
     }
 
     // DELETE TENANT (soft delete)
-    if (method === 'DELETE' && tenantId) {
+    if (action === 'delete' && tenant_id) {
       const { error: deleteError } = await supabase
         .from('platform_tenants')
         .update({ status: 'cancelled' })
-        .eq('id', tenantId);
+        .eq('id', tenant_id);
 
       if (deleteError) throw deleteError;
 
@@ -354,10 +354,10 @@ serve(async (req) => {
         .insert({
           action: 'tenant_deleted',
           resource_type: 'tenant',
-          resource_id: tenantId,
+          resource_id: tenant_id,
           actor_id: user.id,
           actor_role: platformUser.role,
-          payload: { tenant_id: tenantId },
+          payload: { tenant_id },
         });
 
       return new Response(

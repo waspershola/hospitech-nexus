@@ -50,8 +50,8 @@ export function usePlatformTenants() {
       plan_id: string;
       domain?: string;
     }) => {
-      const { data, error } = await supabase.functions.invoke('tenant-management/create', {
-        body: tenantData,
+      const { data, error } = await supabase.functions.invoke('tenant-management', {
+        body: { ...tenantData, action: 'create' },
       });
 
       if (error) throw error;
@@ -95,8 +95,8 @@ export function usePlatformTenants() {
 
   const suspendTenant = useMutation({
     mutationFn: async (tenantId: string) => {
-      const { data, error } = await supabase.functions.invoke(`tenant-management/${tenantId}/suspend`, {
-        method: 'POST',
+      const { data, error } = await supabase.functions.invoke('tenant-management', {
+        body: { action: 'suspend', tenant_id: tenantId },
       });
 
       if (error) throw error;
@@ -113,8 +113,8 @@ export function usePlatformTenants() {
 
   const activateTenant = useMutation({
     mutationFn: async (tenantId: string) => {
-      const { data, error } = await supabase.functions.invoke(`tenant-management/${tenantId}/activate`, {
-        method: 'POST',
+      const { data, error } = await supabase.functions.invoke('tenant-management', {
+        body: { action: 'activate', tenant_id: tenantId },
       });
 
       if (error) throw error;
@@ -131,8 +131,8 @@ export function usePlatformTenants() {
 
   const deleteTenant = useMutation({
     mutationFn: async (tenantId: string) => {
-      const { data, error } = await supabase.functions.invoke(`tenant-management/${tenantId}`, {
-        method: 'DELETE',
+      const { data, error } = await supabase.functions.invoke('tenant-management', {
+        body: { action: 'delete', tenant_id: tenantId },
       });
 
       if (error) throw error;
