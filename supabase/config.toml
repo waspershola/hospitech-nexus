@@ -1,5 +1,8 @@
 project_id = "akchmpmzcupzjaeewdui"
 
+[functions.purchase-sms-bundle]
+verify_jwt = true
+
 [functions.send-sms]
 verify_jwt = true
 
