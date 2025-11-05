@@ -2015,6 +2015,7 @@ export type Database = {
           cycle_start: string
           id: string
           invoice_payload: Json | null
+          payment_provider_id: string | null
           sms_used: number
           status: string
           tenant_id: string
@@ -2028,6 +2029,7 @@ export type Database = {
           cycle_start: string
           id?: string
           invoice_payload?: Json | null
+          payment_provider_id?: string | null
           sms_used?: number
           status?: string
           tenant_id: string
@@ -2041,12 +2043,20 @@ export type Database = {
           cycle_start?: string
           id?: string
           invoice_payload?: Json | null
+          payment_provider_id?: string | null
           sms_used?: number
           status?: string
           tenant_id?: string
           updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "platform_billing_payment_provider_id_fkey"
+            columns: ["payment_provider_id"]
+            isOneToOne: false
+            referencedRelation: "platform_payment_providers"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "platform_billing_tenant_id_fkey"
             columns: ["tenant_id"]
@@ -2285,6 +2295,48 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      platform_payment_providers: {
+        Row: {
+          api_key_encrypted: string | null
+          api_secret_encrypted: string | null
+          config: Json | null
+          created_at: string | null
+          id: string
+          is_active: boolean | null
+          is_default: boolean | null
+          provider_name: string
+          provider_type: string
+          updated_at: string | null
+          webhook_secret: string | null
+        }
+        Insert: {
+          api_key_encrypted?: string | null
+          api_secret_encrypted?: string | null
+          config?: Json | null
+          created_at?: string | null
+          id?: string
+          is_active?: boolean | null
+          is_default?: boolean | null
+          provider_name: string
+          provider_type: string
+          updated_at?: string | null
+          webhook_secret?: string | null
+        }
+        Update: {
+          api_key_encrypted?: string | null
+          api_secret_encrypted?: string | null
+          config?: Json | null
+          created_at?: string | null
+          id?: string
+          is_active?: boolean | null
+          is_default?: boolean | null
+          provider_name?: string
+          provider_type?: string
+          updated_at?: string | null
+          webhook_secret?: string | null
+        }
+        Relationships: []
       }
       platform_plans: {
         Row: {

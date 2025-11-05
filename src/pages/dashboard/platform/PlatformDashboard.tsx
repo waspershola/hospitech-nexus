@@ -8,6 +8,7 @@ import { PlatformPlansTab } from './tabs/PlatformPlansTab';
 import { PlatformUsersTab } from './tabs/PlatformUsersTab';
 import { PlatformSupportTab } from './tabs/PlatformSupportTab';
 import { PlatformEmailProvidersTab } from './tabs/PlatformEmailProvidersTab';
+import { PlatformPaymentProvidersTab } from './tabs/PlatformPaymentProvidersTab';
 import { PlatformFeatureFlagsTab } from './tabs/PlatformFeatureFlagsTab';
 import { PlatformNavigationTab } from './tabs/PlatformNavigationTab';
 import { PlatformBillingTab } from './tabs/PlatformBillingTab';
@@ -52,6 +53,10 @@ export default function PlatformDashboard() {
             <Mail className="h-4 w-4" />
             Email Providers
           </TabsTrigger>
+          <TabsTrigger value="payment-providers" className="gap-2">
+            <CreditCard className="h-4 w-4" />
+            Payment Providers
+          </TabsTrigger>
           <TabsTrigger value="feature-flags" className="gap-2">
             <Flag className="h-4 w-4" />
             Feature Flags
@@ -92,6 +97,10 @@ export default function PlatformDashboard() {
 
         <TabsContent value="email-providers">
           <PlatformEmailProvidersTab />
+        </TabsContent>
+
+        <TabsContent value="payment-providers">
+          <PlatformPaymentProvidersTab />
         </TabsContent>
 
         <TabsContent value="feature-flags">
