@@ -51,11 +51,15 @@ export function BulkCheckInDrawer({ open, onClose }: BulkCheckInDrawerProps) {
 
   const today = new Date();
   today.setHours(0, 0, 0, 0);
-  const todayISO = today.toISOString().split('T')[0]; // Just date part: "2025-11-05"
+  const todayStart = today.toISOString();
+  
+  const tomorrow = new Date(today);
+  tomorrow.setDate(tomorrow.getDate() + 1);
+  const tomorrowStart = tomorrow.toISOString();
 
   // Fetch today's arrivals
   const { data: arrivals = [], isLoading } = useQuery({
-    queryKey: ['arrivals-list', tenantId, todayISO],
+    queryKey: ['arrivals-list', tenantId, todayStart],
     queryFn: async () => {
       if (!tenantId) return [];
 
@@ -77,7 +81,8 @@ export function BulkCheckInDrawer({ open, onClose }: BulkCheckInDrawerProps) {
           )
         `)
         .eq('tenant_id', tenantId)
-        .eq('check_in', todayISO)
+        .gte('check_in', todayStart)
+        .lt('check_in', tomorrowStart)
         .in('status', ['reserved', 'confirmed'])
         .order('check_in', { ascending: true });
 
