@@ -2666,6 +2666,7 @@ export type Database = {
           metadata: Json | null
           name: string
           role: Database["public"]["Enums"]["app_role"]
+          system_locked: boolean | null
           updated_at: string
         }
         Insert: {
@@ -2676,6 +2677,7 @@ export type Database = {
           metadata?: Json | null
           name: string
           role: Database["public"]["Enums"]["app_role"]
+          system_locked?: boolean | null
           updated_at?: string
         }
         Update: {
@@ -2686,6 +2688,7 @@ export type Database = {
           metadata?: Json | null
           name?: string
           role?: Database["public"]["Enums"]["app_role"]
+          system_locked?: boolean | null
           updated_at?: string
         }
         Relationships: []
@@ -4601,6 +4604,7 @@ export type Database = {
         Returns: boolean
       }
       is_platform_admin: { Args: { _user_id: string }; Returns: boolean }
+      is_system_locked_user: { Args: { _user_id: string }; Returns: boolean }
       user_has_permission: {
         Args: { _permission_key: string; _tenant_id: string; _user_id: string }
         Returns: boolean

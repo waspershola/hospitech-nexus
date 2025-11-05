@@ -39,10 +39,43 @@ Deno.serve(async (req) => {
         tenantId = body.tenant_id;
       }
       
+      // Check for authentication and super admin status
+      const { data: { user } } = await supabase.auth.getUser();
+      
+      if (user) {
+        // Check if user is super_admin (bypasses tenant filtering)
+        const { data: platformUser } = await supabase
+          .from('platform_users')
+          .select('role, system_locked')
+          .eq('id', user.id)
+          .maybeSingle();
+
+        // If super_admin, return all navigation items (global scope)
+        if (platformUser?.role === 'super_admin') {
+          console.log('Super admin detected - fetching global navigation');
+          
+          const { data: allNavItems, error } = await supabase
+            .from('platform_nav_items')
+            .select('*')
+            .eq('is_active', true)
+            .order('order_index');
+            
+          if (error) {
+            console.error('Error fetching nav items:', error);
+            throw error;
+          }
+          
+          console.log(`Found ${allNavItems?.length || 0} navigation items for super admin`);
+          
+          return new Response(
+            JSON.stringify({ data: allNavItems }),
+            { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+      }
+      
       if (!tenantId) {
         console.log('No tenant_id provided, attempting to get from auth');
-        // Try to get tenant from authenticated user
-        const { data: { user } } = await supabase.auth.getUser();
         if (!user) {
           return new Response(
             JSON.stringify({ error: 'tenant_id required or user must be authenticated' }),

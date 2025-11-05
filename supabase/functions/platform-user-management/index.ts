@@ -151,6 +151,27 @@ serve(async (req) => {
         throw new Error('Cannot change your own role');
       }
 
+      // Check if attempting to modify protected user
+      const { data: existingUser, error: fetchError } = await supabase
+        .from('platform_users')
+        .select('system_locked, role')
+        .eq('user_id', userId)
+        .single();
+
+      if (fetchError) throw fetchError;
+
+      if (existingUser?.system_locked) {
+        // Prevent role changes for system-locked users
+        if (updates.role && updates.role !== existingUser.role) {
+          throw new Error('Cannot change role of system-locked user');
+        }
+        
+        // Prevent unlocking
+        if (updates.system_locked === false) {
+          throw new Error('Cannot remove system_locked flag from protected user');
+        }
+      }
+
       // Update platform_users record
       const { data: updatedUser, error: updateError } = await supabase
         .from('platform_users')
@@ -199,12 +220,18 @@ serve(async (req) => {
         throw new Error('Cannot delete yourself');
       }
 
-      // Get user info before deletion
-      const { data: userToDelete } = await supabase
+      // Check if user is system-locked before attempting deletion
+      const { data: userToDelete, error: fetchError } = await supabase
         .from('platform_users')
-        .select('email, role')
+        .select('email, role, system_locked')
         .eq('user_id', userId)
         .single();
+
+      if (fetchError) throw fetchError;
+
+      if (userToDelete?.system_locked) {
+        throw new Error('Cannot delete system-locked user. This is a protected platform account.');
+      }
 
       // Delete platform_users record (cascade will handle auth.users via trigger if needed)
       const { error: deleteError } = await supabase

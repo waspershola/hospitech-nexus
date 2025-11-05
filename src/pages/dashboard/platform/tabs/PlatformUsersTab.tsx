@@ -123,10 +123,18 @@ export function PlatformUsersTab() {
               </TableHeader>
               <TableBody>
                 {users.map((platformUser) => (
-                  <TableRow key={platformUser.user_id}>
+                <TableRow key={platformUser.user_id}>
                     <TableCell>
                       <div className="flex flex-col">
-                        <span className="font-medium">{platformUser.full_name}</span>
+                        <div className="flex items-center gap-2">
+                          <span className="font-medium">{platformUser.full_name}</span>
+                          {platformUser.system_locked && (
+                            <Badge variant="outline" className="bg-amber-50 text-amber-700 border-amber-200">
+                              <Shield className="h-3 w-3 mr-1" />
+                              Protected
+                            </Badge>
+                          )}
+                        </div>
                         <span className="text-sm text-muted-foreground flex items-center gap-2">
                           {platformUser.email}
                           {platformUser.user_id === user?.id && (
@@ -157,7 +165,8 @@ export function PlatformUsersTab() {
                           variant="ghost"
                           size="sm"
                           onClick={() => handlePasswordReset(platformUser.user_id)}
-                          disabled={sendPasswordReset.isPending}
+                          disabled={sendPasswordReset.isPending || platformUser.system_locked}
+                          title={platformUser.system_locked ? "Cannot reset password for protected account" : "Send password reset"}
                         >
                           <Mail className="h-4 w-4" />
                         </Button>
@@ -168,7 +177,8 @@ export function PlatformUsersTab() {
                             setSelectedUser(platformUser);
                             setEditDialogOpen(true);
                           }}
-                          disabled={platformUser.user_id === user?.id}
+                          disabled={platformUser.user_id === user?.id || platformUser.system_locked}
+                          title={platformUser.system_locked ? "Cannot edit protected account" : "Edit user"}
                         >
                           <Pencil className="h-4 w-4" />
                         </Button>
@@ -179,7 +189,8 @@ export function PlatformUsersTab() {
                             setSelectedUser(platformUser);
                             setDeleteDialogOpen(true);
                           }}
-                          disabled={platformUser.user_id === user?.id}
+                          disabled={platformUser.user_id === user?.id || platformUser.system_locked}
+                          title={platformUser.system_locked ? "Cannot delete protected account" : "Delete user"}
                         >
                           <Trash2 className="h-4 w-4 text-destructive" />
                         </Button>

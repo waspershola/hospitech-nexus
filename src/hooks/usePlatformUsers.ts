@@ -7,6 +7,8 @@ export interface PlatformUser {
   email: string;
   full_name: string;
   role: 'super_admin' | 'support_admin' | 'billing_bot' | 'marketplace_admin' | 'monitoring_bot';
+  system_locked?: boolean;
+  metadata?: Record<string, any>;
   last_active?: string;
   created_at: string;
   updated_at: string;

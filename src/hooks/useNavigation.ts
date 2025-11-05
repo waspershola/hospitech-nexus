@@ -1,6 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
+import { usePlatformRole } from './usePlatformRole';
 
 export interface NavigationItem {
   id: string;
@@ -24,10 +25,26 @@ export interface NavigationItem {
  */
 export function useNavigation() {
   const { tenantId, role, department } = useAuth();
+  const { platformRole } = usePlatformRole();
   
   return useQuery({
-    queryKey: ['platform-navigation', tenantId, role, department],
+    queryKey: ['platform-navigation', tenantId, role, department, platformRole],
     queryFn: async () => {
+      // Super admins get all navigation items without tenant filtering
+      if (platformRole === 'super_admin') {
+        console.log('Super admin detected - fetching global navigation');
+        
+        const { data, error } = await supabase.functions.invoke('platform-nav-sync', {
+          method: 'POST',
+        });
+        
+        if (error) throw error;
+        if (!data?.data) throw new Error('No navigation data received');
+        
+        return data.data as NavigationItem[];
+      }
+
+      // Regular tenant-based navigation for non-super-admins
       if (!tenantId) {
         throw new Error('Tenant ID required for navigation');
       }
@@ -79,7 +96,7 @@ export function useNavigation() {
       console.log('Filtered navigation items:', filtered.length);
       return filtered;
     },
-    enabled: !!tenantId && !!role,
+    enabled: !!platformRole || (!!tenantId && !!role),
     staleTime: 5 * 60 * 1000, // Cache for 5 minutes
     gcTime: 10 * 60 * 1000, // Keep in cache for 10 minutes
   });
