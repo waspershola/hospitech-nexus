@@ -6,6 +6,12 @@ verify_jwt = true
 [functions.migrate-navigation]
 verify_jwt = false
 
+[functions.billing-cycle]
+verify_jwt = false
+
+[functions.track-usage]
+verify_jwt = false
+
 [functions.migrate-sms-providers]
 verify_jwt = true
 

@@ -43,6 +43,7 @@ import PortalHome from "./pages/portal/Home";
 import PortalRequests from "./pages/portal/Requests";
 import PortalPayments from "./pages/portal/Payments";
 import PlatformDashboard from "./pages/dashboard/platform/PlatformDashboard";
+import PlatformBilling from "./pages/dashboard/platform/PlatformBilling";
 import { usePlatformRole } from "./hooks/usePlatformRole";
 
 function PlatformGuard({ children }: { children: React.ReactNode }) {
@@ -106,6 +107,7 @@ const App = () => (
           
           {/* Platform Admin */}
           <Route path="platform-admin" element={<PlatformGuard><PlatformDashboard /></PlatformGuard>} />
+          <Route path="platform-billing" element={<PlatformGuard><PlatformBilling /></PlatformGuard>} />
             </Route>
 
             <Route path="/portal" element={<ProtectedRoute><GuestPortalShell /></ProtectedRoute>}>
