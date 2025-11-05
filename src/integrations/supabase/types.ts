@@ -2288,33 +2288,45 @@ export type Database = {
       }
       platform_plans: {
         Row: {
+          billing_cycle: string
           created_at: string
-          feature_flags: Json | null
+          description: string | null
+          features: string[] | null
           id: string
-          included_sms: number
-          monthly_price: number
+          is_active: boolean | null
+          limits: Json | null
           name: string
-          trial_days: number
+          overage_rates: Json | null
+          price: number
+          trial_days: number | null
           updated_at: string
         }
         Insert: {
+          billing_cycle?: string
           created_at?: string
-          feature_flags?: Json | null
+          description?: string | null
+          features?: string[] | null
           id?: string
-          included_sms?: number
-          monthly_price?: number
+          is_active?: boolean | null
+          limits?: Json | null
           name: string
-          trial_days?: number
+          overage_rates?: Json | null
+          price?: number
+          trial_days?: number | null
           updated_at?: string
         }
         Update: {
+          billing_cycle?: string
           created_at?: string
-          feature_flags?: Json | null
+          description?: string | null
+          features?: string[] | null
           id?: string
-          included_sms?: number
-          monthly_price?: number
+          is_active?: boolean | null
+          limits?: Json | null
           name?: string
-          trial_days?: number
+          overage_rates?: Json | null
+          price?: number
+          trial_days?: number | null
           updated_at?: string
         }
         Relationships: []
