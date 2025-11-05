@@ -1,7 +1,7 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Plus } from 'lucide-react';
+import { Plus, ShoppingCart } from 'lucide-react';
 import { usePlatformAddons } from '@/hooks/usePlatformAddons';
 import { useState } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
@@ -10,10 +10,13 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Switch } from '@/components/ui/switch';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { AddonPurchaseDialog } from '@/components/marketplace/AddonPurchaseDialog';
 
 export function PlatformMarketplaceTab() {
   const { addons, purchases, isLoading, createAddon } = usePlatformAddons();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [purchaseDialogOpen, setPurchaseDialogOpen] = useState(false);
+  const [selectedAddon, setSelectedAddon] = useState<any>(null);
   const [formData, setFormData] = useState({
     name: '',
     description: '',
@@ -52,6 +55,7 @@ export function PlatformMarketplaceTab() {
   }
 
   return (
+    <>
     <Tabs defaultValue="addons" className="space-y-4">
       <TabsList>
         <TabsTrigger value="addons">Add-ons Catalog</TabsTrigger>
@@ -156,8 +160,26 @@ export function PlatformMarketplaceTab() {
                     <span className="text-2xl font-bold">{addon.units_available}</span>
                     <span className="text-sm text-muted-foreground">SMS Credits</span>
                   </div>
-                  <div className="text-lg font-semibold">
-                    {pricing?.currency} {pricing?.amount?.toLocaleString()}
+                  <div className="flex items-center justify-between">
+                    <div className="text-lg font-semibold">
+                      {pricing?.currency} {pricing?.amount?.toLocaleString()}
+                    </div>
+                    <Button
+                      size="sm"
+                      onClick={() => {
+                        setSelectedAddon({
+                          id: addon.id,
+                          name: addon.title,
+                          description: addon.description,
+                          price: pricing?.amount || 0,
+                          currency: pricing?.currency || 'NGN',
+                        });
+                        setPurchaseDialogOpen(true);
+                      }}
+                    >
+                      <ShoppingCart className="h-4 w-4 mr-2" />
+                      Purchase
+                    </Button>
                   </div>
                 </CardContent>
               </Card>
@@ -202,5 +224,12 @@ export function PlatformMarketplaceTab() {
         </div>
       </TabsContent>
     </Tabs>
+
+    <AddonPurchaseDialog
+      addon={selectedAddon}
+      open={purchaseDialogOpen}
+      onOpenChange={setPurchaseDialogOpen}
+    />
+    </>
   );
 }

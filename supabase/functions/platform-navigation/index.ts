@@ -70,6 +70,7 @@ Deno.serve(async (req) => {
         { label: 'Finance Center', path: '/dashboard/finance-center', icon: 'DollarSign', allowed_roles: ['owner', 'admin', 'finance_staff'], order_index: 6 },
         { label: 'Staff', path: '/dashboard/staff', icon: 'UserCog', allowed_roles: ['owner', 'admin'], order_index: 7 },
         { label: 'Configuration', path: '/dashboard/configuration', icon: 'Settings', allowed_roles: ['owner', 'admin'], order_index: 8 },
+        { label: 'Platform Admin', path: '/dashboard/platform-admin?tab=payment-providers', icon: 'ShieldCheck', allowed_roles: ['super_admin', 'support_admin'], order_index: 100 },
       ];
 
       const results = [];
