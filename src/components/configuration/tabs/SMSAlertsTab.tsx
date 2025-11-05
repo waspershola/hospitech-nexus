@@ -7,6 +7,7 @@ import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/com
 import { Badge } from '@/components/ui/badge';
 import { ConfigSection } from '../shared/ConfigSection';
 import { useSMSAlertSettings } from '@/hooks/useSMSAlertSettings';
+import { SMSCronJobSetup } from './SMSCronJobSetup';
 import { Bell, Plus, X, AlertTriangle, CheckCircle2 } from 'lucide-react';
 import { Separator } from '@/components/ui/separator';
 import { Alert, AlertDescription } from '@/components/ui/alert';
@@ -186,6 +187,8 @@ export function SMSAlertsTab() {
           </div>
         </div>
       </ConfigSection>
+
+      <SMSCronJobSetup />
 
       {alertLogs && alertLogs.length > 0 && (
         <Card>

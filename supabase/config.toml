@@ -9,6 +9,9 @@ verify_jwt = true
 [functions.check-sms-quota-alerts]
 verify_jwt = true
 
+[functions.daily-sms-quota-check]
+verify_jwt = false
+
 [functions.reset-password]
 verify_jwt = true
 
