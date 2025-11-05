@@ -215,25 +215,53 @@ serve(async (req) => {
 
     console.log('SMS send result:', result);
 
-    // Log SMS
-    await supabase.from('sms_logs').insert({
+    // Calculate segments for cost
+    const segments = result.cost || Math.ceil(message.length / 160);
+
+    // Log to analytics table
+    await supabase.from('tenant_sms_usage_logs').insert({
+      tenant_id,
+      event_key: event_key || 'manual',
+      recipient: to,
+      message_preview: message.substring(0, 100),
+      status: result.success ? 'sent' : 'failed',
+      provider: settings.provider,
+      cost: segments,
+      segments: segments,
+      sent_at: new Date().toISOString(),
+      failed_at: result.success ? null : new Date().toISOString(),
+      error_message: result.error,
+      booking_id,
+      guest_id,
+      metadata: {
+        provider_message_id: result.messageId,
+        message_length: message.length,
+      },
+    });
+
+    // Legacy log for backwards compatibility
+    supabase.from('sms_logs').insert({
       tenant_id,
       to_number: to,
       message_body: message,
       status: result.success ? 'sent' : 'failed',
       provider: settings.provider,
       provider_message_id: result.messageId,
-      cost_credits: result.cost || 1,
+      cost_credits: segments,
       event_key,
       booking_id,
       guest_id,
       sent_at: result.success ? new Date().toISOString() : null,
       error_message: result.error,
+    }).then(() => {
+      console.log('Legacy SMS log created');
+    }, (err: any) => {
+      console.error('Legacy log error (non-critical):', err);
     });
 
     // Deduct quota if successful
     if (result.success) {
-      const newQuotaUsed = quota.quota_used + (result.cost || 1);
+      const newQuotaUsed = quota.quota_used + segments;
       await supabase
         .from('tenant_sms_quota')
         .update({ 
@@ -243,13 +271,28 @@ serve(async (req) => {
         .eq('tenant_id', tenant_id);
 
       console.log(`Quota updated: ${newQuotaUsed}/${quota.quota_total}`);
+      
+      // Check if quota is low and trigger alert check
+      const remainingPercent = ((quota.quota_total - newQuotaUsed) / quota.quota_total) * 100;
+      if (remainingPercent <= 25) {
+        // Trigger quota alert check asynchronously (don't wait for it)
+        supabase.functions.invoke('check-sms-quota-alerts', {
+          body: { tenant_id }
+        }).then(() => {
+          console.log('Quota alert check triggered');
+        }, (err: any) => {
+          console.error('Quota alert check failed (non-critical):', err);
+        });
+      }
     }
 
+    const creditsUsed = result.success ? segments : 0;
+    
     return new Response(JSON.stringify({
       success: result.success,
       messageId: result.messageId,
-      creditsUsed: result.cost || 1,
-      remainingQuota: quota.quota_total - quota.quota_used - (result.cost || 0),
+      creditsUsed: creditsUsed,
+      remainingQuota: quota.quota_total - quota.quota_used - creditsUsed,
       error: result.error,
     }), {
       status: result.success ? 200 : 500,
