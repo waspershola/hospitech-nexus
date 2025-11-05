@@ -25,7 +25,7 @@ Deno.serve(async (req) => {
     // Get all active tenants with subscriptions
     const { data: tenants, error: tenantsError } = await supabase
       .from('tenants')
-      .select('id, name, plan_id, platform_plans(*)');
+      .select('id, name, plan_id');
 
     if (tenantsError) throw tenantsError;
 
@@ -51,8 +51,13 @@ Deno.serve(async (req) => {
         let overageAmount = 0;
         const lineItems: any[] = [];
 
-        // Get plan limits
-        const plan = tenant.platform_plans;
+        // Get plan details
+        const { data: plan } = await supabase
+          .from('platform_plans')
+          .select('*')
+          .eq('id', tenant.plan_id)
+          .single();
+
         const planLimits = plan?.limits || {};
 
         for (const usageRecord of usage) {

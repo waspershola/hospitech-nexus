@@ -2128,6 +2128,51 @@ export type Database = {
         }
         Relationships: []
       }
+      platform_invoices: {
+        Row: {
+          base_amount: number
+          created_at: string
+          id: string
+          line_items: Json | null
+          metadata: Json | null
+          overage_amount: number
+          period_end: string
+          period_start: string
+          status: string
+          tenant_id: string
+          total_amount: number
+          updated_at: string
+        }
+        Insert: {
+          base_amount?: number
+          created_at?: string
+          id?: string
+          line_items?: Json | null
+          metadata?: Json | null
+          overage_amount?: number
+          period_end: string
+          period_start: string
+          status?: string
+          tenant_id: string
+          total_amount?: number
+          updated_at?: string
+        }
+        Update: {
+          base_amount?: number
+          created_at?: string
+          id?: string
+          line_items?: Json | null
+          metadata?: Json | null
+          overage_amount?: number
+          period_end?: string
+          period_start?: string
+          status?: string
+          tenant_id?: string
+          total_amount?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
       platform_nav_items: {
         Row: {
           created_at: string
@@ -2530,6 +2575,75 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      platform_usage_aggregates: {
+        Row: {
+          created_at: string
+          id: string
+          metric_type: string
+          period_end: string
+          period_start: string
+          record_count: number
+          tenant_id: string
+          total_quantity: number
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          metric_type: string
+          period_end: string
+          period_start: string
+          record_count?: number
+          tenant_id: string
+          total_quantity?: number
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          metric_type?: string
+          period_end?: string
+          period_start?: string
+          record_count?: number
+          tenant_id?: string
+          total_quantity?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      platform_usage_records: {
+        Row: {
+          created_at: string
+          id: string
+          metadata: Json | null
+          metric_type: string
+          period_end: string
+          period_start: string
+          quantity: number
+          tenant_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          metadata?: Json | null
+          metric_type: string
+          period_end: string
+          period_start: string
+          quantity: number
+          tenant_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          metadata?: Json | null
+          metric_type?: string
+          period_end?: string
+          period_start?: string
+          quantity?: number
+          tenant_id?: string
+        }
+        Relationships: []
       }
       platform_users: {
         Row: {
