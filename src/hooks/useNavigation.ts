@@ -32,22 +32,35 @@ export function useNavigation() {
         throw new Error('Tenant ID required for navigation');
       }
 
-      // Call platform navigation sync edge function
+      console.log('Fetching navigation for tenant:', tenantId, 'role:', role, 'department:', department);
+
+      // Call platform navigation sync edge function with query params
       const { data, error } = await supabase.functions.invoke('platform-nav-sync', {
-        method: 'GET',
-        body: { tenant_id: tenantId },
+        body: {},
+        method: 'POST',
       });
       
-      if (error) throw error;
-      if (!data?.data) throw new Error('No navigation data received');
+      if (error) {
+        console.error('Navigation fetch error:', error);
+        throw error;
+      }
+      
+      if (!data?.data) {
+        console.warn('No navigation data received from edge function');
+        throw new Error('No navigation data received');
+      }
       
       const navItems = data.data as NavigationItem[];
+      console.log('Received navigation items:', navItems.length);
       
       // Filter by role AND department on client side
       const filtered = navItems.filter(item => {
         // Check role access
         const hasRole = role && item.allowed_roles.includes(role);
-        if (!hasRole) return false;
+        if (!hasRole) {
+          console.log(`Item ${item.name} filtered out - role mismatch. Required: ${item.allowed_roles}, User has: ${role}`);
+          return false;
+        }
         
         // Check department access
         // Empty array means visible to all departments
@@ -56,9 +69,14 @@ export function useNavigation() {
           allowedDepts.length === 0 || // All departments
           (department && allowedDepts.includes(department)); // Specific department match
         
+        if (!hasAccess) {
+          console.log(`Item ${item.name} filtered out - department mismatch. Required: ${allowedDepts}, User has: ${department}`);
+        }
+        
         return hasAccess;
       });
       
+      console.log('Filtered navigation items:', filtered.length);
       return filtered;
     },
     enabled: !!tenantId && !!role,

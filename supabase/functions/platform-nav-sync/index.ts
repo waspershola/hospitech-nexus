@@ -29,16 +29,38 @@ Deno.serve(async (req) => {
     const url = new URL(req.url);
     const method = req.method;
 
-    // GET /platform-nav-sync?tenant_id={id} - Fetch navigation for tenant
-    if (method === 'GET') {
-      const tenantId = url.searchParams.get('tenant_id');
+    // POST for fetching (to avoid query param issues) or GET with query params
+    if (method === 'GET' || method === 'POST') {
+      let tenantId = url.searchParams.get('tenant_id');
+      
+      // For POST, also check body
+      if (method === 'POST' && !tenantId) {
+        const body = await req.json().catch(() => ({}));
+        tenantId = body.tenant_id;
+      }
       
       if (!tenantId) {
-        return new Response(
-          JSON.stringify({ error: 'tenant_id required' }),
-          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-        );
+        console.log('No tenant_id provided, attempting to get from auth');
+        // Try to get tenant from authenticated user
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) {
+          return new Response(
+            JSON.stringify({ error: 'tenant_id required or user must be authenticated' }),
+            { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+        
+        // Get tenant from user_roles
+        const { data: userRole } = await supabase
+          .from('user_roles')
+          .select('tenant_id')
+          .eq('user_id', user.id)
+          .single();
+        
+        tenantId = userRole?.tenant_id;
       }
+
+      console.log('Fetching navigation for tenant:', tenantId);
 
       // Fetch tenant-specific + global nav items
       const { data: navItems, error } = await supabase
@@ -48,7 +70,12 @@ Deno.serve(async (req) => {
         .eq('is_active', true)
         .order('order_index');
 
-      if (error) throw error;
+      if (error) {
+        console.error('Error fetching nav items:', error);
+        throw error;
+      }
+
+      console.log(`Found ${navItems?.length || 0} navigation items`);
 
       // Group by tenant_id (null = global, tenantId = tenant override)
       const globalItems = navItems?.filter(item => !item.tenant_id) || [];
@@ -74,8 +101,8 @@ Deno.serve(async (req) => {
       );
     }
 
-    // POST /platform-nav-sync - Create/Update nav item (platform admin only)
-    if (method === 'POST') {
+    // PUT for creating/updating (changed from POST to avoid conflict with fetch)
+    if (method === 'PUT') {
       const body = await req.json();
       const { tenant_id, name, path, icon, roles_allowed, departments_allowed, parent_id, order_index, is_active, metadata } = body;
 
