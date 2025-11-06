@@ -1,6 +1,6 @@
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -21,8 +21,18 @@ import { usePlatformTenants } from '@/hooks/usePlatformTenants';
 export default function TenantDetail() {
   const { tenantId } = useParams();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const [suspendDialogOpen, setSuspendDialogOpen] = useState(false);
+  const [activeTab, setActiveTab] = useState('overview');
   const { activateTenant } = usePlatformTenants();
+
+  // Handle tab query parameter
+  useEffect(() => {
+    const tabParam = searchParams.get('tab');
+    if (tabParam) {
+      setActiveTab(tabParam);
+    }
+  }, [searchParams]);
 
   const { data: tenant, isLoading, error: queryError } = useQuery({
     queryKey: ['platform-tenant', tenantId],
@@ -174,7 +184,7 @@ export default function TenantDetail() {
       )}
 
       {/* Tabs */}
-      <Tabs defaultValue="overview" className="space-y-6">
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
         <TabsList>
           <TabsTrigger value="overview">
             <Building2 className="h-4 w-4 mr-2" />
