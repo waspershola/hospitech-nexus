@@ -50,9 +50,10 @@ Deno.serve(async (req) => {
     const isPlatformAdmin = platformUser?.role === 'super_admin' || platformUser?.role === 'support_admin';
 
     const url = new URL(req.url);
-    const pathParts = url.pathname.split('/').filter(Boolean);
-    const navId = pathParts[1];
-    const action = pathParts[2]; // For special actions like 'sync'
+    // Extract path after function name (e.g., /functions/v1/platform-navigation/[id]/[action])
+    const pathParts = url.pathname.split('/platform-navigation/')[1]?.split('/').filter(Boolean) || [];
+    const navId = pathParts[0];
+    const action = pathParts[1]; // For special actions like 'sync'
 
     // SYNC default navigation (platform admin only)
     if (req.method === 'POST' && action === 'sync') {
