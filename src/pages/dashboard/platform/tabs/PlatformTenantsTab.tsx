@@ -16,6 +16,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Separator } from '@/components/ui/separator';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { TenantProviderSelector } from '@/components/platform/TenantProviderSelector';
+import { InitialCreditInput } from '@/components/platform/InitialCreditInput';
 
 export function PlatformTenantsTab() {
   const navigate = useNavigate();
@@ -49,6 +51,9 @@ export function PlatformTenantsTab() {
   const [ownerPassword, setOwnerPassword] = useState('');
   const [selectedPlan, setSelectedPlan] = useState('');
   const [domain, setDomain] = useState('');
+  const [initialProvider, setInitialProvider] = useState('');
+  const [initialSenderId, setInitialSenderId] = useState('');
+  const [additionalCredits, setAdditionalCredits] = useState('');
 
   const handleCreateTenant = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -59,6 +64,9 @@ export function PlatformTenantsTab() {
       owner_password: ownerPassword || undefined,
       plan_id: selectedPlan,
       domain: domain || undefined,
+      provider_id: initialProvider || undefined,
+      sender_id: initialSenderId || undefined,
+      additional_credits: additionalCredits ? parseInt(additionalCredits) : undefined,
     });
 
     setIsCreateDialogOpen(false);
@@ -67,6 +75,9 @@ export function PlatformTenantsTab() {
     setOwnerPassword('');
     setSelectedPlan('');
     setDomain('');
+    setInitialProvider('');
+    setInitialSenderId('');
+    setAdditionalCredits('');
   };
 
   const handleAssignProvider = async (e: React.FormEvent) => {
@@ -220,12 +231,30 @@ export function PlatformTenantsTab() {
                 </Select>
               </div>
 
+              <Separator />
+
+              <TenantProviderSelector
+                providers={providers || []}
+                selectedProvider={initialProvider}
+                onProviderChange={setInitialProvider}
+                senderId={initialSenderId}
+                onSenderIdChange={setInitialSenderId}
+                disabled={createTenant.isPending}
+              />
+
+              <InitialCreditInput
+                value={additionalCredits}
+                onChange={setAdditionalCredits}
+                disabled={createTenant.isPending}
+              />
+
               <div className="bg-muted p-4 rounded-lg space-y-2">
                 <h4 className="font-semibold text-sm">What will be created:</h4>
                 <ul className="text-sm space-y-1 text-muted-foreground">
                   <li>✓ Tenant account with selected plan</li>
                   <li>✓ Admin user account (owner role)</li>
-                  <li>✓ 100 free trial SMS credits</li>
+                  <li>✓ {100 + (parseInt(additionalCredits) || 0)} SMS credits ({additionalCredits ? `100 trial + ${additionalCredits} additional` : 'trial'})</li>
+                  {initialProvider && <li>✓ Assigned SMS provider with sender ID</li>}
                   <li>✓ Default navigation items</li>
                   <li>✓ Default financial & branding settings</li>
                 </ul>

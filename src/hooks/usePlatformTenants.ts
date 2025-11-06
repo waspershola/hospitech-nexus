@@ -74,6 +74,9 @@ export function usePlatformTenants() {
       owner_password?: string;
       plan_id: string;
       domain?: string;
+      provider_id?: string;
+      sender_id?: string;
+      additional_credits?: number;
     }) => {
       const { data, error } = await supabase.functions.invoke('tenant-management', {
         body: { ...tenantData, action: 'create' },
