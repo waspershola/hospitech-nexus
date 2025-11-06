@@ -7,6 +7,7 @@ import { usePlatformPlans } from '@/hooks/usePlatformPlans';
 import { useSoftDelete } from '@/hooks/useSoftDelete';
 import { CreditCard, Plus, Trash2, PlayCircle, PauseCircle, Building2, AlertTriangle, MoreVertical, Package, Activity, Settings } from 'lucide-react';
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { Label } from '@/components/ui/label';
@@ -17,7 +18,8 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel,
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 
 export function PlatformTenantsTab() {
-  const { 
+  const navigate = useNavigate();
+  const {
     tenants, 
     isLoading, 
     createTenant,
@@ -309,7 +311,7 @@ export function PlatformTenantsTab() {
                     <Button
                       size="sm"
                       variant="outline"
-                      onClick={() => window.location.href = `/dashboard/platform/tenants/${tenant.id}`}
+                      onClick={() => navigate(`/dashboard/platform/tenants/${tenant.id}`)}
                     >
                       <Building2 className="h-4 w-4 mr-2" />
                       View Details
@@ -345,15 +347,15 @@ export function PlatformTenantsTab() {
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
                         <DropdownMenuLabel>Quick Actions</DropdownMenuLabel>
-                        <DropdownMenuItem onClick={() => window.location.href = `/dashboard/platform/tenants/${tenant.id}?tab=package`}>
+                        <DropdownMenuItem onClick={() => navigate(`/dashboard/platform/tenants/${tenant.id}?tab=package`)}>
                           <Package className="h-4 w-4 mr-2" />
                           Change Plan
                         </DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => window.location.href = `/dashboard/platform/tenants/${tenant.id}?tab=activity`}>
+                        <DropdownMenuItem onClick={() => navigate(`/dashboard/platform/tenants/${tenant.id}?tab=activity`)}>
                           <Activity className="h-4 w-4 mr-2" />
                           View Activity
                         </DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => window.location.href = `/dashboard/platform/tenants/${tenant.id}?tab=settings`}>
+                        <DropdownMenuItem onClick={() => navigate(`/dashboard/platform/tenants/${tenant.id}?tab=settings`)}>
                           <Settings className="h-4 w-4 mr-2" />
                           Settings
                         </DropdownMenuItem>
