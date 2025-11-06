@@ -18,7 +18,7 @@ export function usePlatformTenants() {
       // Fetch related data separately
       const enriched = await Promise.all(
         (data || []).map(async (tenant) => {
-          const [creditPool, assignments] = await Promise.all([
+          const [creditPool, assignments, ownerRole] = await Promise.all([
             supabase
               .from('platform_sms_credit_pool')
               .select('*')
@@ -28,10 +28,35 @@ export function usePlatformTenants() {
               .from('tenant_provider_assignments')
               .select('*, provider:platform_sms_providers(*)')
               .eq('tenant_id', tenant.id),
+            supabase
+              .from('user_roles')
+              .select('user_id')
+              .eq('tenant_id', tenant.id)
+              .eq('role', 'owner')
+              .maybeSingle(),
           ]);
+
+          // Fetch owner profile if we found an owner role
+          let ownerEmail = tenant.owner_email;
+          let ownerName = null;
+
+          if (ownerRole.data?.user_id) {
+            const { data: profileData } = await supabase
+              .from('profiles')
+              .select('email, full_name')
+              .eq('id', ownerRole.data.user_id)
+              .maybeSingle();
+            
+            if (profileData) {
+              ownerEmail = profileData.email || tenant.owner_email;
+              ownerName = profileData.full_name;
+            }
+          }
 
           return {
             ...tenant,
+            owner_email: ownerEmail,
+            owner_name: ownerName,
             credit_pool: creditPool.data,
             provider_assignments: assignments.data || [],
           };
