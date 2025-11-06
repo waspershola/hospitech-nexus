@@ -2361,6 +2361,7 @@ export type Database = {
           metadata: Json | null
           name: string
           price_monthly: number
+          price_quarterly: number | null
           price_yearly: number
           slug: string
           trial_days: number | null
@@ -2377,6 +2378,7 @@ export type Database = {
           metadata?: Json | null
           name: string
           price_monthly?: number
+          price_quarterly?: number | null
           price_yearly?: number
           slug: string
           trial_days?: number | null
@@ -2393,6 +2395,7 @@ export type Database = {
           metadata?: Json | null
           name?: string
           price_monthly?: number
+          price_quarterly?: number | null
           price_yearly?: number
           slug?: string
           trial_days?: number | null

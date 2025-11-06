@@ -8,6 +8,7 @@ export interface Plan {
   slug?: string;
   description?: string;
   price_monthly: number;
+  price_quarterly: number;
   price_yearly: number;
   limits?: Record<string, any>;
   features?: string[];

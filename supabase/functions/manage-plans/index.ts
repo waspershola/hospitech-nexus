@@ -11,6 +11,7 @@ interface PlanData {
   slug?: string;
   description?: string;
   price_monthly: number;
+  price_quarterly: number;
   price_yearly: number;
   limits?: Record<string, any>;
   features?: string[];
@@ -102,8 +103,8 @@ Deno.serve(async (req) => {
       const body: PlanData = await req.json();
 
       // Validate required fields
-      if (!body.name || body.price_monthly === undefined || body.price_yearly === undefined) {
-        throw new Error('Missing required fields: name, price_monthly, price_yearly');
+      if (!body.name || body.price_monthly === undefined || body.price_quarterly === undefined || body.price_yearly === undefined) {
+        throw new Error('Missing required fields: name, price_monthly, price_quarterly, price_yearly');
       }
 
       const { data, error } = await supabase
@@ -113,6 +114,7 @@ Deno.serve(async (req) => {
           slug: body.slug || body.name.toLowerCase().replace(/\s+/g, '-'),
           description: body.description,
           price_monthly: body.price_monthly,
+          price_quarterly: body.price_quarterly,
           price_yearly: body.price_yearly,
           limits: body.limits || {},
           features: body.features || [],
@@ -157,6 +159,7 @@ Deno.serve(async (req) => {
       if (body.slug !== undefined) updateData.slug = body.slug;
       if (body.description !== undefined) updateData.description = body.description;
       if (body.price_monthly !== undefined) updateData.price_monthly = body.price_monthly;
+      if (body.price_quarterly !== undefined) updateData.price_quarterly = body.price_quarterly;
       if (body.price_yearly !== undefined) updateData.price_yearly = body.price_yearly;
       if (body.limits !== undefined) updateData.limits = body.limits;
       if (body.features !== undefined) updateData.features = body.features;

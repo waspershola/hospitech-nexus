@@ -14,6 +14,7 @@ interface PlanFormData {
   name: string;
   description?: string;
   price_monthly: number;
+  price_quarterly: number;
   price_yearly: number;
   trial_days: number;
   sms_limit: number;
@@ -32,6 +33,7 @@ export function PlatformPlansTab() {
       name: '',
       description: '',
       price_monthly: 0,
+      price_quarterly: 0,
       price_yearly: 0,
       trial_days: 0,
       sms_limit: 0,
@@ -47,6 +49,7 @@ export function PlatformPlansTab() {
         name: data.name,
         description: data.description,
         price_monthly: data.price_monthly,
+        price_quarterly: data.price_quarterly,
         price_yearly: data.price_yearly,
         trial_days: data.trial_days,
         limits: {
@@ -78,6 +81,7 @@ export function PlatformPlansTab() {
       name: plan.name,
       description: plan.description || '',
       price_monthly: plan.price_monthly || 0,
+      price_quarterly: plan.price_quarterly || 0,
       price_yearly: plan.price_yearly || 0,
       trial_days: plan.trial_days || 0,
       sms_limit: limits.sms_sent || 0,
@@ -138,6 +142,16 @@ export function PlatformPlansTab() {
                     type="number" 
                     {...register('price_monthly', { required: true, valueAsNumber: true })} 
                     placeholder="10000" 
+                  />
+                </div>
+
+                <div>
+                  <Label htmlFor="price_quarterly">Quarterly Price (₦) *</Label>
+                  <Input 
+                    id="price_quarterly" 
+                    type="number" 
+                    {...register('price_quarterly', { required: true, valueAsNumber: true })} 
+                    placeholder="28000" 
                   />
                 </div>
 
@@ -238,6 +252,10 @@ export function PlatformPlansTab() {
                   <div className="text-2xl font-bold">
                     ₦{plan.price_monthly?.toLocaleString() || 0}
                     <span className="text-sm font-normal text-muted-foreground">/month</span>
+                  </div>
+                  <div className="text-lg font-semibold text-muted-foreground">
+                    ₦{plan.price_quarterly?.toLocaleString() || 0}
+                    <span className="text-xs font-normal">/quarter</span>
                   </div>
                   <div className="text-xl font-semibold text-muted-foreground">
                     ₦{plan.price_yearly?.toLocaleString() || 0}
