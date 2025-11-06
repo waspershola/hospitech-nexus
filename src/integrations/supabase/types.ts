@@ -3981,6 +3981,112 @@ export type Database = {
           },
         ]
       }
+      tenant_onboarding: {
+        Row: {
+          completed_at: string | null
+          created_at: string | null
+          current_step: number | null
+          id: string
+          metadata: Json | null
+          started_at: string | null
+          status: string
+          steps_completed: Json | null
+          tenant_id: string
+          total_steps: number | null
+          updated_at: string | null
+        }
+        Insert: {
+          completed_at?: string | null
+          created_at?: string | null
+          current_step?: number | null
+          id?: string
+          metadata?: Json | null
+          started_at?: string | null
+          status?: string
+          steps_completed?: Json | null
+          tenant_id: string
+          total_steps?: number | null
+          updated_at?: string | null
+        }
+        Update: {
+          completed_at?: string | null
+          created_at?: string | null
+          current_step?: number | null
+          id?: string
+          metadata?: Json | null
+          started_at?: string | null
+          status?: string
+          steps_completed?: Json | null
+          tenant_id?: string
+          total_steps?: number | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tenant_onboarding_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: true
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      tenant_onboarding_tasks: {
+        Row: {
+          completed_at: string | null
+          completed_by: string | null
+          created_at: string | null
+          id: string
+          is_completed: boolean | null
+          is_required: boolean | null
+          metadata: Json | null
+          sort_order: number | null
+          task_description: string | null
+          task_key: string
+          task_name: string
+          tenant_id: string
+          updated_at: string | null
+        }
+        Insert: {
+          completed_at?: string | null
+          completed_by?: string | null
+          created_at?: string | null
+          id?: string
+          is_completed?: boolean | null
+          is_required?: boolean | null
+          metadata?: Json | null
+          sort_order?: number | null
+          task_description?: string | null
+          task_key: string
+          task_name: string
+          tenant_id: string
+          updated_at?: string | null
+        }
+        Update: {
+          completed_at?: string | null
+          completed_by?: string | null
+          created_at?: string | null
+          id?: string
+          is_completed?: boolean | null
+          is_required?: boolean | null
+          metadata?: Json | null
+          sort_order?: number | null
+          task_description?: string | null
+          task_key?: string
+          task_name?: string
+          tenant_id?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tenant_onboarding_tasks_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       tenant_provider_assignments: {
         Row: {
           assigned_at: string
@@ -4805,6 +4911,10 @@ export type Database = {
           _user_id: string
         }
         Returns: boolean
+      }
+      initialize_tenant_onboarding: {
+        Args: { p_tenant_id: string }
+        Returns: undefined
       }
       is_platform_admin: { Args: { _user_id: string }; Returns: boolean }
       is_system_locked_user: { Args: { _user_id: string }; Returns: boolean }
