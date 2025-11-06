@@ -2,9 +2,10 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
-import { MoreVertical, UserCog, KeyRound, PlayCircle, PauseCircle } from 'lucide-react';
+import { MoreVertical, UserCog, KeyRound, PlayCircle, PauseCircle, AlertCircle } from 'lucide-react';
 import { TenantUser } from '@/hooks/useTenantUsers';
 import { formatDistanceToNow } from 'date-fns';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 
 interface TenantUserTableProps {
   users: TenantUser[];
@@ -76,7 +77,34 @@ export function TenantUserTable({
                 </div>
               </TableCell>
               <TableCell>{getRoleBadge(user.role)}</TableCell>
-              <TableCell>{getStatusBadge(user.status)}</TableCell>
+              <TableCell>
+                <div className="flex items-center gap-2">
+                  {getStatusBadge(user.status)}
+                  {user.status === 'suspended' && user.suspension_metadata && (
+                    <TooltipProvider>
+                      <Tooltip>
+                        <TooltipTrigger>
+                          <AlertCircle className="h-4 w-4 text-muted-foreground" />
+                        </TooltipTrigger>
+                        <TooltipContent>
+                          <div className="text-sm">
+                            <p className="font-semibold">
+                              {user.suspension_metadata.suspension_type === 'tenant' 
+                                ? 'Suspended by tenant suspension' 
+                                : 'Individually suspended'}
+                            </p>
+                            {user.suspension_metadata.reason && (
+                              <p className="text-muted-foreground mt-1">
+                                {user.suspension_metadata.reason}
+                              </p>
+                            )}
+                          </div>
+                        </TooltipContent>
+                      </Tooltip>
+                    </TooltipProvider>
+                  )}
+                </div>
+              </TableCell>
               <TableCell className="text-sm text-muted-foreground">
                 {user.last_sign_in_at 
                   ? formatDistanceToNow(new Date(user.last_sign_in_at), { addSuffix: true })

@@ -11,6 +11,12 @@ export interface TenantUser {
   created_at: string;
   last_sign_in_at?: string;
   phone?: string;
+  suspension_metadata?: {
+    suspension_type?: 'tenant' | 'individual';
+    suspended_at?: string;
+    reason?: string;
+    suspended_by?: string;
+  };
 }
 
 export function useTenantUsers(tenantId: string | undefined) {

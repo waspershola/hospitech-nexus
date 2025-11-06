@@ -55,7 +55,8 @@ serve(async (req) => {
           user_id,
           role,
           status,
-          created_at
+          created_at,
+          suspension_metadata
         `)
         .eq('tenant_id', tenant_id);
 
@@ -86,6 +87,7 @@ serve(async (req) => {
             status: roleData?.status || 'active',
             created_at: u.created_at,
             last_sign_in_at: u.last_sign_in_at,
+            suspension_metadata: roleData?.suspension_metadata || null,
           };
         });
 
