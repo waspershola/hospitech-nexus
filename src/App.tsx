@@ -47,6 +47,11 @@ import PlatformDashboard from "./pages/dashboard/platform/PlatformDashboard";
 import PlatformBilling from "./pages/dashboard/platform/PlatformBilling";
 import PaymentSuccess from "./pages/PaymentSuccess";
 import PaymentCancel from "./pages/PaymentCancel";
+import UsageMonitoring from "./pages/dashboard/UsageMonitoring";
+import InvoiceManagement from "./pages/dashboard/InvoiceManagement";
+import PaymentEnforcement from "./pages/dashboard/PaymentEnforcement";
+import PlatformAnalytics from "./pages/dashboard/PlatformAnalytics";
+import TenantHealthDashboard from "./pages/dashboard/TenantHealthDashboard";
 import { usePlatformRole } from "./hooks/usePlatformRole";
 
 function PlatformGuard({ children }: { children: React.ReactNode }) {
@@ -122,8 +127,13 @@ const App = () => (
           <Route path="platform-navigation" element={<Navigate to="/dashboard/platform-admin?tab=navigation" replace />} />
           <Route path="platform-support" element={<Navigate to="/dashboard/platform-admin?tab=support" replace />} />
           
-          {/* Platform Billing - Separate Page */}
+          {/* Platform Billing & Analytics */}
           <Route path="platform-billing" element={<PlatformGuard><PlatformBilling /></PlatformGuard>} />
+          <Route path="platform-analytics" element={<PlatformGuard><PlatformAnalytics /></PlatformGuard>} />
+          <Route path="platform-usage" element={<PlatformGuard><UsageMonitoring /></PlatformGuard>} />
+          <Route path="platform-invoices" element={<PlatformGuard><InvoiceManagement /></PlatformGuard>} />
+          <Route path="platform-enforcement" element={<PlatformGuard><PaymentEnforcement /></PlatformGuard>} />
+          <Route path="platform-health" element={<PlatformGuard><TenantHealthDashboard /></PlatformGuard>} />
             </Route>
 
             <Route path="/portal" element={<ProtectedRoute><GuestPortalShell /></ProtectedRoute>}>

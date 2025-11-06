@@ -40,7 +40,7 @@ export default function TenantHealthDashboard() {
         </div>
         <div className="flex items-center gap-3">
           <Button
-            onClick={() => recalculate.mutate()}
+            onClick={() => recalculate.mutate(undefined)}
             disabled={isRecalculating}
             variant="outline"
           >
