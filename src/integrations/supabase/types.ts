@@ -1901,30 +1901,36 @@ export type Database = {
       }
       platform_addons: {
         Row: {
+          addon_type: string
           created_at: string
           description: string | null
           id: string
           key: string
+          metadata: Json | null
           pricing: Json
           title: string
           units_available: number | null
           updated_at: string
         }
         Insert: {
+          addon_type?: string
           created_at?: string
           description?: string | null
           id?: string
           key: string
+          metadata?: Json | null
           pricing?: Json
           title: string
           units_available?: number | null
           updated_at?: string
         }
         Update: {
+          addon_type?: string
           created_at?: string
           description?: string | null
           id?: string
           key?: string
+          metadata?: Json | null
           pricing?: Json
           title?: string
           units_available?: number | null

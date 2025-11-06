@@ -40,8 +40,10 @@ export function usePlatformAddons() {
       key: string;
       title: string;
       description?: string;
-      units_available: number;
+      units_available?: number;
       pricing: any;
+      addon_type: string;
+      metadata?: any;
     }) => {
       const { data, error } = await supabase
         .from('platform_addons')
@@ -72,6 +74,8 @@ export function usePlatformAddons() {
         description: string;
         units_available: number;
         pricing: any;
+        addon_type: string;
+        metadata: any;
       }>;
     }) => {
       const { data, error } = await supabase
@@ -93,11 +97,30 @@ export function usePlatformAddons() {
     },
   });
 
+  const deleteAddon = useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase
+        .from('platform_addons')
+        .delete()
+        .eq('id', id);
+
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['platform-addons'] });
+      toast.success('Add-on deleted');
+    },
+    onError: (error: any) => {
+      toast.error(error.message || 'Failed to delete add-on');
+    },
+  });
+
   return {
     addons,
     purchases,
     isLoading: isLoading || purchasesLoading,
     createAddon,
     updateAddon,
+    deleteAddon,
   };
 }
