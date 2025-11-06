@@ -176,7 +176,15 @@ serve(async (req) => {
     if (action === 'suspend' && tenant_id && user_id) {
       await supabaseAdmin
         .from('user_roles')
-        .update({ status: 'suspended' })
+        .update({ 
+          status: 'suspended',
+          suspension_metadata: {
+            suspension_type: 'individual',
+            suspended_at: new Date().toISOString(),
+            suspended_by: user.id,
+            reason: 'Individual suspension by admin',
+          }
+        })
         .eq('user_id', user_id)
         .eq('tenant_id', tenant_id);
 
@@ -188,7 +196,7 @@ serve(async (req) => {
           resource_id: user_id,
           actor_id: user.id,
           actor_role: platformUser.role,
-          payload: { tenant_id, user_id },
+          payload: { tenant_id, user_id, suspension_type: 'individual' },
         });
 
       return new Response(
@@ -199,9 +207,28 @@ serve(async (req) => {
 
     // ACTIVATE USER
     if (action === 'activate' && tenant_id && user_id) {
+      // Check if tenant is suspended
+      const { data: tenant } = await supabaseAdmin
+        .from('tenants')
+        .select('status')
+        .eq('id', tenant_id)
+        .single();
+
+      if (tenant?.status === 'suspended') {
+        return new Response(
+          JSON.stringify({ 
+            error: 'Cannot activate user: Tenant is currently suspended. Activate the tenant first.' 
+          }),
+          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
       await supabaseAdmin
         .from('user_roles')
-        .update({ status: 'active' })
+        .update({ 
+          status: 'active',
+          suspension_metadata: null 
+        })
         .eq('user_id', user_id)
         .eq('tenant_id', tenant_id);
 
