@@ -33,9 +33,12 @@ export default function TenantDetailPackage({ tenant }: TenantDetailPackageProps
 
   const assignPlan = useMutation({
     mutationFn: async (planId: string) => {
-      const { data, error } = await supabase.functions.invoke('assign-plan', {
-        body: { tenant_id: tenant.id, plan_id: planId }
-      });
+      const { data, error } = await supabase
+        .from('platform_tenants')
+        .update({ plan_id: planId })
+        .eq('id', tenant.id)
+        .select()
+        .single();
 
       if (error) throw error;
       return data;
