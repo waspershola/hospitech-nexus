@@ -87,9 +87,13 @@ export default function TenantDetailPackage({ tenant }: TenantDetailPackageProps
               <div>
                 <p className="text-sm text-muted-foreground">Features</p>
                 <ul className="list-disc list-inside space-y-1 mt-2">
-                  {tenant.plan.features?.map((feature: string, index: number) => (
-                    <li key={index} className="text-sm">{feature}</li>
-                  ))}
+                  {Array.isArray(tenant.plan.features) ? (
+                    tenant.plan.features.map((feature: string, index: number) => (
+                      <li key={index} className="text-sm">{feature}</li>
+                    ))
+                  ) : (
+                    <li className="text-sm text-muted-foreground">No features listed</li>
+                  )}
                 </ul>
               </div>
             </>
