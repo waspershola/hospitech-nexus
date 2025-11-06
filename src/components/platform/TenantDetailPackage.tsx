@@ -15,9 +15,21 @@ interface TenantDetailPackageProps {
 
 export default function TenantDetailPackage({ tenant }: TenantDetailPackageProps) {
   const queryClient = useQueryClient();
-  const { plans } = usePlatformPlans();
+  const { plans, isLoading: plansLoading } = usePlatformPlans();
   const [selectedPlanId, setSelectedPlanId] = useState<string>('');
   const [dialogOpen, setDialogOpen] = useState(false);
+
+  if (plansLoading) {
+    return (
+      <Card>
+        <CardContent className="pt-6">
+          <div className="flex items-center justify-center">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
 
   const assignPlan = useMutation({
     mutationFn: async (planId: string) => {
