@@ -8,26 +8,16 @@ const corsHeaders = {
 interface PlanData {
   id?: string;
   name: string;
+  slug?: string;
   description?: string;
-  price: number;
-  billing_cycle: 'monthly' | 'yearly';
-  limits: {
-    sms_sent?: number;
-    storage_used?: number;
-    api_calls?: number;
-    users_active?: number;
-    bookings_created?: number;
-  };
-  overage_rates?: {
-    sms_sent?: number;
-    storage_used?: number;
-    api_calls?: number;
-    users_active?: number;
-    bookings_created?: number;
-  };
+  price_monthly: number;
+  price_yearly: number;
+  limits?: Record<string, any>;
   features?: string[];
   is_active?: boolean;
+  is_public?: boolean;
   trial_days?: number;
+  metadata?: Record<string, any>;
 }
 
 Deno.serve(async (req) => {
@@ -71,7 +61,7 @@ Deno.serve(async (req) => {
       let query = supabase
         .from('platform_plans')
         .select('*')
-        .order('price', { ascending: true });
+        .order('price_monthly', { ascending: true });
 
       // Non-admins can only see active plans
       if (!isPlatformAdmin) {
@@ -112,22 +102,24 @@ Deno.serve(async (req) => {
       const body: PlanData = await req.json();
 
       // Validate required fields
-      if (!body.name || body.price === undefined || !body.billing_cycle) {
-        throw new Error('Missing required fields: name, price, billing_cycle');
+      if (!body.name || body.price_monthly === undefined || body.price_yearly === undefined) {
+        throw new Error('Missing required fields: name, price_monthly, price_yearly');
       }
 
       const { data, error } = await supabase
         .from('platform_plans')
         .insert({
           name: body.name,
+          slug: body.slug || body.name.toLowerCase().replace(/\s+/g, '-'),
           description: body.description,
-          price: body.price,
-          billing_cycle: body.billing_cycle,
+          price_monthly: body.price_monthly,
+          price_yearly: body.price_yearly,
           limits: body.limits || {},
-          overage_rates: body.overage_rates || {},
           features: body.features || [],
           is_active: body.is_active !== false,
+          is_public: body.is_public !== false,
           trial_days: body.trial_days || 0,
+          metadata: body.metadata || {},
         })
         .select()
         .single();
@@ -136,12 +128,15 @@ Deno.serve(async (req) => {
 
       // Log audit event
       await supabase.from('platform_audit_stream').insert({
-        event_type: 'plan_created',
-        user_id: user.id,
-        metadata: {
+        action: 'plan_created',
+        resource_type: 'platform_plan',
+        resource_id: data.id,
+        actor_id: user.id,
+        payload: {
           plan_id: data.id,
           name: body.name,
-          price: body.price,
+          price_monthly: body.price_monthly,
+          price_yearly: body.price_yearly,
         },
       });
 
@@ -159,14 +154,16 @@ Deno.serve(async (req) => {
 
       const updateData: any = {};
       if (body.name !== undefined) updateData.name = body.name;
+      if (body.slug !== undefined) updateData.slug = body.slug;
       if (body.description !== undefined) updateData.description = body.description;
-      if (body.price !== undefined) updateData.price = body.price;
-      if (body.billing_cycle !== undefined) updateData.billing_cycle = body.billing_cycle;
+      if (body.price_monthly !== undefined) updateData.price_monthly = body.price_monthly;
+      if (body.price_yearly !== undefined) updateData.price_yearly = body.price_yearly;
       if (body.limits !== undefined) updateData.limits = body.limits;
-      if (body.overage_rates !== undefined) updateData.overage_rates = body.overage_rates;
       if (body.features !== undefined) updateData.features = body.features;
       if (body.is_active !== undefined) updateData.is_active = body.is_active;
+      if (body.is_public !== undefined) updateData.is_public = body.is_public;
       if (body.trial_days !== undefined) updateData.trial_days = body.trial_days;
+      if (body.metadata !== undefined) updateData.metadata = body.metadata;
 
       const { data, error } = await supabase
         .from('platform_plans')
@@ -179,9 +176,11 @@ Deno.serve(async (req) => {
 
       // Log audit event
       await supabase.from('platform_audit_stream').insert({
-        event_type: 'plan_updated',
-        user_id: user.id,
-        metadata: {
+        action: 'plan_updated',
+        resource_type: 'platform_plan',
+        resource_id: planId,
+        actor_id: user.id,
+        payload: {
           plan_id: planId,
           changes: updateData,
         },
@@ -216,9 +215,11 @@ Deno.serve(async (req) => {
 
       // Log audit event
       await supabase.from('platform_audit_stream').insert({
-        event_type: 'plan_deleted',
-        user_id: user.id,
-        metadata: {
+        action: 'plan_deleted',
+        resource_type: 'platform_plan',
+        resource_id: planId,
+        actor_id: user.id,
+        payload: {
           plan_id: planId,
         },
       });
