@@ -34,7 +34,7 @@ serve(async (req) => {
     const { data: platformUser, error: roleError } = await supabase
       .from('platform_users')
       .select('role')
-      .eq('user_id', user.id)
+      .eq('id', user.id)
       .single();
 
     if (roleError || !platformUser || !['super_admin', 'support_admin'].includes(platformUser.role)) {
@@ -96,7 +96,7 @@ serve(async (req) => {
       const { data: platformUserRecord, error: insertError } = await supabase
         .from('platform_users')
         .insert({
-          user_id: newUser.user.id,
+          id: newUser.user.id,
           email,
           full_name,
           role,
@@ -155,7 +155,7 @@ serve(async (req) => {
       const { data: existingUser, error: fetchError } = await supabase
         .from('platform_users')
         .select('system_locked, role')
-        .eq('user_id', userId)
+        .eq('id', userId)
         .single();
 
       if (fetchError) throw fetchError;
@@ -180,7 +180,7 @@ serve(async (req) => {
           ...(updates.full_name && { full_name: updates.full_name }),
           updated_at: new Date().toISOString(),
         })
-        .eq('user_id', userId)
+        .eq('id', userId)
         .select()
         .single();
 
@@ -224,7 +224,7 @@ serve(async (req) => {
       const { data: userToDelete, error: fetchError } = await supabase
         .from('platform_users')
         .select('email, role, system_locked')
-        .eq('user_id', userId)
+        .eq('id', userId)
         .single();
 
       if (fetchError) throw fetchError;
@@ -237,7 +237,7 @@ serve(async (req) => {
       const { error: deleteError } = await supabase
         .from('platform_users')
         .delete()
-        .eq('user_id', userId);
+        .eq('id', userId);
 
       if (deleteError) throw deleteError;
 
@@ -274,7 +274,7 @@ serve(async (req) => {
       const { data: userToReset } = await supabase
         .from('platform_users')
         .select('email')
-        .eq('user_id', userId)
+        .eq('id', userId)
         .single();
 
       if (!userToReset) {
