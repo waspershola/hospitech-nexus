@@ -207,7 +207,7 @@ export function PlatformTenantsTab() {
                   <SelectContent>
                     {plans?.map((plan) => (
                       <SelectItem key={plan.id} value={plan.id}>
-                        {plan.name} - ₦{plan.price}/month ({plan.limits?.sms_sent || 0} SMS)
+                        {plan.name} - ₦{plan.price_monthly?.toLocaleString() || 0}/mo (₦{plan.price_yearly?.toLocaleString() || 0}/yr)
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -275,7 +275,7 @@ export function PlatformTenantsTab() {
                     </div>
                     <CardDescription className="space-y-1">
                       <div>Owner: {tenant.owner_email}</div>
-                      {plan && <div>Plan: {plan.name} (₦{plan.price}/{plan.billing_cycle})</div>}
+                      {plan && <div>Plan: {plan.name} (₦{plan.price_monthly?.toLocaleString() || 0}/mo)</div>}
                       <div className="text-xs text-muted-foreground">ID: {tenant.id}</div>
                     </CardDescription>
                   </div>

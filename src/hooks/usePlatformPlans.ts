@@ -5,26 +5,16 @@ import { toast } from 'sonner';
 export interface Plan {
   id: string;
   name: string;
+  slug?: string;
   description?: string;
-  price: number;
-  billing_cycle: 'monthly' | 'yearly';
-  limits: {
-    sms_sent?: number;
-    storage_used?: number;
-    api_calls?: number;
-    users_active?: number;
-    bookings_created?: number;
-  };
-  overage_rates?: {
-    sms_sent?: number;
-    storage_used?: number;
-    api_calls?: number;
-    users_active?: number;
-    bookings_created?: number;
-  };
+  price_monthly: number;
+  price_yearly: number;
+  limits?: Record<string, any>;
   features?: string[];
   is_active: boolean;
+  is_public?: boolean;
   trial_days: number;
+  metadata?: Record<string, any>;
   created_at: string;
   updated_at: string;
 }

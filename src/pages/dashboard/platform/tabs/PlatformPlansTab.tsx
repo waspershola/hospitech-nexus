@@ -13,8 +13,8 @@ import { useForm } from 'react-hook-form';
 interface PlanFormData {
   name: string;
   description?: string;
-  price: number;
-  billing_cycle: 'monthly' | 'yearly';
+  price_monthly: number;
+  price_yearly: number;
   trial_days: number;
   sms_limit: number;
   max_rooms: number | null;
@@ -31,8 +31,8 @@ export function PlatformPlansTab() {
     defaultValues: {
       name: '',
       description: '',
-      price: 0,
-      billing_cycle: 'monthly',
+      price_monthly: 0,
+      price_yearly: 0,
       trial_days: 0,
       sms_limit: 0,
       max_rooms: null,
@@ -46,8 +46,8 @@ export function PlatformPlansTab() {
       const planData = {
         name: data.name,
         description: data.description,
-        price: data.price,
-        billing_cycle: data.billing_cycle,
+        price_monthly: data.price_monthly,
+        price_yearly: data.price_yearly,
         trial_days: data.trial_days,
         limits: {
           sms_sent: data.sms_limit,
@@ -77,9 +77,9 @@ export function PlatformPlansTab() {
     reset({
       name: plan.name,
       description: plan.description || '',
-      price: plan.price,
-      billing_cycle: plan.billing_cycle || 'monthly',
-      trial_days: plan.trial_days,
+      price_monthly: plan.price_monthly || 0,
+      price_yearly: plan.price_yearly || 0,
+      trial_days: plan.trial_days || 0,
       sms_limit: limits.sms_sent || 0,
       max_rooms: limits.max_rooms === -1 ? null : limits.max_rooms,
       max_staff: limits.max_staff === -1 ? null : limits.max_staff,
@@ -132,16 +132,26 @@ export function PlatformPlansTab() {
                 </div>
 
                 <div>
-                  <Label htmlFor="price">Price (₦) *</Label>
+                  <Label htmlFor="price_monthly">Monthly Price (₦) *</Label>
                   <Input 
-                    id="price" 
+                    id="price_monthly" 
                     type="number" 
-                    {...register('price', { required: true, valueAsNumber: true })} 
+                    {...register('price_monthly', { required: true, valueAsNumber: true })} 
                     placeholder="10000" 
                   />
                 </div>
 
                 <div>
+                  <Label htmlFor="price_yearly">Yearly Price (₦) *</Label>
+                  <Input 
+                    id="price_yearly" 
+                    type="number" 
+                    {...register('price_yearly', { required: true, valueAsNumber: true })} 
+                    placeholder="100000" 
+                  />
+                </div>
+
+                <div className="col-span-2">
                   <Label htmlFor="trial_days">Trial Days</Label>
                   <Input 
                     id="trial_days" 
@@ -224,12 +234,14 @@ export function PlatformPlansTab() {
                 </div>
               </CardHeader>
               <CardContent className="space-y-4">
-                <div>
-                  <div className="text-3xl font-bold">
-                    ₦{plan.price.toLocaleString()}
-                    <span className="text-sm font-normal text-muted-foreground">
-                      /{plan.billing_cycle}
-                    </span>
+                <div className="space-y-1">
+                  <div className="text-2xl font-bold">
+                    ₦{plan.price_monthly?.toLocaleString() || 0}
+                    <span className="text-sm font-normal text-muted-foreground">/month</span>
+                  </div>
+                  <div className="text-xl font-semibold text-muted-foreground">
+                    ₦{plan.price_yearly?.toLocaleString() || 0}
+                    <span className="text-xs font-normal">/year</span>
                   </div>
                 </div>
 
