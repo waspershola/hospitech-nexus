@@ -2585,6 +2585,7 @@ export type Database = {
         Row: {
           created_at: string
           deleted_at: string | null
+          deleted_by: string | null
           domain: string | null
           id: string
           owner_email: string
@@ -2597,6 +2598,7 @@ export type Database = {
         Insert: {
           created_at?: string
           deleted_at?: string | null
+          deleted_by?: string | null
           domain?: string | null
           id: string
           owner_email: string
@@ -2609,6 +2611,7 @@ export type Database = {
         Update: {
           created_at?: string
           deleted_at?: string | null
+          deleted_by?: string | null
           domain?: string | null
           id?: string
           owner_email?: string
@@ -4573,6 +4576,7 @@ export type Database = {
           created_at: string | null
           deactivated_at: string | null
           deleted_at: string | null
+          deleted_by: string | null
           domain: string | null
           id: string
           logo_url: string | null
@@ -4589,6 +4593,7 @@ export type Database = {
           created_at?: string | null
           deactivated_at?: string | null
           deleted_at?: string | null
+          deleted_by?: string | null
           domain?: string | null
           id?: string
           logo_url?: string | null
@@ -4605,6 +4610,7 @@ export type Database = {
           created_at?: string | null
           deactivated_at?: string | null
           deleted_at?: string | null
+          deleted_by?: string | null
           domain?: string | null
           id?: string
           logo_url?: string | null
@@ -4937,6 +4943,11 @@ export type Database = {
       }
       is_platform_admin: { Args: { _user_id: string }; Returns: boolean }
       is_system_locked_user: { Args: { _user_id: string }; Returns: boolean }
+      restore_tenant: { Args: { _tenant_id: string }; Returns: Json }
+      soft_delete_tenant: {
+        Args: { _deleted_by: string; _tenant_id: string }
+        Returns: Json
+      }
       user_has_permission: {
         Args: { _permission_key: string; _tenant_id: string; _user_id: string }
         Returns: boolean

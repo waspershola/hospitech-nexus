@@ -4,6 +4,7 @@ import { Badge } from '@/components/ui/badge';
 import { usePlatformTenants } from '@/hooks/usePlatformTenants';
 import { usePlatformProviders } from '@/hooks/usePlatformProviders';
 import { usePlatformPlans } from '@/hooks/usePlatformPlans';
+import { useSoftDelete } from '@/hooks/useSoftDelete';
 import { CreditCard, Plus, Trash2, PlayCircle, PauseCircle, Building2, AlertTriangle } from 'lucide-react';
 import { useState } from 'react';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
@@ -26,6 +27,7 @@ export function PlatformTenantsTab() {
   } = usePlatformTenants();
   const { providers } = usePlatformProviders();
   const { plans } = usePlatformPlans();
+  const { softDeleteTenant } = useSoftDelete();
 
   const [selectedTenant, setSelectedTenant] = useState<string | null>(null);
   const [creditAmount, setCreditAmount] = useState('');
@@ -94,7 +96,7 @@ export function PlatformTenantsTab() {
 
   const handleDeleteTenant = async () => {
     if (!tenantToDelete) return;
-    await deleteTenant.mutateAsync(tenantToDelete);
+    await softDeleteTenant.mutateAsync(tenantToDelete);
     setDeleteConfirmOpen(false);
     setTenantToDelete(null);
   };
@@ -454,9 +456,9 @@ export function PlatformTenantsTab() {
               Delete Tenant?
             </AlertDialogTitle>
             <AlertDialogDescription>
-              This will soft-delete the tenant by setting status to 'cancelled'. 
-              All tenant data will be preserved but the account will be inaccessible.
-              This action can be reversed by a super admin if needed.
+              This will move the tenant to trash. All tenant data will be preserved 
+              and the account can be restored later by a super admin if needed.
+              Users will no longer be able to access this tenant.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -465,7 +467,7 @@ export function PlatformTenantsTab() {
               onClick={handleDeleteTenant}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
-              Delete Tenant
+              Move to Trash
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
