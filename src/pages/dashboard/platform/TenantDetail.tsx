@@ -24,16 +24,24 @@ export default function TenantDetail() {
   const [suspendDialogOpen, setSuspendDialogOpen] = useState(false);
   const { activateTenant } = usePlatformTenants();
 
-  const { data: tenant, isLoading } = useQuery({
+  const { data: tenant, isLoading, error: queryError } = useQuery({
     queryKey: ['platform-tenant', tenantId],
     queryFn: async () => {
       const { data, error } = await supabase
         .from('platform_tenants')
         .select('*, plan:platform_plans(*)')
         .eq('id', tenantId)
-        .single();
+        .maybeSingle();
 
-      if (error) throw error;
+      if (error) {
+        console.error('Error fetching tenant:', error);
+        throw error;
+      }
+
+      if (!data) {
+        console.error('Tenant not found:', tenantId);
+        return null;
+      }
 
       // Fetch owner info
       const { data: ownerRole } = await supabase
@@ -85,7 +93,20 @@ export default function TenantDetail() {
       <div className="container mx-auto p-6">
         <Card>
           <CardContent className="pt-6">
-            <p className="text-center text-muted-foreground">Tenant not found</p>
+            <div className="text-center space-y-4">
+              <p className="text-muted-foreground">
+                {queryError 
+                  ? 'Error loading tenant details. You may not have permission to view this tenant.' 
+                  : 'Tenant not found. It may have been deleted or you may not have access.'}
+              </p>
+              <Button 
+                variant="outline" 
+                onClick={() => navigate('/dashboard/platform-admin?tab=tenants')}
+              >
+                <ArrowLeft className="h-4 w-4 mr-2" />
+                Back to Tenants
+              </Button>
+            </div>
           </CardContent>
         </Card>
       </div>

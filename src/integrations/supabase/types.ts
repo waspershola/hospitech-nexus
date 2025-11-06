@@ -4586,6 +4586,7 @@ export type Database = {
           status: string | null
           suspended_at: string | null
           suspension_reason: string | null
+          updated_at: string | null
         }
         Insert: {
           activated_at?: string | null
@@ -4603,6 +4604,7 @@ export type Database = {
           status?: string | null
           suspended_at?: string | null
           suspension_reason?: string | null
+          updated_at?: string | null
         }
         Update: {
           activated_at?: string | null
@@ -4620,6 +4622,7 @@ export type Database = {
           status?: string | null
           suspended_at?: string | null
           suspension_reason?: string | null
+          updated_at?: string | null
         }
         Relationships: []
       }
