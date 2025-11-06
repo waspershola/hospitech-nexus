@@ -5,7 +5,7 @@ import { usePlatformTenants } from '@/hooks/usePlatformTenants';
 import { usePlatformProviders } from '@/hooks/usePlatformProviders';
 import { usePlatformPlans } from '@/hooks/usePlatformPlans';
 import { useSoftDelete } from '@/hooks/useSoftDelete';
-import { CreditCard, Plus, Trash2, PlayCircle, PauseCircle, Building2, AlertTriangle } from 'lucide-react';
+import { CreditCard, Plus, Trash2, PlayCircle, PauseCircle, Building2, AlertTriangle, MoreVertical, Package, Activity, Settings } from 'lucide-react';
 import { useState } from 'react';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
@@ -13,6 +13,8 @@ import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Separator } from '@/components/ui/separator';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 
 export function PlatformTenantsTab() {
   const { 
@@ -273,12 +275,33 @@ export function PlatformTenantsTab() {
                   <div className="flex-1">
                     <div className="flex items-center gap-2 mb-1">
                       <CardTitle>{tenant.domain || 'Unnamed Tenant'}</CardTitle>
-                      {getStatusBadge(tenant.status)}
+                      <TooltipProvider>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <div>
+                              {getStatusBadge(tenant.status)}
+                            </div>
+                          </TooltipTrigger>
+                          {tenant.status === 'suspended' && tenant.suspension_reason && (
+                            <TooltipContent>
+                              <p className="text-sm">Reason: {tenant.suspension_reason}</p>
+                            </TooltipContent>
+                          )}
+                        </Tooltip>
+                      </TooltipProvider>
                     </div>
                     <CardDescription className="space-y-1">
                       <div>Owner: {tenant.owner_email}</div>
                       {plan && <div>Plan: {plan.name} (₦{plan.price_monthly?.toLocaleString() || 0}/mo)</div>}
-                      <div className="text-xs text-muted-foreground">ID: {tenant.id}</div>
+                      <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                        <span>Created {new Date(tenant.created_at).toLocaleDateString()}</span>
+                        {available < 50 && (
+                          <Badge variant="destructive" className="text-xs">
+                            <AlertTriangle className="h-3 w-3 mr-1" />
+                            Low Credits
+                          </Badge>
+                        )}
+                      </div>
                     </CardDescription>
                   </div>
 
@@ -314,18 +337,58 @@ export function PlatformTenantsTab() {
                       </Button>
                     )}
 
-                    <Button
-                      size="sm"
-                      variant="destructive"
-                      onClick={() => {
-                        setTenantToDelete(tenant.id);
-                        setDeleteConfirmOpen(true);
-                      }}
-                      disabled={deleteTenant.isPending}
-                    >
-                      <Trash2 className="h-4 w-4 mr-2" />
-                      Delete
-                    </Button>
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button size="sm" variant="ghost">
+                          <MoreVertical className="h-4 w-4" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
+                        <DropdownMenuLabel>Quick Actions</DropdownMenuLabel>
+                        <DropdownMenuItem onClick={() => window.location.href = `/dashboard/platform/tenants/${tenant.id}?tab=package`}>
+                          <Package className="h-4 w-4 mr-2" />
+                          Change Plan
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => window.location.href = `/dashboard/platform/tenants/${tenant.id}?tab=activity`}>
+                          <Activity className="h-4 w-4 mr-2" />
+                          View Activity
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => window.location.href = `/dashboard/platform/tenants/${tenant.id}?tab=settings`}>
+                          <Settings className="h-4 w-4 mr-2" />
+                          Settings
+                        </DropdownMenuItem>
+                        <DropdownMenuSeparator />
+                        <DropdownMenuItem 
+                          onClick={() => {
+                            setSelectedTenant(tenant.id);
+                            setIsAssignDialogOpen(true);
+                          }}
+                        >
+                          <Plus className="h-4 w-4 mr-2" />
+                          Assign Provider
+                        </DropdownMenuItem>
+                        <DropdownMenuItem 
+                          onClick={() => {
+                            setSelectedTenant(tenant.id);
+                            setIsCreditsDialogOpen(true);
+                          }}
+                        >
+                          <CreditCard className="h-4 w-4 mr-2" />
+                          Add Credits
+                        </DropdownMenuItem>
+                        <DropdownMenuSeparator />
+                        <DropdownMenuItem 
+                          className="text-destructive"
+                          onClick={() => {
+                            setTenantToDelete(tenant.id);
+                            setDeleteConfirmOpen(true);
+                          }}
+                        >
+                          <Trash2 className="h-4 w-4 mr-2" />
+                          Move to Trash
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
                   </div>
                 </div>
               </CardHeader>
