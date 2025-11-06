@@ -11,7 +11,7 @@ export function usePlatformBilling(tenantId?: string) {
     queryFn: async () => {
       let query = supabase
         .from('platform_invoices')
-        .select('*')
+        .select('*, tenants(name)')
         .order('created_at', { ascending: false });
 
       if (tenantId) {
@@ -48,12 +48,9 @@ export function usePlatformBilling(tenantId?: string) {
 
   // Sync usage
   const syncUsage = useMutation({
-    mutationFn: async (dateRange?: { start: string; end: string }) => {
+    mutationFn: async (params?: { dateFrom?: string; dateTo?: string; tenantId?: string }) => {
       const { data, error } = await supabase.functions.invoke('platform-usage-sync', {
-        body: {
-          action: 'sync_sms_usage',
-          date_range: dateRange,
-        },
+        body: params || {},
       });
 
       if (error) throw error;
@@ -61,7 +58,7 @@ export function usePlatformBilling(tenantId?: string) {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['platform-usage'] });
-      toast.success('Usage synced successfully');
+      toast.success('Usage data synced successfully');
     },
     onError: (error: any) => {
       toast.error(error.message || 'Failed to sync usage');
