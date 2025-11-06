@@ -4759,6 +4759,7 @@ export type Database = {
       }
     }
     Functions: {
+      generate_invoice_number: { Args: never; Returns: string }
       generate_receipt_number: {
         Args: { p_receipt_type: string; p_tenant_id: string }
         Returns: string
