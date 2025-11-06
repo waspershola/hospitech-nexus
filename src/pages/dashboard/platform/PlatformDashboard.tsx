@@ -12,7 +12,8 @@ import { PlatformPaymentProvidersTab } from './tabs/PlatformPaymentProvidersTab'
 import { PlatformFeatureFlagsTab } from './tabs/PlatformFeatureFlagsTab';
 import { PlatformNavigationTab } from './tabs/PlatformNavigationTab';
 import { PlatformBillingTab } from './tabs/PlatformBillingTab';
-import { Server, Users, ShoppingCart, CreditCard, Shield, MessageSquare, Mail, Flag, Navigation2, Receipt } from 'lucide-react';
+import DeletedTenantsView from '@/components/platform/DeletedTenantsView';
+import { Server, Users, ShoppingCart, CreditCard, Shield, MessageSquare, Mail, Flag, Navigation2, Receipt, Trash2 } from 'lucide-react';
 
 export default function PlatformDashboard() {
   const [searchParams] = useSearchParams();
@@ -40,6 +41,10 @@ export default function PlatformDashboard() {
           <TabsTrigger value="tenants" className="gap-2">
             <Users className="h-4 w-4" />
             Tenants
+          </TabsTrigger>
+          <TabsTrigger value="deleted" className="gap-2">
+            <Trash2 className="h-4 w-4" />
+            Deleted
           </TabsTrigger>
           <TabsTrigger value="plans" className="gap-2">
             <CreditCard className="h-4 w-4" />
@@ -85,6 +90,10 @@ export default function PlatformDashboard() {
 
         <TabsContent value="tenants">
           <PlatformTenantsTab />
+        </TabsContent>
+
+        <TabsContent value="deleted">
+          <DeletedTenantsView />
         </TabsContent>
 
         <TabsContent value="plans">

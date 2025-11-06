@@ -14,6 +14,7 @@ import TenantDetailSettings from '@/components/platform/TenantDetailSettings';
 import TenantDetailActivity from '@/components/platform/TenantDetailActivity';
 import TenantDetailBilling from '@/components/platform/TenantDetailBilling';
 import TenantDetailAddons from '@/components/platform/TenantDetailAddons';
+import TenantDetailSupport from '@/components/platform/TenantDetailSupport';
 import SuspendTenantDialog from '@/components/platform/SuspendTenantDialog';
 import { usePlatformTenants } from '@/hooks/usePlatformTenants';
 
@@ -212,15 +213,7 @@ export default function TenantDetail() {
         </TabsContent>
 
         <TabsContent value="support">
-          <Card>
-            <CardHeader>
-              <CardTitle>Support</CardTitle>
-              <CardDescription>Support tickets and communications</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <p className="text-muted-foreground">Coming soon</p>
-            </CardContent>
-          </Card>
+          <TenantDetailSupport tenantId={tenantId!} />
         </TabsContent>
       </Tabs>
 

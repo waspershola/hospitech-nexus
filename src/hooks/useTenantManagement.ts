@@ -81,6 +81,20 @@ export function useTenantManagement() {
       });
 
       if (error) throw error;
+
+      // Send notification
+      try {
+        await supabase.functions.invoke('send-lifecycle-notification', {
+          body: {
+            tenant_id: tenantId,
+            event_type: 'activated',
+            details: {}
+          }
+        });
+      } catch (notifError) {
+        console.error('Failed to send notification:', notifError);
+      }
+
       return data;
     },
     onSuccess: () => {

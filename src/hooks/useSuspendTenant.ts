@@ -24,7 +24,20 @@ export function useSuspendTenant() {
 
       if (updateError) throw updateError;
 
-      // Trigger will sync to tenants table and set suspended_at
+      // Send notification
+      try {
+        await supabase.functions.invoke('send-lifecycle-notification', {
+          body: {
+            tenant_id: tenantId,
+            event_type: 'suspended',
+            details: { reason }
+          }
+        });
+      } catch (notifError) {
+        console.error('Failed to send notification:', notifError);
+        // Don't fail the suspension if notification fails
+      }
+
       return { success: true };
     },
     onSuccess: (_, variables) => {
