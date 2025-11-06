@@ -1,19 +1,26 @@
 import { useParams, useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
+import { useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { ArrowLeft, Building2, Users, Package, Settings, Activity, CreditCard, HeadphonesIcon } from 'lucide-react';
+import { ArrowLeft, Building2, Users, Package, Settings, Activity, CreditCard, HeadphonesIcon, PauseCircle, PlayCircle } from 'lucide-react';
 import TenantDetailOverview from '@/components/platform/TenantDetailOverview';
 import TenantDetailUsers from '@/components/platform/TenantDetailUsers';
 import TenantDetailPackage from '@/components/platform/TenantDetailPackage';
 import TenantDetailSettings from '@/components/platform/TenantDetailSettings';
+import TenantDetailActivity from '@/components/platform/TenantDetailActivity';
+import TenantDetailBilling from '@/components/platform/TenantDetailBilling';
+import SuspendTenantDialog from '@/components/platform/SuspendTenantDialog';
+import { usePlatformTenants } from '@/hooks/usePlatformTenants';
 
 export default function TenantDetail() {
   const { tenantId } = useParams();
   const navigate = useNavigate();
+  const [suspendDialogOpen, setSuspendDialogOpen] = useState(false);
+  const { activateTenant } = usePlatformTenants();
 
   const { data: tenant, isLoading } = useQuery({
     queryKey: ['platform-tenant', tenantId],
@@ -91,7 +98,7 @@ export default function TenantDetail() {
           <Button 
             variant="ghost" 
             size="icon"
-            onClick={() => navigate('/dashboard/platform')}
+            onClick={() => navigate('/dashboard/platform-admin?tab=tenants')}
           >
             <ArrowLeft className="h-4 w-4" />
           </Button>
@@ -105,7 +112,43 @@ export default function TenantDetail() {
             </p>
           </div>
         </div>
+
+        <div className="flex gap-2">
+          {tenant.status === 'suspended' ? (
+            <Button
+              variant="outline"
+              onClick={() => activateTenant.mutate(tenant.id)}
+              disabled={activateTenant.isPending}
+            >
+              <PlayCircle className="h-4 w-4 mr-2" />
+              Reactivate
+            </Button>
+          ) : (
+            <Button
+              variant="outline"
+              onClick={() => setSuspendDialogOpen(true)}
+            >
+              <PauseCircle className="h-4 w-4 mr-2" />
+              Suspend
+            </Button>
+          )}
+        </div>
       </div>
+
+      {/* Suspension Reason Display */}
+      {tenant.status === 'suspended' && tenant.suspension_reason && (
+        <Card className="border-destructive">
+          <CardContent className="pt-6">
+            <div className="flex items-start gap-3">
+              <PauseCircle className="h-5 w-5 text-destructive mt-0.5" />
+              <div>
+                <p className="font-medium text-destructive">Suspension Reason</p>
+                <p className="text-sm text-muted-foreground mt-1">{tenant.suspension_reason}</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Tabs */}
       <Tabs defaultValue="overview" className="space-y-6">
@@ -157,27 +200,11 @@ export default function TenantDetail() {
         </TabsContent>
 
         <TabsContent value="billing">
-          <Card>
-            <CardHeader>
-              <CardTitle>Billing</CardTitle>
-              <CardDescription>Invoices and payment history</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <p className="text-muted-foreground">Coming soon</p>
-            </CardContent>
-          </Card>
+          <TenantDetailBilling tenantId={tenantId!} />
         </TabsContent>
 
         <TabsContent value="activity">
-          <Card>
-            <CardHeader>
-              <CardTitle>Activity Log</CardTitle>
-              <CardDescription>Recent actions and changes</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <p className="text-muted-foreground">Coming soon</p>
-            </CardContent>
-          </Card>
+          <TenantDetailActivity tenantId={tenantId!} />
         </TabsContent>
 
         <TabsContent value="support">
@@ -192,6 +219,14 @@ export default function TenantDetail() {
           </Card>
         </TabsContent>
       </Tabs>
+
+      {/* Suspend Tenant Dialog */}
+      <SuspendTenantDialog
+        tenantId={tenantId!}
+        tenantName={tenant.domain || tenant.owner_email}
+        open={suspendDialogOpen}
+        onOpenChange={setSuspendDialogOpen}
+      />
     </div>
   );
 }
