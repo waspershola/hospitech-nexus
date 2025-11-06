@@ -39,9 +39,10 @@ export default function TenantDetail() {
     queryFn: async () => {
       console.log('[TenantDetail] Fetching tenant:', tenantId);
       
+      // Fetch tenant data without relationship syntax
       const { data, error } = await supabase
         .from('platform_tenants')
-        .select('*, plan:platform_plans(*)')
+        .select('*')
         .eq('id', tenantId)
         .maybeSingle();
 
@@ -63,6 +64,22 @@ export default function TenantDetail() {
 
       console.log('[TenantDetail] Tenant data loaded:', data.domain || data.id);
 
+      // Fetch plan data separately
+      let planData = null;
+      if (data.plan_id) {
+        const { data: plan, error: planError } = await supabase
+          .from('platform_plans')
+          .select('*')
+          .eq('id', data.plan_id)
+          .maybeSingle();
+
+        if (planError) {
+          console.error('[TenantDetail] Error fetching plan:', planError);
+        } else {
+          planData = plan;
+        }
+      }
+
       // Fetch owner info
       const { data: ownerRole, error: ownerError } = await supabase
         .from('user_roles')
@@ -75,6 +92,9 @@ export default function TenantDetail() {
         console.error('[TenantDetail] Error fetching owner role:', ownerError);
       }
 
+      let ownerEmail = null;
+      let ownerName = null;
+
       if (ownerRole?.user_id) {
         const { data: profile, error: profileError } = await supabase
           .from('profiles')
@@ -84,16 +104,18 @@ export default function TenantDetail() {
 
         if (profileError) {
           console.error('[TenantDetail] Error fetching profile:', profileError);
+        } else if (profile) {
+          ownerEmail = profile.email;
+          ownerName = profile.full_name;
         }
-
-        return {
-          ...data,
-          owner_email: profile?.email,
-          owner_name: profile?.full_name
-        };
       }
 
-      return data;
+      return {
+        ...data,
+        plan: planData,
+        owner_email: ownerEmail,
+        owner_name: ownerName
+      };
     },
     enabled: !!tenantId,
     retry: 2,
