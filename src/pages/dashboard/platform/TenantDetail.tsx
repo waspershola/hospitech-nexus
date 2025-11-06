@@ -13,6 +13,7 @@ import TenantDetailPackage from '@/components/platform/TenantDetailPackage';
 import TenantDetailSettings from '@/components/platform/TenantDetailSettings';
 import TenantDetailActivity from '@/components/platform/TenantDetailActivity';
 import TenantDetailBilling from '@/components/platform/TenantDetailBilling';
+import TenantDetailAddons from '@/components/platform/TenantDetailAddons';
 import SuspendTenantDialog from '@/components/platform/SuspendTenantDialog';
 import { usePlatformTenants } from '@/hooks/usePlatformTenants';
 
@@ -192,7 +193,10 @@ export default function TenantDetail() {
         </TabsContent>
 
         <TabsContent value="package">
-          <TenantDetailPackage tenant={tenant} />
+          <div className="space-y-6">
+            <TenantDetailPackage tenant={tenant} />
+            <TenantDetailAddons tenant={tenant} />
+          </div>
         </TabsContent>
 
         <TabsContent value="settings">
