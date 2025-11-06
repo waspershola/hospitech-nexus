@@ -2584,6 +2584,7 @@ export type Database = {
       platform_tenants: {
         Row: {
           created_at: string
+          deleted_at: string | null
           domain: string | null
           id: string
           owner_email: string
@@ -2594,6 +2595,7 @@ export type Database = {
         }
         Insert: {
           created_at?: string
+          deleted_at?: string | null
           domain?: string | null
           id: string
           owner_email: string
@@ -2604,6 +2606,7 @@ export type Database = {
         }
         Update: {
           created_at?: string
+          deleted_at?: string | null
           domain?: string | null
           id?: string
           owner_email?: string
@@ -4566,6 +4569,7 @@ export type Database = {
           brand_color: string | null
           created_at: string | null
           deactivated_at: string | null
+          deleted_at: string | null
           domain: string | null
           id: string
           logo_url: string | null
@@ -4581,6 +4585,7 @@ export type Database = {
           brand_color?: string | null
           created_at?: string | null
           deactivated_at?: string | null
+          deleted_at?: string | null
           domain?: string | null
           id?: string
           logo_url?: string | null
@@ -4596,6 +4601,7 @@ export type Database = {
           brand_color?: string | null
           created_at?: string | null
           deactivated_at?: string | null
+          deleted_at?: string | null
           domain?: string | null
           id?: string
           logo_url?: string | null
@@ -4874,6 +4880,7 @@ export type Database = {
       }
     }
     Functions: {
+      check_tenant_access: { Args: { _tenant_id: string }; Returns: Json }
       generate_invoice_number: { Args: never; Returns: string }
       generate_receipt_number: {
         Args: { p_receipt_type: string; p_tenant_id: string }

@@ -1,9 +1,21 @@
-import { ReactNode } from 'react';
-import { Navigate } from 'react-router-dom';
+import { ReactNode, useEffect } from 'react';
+import { Navigate, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
+import { useTenantAccess } from '@/hooks/useTenantAccess';
 
 export default function ProtectedRoute({ children }: { children: ReactNode }) {
   const { user, loading } = useAuth();
+  const navigate = useNavigate();
+  
+  // Check if user needs to reset password
+  useEffect(() => {
+    if (user && user.user_metadata?.force_password_reset) {
+      navigate('/force-password-reset', { replace: true });
+    }
+  }, [user, navigate]);
+
+  // Check tenant access (suspension)
+  useTenantAccess();
 
   if (loading) {
     return (

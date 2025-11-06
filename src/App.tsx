@@ -45,8 +45,10 @@ import PortalRequests from "./pages/portal/Requests";
 import PortalPayments from "./pages/portal/Payments";
 import PlatformDashboard from "./pages/dashboard/platform/PlatformDashboard";
 import PlatformBilling from "./pages/dashboard/platform/PlatformBilling";
+import TenantDetail from "./pages/dashboard/platform/TenantDetail";
 import PaymentSuccess from "./pages/PaymentSuccess";
 import PaymentCancel from "./pages/PaymentCancel";
+import ForcePasswordReset from "./pages/ForcePasswordReset";
 import UsageMonitoring from "./pages/dashboard/UsageMonitoring";
 import InvoiceManagement from "./pages/dashboard/InvoiceManagement";
 import PaymentEnforcement from "./pages/dashboard/PaymentEnforcement";
@@ -76,6 +78,7 @@ const App = () => (
             <Route path="/" element={<Index />} />
         <Route path="/auth/login" element={<Login />} />
         <Route path="/auth/signup" element={<Signup />} />
+        <Route path="/force-password-reset" element={<ForcePasswordReset />} />
         <Route path="/auth/onboard" element={<Onboard />} />
         <Route path="/auth/password-change" element={<PasswordChangeRequired />} />
             
@@ -116,6 +119,7 @@ const App = () => (
           
           {/* Platform Admin - Main Dashboard */}
           <Route path="platform-admin" element={<PlatformGuard><PlatformDashboard /></PlatformGuard>} />
+          <Route path="platform/tenants/:tenantId" element={<PlatformGuard><TenantDetail /></PlatformGuard>} />
           
           {/* Platform Admin - Specific Sections (redirect to main dashboard with tab) */}
           <Route path="platform-users" element={<Navigate to="/dashboard/platform-admin?tab=users" replace />} />

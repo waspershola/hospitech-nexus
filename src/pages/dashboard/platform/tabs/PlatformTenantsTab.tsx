@@ -281,6 +281,15 @@ export function PlatformTenantsTab() {
                   </div>
 
                   <div className="flex gap-2">
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => window.location.href = `/dashboard/platform/tenants/${tenant.id}`}
+                    >
+                      <Building2 className="h-4 w-4 mr-2" />
+                      View Details
+                    </Button>
+                    
                     {tenant.status === 'suspended' ? (
                       <Button
                         size="sm"
