@@ -155,26 +155,7 @@ export default function ConfigurationCenter() {
             disabled={unsavedCount === 0 || isSaving}
               >
                 <RotateCcw className="h-4 w-4 mr-2" />
-                Reset All
-              </Button>
-
-              <Button
-                size="sm"
-            onClick={handleSaveAll}
-            disabled={unsavedCount === 0 || isSaving}
-                className="bg-primary hover:bg-primary/90"
-              >
-                {isSaving ? (
-                  <>
-                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                    Saving...
-                  </>
-                ) : (
-                  <>
-                    <Save className="h-4 w-4 mr-2" />
-                    Save All Changes
-                  </>
-                )}
+                Reset
               </Button>
             </div>
           </div>

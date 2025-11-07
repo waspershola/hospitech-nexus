@@ -266,7 +266,9 @@ export const useConfigStore = create<ConfigStore>((set, get) => ({
               key: fieldKey,
               value: fieldValue as any, // Supabase handles JSONB serialization
               updated_by: user?.id,
-            }])
+            }], {
+              onConflict: 'tenant_id,key'
+            })
             .select();
           
           saveResults.push(result);
@@ -291,7 +293,9 @@ export const useConfigStore = create<ConfigStore>((set, get) => ({
             key,
             value: configurations[key] as any, // Supabase handles JSONB serialization
             updated_by: user?.id,
-          }])
+          }], {
+            onConflict: 'tenant_id,key'
+          })
           .select()
           .single();
 
@@ -347,6 +351,8 @@ export const useConfigStore = create<ConfigStore>((set, get) => ({
           ...(existing?.id && { id: existing.id }),
           tenant_id: tenantId,
           ...branding,
+        }, {
+          onConflict: 'tenant_id'
         })
         .select()
         .single();
@@ -399,6 +405,8 @@ export const useConfigStore = create<ConfigStore>((set, get) => ({
           ...(existing?.id && { id: existing.id }),
           tenant_id: tenantId,
           ...emailSettings,
+        }, {
+          onConflict: 'tenant_id'
         })
         .select()
         .single();
@@ -451,6 +459,8 @@ export const useConfigStore = create<ConfigStore>((set, get) => ({
           ...(existing?.id && { id: existing.id }),
           tenant_id: tenantId,
           ...hotelMeta,
+        }, {
+          onConflict: 'tenant_id'
         })
         .select()
         .single();
@@ -509,6 +519,8 @@ export const useConfigStore = create<ConfigStore>((set, get) => ({
           tenant_id: tenantId,
           template_type: templateType,
           ...template,
+        }, {
+          onConflict: 'tenant_id,template_type'
         })
         .select()
         .single();

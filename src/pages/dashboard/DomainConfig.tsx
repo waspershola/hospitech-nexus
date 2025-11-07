@@ -123,7 +123,7 @@ export default function DomainConfig() {
               </Badge>
             )}
             
-            {/* Action Buttons */}
+            {/* Reset Button Only */}
             <Button
               variant="outline"
               size="sm"
@@ -132,14 +132,6 @@ export default function DomainConfig() {
             >
               <RotateCcw className="w-4 h-4 mr-2" />
               Reset
-            </Button>
-            <Button
-              size="sm"
-              onClick={handleSaveAll}
-              disabled={unsavedCount === 0 || isSaving}
-            >
-              <Save className="w-4 h-4 mr-2" />
-              {isSaving ? `Saving ${savingProgress}%` : 'Save All'}
             </Button>
           </div>
         </div>
