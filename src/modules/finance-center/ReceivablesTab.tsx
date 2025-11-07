@@ -7,7 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
 import { differenceInDays } from 'date-fns';
-import { AlertCircle } from 'lucide-react';
+import { AlertCircle, MessageSquare } from 'lucide-react';
 
 export function ReceivablesTab() {
   const { tenantId } = useAuth();
@@ -93,6 +93,80 @@ export function ReceivablesTab() {
     },
   });
 
+  const sendReminderMutation = useMutation({
+    mutationFn: async ({ receivableId, phone, amount, name, isOrg, hotelName }: {
+      receivableId: string;
+      phone: string;
+      amount: number;
+      name: string;
+      isOrg: boolean;
+      hotelName: string;
+    }) => {
+      const message = isOrg 
+        ? `Reminder: Outstanding payment of ₦${amount.toLocaleString()} for ${name}. Please settle at your earliest convenience. - ${hotelName}`
+        : `Hi ${name}, gentle reminder: You have an outstanding balance of ₦${amount.toLocaleString()}. Please contact us to settle. - ${hotelName}`;
+      
+      const { data, error } = await supabase.functions.invoke('send-sms', {
+        body: { 
+          to: phone, 
+          message,
+          event_key: 'payment_reminder',
+          tenant_id: tenantId,
+        }
+      });
+      
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => toast.success('Payment reminder sent!'),
+    onError: (error: Error) => toast.error(`Failed to send reminder: ${error.message}`),
+  });
+
+  const sendBulkRemindersMutation = useMutation({
+    mutationFn: async (receivables: any[]) => {
+      const { data: tenant } = await supabase
+        .from('tenants')
+        .select('name')
+        .eq('id', tenantId)
+        .single();
+
+      const hotelName = tenant?.name || 'Hotel';
+      let sentCount = 0;
+      let failedCount = 0;
+
+      for (const ar of receivables) {
+        if (!ar.guest?.phone) {
+          failedCount++;
+          continue;
+        }
+
+        try {
+          await sendReminderMutation.mutateAsync({
+            receivableId: ar.id,
+            phone: ar.guest.phone,
+            amount: ar.amount,
+            name: ar.guest?.name || ar.organization?.name || 'Guest',
+            isOrg: !!ar.organization_id,
+            hotelName,
+          });
+          sentCount++;
+          // Delay between sends to avoid rate limits
+          await new Promise(resolve => setTimeout(resolve, 500));
+        } catch (error) {
+          failedCount++;
+        }
+      }
+
+      return { sentCount, failedCount };
+    },
+    onSuccess: (data) => {
+      toast.success(`Sent ${data.sentCount} reminders. ${data.failedCount} failed.`);
+    },
+    onError: (error: Error) => {
+      toast.error(`Bulk reminder failed: ${error.message}`);
+    },
+  });
+
   const totalAR = receivables?.reduce((sum, r) => sum + Number(r.amount), 0) || 0;
   const overdueCount = receivables?.filter(r => {
     const age = differenceInDays(new Date(), new Date(r.created_at));
@@ -134,12 +208,37 @@ export function ReceivablesTab() {
         <div className="space-y-4">
           <div className="flex items-center justify-between">
             <h3 className="text-lg font-semibold">Open Receivables</h3>
-            {overdueCount > 0 && (
-              <Badge variant="destructive" className="gap-1">
-                <AlertCircle className="w-3 h-3" />
-                {overdueCount} Overdue
-              </Badge>
-            )}
+            <div className="flex items-center gap-2">
+              {overdueCount > 0 && (
+                <>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => {
+                      const overdueWithPhone = receivables?.filter(ar => {
+                        const age = differenceInDays(new Date(), new Date(ar.created_at));
+                        return age > 30 && ar.guest?.phone;
+                      });
+                      if (overdueWithPhone && overdueWithPhone.length > 0) {
+                        if (confirm(`Send payment reminders to ${overdueWithPhone.length} overdue accounts?`)) {
+                          sendBulkRemindersMutation.mutate(overdueWithPhone);
+                        }
+                      } else {
+                        toast.error('No overdue accounts with phone numbers');
+                      }
+                    }}
+                    disabled={sendBulkRemindersMutation.isPending}
+                  >
+                    <MessageSquare className="w-4 h-4 mr-2" />
+                    Send Bulk Reminders
+                  </Button>
+                  <Badge variant="destructive" className="gap-1">
+                    <AlertCircle className="w-3 h-3" />
+                    {overdueCount} Overdue
+                  </Badge>
+                </>
+              )}
+            </div>
           </div>
 
           {!receivables || receivables.length === 0 ? (
@@ -198,6 +297,33 @@ export function ReceivablesTab() {
                         </TableCell>
                         <TableCell className="text-right">
                           <div className="flex justify-end gap-2">
+                            {ar.guest?.phone && (
+                              <Button 
+                                size="sm" 
+                                variant="outline"
+                                onClick={async () => {
+                                  const { data: tenant } = await supabase
+                                    .from('tenants')
+                                    .select('name')
+                                    .eq('id', tenantId)
+                                    .single();
+                                  const hotelName = tenant?.name || 'Hotel';
+                                  
+                                  sendReminderMutation.mutate({
+                                    receivableId: ar.id,
+                                    phone: ar.guest.phone!,
+                                    amount: ar.amount,
+                                    name: ar.guest?.name || ar.organization?.name || 'Guest',
+                                    isOrg: !!ar.organization_id,
+                                    hotelName,
+                                  });
+                                }}
+                                disabled={sendReminderMutation.isPending}
+                              >
+                                <MessageSquare className="w-4 h-4 mr-1" />
+                                Send Reminder
+                              </Button>
+                            )}
                             <Button 
                               size="sm" 
                               variant="outline" 

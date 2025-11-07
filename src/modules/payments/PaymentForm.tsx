@@ -28,6 +28,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { Switch } from '@/components/ui/switch';
 import {
   AlertDialog,
   AlertDialogContent,
@@ -85,6 +86,8 @@ export function PaymentForm({
   const [showWalletApplyDialog, setShowWalletApplyDialog] = useState(false);
   const [walletCreditApplied, setWalletCreditApplied] = useState(0);
   const [autoApplyAttempted, setAutoApplyAttempted] = useState(false);
+  const [sendSMS, setSendSMS] = useState(false);
+  const [guestPhone, setGuestPhone] = useState<string | null>(null);
   
   const { tenantId } = useAuth();
   const queryClient = useQueryClient();
@@ -155,7 +158,7 @@ export function PaymentForm({
     }
   }, [getDefaultLocation, setValue, watch, dashboardContext]);
 
-  // Fetch guest wallet for auto-apply
+  // Fetch guest wallet and phone for auto-apply
   const { data: guestWallet } = useQuery({
     queryKey: ['guest-wallet-balance', guestId, tenantId],
     queryFn: async () => {
@@ -174,6 +177,23 @@ export function PaymentForm({
     },
     enabled: !!tenantId && !!guestId && isBookingPayment,
   });
+
+  // Fetch guest phone for SMS
+  useEffect(() => {
+    if (!guestId || !tenantId) return;
+    
+    const fetchGuestPhone = async () => {
+      const { data } = await supabase
+        .from('guests')
+        .select('phone')
+        .eq('id', guestId)
+        .single();
+      
+      setGuestPhone(data?.phone || null);
+    };
+    
+    fetchGuestPhone();
+  }, [guestId, tenantId]);
 
   // Auto-select provider based on location
   useEffect(() => {
@@ -315,10 +335,42 @@ export function PaymentForm({
         },
       },
       {
-        onSuccess: (data) => {
+        onSuccess: async (paymentData) => {
           setShowOverpaymentDialog(false);
           setShowManagerApproval(false);
-          onSuccess?.(data?.payment?.id);
+          
+          // PHASE 2: Send SMS receipt if enabled
+          if (sendSMS && guestPhone && paymentData?.payment) {
+            try {
+              const { data: tenant } = await supabase
+                .from('tenants')
+                .select('name')
+                .eq('id', tenantId)
+                .single();
+
+              const hotelName = tenant?.name || 'Hotel';
+              const amount = parseFloat(data.amount).toLocaleString();
+              const method = selectedProvider.name;
+
+              const message = `Payment received: ₦${amount} via ${method}. Ref: ${transactionRef}. Thank you! - ${hotelName}`;
+
+              await supabase.functions.invoke('send-sms', {
+                body: {
+                  tenant_id: tenantId,
+                  to: guestPhone,
+                  message,
+                  event_key: 'payment_received',
+                  booking_id: bookingId,
+                  guest_id: guestId,
+                },
+              });
+            } catch (smsError) {
+              console.error('SMS send failed:', smsError);
+              // Don't block success flow
+            }
+          }
+          
+          onSuccess?.(paymentData?.payment?.id);
         },
         onError: (error: Error) => {
           setValidationError(error.message);
@@ -697,6 +749,19 @@ export function PaymentForm({
           rows={3}
         />
       </div>
+
+      {/* SMS Receipt Toggle */}
+      {guestPhone && (
+        <div className="flex items-center justify-between p-3 border rounded-lg bg-muted/30">
+          <div className="flex-1">
+            <Label htmlFor="sendSMS" className="cursor-pointer">Send SMS Receipt</Label>
+            <p className="text-sm text-muted-foreground">
+              Send payment confirmation to {guestPhone}
+            </p>
+          </div>
+          <Switch id="sendSMS" checked={sendSMS} onCheckedChange={setSendSMS} />
+        </div>
+      )}
 
       <div className="flex gap-2 pt-4">
         {onCancel && (

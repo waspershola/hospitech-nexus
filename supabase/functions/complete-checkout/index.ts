@@ -336,6 +336,79 @@ serve(async (req) => {
 
     console.log('[complete-checkout] Checkout completed successfully');
 
+    // PHASE 1: Send checkout SMS notification
+    try {
+      // Fetch SMS settings
+      const { data: smsSettings } = await supabaseClient
+        .from('tenant_sms_settings')
+        .select('enabled, auto_send_checkout_confirmation')
+        .eq('tenant_id', booking.tenant_id)
+        .maybeSingle();
+
+      console.log('[complete-checkout] SMS settings:', smsSettings);
+
+      if (smsSettings?.enabled && smsSettings?.auto_send_checkout_confirmation) {
+        // Fetch booking details with guest and room (using PostgREST hints)
+        const { data: fullBooking } = await supabaseClient
+          .from('bookings')
+          .select(`
+            id,
+            guest:guests!guest_id(id, name, phone),
+            room:rooms!room_id(number)
+          `)
+          .eq('id', bookingId)
+          .eq('tenant_id', booking.tenant_id)
+          .maybeSingle();
+
+        console.log('[complete-checkout] Full booking for SMS:', fullBooking);
+
+        const guest = Array.isArray(fullBooking?.guest) ? fullBooking?.guest[0] : fullBooking?.guest;
+        const room = Array.isArray(fullBooking?.room) ? fullBooking?.room[0] : fullBooking?.room;
+
+        if (guest?.phone) {
+          // Fetch hotel name
+          const { data: tenant } = await supabaseClient
+            .from('tenants')
+            .select('name')
+            .eq('id', booking.tenant_id)
+            .single();
+
+          const hotelName = tenant?.name || 'Hotel';
+          const roomNumber = room?.number || 'N/A';
+          const guestName = guest.name;
+
+          const message = `Thank you for staying at ${hotelName}! We hope you enjoyed your stay in Room ${roomNumber}. Safe travels!`;
+
+          console.log('[complete-checkout] Sending checkout SMS:', message);
+
+          // Invoke send-sms edge function
+          const { data: smsResult, error: smsError } = await supabaseClient.functions.invoke('send-sms', {
+            body: {
+              tenant_id: booking.tenant_id,
+              to: guest.phone,
+              message,
+              event_key: 'checkout_confirmation',
+              booking_id: bookingId,
+              guest_id: guest.id,
+            },
+          });
+
+          if (smsError) {
+            console.error('[complete-checkout] SMS send failed:', smsError);
+          } else {
+            console.log('[complete-checkout] SMS sent successfully:', smsResult);
+          }
+        } else {
+          console.log('[complete-checkout] No guest phone number, skipping SMS');
+        }
+      } else {
+        console.log('[complete-checkout] SMS notifications disabled or auto-send off');
+      }
+    } catch (smsError) {
+      // Don't block checkout if SMS fails
+      console.error('[complete-checkout] SMS error (non-blocking):', smsError);
+    }
+
     return new Response(
       JSON.stringify({ 
         success: true, 
