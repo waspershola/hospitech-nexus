@@ -13,12 +13,17 @@ export default function Settings() {
   const setTenantId = useConfigStore(state => state.setTenantId);
   const loadAllConfig = useConfigStore(state => state.loadAllConfig);
 
+  console.log('⚙️ [Settings] Component mounted, tenantId from useAuth:', tenantId);
+
   // Initialize tenant ID and load config when tenantId is available
   useEffect(() => {
+    console.log('⚙️ [Settings] useEffect triggered, tenantId:', tenantId);
     if (tenantId) {
       console.log('⚙️ [Settings] Initializing with tenant ID:', tenantId);
       setTenantId(tenantId);
       loadAllConfig(tenantId);
+    } else {
+      console.warn('⚠️ [Settings] tenantId is null, cannot initialize config store');
     }
   }, [tenantId, setTenantId, loadAllConfig]);
   return (
