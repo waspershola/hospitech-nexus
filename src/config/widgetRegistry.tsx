@@ -4,6 +4,7 @@ import { FinanceOverviewKPIs } from '@/modules/finance-center/components/Finance
 import { LiveTransactionFeed } from '@/modules/finance-center/components/LiveTransactionFeed';
 import { DebtorsCard } from '@/modules/finance-center/components/DebtorsCard';
 import { CreditorsCard } from '@/modules/finance-center/components/CreditorsCard';
+import { SMSActivityWidget } from '@/modules/finance-center/components/SMSActivityWidget';
 
 export interface WidgetDefinition {
   id: string;
@@ -71,6 +72,15 @@ export const WIDGET_REGISTRY: WidgetDefinition[] = [
     allowedRoles: [ROLES.OWNER, ROLES.MANAGER, ROLES.FINANCE, ROLES.ACCOUNTANT],
     order: 13,
     gridSpan: 'half',
+    category: 'finance',
+  },
+  {
+    id: 'sms-activity',
+    name: 'SMS Activity',
+    component: SMSActivityWidget,
+    allowedRoles: [ROLES.OWNER, ROLES.MANAGER, ROLES.FINANCE, ROLES.ACCOUNTANT],
+    order: 14,
+    gridSpan: 'full',
     category: 'finance',
   },
   
