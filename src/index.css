@@ -141,8 +141,3 @@ All colors MUST be HSL.
     @apply font-display;
   }
 }
-
-/* Toast Display Fix - Ensure toasts are visible */
-[data-sonner-toaster] {
-  z-index: 99999 !important;
-}

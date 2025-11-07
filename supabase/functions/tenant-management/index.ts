@@ -57,7 +57,7 @@ serve(async (req) => {
 
     // CREATE TENANT
     if (action === 'create') {
-      const { hotel_name, owner_email, plan_id, domain, owner_password, provider_id, sender_id, additional_credits } = body;
+      const { hotel_name, owner_email, plan_id, domain, owner_password } = body;
 
       if (!hotel_name || !owner_email || !plan_id) {
         return new Response(
@@ -140,21 +140,18 @@ serve(async (req) => {
 
       console.log('✅ Platform tenant entry created');
 
-      // Initialize SMS credit pool with trial credits + additional
+      // Initialize SMS credit pool (100 free trial credits)
       try {
-        const totalCredits = 100 + (additional_credits || 0);
         await supabase
           .from('platform_sms_credit_pool')
           .insert({
             tenant_id: tenant.id,
-            total_credits: totalCredits,
+            total_credits: 100,
             consumed_credits: 0,
             last_topup_at: new Date().toISOString(),
-            billing_reference: additional_credits 
-              ? `Trial credits (100) + Additional (${additional_credits})`
-              : 'Trial credits',
+            billing_reference: 'Trial credits',
           });
-        console.log(`✅ SMS credit pool initialized (${totalCredits} credits)`);
+        console.log('✅ SMS credit pool initialized (100 credits)');
       } catch (err) {
         console.error('⚠️ SMS credit pool creation failed:', err);
       }
@@ -216,25 +213,6 @@ serve(async (req) => {
 
       if (brandingError) console.error('Branding error:', brandingError);
 
-      // Assign SMS provider if specified
-      if (provider_id && sender_id) {
-        try {
-          await supabase
-            .from('tenant_provider_assignments')
-            .insert({
-              tenant_id: tenant.id,
-              provider_id,
-              sender_id,
-              is_active: true,
-              assigned_at: new Date().toISOString(),
-              assigned_by: user.id,
-            });
-          console.log(`✅ SMS provider assigned: ${provider_id} with sender ID: ${sender_id}`);
-        } catch (err) {
-          console.error('⚠️ Provider assignment failed:', err);
-        }
-      }
-
       // Create default hotel meta
       const { error: metaError } = await supabase
         .from('hotel_meta')
@@ -262,9 +240,6 @@ serve(async (req) => {
             plan_id,
             domain,
             admin_user_id: adminUser?.id,
-            provider_id: provider_id || null,
-            sender_id: sender_id || null,
-            initial_credits: 100 + (additional_credits || 0),
           },
         });
 

@@ -2,30 +2,6 @@ import { create } from 'zustand';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 
-// Utility functions for camelCase <-> snake_case conversion
-const camelToSnake = (str: string): string => {
-  return str.replace(/[A-Z]/g, letter => `_${letter.toLowerCase()}`);
-};
-
-const snakeToCamel = (str: string): string => {
-  return str.replace(/_([a-z])/g, (_, letter) => letter.toUpperCase());
-};
-
-const convertObjectKeys = (obj: any, converter: (key: string) => string): any => {
-  if (obj === null || obj === undefined) return obj;
-  if (typeof obj !== 'object') return obj;
-  if (Array.isArray(obj)) return obj.map(item => convertObjectKeys(item, converter));
-  
-  const converted: any = {};
-  for (const key in obj) {
-    if (obj.hasOwnProperty(key)) {
-      const newKey = converter(key);
-      converted[newKey] = convertObjectKeys(obj[key], converter);
-    }
-  }
-  return converted;
-};
-
 interface ConfigStore {
   tenantId: string | null;
   configurations: Record<string, any>;
@@ -108,18 +84,15 @@ export const useConfigStore = create<ConfigStore>((set, get) => ({
           }
         }
         
-        // Convert snake_case from DB to camelCase for UI
-        const camelKey = snakeToCamel(config.key);
-        
         // Group certain fields under 'general'
         const generalFields = ['hotelName', 'timezone', 'dateFormat', 'phone', 'email', 
                               'website', 'address', 'city', 'state', 'country', 
                               'allowCheckoutWithoutPayment', 'checkInTime', 'checkOutTime'];
         
-        if (generalFields.includes(camelKey)) {
-          generalConfig[camelKey] = parsedValue;
+        if (generalFields.includes(config.key)) {
+          generalConfig[config.key] = parsedValue;
         } else {
-          configurationsMap[camelKey] = parsedValue;
+          configurationsMap[config.key] = parsedValue;
         }
       });
       
@@ -268,142 +241,67 @@ export const useConfigStore = create<ConfigStore>((set, get) => ({
 
   saveConfig: async (key: string) => {
     const { tenantId, configurations } = get();
-    
-    console.log('🔘 saveConfig called with key:', key);
-    console.log('📦 Current configurations:', configurations);
-    console.log('🏢 Tenant ID:', tenantId);
-    
-    if (!tenantId) {
-      console.error('❌ No tenant ID - aborting save');
-      return;
-    }
+    if (!tenantId) return;
 
     set({ isSaving: true, lastError: null, sectionErrors: { ...get().sectionErrors, [key]: '' } });
 
     try {
       const { data: { user } } = await supabase.auth.getUser();
-      console.log('👤 Current user:', user?.id);
       
       // If key is 'general', save each field as separate configuration
       if (key === 'general' && typeof configurations[key] === 'object') {
         const generalConfig = configurations[key];
+        const savePromises = [];
         
-        console.log('💾 Saving general config with fields:', Object.keys(generalConfig));
-        console.log('💾 Full general config object:', JSON.stringify(generalConfig, null, 2));
-        
-        // Save each general config field separately (convert to snake_case)
-        const saveResults = [];
+        // Save each general config field separately
         for (const [fieldKey, fieldValue] of Object.entries(generalConfig)) {
-          const snakeKey = camelToSnake(fieldKey);
-          
-          console.log(`  📝 [${fieldKey}] → [${snakeKey}] = ${JSON.stringify(fieldValue)}`);
-          
-          const payload = {
-            tenant_id: tenantId,
-            key: snakeKey,
-            value: fieldValue as any,
-            updated_by: user?.id,
-          };
-          
-          console.log('  💌 Payload to upsert:', JSON.stringify(payload, null, 2));
-          
-          const result = await supabase
-            .from('hotel_configurations')
-            .upsert([payload], {
-              onConflict: 'tenant_id,key'
+          savePromises.push(
+            supabase.from('hotel_configurations').upsert({
+              tenant_id: tenantId,
+              key: fieldKey,
+              value: JSON.stringify(fieldValue),
+              updated_by: user?.id,
             })
-            .select();
-          
-          console.log(`  ↩️ Upsert result for ${snakeKey}:`, {
-            status: result.status,
-            error: result.error,
-            data: result.data,
-          });
-          
-          if (result.error) {
-            console.error(`  ❌ Error saving ${snakeKey}:`, result.error);
-          } else {
-            console.log(`  ✅ Successfully saved ${snakeKey}`);
-          }
-          
-          saveResults.push(result);
+          );
         }
         
-        const errors = saveResults.filter(r => r.error);
-        
+        const results = await Promise.all(savePromises);
+        const errors = results.filter(r => r.error);
         if (errors.length > 0) {
-          console.error('❌ Save errors:', errors);
           throw errors[0].error;
         }
-        
-        console.log('✅ All general config fields saved successfully');
       } else {
-        // Single key-value save (convert to snake_case)
-        const snakeKey = camelToSnake(key);
-        console.log(`💾 Saving ${key} as ${snakeKey}:`, configurations[key]);
-        
-        const payload = {
+        // Single key-value save
+        const { error } = await supabase.from('hotel_configurations').upsert({
           tenant_id: tenantId,
-          key: snakeKey,
-          value: configurations[key] as any,
+          key,
+          value: configurations[key],
           updated_by: user?.id,
-        };
-        
-        console.log('💌 Payload to upsert:', JSON.stringify(payload, null, 2));
-        
-        const { data, error, status } = await supabase
-          .from('hotel_configurations')
-          .upsert([payload], {
-            onConflict: 'tenant_id,key'
-          })
-          .select()
-          .single();
+        });
 
-        console.log('↩️ Upsert result:', { status, error, data });
-
-        if (error) {
-          console.error(`❌ Error saving ${key}:`, error);
-          throw error;
-        }
-        
-        console.log(`✅ ${key} saved successfully`);
+        if (error) throw error;
       }
       
       const now = new Date();
-      console.log('🎯 Updating state - removing from unsavedChanges:', key);
-      
-      // Force new array reference to trigger reactivity
-      set(state => {
-        const newUnsavedChanges = state.unsavedChanges.filter(k => k !== key);
-        console.log('  📊 unsavedChanges before:', state.unsavedChanges);
-        console.log('  📊 unsavedChanges after:', newUnsavedChanges);
-        
-        return {
-          unsavedChanges: [...newUnsavedChanges],
-          lastSyncTime: now,
-          sectionLastSaved: { ...state.sectionLastSaved, [key]: now },
-          version: state.version + 1,
-          saveCounter: state.saveCounter + 1,
-          isSaving: false,
-        };
-      });
+      set(state => ({
+        unsavedChanges: state.unsavedChanges.filter(k => k !== key),
+        lastSyncTime: now,
+        sectionLastSaved: { ...state.sectionLastSaved, [key]: now },
+        version: state.version + 1,
+        saveCounter: state.saveCounter + 1,
+      }));
 
-      console.log('🎉 Showing success toast');
       toast.success('Configuration saved');
-      console.log('✅ Save operation completed successfully');
     } catch (error: any) {
-      console.error('🔥 Exception during save:', error);
-      console.error('🔥 Error details:', JSON.stringify(error, null, 2));
-      
+      console.error('Failed to save config:', error);
       set({ 
         lastError: error.message,
-        sectionErrors: { ...get().sectionErrors, [key]: error.message },
-        isSaving: false,
+        sectionErrors: { ...get().sectionErrors, [key]: error.message }
       });
-      
-      console.log('⚠️ Showing error toast');
-      toast.error('Failed to save configuration: ' + (error.message || 'Unknown error'));
+      toast.error('Failed to save configuration');
       throw error;
+    } finally {
+      set({ isSaving: false });
     }
   },
 
@@ -428,8 +326,6 @@ export const useConfigStore = create<ConfigStore>((set, get) => ({
           ...(existing?.id && { id: existing.id }),
           tenant_id: tenantId,
           ...branding,
-        }, {
-          onConflict: 'tenant_id'
         })
         .select()
         .single();
@@ -482,8 +378,6 @@ export const useConfigStore = create<ConfigStore>((set, get) => ({
           ...(existing?.id && { id: existing.id }),
           tenant_id: tenantId,
           ...emailSettings,
-        }, {
-          onConflict: 'tenant_id'
         })
         .select()
         .single();
@@ -536,8 +430,6 @@ export const useConfigStore = create<ConfigStore>((set, get) => ({
           ...(existing?.id && { id: existing.id }),
           tenant_id: tenantId,
           ...hotelMeta,
-        }, {
-          onConflict: 'tenant_id'
         })
         .select()
         .single();
@@ -596,8 +488,6 @@ export const useConfigStore = create<ConfigStore>((set, get) => ({
           tenant_id: tenantId,
           template_type: templateType,
           ...template,
-        }, {
-          onConflict: 'tenant_id,template_type'
         })
         .select()
         .single();

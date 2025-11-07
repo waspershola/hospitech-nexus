@@ -61,15 +61,7 @@ export function ConfigCard({
               {onSave && (
                 <Button 
                   size="sm" 
-                  onClick={async () => {
-                    console.log('🔘 Save button clicked for:', sectionKey);
-                    try {
-                      await onSave();
-                      console.log('✅ Save completed for:', sectionKey);
-                    } catch (error) {
-                      console.error('❌ Save failed for:', sectionKey, error);
-                    }
-                  }}
+                  onClick={onSave}
                   variant={hasUnsavedChanges ? "default" : "outline"}
                   className="shrink-0"
                 >

@@ -37,89 +37,47 @@ export default function TenantDetail() {
   const { data: tenant, isLoading, error: queryError } = useQuery({
     queryKey: ['platform-tenant', tenantId],
     queryFn: async () => {
-      console.log('[TenantDetail] Fetching tenant:', tenantId);
-      
-      // Fetch tenant data without relationship syntax
       const { data, error } = await supabase
         .from('platform_tenants')
-        .select('*')
+        .select('*, plan:platform_plans(*)')
         .eq('id', tenantId)
         .maybeSingle();
 
       if (error) {
-        console.error('[TenantDetail] Error fetching tenant:', {
-          error,
-          code: error.code,
-          message: error.message,
-          details: error.details,
-          hint: error.hint
-        });
+        console.error('Error fetching tenant:', error);
         throw error;
       }
 
       if (!data) {
-        console.warn('[TenantDetail] Tenant not found:', tenantId);
+        console.error('Tenant not found:', tenantId);
         return null;
       }
 
-      console.log('[TenantDetail] Tenant data loaded:', data.domain || data.id);
-
-      // Fetch plan data separately
-      let planData = null;
-      if (data.plan_id) {
-        const { data: plan, error: planError } = await supabase
-          .from('platform_plans')
-          .select('*')
-          .eq('id', data.plan_id)
-          .maybeSingle();
-
-        if (planError) {
-          console.error('[TenantDetail] Error fetching plan:', planError);
-        } else {
-          planData = plan;
-        }
-      }
-
       // Fetch owner info
-      const { data: ownerRole, error: ownerError } = await supabase
+      const { data: ownerRole } = await supabase
         .from('user_roles')
         .select('user_id')
         .eq('tenant_id', tenantId)
         .eq('role', 'owner')
         .maybeSingle();
 
-      if (ownerError) {
-        console.error('[TenantDetail] Error fetching owner role:', ownerError);
-      }
-
-      let ownerEmail = null;
-      let ownerName = null;
-
       if (ownerRole?.user_id) {
-        const { data: profile, error: profileError } = await supabase
+        const { data: profile } = await supabase
           .from('profiles')
           .select('email, full_name')
           .eq('id', ownerRole.user_id)
           .maybeSingle();
 
-        if (profileError) {
-          console.error('[TenantDetail] Error fetching profile:', profileError);
-        } else if (profile) {
-          ownerEmail = profile.email;
-          ownerName = profile.full_name;
-        }
+        return {
+          ...data,
+          owner_email: profile?.email,
+          owner_name: profile?.full_name
+        };
       }
 
-      return {
-        ...data,
-        plan: planData,
-        owner_email: ownerEmail,
-        owner_name: ownerName
-      };
+      return data;
     },
-    enabled: !!tenantId,
-    retry: 2,
-    retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 30000),
+    enabled: !!tenantId
   });
 
   const getStatusBadge = (status: string) => {
@@ -134,71 +92,31 @@ export default function TenantDetail() {
 
   if (isLoading) {
     return (
-      <div className="container mx-auto p-6">
-        <div className="space-y-6">
-          <div className="flex items-center gap-4">
-            <Button variant="ghost" size="icon" disabled>
-              <ArrowLeft className="h-4 w-4" />
-            </Button>
-            <div className="space-y-2">
-              <div className="h-8 w-64 bg-muted animate-pulse rounded" />
-              <div className="h-4 w-48 bg-muted animate-pulse rounded" />
-            </div>
-          </div>
-          <Card>
-            <CardHeader>
-              <div className="space-y-2">
-                <div className="h-6 w-32 bg-muted animate-pulse rounded" />
-                <div className="h-4 w-full bg-muted animate-pulse rounded" />
-              </div>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-2">
-                <div className="h-4 w-full bg-muted animate-pulse rounded" />
-                <div className="h-4 w-3/4 bg-muted animate-pulse rounded" />
-              </div>
-            </CardContent>
-          </Card>
-        </div>
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
       </div>
     );
   }
 
   if (!tenant) {
-    const errorDetails = queryError ? {
-      message: (queryError as any).message || 'Unknown error',
-      code: (queryError as any).code,
-      details: (queryError as any).details
-    } : null;
-
-    console.error('[TenantDetail] Failed to load tenant:', { queryError, errorDetails, tenantId });
-
     return (
       <div className="container mx-auto p-6">
-        <Card className="border-destructive">
-          <CardHeader>
-            <CardTitle className="text-destructive">Error Loading Tenant Details</CardTitle>
-            <CardDescription>
-              {queryError 
-                ? 'There was an error loading the tenant. This could be due to permissions or a network issue.' 
-                : 'Tenant not found. It may have been deleted or you may not have access.'}
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            {errorDetails && (
-              <div className="bg-muted p-3 rounded text-sm space-y-1">
-                <p><strong>Error:</strong> {errorDetails.message}</p>
-                {errorDetails.code && <p><strong>Code:</strong> {errorDetails.code}</p>}
-                {errorDetails.details && <p><strong>Details:</strong> {errorDetails.details}</p>}
-              </div>
-            )}
-            <Button 
-              variant="outline" 
-              onClick={() => navigate('/dashboard/platform-admin?tab=tenants')}
-            >
-              <ArrowLeft className="h-4 w-4 mr-2" />
-              Back to Tenants
-            </Button>
+        <Card>
+          <CardContent className="pt-6">
+            <div className="text-center space-y-4">
+              <p className="text-muted-foreground">
+                {queryError 
+                  ? 'Error loading tenant details. You may not have permission to view this tenant.' 
+                  : 'Tenant not found. It may have been deleted or you may not have access.'}
+              </p>
+              <Button 
+                variant="outline" 
+                onClick={() => navigate('/dashboard/platform-admin?tab=tenants')}
+              >
+                <ArrowLeft className="h-4 w-4 mr-2" />
+                Back to Tenants
+              </Button>
+            </div>
           </CardContent>
         </Card>
       </div>

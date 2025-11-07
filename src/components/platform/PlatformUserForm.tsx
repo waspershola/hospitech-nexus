@@ -4,27 +4,18 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { PlatformRoleSelector } from './PlatformRoleSelector';
-import { PasswordDeliverySelector } from './PasswordDeliverySelector';
 import { Loader2 } from 'lucide-react';
 
 interface PlatformUserFormProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onSubmit: (data: { 
-    email: string; 
-    full_name: string; 
-    role: string;
-    phone?: string;
-    password_delivery_method?: 'email' | 'sms' | 'manual';
-  }) => void;
+  onSubmit: (data: { email: string; full_name: string; role: string }) => void;
   isSubmitting?: boolean;
   mode: 'create' | 'edit';
   initialData?: {
     email: string;
     full_name: string;
     role: string;
-    phone?: string;
-    password_delivery_method?: 'email' | 'sms' | 'manual';
   };
 }
 
@@ -41,8 +32,6 @@ export function PlatformUserForm({
       email: '',
       full_name: '',
       role: 'support_admin',
-      phone: '',
-      password_delivery_method: 'email' as 'email' | 'sms' | 'manual',
     }
   );
 
@@ -63,7 +52,7 @@ export function PlatformUserForm({
             </DialogTitle>
             <DialogDescription>
               {mode === 'create'
-                ? 'Add a new platform administrator. Choose how to deliver the temporary password.'
+                ? 'Add a new platform administrator. A password reset email will be sent.'
                 : 'Update platform user details and role.'}
             </DialogDescription>
           </DialogHeader>
@@ -103,39 +92,6 @@ export function PlatformUserForm({
                 disabled={isSubmitting}
               />
             </div>
-
-            {mode === 'create' && (
-              <>
-                <div className="space-y-2">
-                  <Label htmlFor="phone">
-                    Phone Number
-                    {formData.password_delivery_method === 'sms' && (
-                      <span className="text-destructive ml-1">*</span>
-                    )}
-                  </Label>
-                  <Input
-                    id="phone"
-                    type="tel"
-                    placeholder="+234 801 234 5678"
-                    value={formData.phone}
-                    onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                    disabled={isSubmitting}
-                    required={formData.password_delivery_method === 'sms'}
-                  />
-                  <p className="text-xs text-muted-foreground">
-                    Optional unless SMS delivery is selected
-                  </p>
-                </div>
-
-                <PasswordDeliverySelector
-                  value={formData.password_delivery_method || 'email'}
-                  onChange={(method) => setFormData({ ...formData, password_delivery_method: method })}
-                  disabled={isSubmitting}
-                  userEmail={formData.email}
-                  userPhone={formData.phone}
-                />
-              </>
-            )}
           </div>
 
           <DialogFooter>

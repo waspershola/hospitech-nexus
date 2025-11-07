@@ -1753,39 +1753,6 @@ export type Database = {
           },
         ]
       }
-      password_delivery_log: {
-        Row: {
-          delivered_at: string | null
-          delivered_by: string | null
-          delivery_method: string
-          delivery_status: string | null
-          error_message: string | null
-          id: string
-          metadata: Json | null
-          user_id: string
-        }
-        Insert: {
-          delivered_at?: string | null
-          delivered_by?: string | null
-          delivery_method: string
-          delivery_status?: string | null
-          error_message?: string | null
-          id?: string
-          metadata?: Json | null
-          user_id: string
-        }
-        Update: {
-          delivered_at?: string | null
-          delivered_by?: string | null
-          delivery_method?: string
-          delivery_status?: string | null
-          error_message?: string | null
-          id?: string
-          metadata?: Json | null
-          user_id?: string
-        }
-        Relationships: []
-      }
       payments: {
         Row: {
           amount: number
@@ -2174,39 +2141,6 @@ export type Database = {
           metadata?: Json | null
           tenant_id?: string | null
           updated_at?: string
-        }
-        Relationships: []
-      }
-      platform_impersonation_sessions: {
-        Row: {
-          actions_performed: Json | null
-          admin_id: string
-          ended_at: string | null
-          id: string
-          impersonated_at: string | null
-          ip_address: string | null
-          tenant_id: string
-          user_agent: string | null
-        }
-        Insert: {
-          actions_performed?: Json | null
-          admin_id: string
-          ended_at?: string | null
-          id?: string
-          impersonated_at?: string | null
-          ip_address?: string | null
-          tenant_id: string
-          user_agent?: string | null
-        }
-        Update: {
-          actions_performed?: Json | null
-          admin_id?: string
-          ended_at?: string | null
-          id?: string
-          impersonated_at?: string | null
-          ip_address?: string | null
-          tenant_id?: string
-          user_agent?: string | null
         }
         Relationships: []
       }
@@ -2832,11 +2766,8 @@ export type Database = {
           last_active: string | null
           metadata: Json | null
           name: string
-          password_delivery_method: string | null
-          phone: string | null
           role: Database["public"]["Enums"]["app_role"]
           system_locked: boolean | null
-          temp_password_expires_at: string | null
           updated_at: string
         }
         Insert: {
@@ -2846,11 +2777,8 @@ export type Database = {
           last_active?: string | null
           metadata?: Json | null
           name: string
-          password_delivery_method?: string | null
-          phone?: string | null
           role: Database["public"]["Enums"]["app_role"]
           system_locked?: boolean | null
-          temp_password_expires_at?: string | null
           updated_at?: string
         }
         Update: {
@@ -2860,11 +2788,8 @@ export type Database = {
           last_active?: string | null
           metadata?: Json | null
           name?: string
-          password_delivery_method?: string | null
-          phone?: string | null
           role?: Database["public"]["Enums"]["app_role"]
           system_locked?: boolean | null
-          temp_password_expires_at?: string | null
           updated_at?: string
         }
         Relationships: []
@@ -2876,7 +2801,6 @@ export type Database = {
           email: string | null
           full_name: string | null
           id: string
-          phone: string | null
         }
         Insert: {
           avatar_url?: string | null
@@ -2884,7 +2808,6 @@ export type Database = {
           email?: string | null
           full_name?: string | null
           id: string
-          phone?: string | null
         }
         Update: {
           avatar_url?: string | null
@@ -2892,7 +2815,6 @@ export type Database = {
           email?: string | null
           full_name?: string | null
           id?: string
-          phone?: string | null
         }
         Relationships: []
       }
@@ -4709,8 +4631,6 @@ export type Database = {
           created_at: string | null
           id: string
           role: Database["public"]["Enums"]["app_role"]
-          status: string | null
-          suspension_metadata: Json | null
           tenant_id: string
           user_id: string
         }
@@ -4718,8 +4638,6 @@ export type Database = {
           created_at?: string | null
           id?: string
           role: Database["public"]["Enums"]["app_role"]
-          status?: string | null
-          suspension_metadata?: Json | null
           tenant_id: string
           user_id: string
         }
@@ -4727,8 +4645,6 @@ export type Database = {
           created_at?: string | null
           id?: string
           role?: Database["public"]["Enums"]["app_role"]
-          status?: string | null
-          suspension_metadata?: Json | null
           tenant_id?: string
           user_id?: string
         }
