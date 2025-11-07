@@ -135,14 +135,25 @@ export function useRoomActions() {
               room:rooms(number)
             `)
             .eq('id', booking.id)
-            .single();
+            .eq('tenant_id', tenantId)
+            .maybeSingle();
 
-          console.log('📋 Full Booking:', { fullBooking, bookingError });
-          console.log('📋 Full Booking Structure:', JSON.stringify(fullBooking, null, 2));
-          console.log('📋 Guest Object:', fullBooking?.guest);
-          console.log('📋 Guest Phone:', fullBooking?.guest?.phone);
+          if (bookingError) {
+            console.error('❌ Error fetching booking for SMS:', bookingError);
+            toast.error('Failed to fetch booking details for SMS notification');
+            return data;
+          }
 
-          if (fullBooking?.guest?.phone) {
+          if (!fullBooking) {
+            console.error('❌ Booking not found:', booking.id);
+            return data;
+          }
+
+          console.log('📋 Full Booking:', fullBooking);
+          console.log('📋 Guest Object:', fullBooking.guest);
+          console.log('📋 Guest Phone:', fullBooking.guest?.phone);
+
+          if (fullBooking.guest?.phone) {
             console.log('📞 Guest has phone:', fullBooking.guest.phone);
             
             const { data: hotelMeta } = await supabase
@@ -267,14 +278,25 @@ export function useRoomActions() {
                 room:rooms(number)
               `)
               .eq('id', booking.id)
-              .single();
+              .eq('tenant_id', tenantId)
+              .maybeSingle();
 
-            console.log('📋 Full Booking:', { fullBooking, bookingError });
-            console.log('📋 Full Booking Structure:', JSON.stringify(fullBooking, null, 2));
-            console.log('📋 Guest Object:', fullBooking?.guest);
-            console.log('📋 Guest Phone:', fullBooking?.guest?.phone);
+            if (bookingError) {
+              console.error('❌ Error fetching booking for SMS:', bookingError);
+              toast.error('Failed to fetch booking details for SMS notification');
+              return;
+            }
 
-            if (fullBooking?.guest?.phone) {
+            if (!fullBooking) {
+              console.error('❌ Booking not found:', booking.id);
+              return;
+            }
+
+            console.log('📋 Full Booking:', fullBooking);
+            console.log('📋 Guest Object:', fullBooking.guest);
+            console.log('📋 Guest Phone:', fullBooking.guest?.phone);
+
+            if (fullBooking.guest?.phone) {
               console.log('📞 Guest has phone:', fullBooking.guest.phone);
               
               const { data: hotelMeta } = await supabase
