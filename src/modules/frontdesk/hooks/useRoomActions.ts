@@ -138,6 +138,9 @@ export function useRoomActions() {
             .single();
 
           console.log('📋 Full Booking:', { fullBooking, bookingError });
+          console.log('📋 Full Booking Structure:', JSON.stringify(fullBooking, null, 2));
+          console.log('📋 Guest Object:', fullBooking?.guest);
+          console.log('📋 Guest Phone:', fullBooking?.guest?.phone);
 
           if (fullBooking?.guest?.phone) {
             console.log('📞 Guest has phone:', fullBooking.guest.phone);
@@ -267,6 +270,9 @@ export function useRoomActions() {
               .single();
 
             console.log('📋 Full Booking:', { fullBooking, bookingError });
+            console.log('📋 Full Booking Structure:', JSON.stringify(fullBooking, null, 2));
+            console.log('📋 Guest Object:', fullBooking?.guest);
+            console.log('📋 Guest Phone:', fullBooking?.guest?.phone);
 
             if (fullBooking?.guest?.phone) {
               console.log('📞 Guest has phone:', fullBooking.guest.phone);
