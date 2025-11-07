@@ -128,7 +128,7 @@ serve(async (req) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
     );
 
-    // Validate JWT
+    // Validate JWT or SERVICE_ROLE_KEY
     const authHeader = req.headers.get('Authorization');
     if (!authHeader) {
       return new Response(JSON.stringify({ error: 'Unauthorized' }), {
@@ -138,14 +138,25 @@ serve(async (req) => {
     }
 
     const token = authHeader.replace('Bearer ', '');
-    const { data: { user }, error: authError } = await supabase.auth.getUser(token);
     
-    if (authError || !user) {
-      return new Response(JSON.stringify({ error: 'Invalid token' }), {
-        status: 401,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
+    // Check if it's a service role call (from another edge function)
+    const isServiceRole = token === Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
+    
+    let user = null;
+    if (!isServiceRole) {
+      // User JWT authentication (frontend calls)
+      const { data: { user: authUser }, error: authError } = await supabase.auth.getUser(token);
+      if (authError || !authUser) {
+        console.log('Auth error:', authError);
+        return new Response(JSON.stringify({ error: 'Invalid token' }), {
+          status: 401,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+      user = authUser;
     }
+    
+    console.log(`SMS request authenticated: ${isServiceRole ? 'service-role' : 'user: ' + user?.id}`)
 
     // Parse and validate input
     const body = await req.json();
@@ -370,7 +381,7 @@ serve(async (req) => {
 
     // Log to platform audit stream
     await supabase.from('platform_audit_stream').insert({
-      actor_id: user.id,
+      actor_id: user?.id || '00000000-0000-0000-0000-000000000000', // Use null UUID for service calls
       action: 'sms_sent',
       resource_type: 'sms',
       resource_id: creditPool.id,
@@ -383,6 +394,7 @@ serve(async (req) => {
         event_key,
         booking_id,
         guest_id,
+        source: user ? 'user' : 'system',
       },
     });
 
