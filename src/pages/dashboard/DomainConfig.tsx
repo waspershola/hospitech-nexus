@@ -4,6 +4,9 @@ import { useConfigStore } from '@/stores/configStore';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Info, Save } from 'lucide-react';
+import { Link } from 'react-router-dom';
 import { 
   Settings2, 
   Palette, 
@@ -19,8 +22,6 @@ import { MetaTab } from '@/components/configuration/tabs/MetaTab';
 import { DomainsTab } from '@/components/configuration/tabs/DomainsTab';
 import { GuestExperienceTab } from '@/components/configuration/tabs/GuestExperienceTab';
 import { PermissionsTab } from '@/components/configuration/tabs/PermissionsTab';
-import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Info } from 'lucide-react';
 
 const tabs = [
   { id: 'general', label: 'General', icon: Settings2 },
@@ -108,9 +109,9 @@ export default function DomainConfig() {
         <Info className="h-4 w-4" />
         <AlertDescription>
           For operational settings like finances, documents, and email configuration, visit the{' '}
-          <a href="/dashboard/configuration-center" className="font-medium underline">
+          <Link to="/dashboard/configuration-center" className="font-medium underline">
             Configuration Center
-          </a>
+          </Link>
           .
         </AlertDescription>
       </Alert>

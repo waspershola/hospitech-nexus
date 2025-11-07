@@ -22,7 +22,7 @@ import Bookings from './pages/dashboard/Bookings';
 import Guests from './pages/dashboard/Guests';
 import GuestProfile from './pages/dashboard/GuestProfile';
 import Reports from './pages/dashboard/Reports';
-import AccountSettings from './pages/dashboard/AccountSettings';
+import Settings from './pages/dashboard/Settings';
 import UserRoles from './pages/dashboard/UserRoles';
 import Staff from './pages/dashboard/Staff';
 import StaffActivity from './pages/dashboard/StaffActivity';
@@ -113,7 +113,7 @@ const App = () => (
               <Route path="kitchen-dashboard" element={<RoleGuard allowedRoles={['owner', 'manager', 'restaurant', 'kitchen', 'supervisor']}><KitchenDashboard /></RoleGuard>} />
               <Route path="bar-dashboard" element={<RoleGuard allowedRoles={['owner', 'manager', 'bar', 'supervisor']}><BarDashboard /></RoleGuard>} />
               
-          <Route path="settings" element={<AccountSettings />} />
+          <Route path="settings" element={<Settings />} />
           <Route path="user-roles" element={<RoleGuard allowedRoles={['owner']}><UserRoles /></RoleGuard>} />
           <Route path="navigation-manager" element={<RoleGuard allowedRoles={['owner']}><NavigationManager /></RoleGuard>} />
           <Route path="staff" element={<RoleGuard allowedRoles={['owner', 'manager', 'supervisor']}><Staff /></RoleGuard>} />
