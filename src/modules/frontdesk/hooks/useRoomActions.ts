@@ -2,10 +2,12 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { useAuditLog } from '@/hooks/useAuditLog';
+import { useAuth } from '@/contexts/AuthContext';
 
 export function useRoomActions() {
   const queryClient = useQueryClient();
   const { logAction } = useAuditLog();
+  const { tenantId } = useAuth();
 
   const updateRoomStatus = async (roomId: string, status: string, reason?: string, manualOverride?: boolean) => {
     const { data: oldRoom } = await supabase
@@ -107,6 +109,60 @@ export function useRoomActions() {
         before_data: null,
         after_data: data,
       });
+
+      // Send check-in SMS notification
+      try {
+        const { data: smsSettings } = await supabase
+          .from('tenant_sms_settings')
+          .select('enabled, auto_send_checkin_reminder')
+          .eq('tenant_id', tenantId)
+          .maybeSingle();
+
+        if (smsSettings?.enabled && smsSettings?.auto_send_checkin_reminder) {
+          const { data: fullBooking } = await supabase
+            .from('bookings')
+            .select(`
+              id,
+              booking_reference,
+              check_in,
+              guest:guests(id, name, phone),
+              room:rooms(number)
+            `)
+            .eq('id', booking.id)
+            .single();
+
+          if (fullBooking?.guest?.phone) {
+            const { data: hotelMeta } = await supabase
+              .from('hotel_configurations')
+              .select('value')
+              .eq('tenant_id', tenantId)
+              .eq('key', 'hotel_name')
+              .maybeSingle();
+
+            const hotelName = hotelMeta?.value || 'Our Hotel';
+            const message = `Hi ${fullBooking.guest.name}, welcome to ${hotelName}! You're checked into Room ${fullBooking.room?.number}. Enjoy your stay!`;
+
+            supabase.functions.invoke('send-sms', {
+              body: {
+                tenant_id: tenantId,
+                to: fullBooking.guest.phone,
+                message,
+                event_key: 'checkin_notification',
+                booking_id: fullBooking.id,
+                guest_id: fullBooking.guest.id,
+              },
+            }).then(({ error: smsError }) => {
+              if (smsError) {
+                console.error('Failed to send check-in SMS:', smsError);
+              } else {
+                console.log('Check-in SMS sent successfully');
+              }
+            });
+          }
+        }
+      } catch (smsError) {
+        console.error('SMS notification error:', smsError);
+      }
 
       return data;
     },
