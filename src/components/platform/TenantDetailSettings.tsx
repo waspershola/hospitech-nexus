@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -8,28 +8,13 @@ import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { toast } from 'sonner';
 
-interface TenantSettings {
-  domain?: string;
-  sms_provider?: string;
-  enable_backup?: boolean;
-  enable_guest_portal?: boolean;
-  support_contact?: string;
-}
-
 interface TenantDetailSettingsProps {
   tenant: any;
 }
 
 export default function TenantDetailSettings({ tenant }: TenantDetailSettingsProps) {
   const queryClient = useQueryClient();
-  const [settings, setSettings] = useState<TenantSettings>({});
-
-  // Sync settings when tenant ID changes (prevents infinite re-renders)
-  useEffect(() => {
-    if (tenant?.settings) {
-      setSettings(tenant.settings);
-    }
-  }, [tenant?.id]);
+  const [settings, setSettings] = useState(tenant.settings || {});
 
   const updateSettings = useMutation({
     mutationFn: async (newSettings: any) => {

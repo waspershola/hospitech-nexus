@@ -5,14 +5,12 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { usePlatformUsers, type PlatformUser } from '@/hooks/usePlatformUsers';
 import { PlatformUserForm } from '@/components/platform/PlatformUserForm';
-import { ManualPasswordDialog } from '@/components/platform/ManualPasswordDialog';
 import { getRoleBadge } from '@/components/platform/PlatformRoleSelector';
 import { UserPlus, Mail, Pencil, Trash2, Shield, Clock } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { formatDistanceToNow } from 'date-fns';
 import { Badge } from '@/components/ui/badge';
 import { useAuth } from '@/contexts/AuthContext';
-import { toast } from 'sonner';
 
 export function PlatformUsersTab() {
   const { user } = useAuth();
@@ -21,36 +19,11 @@ export function PlatformUsersTab() {
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [selectedUser, setSelectedUser] = useState<PlatformUser | null>(null);
-  const [manualPasswordDialog, setManualPasswordDialog] = useState<{
-    open: boolean;
-    password: string;
-    userEmail: string;
-  }>({ open: false, password: '', userEmail: '' });
 
-  const handleCreate = (data: { 
-    email: string; 
-    full_name: string; 
-    role: string;
-    phone?: string;
-    password_delivery_method?: 'email' | 'sms' | 'manual';
-  }) => {
+  const handleCreate = (data: { email: string; full_name: string; role: string }) => {
     createUser.mutate(data, {
-      onSuccess: (response) => {
+      onSuccess: () => {
         setCreateDialogOpen(false);
-        
-        // Handle manual password display
-        if (data.password_delivery_method === 'manual' && response.temporary_password) {
-          setManualPasswordDialog({
-            open: true,
-            password: response.temporary_password,
-            userEmail: data.email,
-          });
-          toast.success('User created successfully. Copy the password now!');
-        } else if (data.password_delivery_method === 'sms') {
-          toast.success(`User created and password sent via SMS to ${data.phone}`);
-        } else {
-          toast.success(`User created and password reset email sent to ${data.email}`);
-        }
       },
     });
   };
@@ -277,14 +250,6 @@ export function PlatformUsersTab() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-
-      {/* Manual Password Display Dialog */}
-      <ManualPasswordDialog
-        open={manualPasswordDialog.open}
-        onOpenChange={(open) => setManualPasswordDialog({ ...manualPasswordDialog, open })}
-        password={manualPasswordDialog.password}
-        userEmail={manualPasswordDialog.userEmail}
-      />
     </>
   );
 }

@@ -12,12 +12,9 @@ export function useAssignPlan() {
 
   return useMutation({
     mutationFn: async ({ tenant_id, plan_id }: AssignPlanRequest) => {
-      const { data, error } = await supabase
-        .from('platform_tenants')
-        .update({ plan_id })
-        .eq('id', tenant_id)
-        .select()
-        .single();
+      const { data, error } = await supabase.functions.invoke('assign-plan', {
+        body: { tenant_id, plan_id },
+      });
 
       if (error) throw error;
       return data;

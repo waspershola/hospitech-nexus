@@ -50,7 +50,6 @@ export function useTenantLifecycle() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['tenants-with-lifecycle'] });
       queryClient.invalidateQueries({ queryKey: ['lifecycle-stats'] });
-      queryClient.invalidateQueries({ queryKey: ['tenant-users'] });
       toast.success('Tenant activated successfully');
     },
     onError: (error: any) => {
@@ -75,7 +74,6 @@ export function useTenantLifecycle() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['tenants-with-lifecycle'] });
       queryClient.invalidateQueries({ queryKey: ['lifecycle-stats'] });
-      queryClient.invalidateQueries({ queryKey: ['tenant-users'] });
       toast.success('Tenant suspended');
     },
     onError: (error: any) => {
