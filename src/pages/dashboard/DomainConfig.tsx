@@ -4,9 +4,6 @@ import { useConfigStore } from '@/stores/configStore';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
-import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Info, Save } from 'lucide-react';
-import { Link } from 'react-router-dom';
 import { 
   Settings2, 
   Palette, 
@@ -22,6 +19,8 @@ import { MetaTab } from '@/components/configuration/tabs/MetaTab';
 import { DomainsTab } from '@/components/configuration/tabs/DomainsTab';
 import { GuestExperienceTab } from '@/components/configuration/tabs/GuestExperienceTab';
 import { PermissionsTab } from '@/components/configuration/tabs/PermissionsTab';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Info } from 'lucide-react';
 
 const tabs = [
   { id: 'general', label: 'General', icon: Settings2 },
@@ -34,7 +33,6 @@ const tabs = [
 
 export default function DomainConfig() {
   const { tenantId, role } = useAuth();
-  const setTenantId = useConfigStore(state => state.setTenantId);
   const loadAllConfig = useConfigStore(state => state.loadAllConfig);
   const saveAllChanges = useConfigStore(state => state.saveAllChanges);
   const resetChanges = useConfigStore(state => state.resetChanges);
@@ -48,10 +46,9 @@ export default function DomainConfig() {
 
   useEffect(() => {
     if (tenantId) {
-      setTenantId(tenantId);
       loadAllConfig(tenantId);
     }
-  }, [tenantId, setTenantId, loadAllConfig]);
+  }, [tenantId, loadAllConfig]);
 
   const handleSaveAll = async () => {
     await saveAllChanges();
@@ -109,9 +106,9 @@ export default function DomainConfig() {
         <Info className="h-4 w-4" />
         <AlertDescription>
           For operational settings like finances, documents, and email configuration, visit the{' '}
-          <Link to="/dashboard/configuration-center" className="font-medium underline">
+          <a href="/dashboard/configuration-center" className="font-medium underline">
             Configuration Center
-          </Link>
+          </a>
           .
         </AlertDescription>
       </Alert>

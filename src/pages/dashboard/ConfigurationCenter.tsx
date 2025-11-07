@@ -2,7 +2,6 @@ import { useEffect, useState } from 'react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Info } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
-import { Link } from 'react-router-dom';
 import { useConfigStore } from '@/stores/configStore';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -30,7 +29,6 @@ const tabs = [
 
 export default function ConfigurationCenter() {
   const { tenantId, role } = useAuth();
-  const setTenantId = useConfigStore(state => state.setTenantId);
   const loadAllConfig = useConfigStore(state => state.loadAllConfig);
   const resetChanges = useConfigStore(state => state.resetChanges);
   const unsavedCount = useConfigStore(state => state.unsavedChanges.length);
@@ -39,10 +37,9 @@ export default function ConfigurationCenter() {
 
   useEffect(() => {
     if (tenantId) {
-      setTenantId(tenantId);
       loadAllConfig(tenantId);
     }
-  }, [tenantId, setTenantId, loadAllConfig]);
+  }, [tenantId, loadAllConfig]);
 
   const handleReset = () => {
     if (confirm('Are you sure you want to discard all unsaved changes?')) {
@@ -53,100 +50,110 @@ export default function ConfigurationCenter() {
 
   if (role !== 'owner' && role !== 'manager') {
     return (
-      <Card className="p-8 max-w-md text-center">
-        <Lock className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
-        <h2 className="text-2xl font-display font-semibold mb-2">Access Restricted</h2>
-        <p className="text-muted-foreground">
-          Only owners and managers can access the Configuration Center.
-        </p>
-      </Card>
+      <div className="flex items-center justify-center min-h-screen">
+        <Card className="p-8 max-w-md text-center">
+          <Lock className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
+          <h2 className="text-2xl font-display font-semibold mb-2">Access Restricted</h2>
+          <p className="text-muted-foreground">
+            Only owners and managers can access the Configuration Center.
+          </p>
+        </Card>
+      </div>
     );
   }
 
   return (
-    <div className="space-y-6">
+    <div className="min-h-screen bg-background">
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <div className="flex-1">
-          <h1 className="text-3xl font-display font-semibold text-foreground">
-            Configuration Center
-          </h1>
-          <p className="text-sm text-muted-foreground mt-1">
-            Manage operational settings, finances, documents, and integrations
-          </p>
-        </div>
+      <div className="bg-card border-b sticky top-0 z-10">
+        <div className="max-w-7xl mx-auto px-6 py-4">
+          <div className="flex items-center justify-between">
+            <div className="flex-1">
+              <h1 className="text-3xl font-display font-semibold text-foreground">
+                Configuration Center
+              </h1>
+              <p className="text-sm text-muted-foreground mt-1">
+                Manage operational settings, finances, documents, and integrations
+              </p>
+            </div>
 
-        <div className="flex items-center gap-4">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={handleReset}
-            disabled={unsavedCount === 0 || isSaving}
-          >
-            <RotateCcw className="h-4 w-4 mr-2" />
-            Reset
-          </Button>
+            <div className="flex items-center gap-4">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleReset}
+                disabled={unsavedCount === 0 || isSaving}
+              >
+                <RotateCcw className="h-4 w-4 mr-2" />
+                Reset
+              </Button>
+            </div>
+          </div>
         </div>
       </div>
 
       {/* Info Alert */}
-      <Alert>
-        <Info className="h-4 w-4" />
-        <AlertDescription>
-          For identity and branding settings, visit the{' '}
-          <Link to="/dashboard/domain-config" className="font-medium underline">
-            Domain Configuration
-          </Link>
-          .
-        </AlertDescription>
-      </Alert>
+      <div className="max-w-7xl mx-auto px-6">
+        <Alert>
+          <Info className="h-4 w-4" />
+          <AlertDescription>
+            For identity and branding settings, visit the{' '}
+            <a href="/dashboard/domain-config" className="font-medium underline">
+              Domain Configuration
+            </a>
+            .
+          </AlertDescription>
+        </Alert>
+      </div>
 
       {/* Content */}
-      <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-        <TabsList className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2 h-auto p-2 bg-muted/50">
-          {tabs.map((tab) => {
-            const Icon = tab.icon;
-            return (
-              <TabsTrigger
-                key={tab.id}
-                value={tab.id}
-                className="flex flex-col items-center gap-1 px-3 py-2 data-[state=active]:bg-card data-[state=active]:shadow-sm transition-all min-w-[100px]"
-              >
-                <Icon className="h-4 w-4" />
-                <span className="text-xs hidden sm:inline truncate">{tab.label}</span>
-              </TabsTrigger>
-            );
-          })}
-        </TabsList>
+      <div className="max-w-7xl mx-auto px-6 py-8">
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
+          <TabsList className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2 h-auto p-2 bg-muted/50 overflow-x-auto">{}
+            {tabs.map((tab) => {
+              const Icon = tab.icon;
+              return (
+                <TabsTrigger
+                  key={tab.id}
+                  value={tab.id}
+                  className="flex flex-col items-center gap-1 px-3 py-2 data-[state=active]:bg-card data-[state=active]:shadow-sm transition-all min-w-[100px]"
+                >
+                  <Icon className="h-4 w-4" />
+                  <span className="text-xs hidden sm:inline truncate">{tab.label}</span>
+                </TabsTrigger>
+              );
+            })}
+          </TabsList>
 
-        <TabsContent value="finance-overview" className="space-y-6 animate-fade-in">
-          <FinancialOverviewTab />
-        </TabsContent>
+          <TabsContent value="finance-overview" className="space-y-6 animate-fade-in">
+            <FinancialOverviewTab />
+          </TabsContent>
 
-        <TabsContent value="documents" className="space-y-6 animate-fade-in">
-          <DocumentsTab />
-        </TabsContent>
+          <TabsContent value="documents" className="space-y-6 animate-fade-in">
+            <DocumentsTab />
+          </TabsContent>
 
-        <TabsContent value="checkout" className="space-y-6 animate-fade-in">
-          <CheckoutPolicyTab />
-        </TabsContent>
+          <TabsContent value="checkout" className="space-y-6 animate-fade-in">
+            <CheckoutPolicyTab />
+          </TabsContent>
 
-        <TabsContent value="audit" className="space-y-6 animate-fade-in">
-          <AuditLogsTab />
-        </TabsContent>
+          <TabsContent value="audit" className="space-y-6 animate-fade-in">
+            <AuditLogsTab />
+          </TabsContent>
 
-        <TabsContent value="email" className="space-y-6 animate-fade-in">
-          <EmailSettingsTab />
-        </TabsContent>
+          <TabsContent value="email" className="space-y-6 animate-fade-in">
+            <EmailSettingsTab />
+          </TabsContent>
 
-        <TabsContent value="sms" className="space-y-6 animate-fade-in">
-          <SMSSettingsTab />
-        </TabsContent>
+          <TabsContent value="sms" className="space-y-6 animate-fade-in">
+            <SMSSettingsTab />
+          </TabsContent>
 
-        <TabsContent value="maintenance" className="space-y-6 animate-fade-in">
-          <MaintenanceTab />
-        </TabsContent>
-      </Tabs>
+          <TabsContent value="maintenance" className="space-y-6 animate-fade-in">
+            <MaintenanceTab />
+          </TabsContent>
+        </Tabs>
+      </div>
     </div>
   );
 }
