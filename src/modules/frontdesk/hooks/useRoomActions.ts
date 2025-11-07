@@ -131,8 +131,8 @@ export function useRoomActions() {
               id,
               booking_reference,
               check_in,
-              guest:guests(id, name, phone),
-              room:rooms(number)
+              guest:guests!guest_id(id, name, phone),
+              room:rooms!room_id(number)
             `)
             .eq('id', booking.id)
             .eq('tenant_id', tenantId)
@@ -274,8 +274,8 @@ export function useRoomActions() {
               .from('bookings')
               .select(`
                 id,
-                guest:guests(id, name, phone),
-                room:rooms(number)
+                guest:guests!guest_id(id, name, phone),
+                room:rooms!room_id(number)
               `)
               .eq('id', booking.id)
               .eq('tenant_id', tenantId)
