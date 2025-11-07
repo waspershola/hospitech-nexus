@@ -1,5 +1,3 @@
-import { useEffect } from 'react';
-import { useAuth } from '@/contexts/AuthContext';
 import { useConfigStore } from '@/stores/configStore';
 import { ConfigCard } from '../shared/ConfigCard';
 import { Input } from '@/components/ui/input';
@@ -14,22 +12,12 @@ import { BrandingPreview } from '../branding/BrandingPreview';
 import { PortalPreview } from '../shared/PortalPreview';
 
 export function BrandingTab() {
-  const { tenantId } = useAuth();
   const branding = useConfigStore(state => state.branding);
   const updateBranding = useConfigStore(state => state.updateBranding);
   const saveBranding = useConfigStore(state => state.saveBranding);
-  const loadAllConfig = useConfigStore(state => state.loadAllConfig);
   const hasBrandingUnsaved = useConfigStore(state => state.unsavedChanges.includes('branding'));
   const sectionError = useConfigStore(state => state.sectionErrors.branding);
   const lastSaved = useConfigStore(state => state.sectionLastSaved.branding);
-  
-  // Ensure data is loaded when tab is active
-  useEffect(() => {
-    if (tenantId && Object.keys(branding).length === 0) {
-      console.log('🎨 Branding tab: Loading config for tenant:', tenantId);
-      loadAllConfig(tenantId);
-    }
-  }, [tenantId, branding, loadAllConfig]);
 
   const handleChange = (field: string, value: any) => {
     updateBranding({ [field]: value });

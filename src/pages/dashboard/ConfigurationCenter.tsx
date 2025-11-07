@@ -1,38 +1,26 @@
 import { useEffect, useState } from 'react';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Info } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useConfigStore } from '@/stores/configStore';
+import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card } from '@/components/ui/card';
-import { Settings, DollarSign, Palette, FileText, Users, Lock, Clock, Mail, Database, Globe, Building2, MessageSquare } from 'lucide-react';
-import { ConfigurationStatus } from '@/components/configuration/shared/ConfigurationStatus';
-import { GeneralTab } from '@/components/configuration/tabs/GeneralTab';
-import { BrandingTab } from '@/components/configuration/tabs/BrandingTab';
-import { MetaTab } from '@/components/configuration/tabs/MetaTab';
+import { RotateCcw, DollarSign, FileText, Lock, Clock, Mail, Database, MessageSquare } from 'lucide-react';
+import { toast } from 'sonner';
+
 import { DocumentsTab } from '@/components/configuration/tabs/DocumentsTab';
-import { GuestExperienceTab } from '@/components/configuration/tabs/GuestExperienceTab';
 import { CheckoutPolicyTab } from '@/components/configuration/tabs/CheckoutPolicyTab';
-import { PermissionsTab } from '@/components/configuration/tabs/PermissionsTab';
 import { AuditLogsTab } from '@/components/configuration/tabs/AuditLogsTab';
 import { EmailSettingsTab } from '@/components/configuration/tabs/EmailSettingsTab';
 import { MaintenanceTab } from '@/components/configuration/tabs/MaintenanceTab';
-import { DomainsTab } from '@/components/configuration/tabs/DomainsTab';
 import { FinancialOverviewTab } from '@/components/configuration/tabs/FinancialOverviewTab';
 import { SMSSettingsTab } from '@/components/configuration/tabs/SMSSettingsTab';
-import { useConfigCompleteness } from '@/hooks/useConfigCompleteness';
-import { Progress } from '@/components/ui/progress';
-import { Badge } from '@/components/ui/badge';
-import { CheckCircle2, AlertCircle, Loader2 } from 'lucide-react';
 
 const tabs = [
-  { id: 'general', label: 'General', icon: Settings },
   { id: 'finance-overview', label: 'Finance Overview', icon: DollarSign },
-  { id: 'branding', label: 'Branding & Theme', icon: Palette },
-  { id: 'meta', label: 'Hotel Profile', icon: Building2 },
-  { id: 'domains', label: 'Domains', icon: Globe },
   { id: 'documents', label: 'Documents', icon: FileText },
-  { id: 'guest', label: 'Guest Experience', icon: Users },
   { id: 'checkout', label: 'Checkout Policy', icon: Clock },
-  { id: 'permissions', label: 'Permissions', icon: Lock },
   { id: 'audit', label: 'Audit Logs', icon: Clock },
   { id: 'email', label: 'Email Settings', icon: Mail },
   { id: 'sms', label: 'SMS Notifications', icon: MessageSquare },
@@ -41,22 +29,24 @@ const tabs = [
 
 export default function ConfigurationCenter() {
   const { tenantId, role } = useAuth();
-  const setTenantId = useConfigStore(state => state.setTenantId);
   const loadAllConfig = useConfigStore(state => state.loadAllConfig);
+  const resetChanges = useConfigStore(state => state.resetChanges);
   const unsavedCount = useConfigStore(state => state.unsavedChanges.length);
-  const lastSyncTime = useConfigStore(state => state.lastSyncTime);
-  const isLoading = useConfigStore(state => state.isLoading);
-  const [activeTab, setActiveTab] = useState('general');
-  const { percentage, checks, isComplete } = useConfigCompleteness();
+  const isSaving = useConfigStore(state => state.isSaving);
+  const [activeTab, setActiveTab] = useState('finance-overview');
 
   useEffect(() => {
     if (tenantId) {
-      console.log('🏢 Initializing Configuration Center with tenant:', tenantId);
-      setTenantId(tenantId);
       loadAllConfig(tenantId);
     }
-  }, [tenantId, setTenantId, loadAllConfig]);
+  }, [tenantId, loadAllConfig]);
 
+  const handleReset = () => {
+    if (confirm('Are you sure you want to discard all unsaved changes?')) {
+      resetChanges();
+      toast.info('Changes discarded');
+    }
+  };
 
   if (role !== 'owner' && role !== 'manager') {
     return (
@@ -83,62 +73,43 @@ export default function ConfigurationCenter() {
                 Configuration Center
               </h1>
               <p className="text-sm text-muted-foreground mt-1">
-                Manage hotel-wide identity, policy, and service standards
+                Manage operational settings, finances, documents, and integrations
               </p>
-              
-              {/* Setup Completeness Meter */}
-              <div className="mt-3 space-y-2">
-                <div className="flex items-center gap-3">
-                  <Progress value={percentage} className="h-2 flex-1 max-w-xs" />
-                  <div className="flex items-center gap-2">
-                    {isComplete ? (
-                      <Badge variant="default" className="gap-1">
-                        <CheckCircle2 className="h-3 w-3" />
-                        Complete
-                      </Badge>
-                    ) : (
-                      <Badge variant="outline" className="gap-1">
-                        <AlertCircle className="h-3 w-3" />
-                        {percentage}% Setup
-                      </Badge>
-                    )}
-                  </div>
-                </div>
-                {!isComplete && (
-                  <div className="flex gap-2 text-xs text-muted-foreground">
-                    {!checks.branding && <span>• Branding</span>}
-                    {!checks.email && <span>• Email</span>}
-                    {!checks.meta && <span>• Hotel Profile</span>}
-                  </div>
-                )}
-              </div>
             </div>
 
             <div className="flex items-center gap-4">
-              {unsavedCount > 0 && (
-                <div className="flex items-center gap-2 px-3 py-1.5 bg-warning/10 border border-warning/20 rounded-lg">
-                  <div className="w-2 h-2 bg-warning rounded-full animate-pulse" />
-                  <span className="text-sm font-medium text-warning">
-                    {unsavedCount} unsaved change{unsavedCount !== 1 ? 's' : ''}
-                  </span>
-                </div>
-              )}
-
-              {lastSyncTime && unsavedCount === 0 && (
-                <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                  <CheckCircle2 className="h-3 w-3 text-success" />
-                  <span>Last saved: {lastSyncTime.toLocaleTimeString()}</span>
-                </div>
-              )}
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleReset}
+                disabled={unsavedCount === 0 || isSaving}
+              >
+                <RotateCcw className="h-4 w-4 mr-2" />
+                Reset
+              </Button>
             </div>
           </div>
         </div>
       </div>
 
+      {/* Info Alert */}
+      <div className="max-w-7xl mx-auto px-6">
+        <Alert>
+          <Info className="h-4 w-4" />
+          <AlertDescription>
+            For identity and branding settings, visit the{' '}
+            <a href="/dashboard/domain-config" className="font-medium underline">
+              Domain Configuration
+            </a>
+            .
+          </AlertDescription>
+        </Alert>
+      </div>
+
       {/* Content */}
       <div className="max-w-7xl mx-auto px-6 py-8">
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-          <TabsList className="grid grid-cols-3 lg:grid-cols-6 xl:grid-cols-12 gap-2 h-auto p-2 bg-muted/50 overflow-x-auto">
+          <TabsList className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2 h-auto p-2 bg-muted/50 overflow-x-auto">{}
             {tabs.map((tab) => {
               const Icon = tab.icon;
               return (
@@ -154,41 +125,16 @@ export default function ConfigurationCenter() {
             })}
           </TabsList>
 
-          <TabsContent value="general" className="space-y-6 animate-fade-in">
-            <ConfigurationStatus />
-            <GeneralTab />
-          </TabsContent>
-
           <TabsContent value="finance-overview" className="space-y-6 animate-fade-in">
             <FinancialOverviewTab />
-          </TabsContent>
-
-          <TabsContent value="branding" className="space-y-6 animate-fade-in">
-            <BrandingTab />
-          </TabsContent>
-
-          <TabsContent value="meta" className="space-y-6 animate-fade-in">
-            <MetaTab />
           </TabsContent>
 
           <TabsContent value="documents" className="space-y-6 animate-fade-in">
             <DocumentsTab />
           </TabsContent>
 
-          <TabsContent value="guest" className="space-y-6 animate-fade-in">
-            <GuestExperienceTab />
-          </TabsContent>
-
           <TabsContent value="checkout" className="space-y-6 animate-fade-in">
             <CheckoutPolicyTab />
-          </TabsContent>
-
-          <TabsContent value="domains" className="space-y-6 animate-fade-in">
-            <DomainsTab />
-          </TabsContent>
-
-          <TabsContent value="permissions" className="space-y-6 animate-fade-in">
-            <PermissionsTab />
           </TabsContent>
 
           <TabsContent value="audit" className="space-y-6 animate-fade-in">

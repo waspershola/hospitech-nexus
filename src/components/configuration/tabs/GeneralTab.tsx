@@ -1,5 +1,3 @@
-import { useEffect } from 'react';
-import { useAuth } from '@/contexts/AuthContext';
 import { useConfigStore } from '@/stores/configStore';
 import { ConfigCard } from '../shared/ConfigCard';
 import { PortalPreviewCard } from '../shared/PortalPreviewCard';
@@ -10,23 +8,18 @@ import { Switch } from '@/components/ui/switch';
 import { Hotel, MapPin, Phone, ShieldCheck, Clock } from 'lucide-react';
 
 export function GeneralTab() {
-  const { tenantId } = useAuth();
   const configurations = useConfigStore(state => state.configurations);
   const updateConfig = useConfigStore(state => state.updateConfig);
   const saveConfig = useConfigStore(state => state.saveConfig);
-  const loadAllConfig = useConfigStore(state => state.loadAllConfig);
   const hasGeneralUnsaved = useConfigStore(state => state.unsavedChanges.includes('general'));
+  const version = useConfigStore(state => state.version);
+  const saveCounter = useConfigStore(state => state.saveCounter);
   const sectionError = useConfigStore(state => state.sectionErrors.general);
   const lastSaved = useConfigStore(state => state.sectionLastSaved.general);
   const general = configurations.general || {};
-  
-  // Ensure data is loaded when tab is active
-  useEffect(() => {
-    if (tenantId && Object.keys(configurations).length === 0) {
-      console.log('⚙️ General tab: Loading config for tenant:', tenantId);
-      loadAllConfig(tenantId);
-    }
-  }, [tenantId, configurations, loadAllConfig]);
+
+  // Force re-render on version/saveCounter change
+  const shouldShowUnsaved = hasGeneralUnsaved && version >= 0 && saveCounter >= 0;
 
   const handleChange = (field: string, value: any) => {
     updateConfig('general', { ...general, [field]: value });
@@ -41,7 +34,7 @@ export function GeneralTab() {
         description="Core details about your property"
         icon={Hotel}
         onSave={() => saveConfig('general')}
-        hasUnsavedChanges={hasGeneralUnsaved}
+        hasUnsavedChanges={shouldShowUnsaved}
         lastSaved={lastSaved}
         error={sectionError}
         sectionKey="general"
@@ -87,7 +80,7 @@ export function GeneralTab() {
         description="How guests can reach you"
         icon={Phone}
         onSave={() => saveConfig('general')}
-        hasUnsavedChanges={hasGeneralUnsaved}
+        hasUnsavedChanges={shouldShowUnsaved}
         lastSaved={lastSaved}
         error={sectionError}
         sectionKey="general"
@@ -136,7 +129,7 @@ export function GeneralTab() {
         description="Physical location of your property"
         icon={MapPin}
         onSave={() => saveConfig('general')}
-        hasUnsavedChanges={hasGeneralUnsaved}
+        hasUnsavedChanges={shouldShowUnsaved}
         lastSaved={lastSaved}
         error={sectionError}
         sectionKey="general"
@@ -192,7 +185,7 @@ export function GeneralTab() {
         description="Set check-in and check-out times"
         icon={Clock}
         onSave={() => saveConfig('general')}
-        hasUnsavedChanges={hasGeneralUnsaved}
+        hasUnsavedChanges={shouldShowUnsaved}
         lastSaved={lastSaved}
         error={sectionError}
         sectionKey="general"
@@ -231,7 +224,7 @@ export function GeneralTab() {
         description="Configure checkout and payment policies"
         icon={ShieldCheck}
         onSave={() => saveConfig('general')}
-        hasUnsavedChanges={hasGeneralUnsaved}
+        hasUnsavedChanges={shouldShowUnsaved}
         lastSaved={lastSaved}
         error={sectionError}
         sectionKey="general"

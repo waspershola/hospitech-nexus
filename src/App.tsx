@@ -27,6 +27,7 @@ import UserRoles from './pages/dashboard/UserRoles';
 import Staff from './pages/dashboard/Staff';
 import StaffActivity from './pages/dashboard/StaffActivity';
 import ConfigurationCenter from './pages/dashboard/ConfigurationCenter';
+import DomainConfig from './pages/dashboard/DomainConfig';
 import FinanceCenter from './pages/dashboard/FinanceCenter';
 import FinanceDashboard from './pages/dashboard/FinanceDashboard';
 import HousekeepingDashboard from './pages/dashboard/HousekeepingDashboard';
@@ -102,6 +103,7 @@ const App = () => (
               <Route path="finance" element={<Navigate to="/dashboard/finance-center" replace />} />
               
               <Route path="configuration-center" element={<RoleGuard allowedRoles={['owner', 'manager']}><ConfigurationCenter /></RoleGuard>} />
+              <Route path="domain-config" element={<RoleGuard allowedRoles={['owner', 'manager']}><DomainConfig /></RoleGuard>} />
               <Route path="finance-center" element={<RoleGuard allowedRoles={['owner', 'manager', 'finance', 'accountant']}><FinanceCenter /></RoleGuard>} />
               
               {/* Department-specific dashboards */}

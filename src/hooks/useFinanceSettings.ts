@@ -50,6 +50,8 @@ export function useFinanceSettings() {
         .eq('tenant_id', tenantId)
         .maybeSingle();
 
+      console.log('💾 Saving finance settings:', updates);
+      
       const { data, error } = await supabase
         .from('hotel_financials')
         .upsert({
@@ -60,7 +62,12 @@ export function useFinanceSettings() {
         .select()
         .single();
 
-      if (error) throw error;
+      if (error) {
+        console.error('❌ Error saving finance settings:', error);
+        throw error;
+      }
+      
+      console.log('✅ Finance settings saved:', data);
       return data;
     },
     onSuccess: () => {

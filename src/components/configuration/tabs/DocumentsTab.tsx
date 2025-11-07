@@ -1,5 +1,3 @@
-import { useEffect } from 'react';
-import { useAuth } from '@/contexts/AuthContext';
 import { useConfigStore } from '@/stores/configStore';
 import { ConfigCard } from '../shared/ConfigCard';
 import { Input } from '@/components/ui/input';
@@ -7,27 +5,18 @@ import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { FileText } from 'lucide-react';
+import { toast } from 'sonner';
 
 export function DocumentsTab() {
-  const { tenantId } = useAuth();
   const documentTemplates = useConfigStore(state => state.documentTemplates);
   const updateDocumentTemplate = useConfigStore(state => state.updateDocumentTemplate);
   const saveDocumentTemplate = useConfigStore(state => state.saveDocumentTemplate);
-  const loadAllConfig = useConfigStore(state => state.loadAllConfig);
   const hasInvoiceUnsaved = useConfigStore(state => state.unsavedChanges.includes('template_invoice'));
   const hasReceiptUnsaved = useConfigStore(state => state.unsavedChanges.includes('template_receipt'));
   const invoiceError = useConfigStore(state => state.sectionErrors.template_invoice);
   const invoiceLastSaved = useConfigStore(state => state.sectionLastSaved.template_invoice);
   const receiptError = useConfigStore(state => state.sectionErrors.template_receipt);
   const receiptLastSaved = useConfigStore(state => state.sectionLastSaved.template_receipt);
-  
-  // Ensure data is loaded when tab is active
-  useEffect(() => {
-    if (tenantId && documentTemplates.length === 0) {
-      console.log('📄 Documents tab: Loading config for tenant:', tenantId);
-      loadAllConfig(tenantId);
-    }
-  }, [tenantId, documentTemplates, loadAllConfig]);
 
   const getTemplate = (type: string) => {
     return documentTemplates.find(t => t.template_type === type) || {};

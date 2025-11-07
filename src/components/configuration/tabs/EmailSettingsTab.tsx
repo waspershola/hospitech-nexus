@@ -1,5 +1,3 @@
-import { useEffect } from 'react';
-import { useAuth } from '@/contexts/AuthContext';
 import { useConfigStore } from '@/stores/configStore';
 import { ConfigCard } from '../shared/ConfigCard';
 import { Input } from '@/components/ui/input';
@@ -8,22 +6,12 @@ import { Switch } from '@/components/ui/switch';
 import { Mail } from 'lucide-react';
 
 export function EmailSettingsTab() {
-  const { tenantId } = useAuth();
   const emailSettings = useConfigStore(state => state.emailSettings);
   const updateEmailSettings = useConfigStore(state => state.updateEmailSettings);
   const saveEmailSettings = useConfigStore(state => state.saveEmailSettings);
-  const loadAllConfig = useConfigStore(state => state.loadAllConfig);
   const hasEmailSettingsUnsaved = useConfigStore(state => state.unsavedChanges.includes('email_settings'));
   const sectionError = useConfigStore(state => state.sectionErrors.email_settings);
   const lastSaved = useConfigStore(state => state.sectionLastSaved.email_settings);
-  
-  // Ensure data is loaded when tab is active
-  useEffect(() => {
-    if (tenantId && Object.keys(emailSettings).length === 0) {
-      console.log('📧 Email settings tab: Loading config for tenant:', tenantId);
-      loadAllConfig(tenantId);
-    }
-  }, [tenantId, emailSettings, loadAllConfig]);
 
   const handleChange = (field: string, value: any) => {
     updateEmailSettings({ [field]: value });
