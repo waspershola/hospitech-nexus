@@ -62,6 +62,41 @@ Deno.serve(async (req) => {
 
       if (tenantError) throw tenantError;
 
+      // CASCADE: Reactivate users suspended due to tenant suspension
+      const { data: suspendedUsers, error: usersError } = await supabase
+        .from('user_roles')
+        .select('user_id, suspension_metadata')
+        .eq('tenant_id', tenant_id)
+        .eq('status', 'suspended');
+
+      if (usersError) {
+        console.error('Error fetching suspended users:', usersError);
+      }
+
+      // Only reactivate users suspended by tenant cascade (suspension_type='tenant')
+      const cascadedUsers = suspendedUsers?.filter(u => 
+        u.suspension_metadata?.suspension_type === 'tenant'
+      ) || [];
+
+      if (cascadedUsers.length > 0) {
+        const userIdsToReactivate = cascadedUsers.map(u => u.user_id);
+        
+        const { error: reactivateError } = await supabase
+          .from('user_roles')
+          .update({ 
+            status: 'active',
+            suspension_metadata: null 
+          })
+          .eq('tenant_id', tenant_id)
+          .in('user_id', userIdsToReactivate);
+
+        if (reactivateError) {
+          console.error('Error reactivating users:', reactivateError);
+        } else {
+          console.log(`✅ Reactivated ${cascadedUsers.length} users for tenant ${tenant_id}`);
+        }
+      }
+
       // Initialize default resources if needed
       await initializeTenantResources(supabase, tenant_id);
 
@@ -88,11 +123,16 @@ Deno.serve(async (req) => {
         metadata: {
           tenant_id,
           tenant_name: tenant.name,
+          users_reactivated: cascadedUsers.length,
         },
       });
 
       return new Response(
-        JSON.stringify({ success: true, tenant }),
+        JSON.stringify({ 
+          success: true, 
+          tenant,
+          users_reactivated: cascadedUsers.length 
+        }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
@@ -115,6 +155,39 @@ Deno.serve(async (req) => {
         .single();
 
       if (tenantError) throw tenantError;
+
+      // CASCADE: Suspend all active users for this tenant
+      const { data: activeUsers, error: usersError } = await supabase
+        .from('user_roles')
+        .select('user_id')
+        .eq('tenant_id', tenant_id)
+        .eq('status', 'active');
+
+      if (usersError) {
+        console.error('Error fetching active users:', usersError);
+      }
+
+      if (activeUsers && activeUsers.length > 0) {
+        const { error: suspendError } = await supabase
+          .from('user_roles')
+          .update({ 
+            status: 'suspended',
+            suspension_metadata: {
+              suspension_type: 'tenant',
+              suspended_at: new Date().toISOString(),
+              reason: tenant_data?.suspension_reason || 'Tenant suspended',
+              suspended_by: user.id,
+            }
+          })
+          .eq('tenant_id', tenant_id)
+          .eq('status', 'active');
+
+        if (suspendError) {
+          console.error('Error suspending users:', suspendError);
+        } else {
+          console.log(`✅ Suspended ${activeUsers.length} users for tenant ${tenant_id}`);
+        }
+      }
 
       // Send suspension notification
       try {
@@ -140,11 +213,16 @@ Deno.serve(async (req) => {
           tenant_id,
           tenant_name: tenant.name,
           reason: tenant_data?.suspension_reason,
+          users_suspended: activeUsers?.length || 0,
         },
       });
 
       return new Response(
-        JSON.stringify({ success: true, tenant }),
+        JSON.stringify({ 
+          success: true, 
+          tenant,
+          users_suspended: activeUsers?.length || 0 
+        }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }

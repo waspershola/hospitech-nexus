@@ -15,15 +15,30 @@ interface TenantDetailPackageProps {
 
 export default function TenantDetailPackage({ tenant }: TenantDetailPackageProps) {
   const queryClient = useQueryClient();
-  const { plans } = usePlatformPlans();
+  const { plans, isLoading: plansLoading } = usePlatformPlans();
   const [selectedPlanId, setSelectedPlanId] = useState<string>('');
   const [dialogOpen, setDialogOpen] = useState(false);
 
+  if (plansLoading) {
+    return (
+      <Card>
+        <CardContent className="pt-6">
+          <div className="flex items-center justify-center">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
+
   const assignPlan = useMutation({
     mutationFn: async (planId: string) => {
-      const { data, error } = await supabase.functions.invoke('assign-plan', {
-        body: { tenant_id: tenant.id, plan_id: planId }
-      });
+      const { data, error } = await supabase
+        .from('platform_tenants')
+        .update({ plan_id: planId })
+        .eq('id', tenant.id)
+        .select()
+        .single();
 
       if (error) throw error;
       return data;
@@ -72,9 +87,13 @@ export default function TenantDetailPackage({ tenant }: TenantDetailPackageProps
               <div>
                 <p className="text-sm text-muted-foreground">Features</p>
                 <ul className="list-disc list-inside space-y-1 mt-2">
-                  {tenant.plan.features?.map((feature: string, index: number) => (
-                    <li key={index} className="text-sm">{feature}</li>
-                  ))}
+                  {Array.isArray(tenant.plan.features) ? (
+                    tenant.plan.features.map((feature: string, index: number) => (
+                      <li key={index} className="text-sm">{feature}</li>
+                    ))
+                  ) : (
+                    <li className="text-sm text-muted-foreground">No features listed</li>
+                  )}
                 </ul>
               </div>
             </>

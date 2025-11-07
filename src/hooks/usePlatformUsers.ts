@@ -7,6 +7,8 @@ export interface PlatformUser {
   email: string;
   full_name: string;
   role: 'super_admin' | 'support_admin' | 'billing_bot' | 'marketplace_admin' | 'monitoring_bot';
+  phone?: string;
+  password_delivery_method?: 'email' | 'sms' | 'manual';
   system_locked?: boolean;
   metadata?: Record<string, any>;
   last_active?: string;
@@ -34,7 +36,13 @@ export function usePlatformUsers() {
 
   // Create platform user
   const createUser = useMutation({
-    mutationFn: async (userData: { email: string; full_name: string; role: string }) => {
+    mutationFn: async (userData: { 
+      email: string; 
+      full_name: string; 
+      role: string;
+      phone?: string;
+      password_delivery_method?: 'email' | 'sms' | 'manual';
+    }) => {
       const { data, error } = await supabase.functions.invoke('platform-user-management', {
         method: 'POST',
         body: userData,
@@ -47,7 +55,8 @@ export function usePlatformUsers() {
     },
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['platform-users'] });
-      toast.success(data.message || 'Platform user created successfully');
+      // Don't show toast here - let the calling component handle it
+      // This allows for different handling based on delivery method
     },
     onError: (error: Error) => {
       toast.error(`Failed to create user: ${error.message}`);

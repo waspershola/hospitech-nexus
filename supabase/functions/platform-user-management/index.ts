@@ -65,10 +65,16 @@ serve(async (req) => {
         throw new Error('Only super admins can create platform users');
       }
 
-      const { email, full_name, role } = await req.json();
+      const { email, full_name, role, phone, password_delivery_method } = await req.json();
 
       if (!email || !full_name || !role) {
         throw new Error('Missing required fields: email, full_name, role');
+      }
+
+      // Validate delivery method and phone requirement
+      const deliveryMethod = password_delivery_method || 'email';
+      if (deliveryMethod === 'sms' && !phone) {
+        throw new Error('Phone number is required for SMS delivery');
       }
 
       // Validate role
@@ -77,8 +83,32 @@ serve(async (req) => {
         throw new Error(`Invalid role. Must be one of: ${validRoles.join(', ')}`);
       }
 
+      // Generate strong temporary password (14 chars: uppercase, lowercase, numbers, special)
+      const generatePassword = () => {
+        const uppercase = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+        const lowercase = 'abcdefghijklmnopqrstuvwxyz';
+        const numbers = '0123456789';
+        const special = '!@#$%^&*';
+        const all = uppercase + lowercase + numbers + special;
+        
+        let password = '';
+        password += uppercase[Math.floor(Math.random() * uppercase.length)];
+        password += lowercase[Math.floor(Math.random() * lowercase.length)];
+        password += numbers[Math.floor(Math.random() * numbers.length)];
+        password += special[Math.floor(Math.random() * special.length)];
+        
+        for (let i = 4; i < 14; i++) {
+          password += all[Math.floor(Math.random() * all.length)];
+        }
+        
+        return password.split('').sort(() => Math.random() - 0.5).join('');
+      };
+
+      const tempPassword = generatePassword();
+      const passwordExpiry = new Date();
+      passwordExpiry.setHours(passwordExpiry.getHours() + 24); // Expires in 24 hours
+
       // Create auth user with temporary password
-      const tempPassword = crypto.randomUUID();
       const { data: newUser, error: createError } = await supabase.auth.admin.createUser({
         email,
         password: tempPassword,
@@ -100,6 +130,9 @@ serve(async (req) => {
           email,
           full_name,
           role,
+          phone: phone || null,
+          password_delivery_method: deliveryMethod,
+          temp_password_expires_at: passwordExpiry.toISOString(),
         })
         .select()
         .single();
@@ -109,6 +142,60 @@ serve(async (req) => {
         await supabase.auth.admin.deleteUser(newUser.user.id);
         throw insertError;
       }
+
+      // Handle password delivery based on method
+      let deliveryResult: any = { success: false };
+      
+      if (deliveryMethod === 'email') {
+        // Send password reset email
+        const { error: resetError } = await supabase.auth.resetPasswordForEmail(email, {
+          redirectTo: `${req.headers.get('origin')}/auth/password-change`,
+        });
+        
+        deliveryResult = { 
+          success: !resetError, 
+          method: 'email',
+          error: resetError?.message 
+        };
+      } else if (deliveryMethod === 'sms') {
+        // Call SMS delivery function
+        const { data: smsData, error: smsError } = await supabase.functions.invoke('send-password-sms', {
+          body: {
+            phone,
+            password: tempPassword,
+            user_name: full_name,
+            user_type: 'platform_user',
+            user_id: newUser.user.id,
+            delivered_by: user.id,
+          },
+        });
+        
+        deliveryResult = { 
+          success: smsData?.success || false, 
+          method: 'sms',
+          error: smsError?.message || smsData?.error 
+        };
+      } else if (deliveryMethod === 'manual') {
+        // Manual delivery - password will be returned in response
+        deliveryResult = { 
+          success: true, 
+          method: 'manual',
+          password: tempPassword 
+        };
+      }
+
+      // Log delivery to password_delivery_log
+      await supabase.from('password_delivery_log').insert({
+        user_id: newUser.user.id,
+        delivery_method: deliveryMethod,
+        delivered_by: user.id,
+        delivery_status: deliveryResult.success ? 'sent' : 'failed',
+        error_message: deliveryResult.error || null,
+        metadata: {
+          phone: phone || null,
+          delivery_details: deliveryResult,
+        },
+      });
 
       // Log to audit stream
       await supabase.from('platform_audit_stream').insert({
@@ -120,18 +207,32 @@ serve(async (req) => {
         payload: {
           email,
           role,
+          phone: phone || null,
+          delivery_method: deliveryMethod,
           created_by: user.email,
         },
       });
 
-      console.log(`Platform user created: ${email} with role ${role}`);
+      console.log(`Platform user created: ${email} with role ${role}, delivery: ${deliveryMethod}`);
+
+      const response: any = { 
+        success: true, 
+        data: platformUserRecord,
+        message: deliveryMethod === 'manual' 
+          ? 'Platform user created. Copy the temporary password shown below.'
+          : deliveryMethod === 'sms'
+          ? `Platform user created. Password sent via SMS to ${phone}.`
+          : 'Platform user created. Password reset email sent.',
+      };
+
+      // Include temp password only if manual delivery
+      if (deliveryMethod === 'manual') {
+        response.temporary_password = tempPassword;
+        response.delivery_method = 'manual';
+      }
 
       return new Response(
-        JSON.stringify({ 
-          success: true, 
-          data: platformUserRecord,
-          message: 'Platform user created. Password reset email will be sent.',
-        }),
+        JSON.stringify(response),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }

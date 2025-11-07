@@ -26,9 +26,10 @@ export function usePlatformPlans() {
   const { data: plans, isLoading, error } = useQuery({
     queryKey: ['platform-plans'],
     queryFn: async () => {
-      const { data, error } = await supabase.functions.invoke('manage-plans', {
-        method: 'GET',
-      });
+      const { data, error } = await supabase
+        .from('platform_plans')
+        .select('*')
+        .order('price_monthly', { ascending: true });
 
       if (error) throw error;
       return data as Plan[];
@@ -37,10 +38,11 @@ export function usePlatformPlans() {
 
   const createPlan = useMutation({
     mutationFn: async (planData: Partial<Plan>) => {
-      const { data, error } = await supabase.functions.invoke('manage-plans', {
-        method: 'POST',
-        body: planData,
-      });
+      const { data, error } = await supabase
+        .from('platform_plans')
+        .insert([planData as any])
+        .select()
+        .single();
 
       if (error) throw error;
       return data;
@@ -56,10 +58,12 @@ export function usePlatformPlans() {
 
   const updatePlan = useMutation({
     mutationFn: async ({ id, ...updates }: Partial<Plan> & { id: string }) => {
-      const { data, error } = await supabase.functions.invoke(`manage-plans/${id}`, {
-        method: 'PATCH',
-        body: updates,
-      });
+      const { data, error } = await supabase
+        .from('platform_plans')
+        .update(updates)
+        .eq('id', id)
+        .select()
+        .single();
 
       if (error) throw error;
       return data;
@@ -75,9 +79,10 @@ export function usePlatformPlans() {
 
   const deletePlan = useMutation({
     mutationFn: async (id: string) => {
-      const { error } = await supabase.functions.invoke(`manage-plans/${id}`, {
-        method: 'DELETE',
-      });
+      const { error } = await supabase
+        .from('platform_plans')
+        .delete()
+        .eq('id', id);
 
       if (error) throw error;
     },

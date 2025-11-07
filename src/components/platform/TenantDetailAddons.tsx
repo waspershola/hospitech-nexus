@@ -41,13 +41,39 @@ export default function TenantDetailAddons({ tenant }: TenantDetailAddonsProps) 
     queryFn: async () => {
       const { data, error } = await supabase
         .from('platform_addon_purchases')
-        .select('*, addon:platform_addons(*)')
+        .select('*')
         .eq('tenant_id', tenant.id)
         .order('purchased_at', { ascending: false });
       
-      if (error) throw error;
+      if (error) {
+        console.error('[TenantDetailAddons] Error fetching purchases:', error);
+        throw error;
+      }
+
+      // Fetch addon details for each purchase
+      if (data && data.length > 0) {
+        const addonIds = [...new Set(data.map(p => p.addon_id))];
+        const { data: addonsData, error: addonsError } = await supabase
+          .from('platform_addons')
+          .select('*')
+          .in('id', addonIds);
+
+        if (addonsError) {
+          console.error('[TenantDetailAddons] Error fetching addons:', addonsError);
+        }
+
+        // Map addon data to purchases
+        const purchasesWithAddons = data.map(purchase => ({
+          ...purchase,
+          addon: addonsData?.find(a => a.id === purchase.addon_id)
+        }));
+
+        return purchasesWithAddons;
+      }
+
       return data;
-    }
+    },
+    enabled: !!tenant?.id,
   });
 
   // Assign addon to tenant
