@@ -50,6 +50,7 @@ Deno.serve(async (req) => {
     const url = new URL(req.url);
     const pathParts = url.pathname.split('/').filter(Boolean);
     const providerId = pathParts[1];
+    const action = pathParts[2]; // 'test' or undefined
 
     // LIST providers
     if (req.method === 'GET' && !providerId) {
@@ -81,7 +82,7 @@ Deno.serve(async (req) => {
     }
 
     // GET single provider
-    if (req.method === 'GET' && providerId) {
+    if (req.method === 'GET' && providerId && !action) {
       const { data, error } = await supabase
         .from('platform_email_providers')
         .select('*')
@@ -93,6 +94,53 @@ Deno.serve(async (req) => {
       return new Response(JSON.stringify(data), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
+    }
+
+    // TEST provider endpoint
+    if (req.method === 'POST' && providerId && action === 'test') {
+      const { data: provider, error: fetchError } = await supabase
+        .from('platform_email_providers')
+        .select('*')
+        .eq('id', providerId)
+        .single();
+
+      if (fetchError || !provider) {
+        throw new Error('Provider not found');
+      }
+
+      // Send test email using Resend (the only provider we support for now)
+      if (provider.provider_type === 'resend') {
+        const apiKey = provider.config.apiKey;
+        
+        const testResponse = await fetch('https://api.resend.com/emails', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${apiKey}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            from: 'onboarding@resend.dev',
+            to: [user.email || 'test@example.com'],
+            subject: 'Test Email from Platform',
+            html: '<h1>Test Email</h1><p>This is a test email from your email provider configuration.</p>',
+          }),
+        });
+
+        const testData = await testResponse.json();
+
+        if (!testResponse.ok) {
+          console.error('Resend test error:', testData);
+          throw new Error(testData.message || 'Failed to send test email');
+        }
+
+        console.log('Test email sent successfully:', testData);
+
+        return new Response(JSON.stringify({ success: true, message: 'Test email sent' }), {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      } else {
+        throw new Error(`Test not implemented for provider type: ${provider.provider_type}`);
+      }
     }
 
     // Only platform admins can create/update/delete
