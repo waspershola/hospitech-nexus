@@ -251,35 +251,56 @@ export const useConfigStore = create<ConfigStore>((set, get) => ({
       // If key is 'general', save each field as separate configuration
       if (key === 'general' && typeof configurations[key] === 'object') {
         const generalConfig = configurations[key];
-        const savePromises = [];
+        
+        console.log('💾 Saving general config:', generalConfig);
         
         // Save each general config field separately
+        const saveResults = [];
         for (const [fieldKey, fieldValue] of Object.entries(generalConfig)) {
-          savePromises.push(
-            supabase.from('hotel_configurations').upsert({
+          console.log(`  📝 Saving ${fieldKey}:`, fieldValue);
+          
+          const result = await supabase
+            .from('hotel_configurations')
+            .upsert([{
               tenant_id: tenantId,
               key: fieldKey,
-              value: JSON.stringify(fieldValue),
+              value: fieldValue as any, // Supabase handles JSONB serialization
               updated_by: user?.id,
-            })
-          );
+            }])
+            .select();
+          
+          saveResults.push(result);
         }
         
-        const results = await Promise.all(savePromises);
-        const errors = results.filter(r => r.error);
+        const errors = saveResults.filter(r => r.error);
+        
         if (errors.length > 0) {
+          console.error('❌ Save errors:', errors);
           throw errors[0].error;
         }
+        
+        console.log('✅ General config saved successfully:', saveResults.map(r => r.data));
       } else {
         // Single key-value save
-        const { error } = await supabase.from('hotel_configurations').upsert({
-          tenant_id: tenantId,
-          key,
-          value: configurations[key],
-          updated_by: user?.id,
-        });
+        console.log(`💾 Saving ${key}:`, configurations[key]);
+        
+        const { data, error } = await supabase
+          .from('hotel_configurations')
+          .upsert([{
+            tenant_id: tenantId,
+            key,
+            value: configurations[key] as any, // Supabase handles JSONB serialization
+            updated_by: user?.id,
+          }])
+          .select()
+          .single();
 
-        if (error) throw error;
+        if (error) {
+          console.error(`❌ Error saving ${key}:`, error);
+          throw error;
+        }
+        
+        console.log(`✅ ${key} saved successfully:`, data);
       }
       
       const now = new Date();
