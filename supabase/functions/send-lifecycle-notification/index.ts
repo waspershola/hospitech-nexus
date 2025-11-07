@@ -164,6 +164,9 @@ Deno.serve(async (req) => {
         }
 
         const { error: smsError } = await supabase.functions.invoke('send-sms', {
+          headers: {
+            Authorization: `Bearer ${Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')}`,
+          },
           body: {
             tenant_id: tenant_id,
             to: guestData.phone,

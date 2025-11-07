@@ -132,6 +132,9 @@ serve(async (req: Request) => {
       for (const phone of recipients) {
         try {
           const smsResult = await supabase.functions.invoke('send-sms', {
+            headers: {
+              Authorization: `Bearer ${Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')}`,
+            },
             body: {
               tenant_id,
               to: phone,

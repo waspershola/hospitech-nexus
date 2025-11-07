@@ -157,6 +157,9 @@ serve(async (req: Request) => {
                 : `Hi ${guest.name}, checkout from ${hotelName} Room ${room?.number} is ${hours_before === 24 ? 'tomorrow' : 'in 2 hours'} at ${checkoutTime}. Safe travels!`;
 
               const smsResult = await supabase.functions.invoke('send-sms', {
+                headers: {
+                  Authorization: `Bearer ${Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')}`,
+                },
                 body: {
                   tenant_id: tenant_id,
                   to: guest.phone,

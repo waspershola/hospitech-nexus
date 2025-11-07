@@ -512,6 +512,9 @@ serve(async (req) => {
 
           // Fire-and-forget SMS send (don't block booking response)
           supabaseClient.functions.invoke('send-sms', {
+            headers: {
+              Authorization: `Bearer ${Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')}`,
+            },
             body: {
               tenant_id,
               to: guest.phone,
