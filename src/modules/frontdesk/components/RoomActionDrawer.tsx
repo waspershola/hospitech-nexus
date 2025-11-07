@@ -37,7 +37,7 @@ import { toast } from '@/hooks/use-toast';
 import { Switch } from '@/components/ui/switch';
 import { 
   Loader2, User, CreditCard, Calendar, AlertCircle, Clock, Building2, AlertTriangle, 
-  Wallet, Zap, Coffee, BellOff, UserPlus, LogIn, LogOut, Wrench, Sparkles, FileText, Receipt, Edit, Printer
+  Wallet, Zap, Coffee, BellOff, UserPlus, LogIn, LogOut, Wrench, Sparkles, FileText, Receipt, Edit, Printer, MessageSquare
 } from 'lucide-react';
 
 interface RoomActionDrawerProps {
@@ -453,6 +453,56 @@ export function RoomActionDrawer({ roomId, contextDate, open, onClose, onOpenAss
     }
   };
 
+  const handleSendPaymentReminder = async () => {
+    if (!activeBooking || !folio) return;
+    
+    const guest = Array.isArray(activeBooking.guest) ? activeBooking.guest[0] : activeBooking.guest;
+    if (!guest?.phone) {
+      toast({ 
+        title: 'No Phone Number', 
+        description: 'Guest has no phone number on file', 
+        variant: 'destructive' 
+      });
+      return;
+    }
+
+    try {
+      const { data: hotelMeta } = await supabase
+        .from('hotel_configurations')
+        .select('value')
+        .eq('tenant_id', tenantId)
+        .eq('key', 'hotel_name')
+        .maybeSingle();
+
+      const hotelName = hotelMeta?.value || 'Our Hotel';
+      const message = `Hi ${guest.name}, this is a gentle reminder about your outstanding balance of ₦${folio.balance.toLocaleString()} at ${hotelName}. Please contact the front desk to settle. Thank you!`;
+
+      const { data, error } = await supabase.functions.invoke('send-sms', {
+        body: {
+          tenant_id: tenantId,
+          to: guest.phone,
+          message,
+          event_key: 'payment_reminder',
+          booking_id: activeBooking.id,
+          guest_id: guest.id,
+        },
+      });
+
+      if (error) throw error;
+
+      toast({ 
+        title: 'Reminder Sent!', 
+        description: `Payment reminder sent to ${guest.name}`,
+      });
+    } catch (error: any) {
+      toast({ 
+        title: 'Failed to Send', 
+        description: error.message || 'Could not send SMS reminder', 
+        variant: 'destructive' 
+      });
+    }
+  };
+
   const getActions = () => {
     if (!room) return [];
 
@@ -732,15 +782,28 @@ export function RoomActionDrawer({ roomId, contextDate, open, onClose, onOpenAss
                               }
                             </p>
                             {folio && folio.balance > 0 && (
-                              <Button
-                                variant="default"
-                                size="sm"
-                                onClick={() => setQuickPaymentOpen(true)}
-                                className="w-full"
-                              >
-                                <CreditCard className="w-4 h-4 mr-2" />
-                                Collect Payment
-                              </Button>
+                              <>
+                                <Button
+                                  variant="default"
+                                  size="sm"
+                                  onClick={() => setQuickPaymentOpen(true)}
+                                  className="w-full"
+                                >
+                                  <CreditCard className="w-4 h-4 mr-2" />
+                                  Collect Payment
+                                </Button>
+                                {currentBooking.guest?.phone && (
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={handleSendPaymentReminder}
+                                    className="w-full"
+                                  >
+                                    <MessageSquare className="w-4 h-4 mr-2" />
+                                    Send Payment Reminder
+                                  </Button>
+                                )}
+                              </>
                             )}
                             <Button
                               variant="outline"

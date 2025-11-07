@@ -398,7 +398,7 @@ serve(async (req) => {
       },
     });
 
-    // Log to analytics table
+    // Log to analytics table (tenant_sms_usage_logs)
     await supabase.from('tenant_sms_usage_logs').insert({
       tenant_id,
       event_key: event_key || 'manual',
@@ -418,6 +418,23 @@ serve(async (req) => {
         message_length: message.length,
         platform_provider_id: provider.id,
       },
+    });
+
+    // Log to sms_logs table (audit trail)
+    await supabase.from('sms_logs').insert({
+      tenant_id,
+      to_number: formattedPhone,
+      message_body: message,
+      status: result.success ? 'sent' : 'failed',
+      provider: provider.provider_type,
+      provider_message_id: result.messageId,
+      cost_credits: segments,
+      booking_id,
+      guest_id,
+      event_key: event_key || 'manual',
+      sent_at: result.success ? new Date().toISOString() : null,
+      failed_at: result.success ? null : new Date().toISOString(),
+      error_message: result.error,
     });
 
     const creditsUsed = result.success ? segments : 0;
