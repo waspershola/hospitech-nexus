@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -40,6 +40,23 @@ export function SMSSettingsTab() {
   const [isSendingTest, setIsSendingTest] = useState(false);
   const [showTestDialog, setShowTestDialog] = useState(false);
 
+  // Sync settings to local state when loaded
+  useEffect(() => {
+    if (settings) {
+      setEnabled(settings.enabled || false);
+      setAutoBookingConfirm(settings.auto_send_booking_confirmation || false);
+      setAutoCheckinReminder(settings.auto_send_checkin_reminder || false);
+      setAutoCheckoutReminder(settings.auto_send_checkout_reminder || false);
+    }
+  }, [settings]);
+
+  // Sync sender ID from provider assignment or settings
+  useEffect(() => {
+    if (providerAssignment?.sender_id || settings?.sender_id) {
+      setSenderId(providerAssignment?.sender_id || settings?.sender_id || '');
+    }
+  }, [providerAssignment, settings]);
+
   const handleSaveSettings = () => {
     saveSettings.mutate({
       sender_id: senderId,
@@ -69,9 +86,13 @@ export function SMSSettingsTab() {
 
       if (error) throw error;
 
-      toast.success('Test SMS sent successfully!');
-      setShowTestDialog(false);
-      setTestPhone('');
+      if (data?.success) {
+        toast.success(`SMS sent successfully to ${testPhone}! ${data.creditsUsed} credit(s) used. ${data.remainingCredits} remaining.`);
+        setShowTestDialog(false);
+        setTestPhone('');
+      } else {
+        throw new Error(data?.error || 'Failed to send SMS');
+      }
     } catch (error: any) {
       console.error('Test SMS error:', error);
       toast.error(error.message || 'Failed to send test SMS');
@@ -82,6 +103,17 @@ export function SMSSettingsTab() {
 
   const quotaUsagePercent = quota ? (quota.quota_used / quota.quota_total) * 100 : 0;
   const remainingCredits = quota ? quota.quota_total - quota.quota_used : 0;
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center py-8">
+        <div className="text-center space-y-2">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
+          <p className="text-sm text-muted-foreground">Loading SMS settings...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
