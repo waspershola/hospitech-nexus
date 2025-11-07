@@ -4,8 +4,6 @@ import { useConfigStore } from '@/stores/configStore';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { Progress } from '@/components/ui/progress';
 import { 
   Settings2, 
   Palette, 
@@ -13,9 +11,7 @@ import {
   Globe, 
   Users, 
   Lock,
-  Save,
-  RotateCcw,
-  Clock
+  RotateCcw
 } from 'lucide-react';
 import { GeneralTab } from '@/components/configuration/tabs/GeneralTab';
 import { BrandingTab } from '@/components/configuration/tabs/BrandingTab';
@@ -23,10 +19,8 @@ import { MetaTab } from '@/components/configuration/tabs/MetaTab';
 import { DomainsTab } from '@/components/configuration/tabs/DomainsTab';
 import { GuestExperienceTab } from '@/components/configuration/tabs/GuestExperienceTab';
 import { PermissionsTab } from '@/components/configuration/tabs/PermissionsTab';
-import { useConfigCompleteness } from '@/hooks/useConfigCompleteness';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Info } from 'lucide-react';
-import { formatDistanceToNow } from 'date-fns';
 
 const tabs = [
   { id: 'general', label: 'General', icon: Settings2 },
@@ -49,7 +43,6 @@ export default function DomainConfig() {
   const isLoading = useConfigStore(state => state.isLoading);
   
   const [activeTab, setActiveTab] = useState('general');
-  const { percentage: setupPercentage } = useConfigCompleteness();
 
   useEffect(() => {
     if (tenantId) {
@@ -84,7 +77,7 @@ export default function DomainConfig() {
 
   return (
     <div className="space-y-6">
-      {/* Header with Save/Reset Actions */}
+      {/* Header */}
       <div className="sticky top-0 z-10 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 pb-4 border-b">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div>
@@ -92,38 +85,9 @@ export default function DomainConfig() {
             <p className="text-muted-foreground">
               Manage your hotel's identity, branding, and guest experience
             </p>
-            
-            {/* Setup Completeness */}
-            <div className="flex items-center gap-3 mt-3">
-              <div className="flex-1 max-w-xs">
-                <Progress value={setupPercentage} className="h-2" />
-              </div>
-              <span className="text-sm font-medium text-muted-foreground whitespace-nowrap">
-                {setupPercentage}% Complete
-              </span>
-            </div>
           </div>
           
           <div className="flex items-center gap-3">
-            {/* Last Sync Time */}
-            {lastSyncTime && (
-              <div className="hidden sm:flex items-center gap-2 text-sm text-muted-foreground">
-                <Clock className="w-4 h-4" />
-                <span>
-                  Synced {formatDistanceToNow(lastSyncTime, { addSuffix: true })}
-                </span>
-              </div>
-            )}
-            
-            {/* Unsaved Changes Badge */}
-            {unsavedCount > 0 && (
-              <Badge variant="secondary" className="gap-1">
-                <span className="w-2 h-2 rounded-full bg-amber-500 animate-pulse" />
-                {unsavedCount} unsaved
-              </Badge>
-            )}
-            
-            {/* Reset Button Only */}
             <Button
               variant="outline"
               size="sm"

@@ -6,7 +6,7 @@ import { useConfigStore } from '@/stores/configStore';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card } from '@/components/ui/card';
-import { Save, RotateCcw, DollarSign, FileText, Lock, Clock, Mail, Database, MessageSquare } from 'lucide-react';
+import { RotateCcw, DollarSign, FileText, Lock, Clock, Mail, Database, MessageSquare } from 'lucide-react';
 import { toast } from 'sonner';
 
 import { DocumentsTab } from '@/components/configuration/tabs/DocumentsTab';
@@ -16,10 +16,6 @@ import { EmailSettingsTab } from '@/components/configuration/tabs/EmailSettingsT
 import { MaintenanceTab } from '@/components/configuration/tabs/MaintenanceTab';
 import { FinancialOverviewTab } from '@/components/configuration/tabs/FinancialOverviewTab';
 import { SMSSettingsTab } from '@/components/configuration/tabs/SMSSettingsTab';
-import { useConfigCompleteness } from '@/hooks/useConfigCompleteness';
-import { Progress } from '@/components/ui/progress';
-import { Badge } from '@/components/ui/badge';
-import { CheckCircle2, AlertCircle, Loader2 } from 'lucide-react';
 
 const tabs = [
   { id: 'finance-overview', label: 'Finance Overview', icon: DollarSign },
@@ -34,30 +30,16 @@ const tabs = [
 export default function ConfigurationCenter() {
   const { tenantId, role } = useAuth();
   const loadAllConfig = useConfigStore(state => state.loadAllConfig);
-  const saveAllChanges = useConfigStore(state => state.saveAllChanges);
   const resetChanges = useConfigStore(state => state.resetChanges);
   const unsavedCount = useConfigStore(state => state.unsavedChanges.length);
   const isSaving = useConfigStore(state => state.isSaving);
-  const savingProgress = useConfigStore(state => state.savingProgress);
-  const lastSyncTime = useConfigStore(state => state.lastSyncTime);
-  const isLoading = useConfigStore(state => state.isLoading);
   const [activeTab, setActiveTab] = useState('finance-overview');
-  const { percentage, checks, isComplete } = useConfigCompleteness();
 
   useEffect(() => {
     if (tenantId) {
       loadAllConfig(tenantId);
     }
   }, [tenantId, loadAllConfig]);
-
-  const handleSaveAll = async () => {
-    try {
-      await saveAllChanges();
-    } catch (error) {
-      console.error('Save all failed:', error);
-      // Error handling is done in the store
-    }
-  };
 
   const handleReset = () => {
     if (confirm('Are you sure you want to discard all unsaved changes?')) {
@@ -93,66 +75,14 @@ export default function ConfigurationCenter() {
               <p className="text-sm text-muted-foreground mt-1">
                 Manage operational settings, finances, documents, and integrations
               </p>
-              
-              {/* Setup Completeness Meter */}
-              <div className="mt-3 space-y-2">
-                <div className="flex items-center gap-3">
-                  <Progress value={percentage} className="h-2 flex-1 max-w-xs" />
-                  <div className="flex items-center gap-2">
-                    {isComplete ? (
-                      <Badge variant="default" className="gap-1">
-                        <CheckCircle2 className="h-3 w-3" />
-                        Complete
-                      </Badge>
-                    ) : (
-                      <Badge variant="outline" className="gap-1">
-                        <AlertCircle className="h-3 w-3" />
-                        {percentage}% Setup
-                      </Badge>
-                    )}
-                  </div>
-                </div>
-                {!isComplete && (
-                  <div className="flex gap-2 text-xs text-muted-foreground">
-                    {!checks.branding && <span>• Branding</span>}
-                    {!checks.email && <span>• Email</span>}
-                    {!checks.meta && <span>• Hotel Profile</span>}
-                  </div>
-                )}
-              </div>
             </div>
 
             <div className="flex items-center gap-4">
-              {unsavedCount > 0 && (
-                <div className="flex items-center gap-2 px-3 py-1.5 bg-warning/10 border border-warning/20 rounded-lg">
-                  <div className="w-2 h-2 bg-warning rounded-full animate-pulse" />
-                  <span className="text-sm font-medium text-warning">
-                    {unsavedCount} unsaved change{unsavedCount !== 1 ? 's' : ''}
-                  </span>
-                </div>
-              )}
-
-              {lastSyncTime && unsavedCount === 0 && !isSaving && (
-                <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                  <CheckCircle2 className="h-3 w-3 text-success" />
-                  <span>Last saved: {lastSyncTime.toLocaleTimeString()}</span>
-                </div>
-              )}
-
-              {isSaving && savingProgress.length > 0 && (
-                <div className="flex items-center gap-2 px-3 py-1.5 bg-primary/10 border border-primary/20 rounded-lg">
-                  <Loader2 className="h-3 w-3 text-primary animate-spin" />
-                  <span className="text-sm font-medium text-primary">
-                    Saving {savingProgress.filter(p => p.status === 'saving').length} of {savingProgress.length}...
-                  </span>
-                </div>
-              )}
-
               <Button
                 variant="outline"
                 size="sm"
-            onClick={handleReset}
-            disabled={unsavedCount === 0 || isSaving}
+                onClick={handleReset}
+                disabled={unsavedCount === 0 || isSaving}
               >
                 <RotateCcw className="h-4 w-4 mr-2" />
                 Reset
