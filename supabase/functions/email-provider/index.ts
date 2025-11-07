@@ -102,7 +102,11 @@ Deno.serve(async (req) => {
 
     // CREATE provider
     if (req.method === 'POST') {
-      const body: EmailProviderConfig = await req.json();
+      const text = await req.text();
+      if (!text) {
+        throw new Error('Request body is required');
+      }
+      const body: EmailProviderConfig = JSON.parse(text);
 
       // Validate required fields
       if (!body.provider_type || !body.name || !body.config) {
@@ -156,7 +160,11 @@ Deno.serve(async (req) => {
 
     // UPDATE provider
     if (req.method === 'PATCH' && providerId) {
-      const body: Partial<EmailProviderConfig> = await req.json();
+      const text = await req.text();
+      if (!text) {
+        throw new Error('Request body is required');
+      }
+      const body: Partial<EmailProviderConfig> = JSON.parse(text);
 
       // Validate provider-specific config if provided
       if (body.provider_type && body.config) {
