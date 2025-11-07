@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Info } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
+import { Link } from 'react-router-dom';
 import { useConfigStore } from '@/stores/configStore';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -52,15 +53,13 @@ export default function ConfigurationCenter() {
 
   if (role !== 'owner' && role !== 'manager') {
     return (
-      <div className="flex items-center justify-center min-h-screen">
-        <Card className="p-8 max-w-md text-center">
-          <Lock className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
-          <h2 className="text-2xl font-display font-semibold mb-2">Access Restricted</h2>
-          <p className="text-muted-foreground">
-            Only owners and managers can access the Configuration Center.
-          </p>
-        </Card>
-      </div>
+      <Card className="p-8 max-w-md text-center">
+        <Lock className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
+        <h2 className="text-2xl font-display font-semibold mb-2">Access Restricted</h2>
+        <p className="text-muted-foreground">
+          Only owners and managers can access the Configuration Center.
+        </p>
+      </Card>
     );
   }
 
@@ -95,9 +94,9 @@ export default function ConfigurationCenter() {
         <Info className="h-4 w-4" />
         <AlertDescription>
           For identity and branding settings, visit the{' '}
-          <a href="/domain-config" className="font-medium underline">
+          <Link to="/dashboard/domain-config" className="font-medium underline">
             Domain Configuration
-          </a>
+          </Link>
           .
         </AlertDescription>
       </Alert>
