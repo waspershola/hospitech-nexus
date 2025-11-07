@@ -29,6 +29,7 @@ const tabs = [
 
 export default function ConfigurationCenter() {
   const { tenantId, role } = useAuth();
+  const setTenantId = useConfigStore(state => state.setTenantId);
   const loadAllConfig = useConfigStore(state => state.loadAllConfig);
   const resetChanges = useConfigStore(state => state.resetChanges);
   const unsavedCount = useConfigStore(state => state.unsavedChanges.length);
@@ -37,9 +38,10 @@ export default function ConfigurationCenter() {
 
   useEffect(() => {
     if (tenantId) {
+      setTenantId(tenantId);
       loadAllConfig(tenantId);
     }
-  }, [tenantId, loadAllConfig]);
+  }, [tenantId, setTenantId, loadAllConfig]);
 
   const handleReset = () => {
     if (confirm('Are you sure you want to discard all unsaved changes?')) {

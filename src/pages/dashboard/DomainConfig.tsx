@@ -33,6 +33,7 @@ const tabs = [
 
 export default function DomainConfig() {
   const { tenantId, role } = useAuth();
+  const setTenantId = useConfigStore(state => state.setTenantId);
   const loadAllConfig = useConfigStore(state => state.loadAllConfig);
   const saveAllChanges = useConfigStore(state => state.saveAllChanges);
   const resetChanges = useConfigStore(state => state.resetChanges);
@@ -46,9 +47,10 @@ export default function DomainConfig() {
 
   useEffect(() => {
     if (tenantId) {
+      setTenantId(tenantId);
       loadAllConfig(tenantId);
     }
-  }, [tenantId, loadAllConfig]);
+  }, [tenantId, setTenantId, loadAllConfig]);
 
   const handleSaveAll = async () => {
     await saveAllChanges();
