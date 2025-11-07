@@ -1,23 +1,19 @@
 import { useEffect, useState } from 'react';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Info } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useConfigStore } from '@/stores/configStore';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card } from '@/components/ui/card';
-import { Save, RotateCcw, Settings, DollarSign, Palette, FileText, Users, Lock, Clock, Mail, Database, Globe, Building2, MessageSquare } from 'lucide-react';
+import { Save, RotateCcw, DollarSign, FileText, Lock, Clock, Mail, Database, MessageSquare } from 'lucide-react';
 import { toast } from 'sonner';
-import { ConfigurationStatus } from '@/components/configuration/shared/ConfigurationStatus';
-import { GeneralTab } from '@/components/configuration/tabs/GeneralTab';
-import { BrandingTab } from '@/components/configuration/tabs/BrandingTab';
-import { MetaTab } from '@/components/configuration/tabs/MetaTab';
+
 import { DocumentsTab } from '@/components/configuration/tabs/DocumentsTab';
-import { GuestExperienceTab } from '@/components/configuration/tabs/GuestExperienceTab';
 import { CheckoutPolicyTab } from '@/components/configuration/tabs/CheckoutPolicyTab';
-import { PermissionsTab } from '@/components/configuration/tabs/PermissionsTab';
 import { AuditLogsTab } from '@/components/configuration/tabs/AuditLogsTab';
 import { EmailSettingsTab } from '@/components/configuration/tabs/EmailSettingsTab';
 import { MaintenanceTab } from '@/components/configuration/tabs/MaintenanceTab';
-import { DomainsTab } from '@/components/configuration/tabs/DomainsTab';
 import { FinancialOverviewTab } from '@/components/configuration/tabs/FinancialOverviewTab';
 import { SMSSettingsTab } from '@/components/configuration/tabs/SMSSettingsTab';
 import { useConfigCompleteness } from '@/hooks/useConfigCompleteness';
@@ -26,15 +22,9 @@ import { Badge } from '@/components/ui/badge';
 import { CheckCircle2, AlertCircle, Loader2 } from 'lucide-react';
 
 const tabs = [
-  { id: 'general', label: 'General', icon: Settings },
   { id: 'finance-overview', label: 'Finance Overview', icon: DollarSign },
-  { id: 'branding', label: 'Branding & Theme', icon: Palette },
-  { id: 'meta', label: 'Hotel Profile', icon: Building2 },
-  { id: 'domains', label: 'Domains', icon: Globe },
   { id: 'documents', label: 'Documents', icon: FileText },
-  { id: 'guest', label: 'Guest Experience', icon: Users },
   { id: 'checkout', label: 'Checkout Policy', icon: Clock },
-  { id: 'permissions', label: 'Permissions', icon: Lock },
   { id: 'audit', label: 'Audit Logs', icon: Clock },
   { id: 'email', label: 'Email Settings', icon: Mail },
   { id: 'sms', label: 'SMS Notifications', icon: MessageSquare },
@@ -51,7 +41,7 @@ export default function ConfigurationCenter() {
   const savingProgress = useConfigStore(state => state.savingProgress);
   const lastSyncTime = useConfigStore(state => state.lastSyncTime);
   const isLoading = useConfigStore(state => state.isLoading);
-  const [activeTab, setActiveTab] = useState('general');
+  const [activeTab, setActiveTab] = useState('finance-overview');
   const { percentage, checks, isComplete } = useConfigCompleteness();
 
   useEffect(() => {
@@ -101,7 +91,7 @@ export default function ConfigurationCenter() {
                 Configuration Center
               </h1>
               <p className="text-sm text-muted-foreground mt-1">
-                Manage hotel-wide identity, policy, and service standards
+                Manage operational settings, finances, documents, and integrations
               </p>
               
               {/* Setup Completeness Meter */}
@@ -191,10 +181,24 @@ export default function ConfigurationCenter() {
         </div>
       </div>
 
+      {/* Info Alert */}
+      <div className="max-w-7xl mx-auto px-6">
+        <Alert>
+          <Info className="h-4 w-4" />
+          <AlertDescription>
+            For identity and branding settings, visit the{' '}
+            <a href="/dashboard/domain-config" className="font-medium underline">
+              Domain Configuration
+            </a>
+            .
+          </AlertDescription>
+        </Alert>
+      </div>
+
       {/* Content */}
       <div className="max-w-7xl mx-auto px-6 py-8">
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-          <TabsList className="grid grid-cols-3 lg:grid-cols-6 xl:grid-cols-12 gap-2 h-auto p-2 bg-muted/50 overflow-x-auto">
+          <TabsList className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2 h-auto p-2 bg-muted/50 overflow-x-auto">{}
             {tabs.map((tab) => {
               const Icon = tab.icon;
               return (
@@ -210,41 +214,16 @@ export default function ConfigurationCenter() {
             })}
           </TabsList>
 
-          <TabsContent value="general" className="space-y-6 animate-fade-in">
-            <ConfigurationStatus />
-            <GeneralTab />
-          </TabsContent>
-
           <TabsContent value="finance-overview" className="space-y-6 animate-fade-in">
             <FinancialOverviewTab />
-          </TabsContent>
-
-          <TabsContent value="branding" className="space-y-6 animate-fade-in">
-            <BrandingTab />
-          </TabsContent>
-
-          <TabsContent value="meta" className="space-y-6 animate-fade-in">
-            <MetaTab />
           </TabsContent>
 
           <TabsContent value="documents" className="space-y-6 animate-fade-in">
             <DocumentsTab />
           </TabsContent>
 
-          <TabsContent value="guest" className="space-y-6 animate-fade-in">
-            <GuestExperienceTab />
-          </TabsContent>
-
           <TabsContent value="checkout" className="space-y-6 animate-fade-in">
             <CheckoutPolicyTab />
-          </TabsContent>
-
-          <TabsContent value="domains" className="space-y-6 animate-fade-in">
-            <DomainsTab />
-          </TabsContent>
-
-          <TabsContent value="permissions" className="space-y-6 animate-fade-in">
-            <PermissionsTab />
           </TabsContent>
 
           <TabsContent value="audit" className="space-y-6 animate-fade-in">

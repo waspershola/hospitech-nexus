@@ -32,12 +32,15 @@ export default function Settings() {
       <Alert>
         <Info className="h-4 w-4" />
         <AlertDescription>
-          For hotel-wide settings like branding, financials, and email configuration, please visit
-          the{' '}
+          For hotel-wide settings, visit the{' '}
+          <a href="/dashboard/domain-config" className="font-medium underline">
+            Domain Configuration
+          </a>
+          {' '}(identity & branding) or{' '}
           <a href="/dashboard/configuration-center" className="font-medium underline">
             Configuration Center
           </a>
-          .
+          {' '}(operations & integrations).
         </AlertDescription>
       </Alert>
 
