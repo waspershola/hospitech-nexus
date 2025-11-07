@@ -205,10 +205,13 @@ export function SMSSettingsTab() {
                         <Label htmlFor="test-phone">Phone Number</Label>
                         <Input
                           id="test-phone"
-                          placeholder="+234XXXXXXXXXX"
+                          placeholder="+234XXXXXXXXXX or 0XXXXXXXXXX"
                           value={testPhone}
                           onChange={(e) => setTestPhone(e.target.value)}
                         />
+                        <p className="text-xs text-muted-foreground mt-1">
+                          Enter phone number in international format (+234...) or Nigerian local format (0...)
+                        </p>
                       </div>
                       <div className="space-y-2">
                         <Label htmlFor="test-message">Message</Label>

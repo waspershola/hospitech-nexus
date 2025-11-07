@@ -6,6 +6,27 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
+// Format phone number to international format (specifically for Nigeria)
+function formatPhoneNumber(phoneNumber: string): string {
+  // Remove all spaces and special characters except +
+  let cleaned = phoneNumber.replace(/[\s\-\(\)]/g, '');
+  
+  // If starts with 0 (Nigerian local format), replace with +234
+  if (cleaned.startsWith('0')) {
+    cleaned = '+234' + cleaned.substring(1);
+  }
+  // If starts with 234 but no +, add the +
+  else if (cleaned.startsWith('234') && !cleaned.startsWith('+')) {
+    cleaned = '+' + cleaned;
+  }
+  // If doesn't start with +, assume it needs +234 prefix
+  else if (!cleaned.startsWith('+')) {
+    cleaned = '+234' + cleaned;
+  }
+  
+  return cleaned;
+}
+
 // SMS Provider interfaces
 interface SMSResult {
   success: boolean;
@@ -137,7 +158,9 @@ serve(async (req) => {
       });
     }
 
-    console.log(`SMS send request for tenant ${tenant_id} to ${to}`);
+    // Format phone number to international format
+    const formattedPhone = formatPhoneNumber(to);
+    console.log(`SMS send request for tenant ${tenant_id} to ${to} (formatted: ${formattedPhone})`);
 
     // PHASE 2: Fetch platform provider via tenant assignment
     const { data: assignment, error: assignmentError } = await supabase
@@ -202,10 +225,10 @@ serve(async (req) => {
         let result: SMSResult;
         if (legacySettings.provider === 'twilio') {
           const provider = new TwilioProvider(apiKey, apiSecret);
-          result = await provider.send(to, legacySettings.sender_id, message);
+          result = await provider.send(formattedPhone, legacySettings.sender_id, message);
         } else if (legacySettings.provider === 'termii') {
           const provider = new TermiiProvider(apiKey);
-          result = await provider.send(to, legacySettings.sender_id, message);
+          result = await provider.send(formattedPhone, legacySettings.sender_id, message);
         } else {
           return new Response(JSON.stringify({ error: 'Unsupported SMS provider' }), {
             status: 400,
@@ -301,10 +324,10 @@ serve(async (req) => {
     
     if (provider.provider_type === 'twilio') {
       const twilioProvider = new TwilioProvider(apiKey, apiSecret);
-      result = await twilioProvider.send(to, senderId, message);
+      result = await twilioProvider.send(formattedPhone, senderId, message);
     } else if (provider.provider_type === 'termii') {
       const termiiProvider = new TermiiProvider(apiKey);
-      result = await termiiProvider.send(to, senderId, message);
+      result = await termiiProvider.send(formattedPhone, senderId, message);
     } else {
       return new Response(JSON.stringify({ error: 'Unsupported SMS provider' }), {
         status: 400,
@@ -367,7 +390,7 @@ serve(async (req) => {
     await supabase.from('tenant_sms_usage_logs').insert({
       tenant_id,
       event_key: event_key || 'manual',
-      recipient: to,
+      recipient: formattedPhone,
       message_preview: message.substring(0, 100),
       status: result.success ? 'sent' : 'failed',
       provider: provider.provider_type,
