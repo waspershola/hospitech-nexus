@@ -207,7 +207,7 @@ export function CancelBookingModal({ open, onClose, bookingId }: CancelBookingMo
         },
       });
     },
-    onSuccess: () => {
+    onSuccess: async () => {
       queryClient.invalidateQueries({ queryKey: ['booking', bookingId] });
       queryClient.invalidateQueries({ queryKey: ['bookings'] });
       queryClient.invalidateQueries({ queryKey: ['rooms'] });
@@ -221,6 +221,55 @@ export function CancelBookingModal({ open, onClose, bookingId }: CancelBookingMo
           ? `Booking cancelled. Refund of ₦${refundAmount.toLocaleString()} processed.`
           : 'Booking cancelled successfully'
       );
+
+      // Send cancellation SMS
+      try {
+        const { data: smsSettings } = await supabase
+          .from('tenant_sms_settings')
+          .select('enabled, auto_send_cancellation')
+          .eq('tenant_id', tenantId)
+          .maybeSingle();
+
+        if (smsSettings?.enabled && smsSettings?.auto_send_cancellation && booking?.guest?.phone) {
+          const { data: hotelMeta } = await supabase
+            .from('hotel_configurations')
+            .select('value')
+            .eq('tenant_id', tenantId)
+            .eq('key', 'hotel_name')
+            .maybeSingle();
+
+          const hotelName = hotelMeta?.value || 'Hotel';
+          const refundMessage = refundAmount > 0 
+            ? `Refund of ₦${refundAmount.toLocaleString()} will be processed.` 
+            : '';
+          const message = `Your booking (Ref: ${booking.booking_reference}) at ${hotelName} has been cancelled. ${refundMessage}`;
+
+          const { data: { session } } = await supabase.auth.getSession();
+
+          supabase.functions.invoke('send-sms', {
+            headers: {
+              Authorization: `Bearer ${session?.access_token}`,
+            },
+            body: {
+              tenant_id: tenantId,
+              to: booking.guest.phone,
+              message,
+              event_key: 'booking_cancelled',
+              booking_id: bookingId,
+              guest_id: booking.guest_id,
+            },
+          }).then(({ error: smsError }) => {
+            if (smsError) {
+              console.error('Failed to send cancellation SMS:', smsError);
+            } else {
+              console.log('Cancellation SMS sent successfully');
+            }
+          });
+        }
+      } catch (smsError) {
+        console.error('Cancellation SMS error:', smsError);
+      }
+
       onClose();
     },
     onError: (error: Error) => {

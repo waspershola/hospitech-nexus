@@ -4471,8 +4471,12 @@ export type Database = {
           api_key_encrypted: string | null
           api_secret_encrypted: string | null
           auto_send_booking_confirmation: boolean | null
+          auto_send_cancellation: boolean | null
           auto_send_checkin_reminder: boolean | null
+          auto_send_checkout_confirmation: boolean | null
           auto_send_checkout_reminder: boolean | null
+          auto_send_modification: boolean | null
+          auto_send_payment_confirmation: boolean | null
           created_at: string | null
           enabled: boolean | null
           id: string
@@ -4485,8 +4489,12 @@ export type Database = {
           api_key_encrypted?: string | null
           api_secret_encrypted?: string | null
           auto_send_booking_confirmation?: boolean | null
+          auto_send_cancellation?: boolean | null
           auto_send_checkin_reminder?: boolean | null
+          auto_send_checkout_confirmation?: boolean | null
           auto_send_checkout_reminder?: boolean | null
+          auto_send_modification?: boolean | null
+          auto_send_payment_confirmation?: boolean | null
           created_at?: string | null
           enabled?: boolean | null
           id?: string
@@ -4499,8 +4507,12 @@ export type Database = {
           api_key_encrypted?: string | null
           api_secret_encrypted?: string | null
           auto_send_booking_confirmation?: boolean | null
+          auto_send_cancellation?: boolean | null
           auto_send_checkin_reminder?: boolean | null
+          auto_send_checkout_confirmation?: boolean | null
           auto_send_checkout_reminder?: boolean | null
+          auto_send_modification?: boolean | null
+          auto_send_payment_confirmation?: boolean | null
           created_at?: string | null
           enabled?: boolean | null
           id?: string

@@ -142,7 +142,13 @@ export function useRoomActions() {
             const hotelName = hotelMeta?.value || 'Our Hotel';
             const message = `Hi ${fullBooking.guest.name}, welcome to ${hotelName}! You're checked into Room ${fullBooking.room?.number}. Enjoy your stay!`;
 
+            // Get user session for auth header
+            const { data: { session } } = await supabase.auth.getSession();
+
             supabase.functions.invoke('send-sms', {
+              headers: {
+                Authorization: `Bearer ${session?.access_token}`,
+              },
               body: {
                 tenant_id: tenantId,
                 to: fullBooking.guest.phone,
@@ -206,6 +212,63 @@ export function useRoomActions() {
           .eq('id', booking.id);
 
         if (error) throw error;
+
+        // Send checkout confirmation SMS
+        try {
+          const { data: smsSettings } = await supabase
+            .from('tenant_sms_settings')
+            .select('enabled, auto_send_checkout_confirmation')
+            .eq('tenant_id', tenantId)
+            .maybeSingle();
+
+          if (smsSettings?.enabled && smsSettings?.auto_send_checkout_confirmation) {
+            const { data: fullBooking } = await supabase
+              .from('bookings')
+              .select(`
+                id,
+                guest:guests(id, name, phone),
+                room:rooms(number)
+              `)
+              .eq('id', booking.id)
+              .single();
+
+            if (fullBooking?.guest?.phone) {
+              const { data: hotelMeta } = await supabase
+                .from('hotel_configurations')
+                .select('value')
+                .eq('tenant_id', tenantId)
+                .eq('key', 'hotel_name')
+                .maybeSingle();
+
+              const hotelName = hotelMeta?.value || 'Our Hotel';
+              const message = `Thank you for staying at ${hotelName}! We hope you enjoyed your stay in Room ${fullBooking.room?.number}. Safe travels!`;
+
+              const { data: { session } } = await supabase.auth.getSession();
+
+              supabase.functions.invoke('send-sms', {
+                headers: {
+                  Authorization: `Bearer ${session?.access_token}`,
+                },
+                body: {
+                  tenant_id: tenantId,
+                  to: fullBooking.guest.phone,
+                  message,
+                  event_key: 'checkout_confirmation',
+                  booking_id: fullBooking.id,
+                  guest_id: fullBooking.guest.id,
+                },
+              }).then(({ error: smsError }) => {
+                if (smsError) {
+                  console.error('Failed to send checkout SMS:', smsError);
+                } else {
+                  console.log('Checkout SMS sent successfully');
+                }
+              });
+            }
+          }
+        } catch (smsError) {
+          console.error('Checkout SMS notification error:', smsError);
+        }
       }
     },
     onSuccess: () => {

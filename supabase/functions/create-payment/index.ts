@@ -661,6 +661,56 @@ serve(async (req) => {
 
     console.log('Payment processing complete:', payment.id);
 
+    // Send payment received SMS notification
+    try {
+      if (guest_id) {
+        const { data: smsSettings } = await supabase
+          .from('tenant_sms_settings')
+          .select('enabled, auto_send_payment_confirmation')
+          .eq('tenant_id', tenant_id)
+          .maybeSingle();
+
+        if (smsSettings?.enabled && smsSettings?.auto_send_payment_confirmation) {
+          const { data: guest } = await supabase
+            .from('guests')
+            .select('phone, name')
+            .eq('id', guest_id)
+            .single();
+
+          if (guest?.phone) {
+            const { data: hotelMeta } = await supabase
+              .from('hotel_configurations')
+              .select('value')
+              .eq('tenant_id', tenant_id)
+              .eq('key', 'hotel_name')
+              .maybeSingle();
+
+            const hotelName = hotelMeta?.value || 'Hotel';
+            const message = `Payment received: ₦${amount.toLocaleString()} via ${method}. Ref: ${transaction_ref}. Thank you! - ${hotelName}`;
+
+            await supabase.functions.invoke('send-sms', {
+              headers: {
+                Authorization: `Bearer ${Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')}`,
+              },
+              body: {
+                tenant_id,
+                to: guest.phone,
+                message,
+                event_key: 'payment_received',
+                booking_id,
+                guest_id,
+              },
+            });
+
+            console.log('Payment confirmation SMS sent to:', guest.phone);
+          }
+        }
+      }
+    } catch (smsError) {
+      console.error('Payment SMS error:', smsError);
+      // Don't fail the payment if SMS fails
+    }
+
     return new Response(
       JSON.stringify({ 
         success: true, 
