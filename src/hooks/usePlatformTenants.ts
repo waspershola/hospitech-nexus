@@ -230,17 +230,19 @@ export function usePlatformTenants() {
       const currentTotal = pool?.total_credits || 0;
       const currentConsumed = pool?.consumed_credits || 0;
 
-      const { data, error } = await supabase
-        .from('platform_sms_credit_pool')
-        .upsert({
-          tenant_id,
-          total_credits: currentTotal + credits,
-          consumed_credits: currentConsumed,
-          last_topup_at: new Date().toISOString(),
-          billing_reference: reference,
-        })
-        .select()
-        .single();
+    const { data, error } = await supabase
+      .from('platform_sms_credit_pool')
+      .upsert({
+        tenant_id,
+        total_credits: currentTotal + credits,
+        consumed_credits: currentConsumed,
+        last_topup_at: new Date().toISOString(),
+        billing_reference: reference,
+      }, {
+        onConflict: 'tenant_id'
+      })
+      .select()
+      .single();
 
       if (error) throw error;
       return data;
