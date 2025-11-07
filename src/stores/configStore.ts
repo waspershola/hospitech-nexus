@@ -2,6 +2,30 @@ import { create } from 'zustand';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 
+// Utility functions for camelCase <-> snake_case conversion
+const camelToSnake = (str: string): string => {
+  return str.replace(/[A-Z]/g, letter => `_${letter.toLowerCase()}`);
+};
+
+const snakeToCamel = (str: string): string => {
+  return str.replace(/_([a-z])/g, (_, letter) => letter.toUpperCase());
+};
+
+const convertObjectKeys = (obj: any, converter: (key: string) => string): any => {
+  if (obj === null || obj === undefined) return obj;
+  if (typeof obj !== 'object') return obj;
+  if (Array.isArray(obj)) return obj.map(item => convertObjectKeys(item, converter));
+  
+  const converted: any = {};
+  for (const key in obj) {
+    if (obj.hasOwnProperty(key)) {
+      const newKey = converter(key);
+      converted[newKey] = convertObjectKeys(obj[key], converter);
+    }
+  }
+  return converted;
+};
+
 interface ConfigStore {
   tenantId: string | null;
   configurations: Record<string, any>;
@@ -84,15 +108,18 @@ export const useConfigStore = create<ConfigStore>((set, get) => ({
           }
         }
         
+        // Convert snake_case from DB to camelCase for UI
+        const camelKey = snakeToCamel(config.key);
+        
         // Group certain fields under 'general'
         const generalFields = ['hotelName', 'timezone', 'dateFormat', 'phone', 'email', 
                               'website', 'address', 'city', 'state', 'country', 
                               'allowCheckoutWithoutPayment', 'checkInTime', 'checkOutTime'];
         
-        if (generalFields.includes(config.key)) {
-          generalConfig[config.key] = parsedValue;
+        if (generalFields.includes(camelKey)) {
+          generalConfig[camelKey] = parsedValue;
         } else {
-          configurationsMap[config.key] = parsedValue;
+          configurationsMap[camelKey] = parsedValue;
         }
       });
       
@@ -254,17 +281,18 @@ export const useConfigStore = create<ConfigStore>((set, get) => ({
         
         console.log('💾 Saving general config:', generalConfig);
         
-        // Save each general config field separately
+        // Save each general config field separately (convert to snake_case)
         const saveResults = [];
         for (const [fieldKey, fieldValue] of Object.entries(generalConfig)) {
-          console.log(`  📝 Saving ${fieldKey}:`, fieldValue);
+          const snakeKey = camelToSnake(fieldKey);
+          console.log(`  📝 Saving ${fieldKey} as ${snakeKey}:`, fieldValue);
           
           const result = await supabase
             .from('hotel_configurations')
             .upsert([{
               tenant_id: tenantId,
-              key: fieldKey,
-              value: fieldValue as any, // Supabase handles JSONB serialization
+              key: snakeKey, // Convert to snake_case for DB
+              value: fieldValue as any,
               updated_by: user?.id,
             }], {
               onConflict: 'tenant_id,key'
@@ -281,17 +309,18 @@ export const useConfigStore = create<ConfigStore>((set, get) => ({
           throw errors[0].error;
         }
         
-        console.log('✅ General config saved successfully:', saveResults.map(r => r.data));
+        console.log('✅ General config saved successfully');
       } else {
-        // Single key-value save
-        console.log(`💾 Saving ${key}:`, configurations[key]);
+        // Single key-value save (convert to snake_case)
+        const snakeKey = camelToSnake(key);
+        console.log(`💾 Saving ${key} as ${snakeKey}:`, configurations[key]);
         
         const { data, error } = await supabase
           .from('hotel_configurations')
           .upsert([{
             tenant_id: tenantId,
-            key,
-            value: configurations[key] as any, // Supabase handles JSONB serialization
+            key: snakeKey, // Convert to snake_case for DB
+            value: configurations[key] as any,
             updated_by: user?.id,
           }], {
             onConflict: 'tenant_id,key'
@@ -304,29 +333,33 @@ export const useConfigStore = create<ConfigStore>((set, get) => ({
           throw error;
         }
         
-        console.log(`✅ ${key} saved successfully:`, data);
+        console.log(`✅ ${key} saved successfully`);
       }
       
       const now = new Date();
-      set(state => ({
-        unsavedChanges: state.unsavedChanges.filter(k => k !== key),
-        lastSyncTime: now,
-        sectionLastSaved: { ...state.sectionLastSaved, [key]: now },
-        version: state.version + 1,
-        saveCounter: state.saveCounter + 1,
-      }));
+      // Force new array reference to trigger reactivity
+      set(state => {
+        const newUnsavedChanges = state.unsavedChanges.filter(k => k !== key);
+        return {
+          unsavedChanges: [...newUnsavedChanges],
+          lastSyncTime: now,
+          sectionLastSaved: { ...state.sectionLastSaved, [key]: now },
+          version: state.version + 1,
+          saveCounter: state.saveCounter + 1,
+          isSaving: false,
+        };
+      });
 
       toast.success('Configuration saved');
     } catch (error: any) {
       console.error('Failed to save config:', error);
       set({ 
         lastError: error.message,
-        sectionErrors: { ...get().sectionErrors, [key]: error.message }
+        sectionErrors: { ...get().sectionErrors, [key]: error.message },
+        isSaving: false,
       });
       toast.error('Failed to save configuration');
       throw error;
-    } finally {
-      set({ isSaving: false });
     }
   },
 
