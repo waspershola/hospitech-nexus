@@ -1,3 +1,5 @@
+import { useEffect } from 'react';
+import { useAuth } from '@/contexts/AuthContext';
 import { useConfigStore } from '@/stores/configStore';
 import { ConfigCard } from '../shared/ConfigCard';
 import { PortalPreviewCard } from '../shared/PortalPreviewCard';
@@ -8,13 +10,23 @@ import { Switch } from '@/components/ui/switch';
 import { Hotel, MapPin, Phone, ShieldCheck, Clock } from 'lucide-react';
 
 export function GeneralTab() {
+  const { tenantId } = useAuth();
   const configurations = useConfigStore(state => state.configurations);
   const updateConfig = useConfigStore(state => state.updateConfig);
   const saveConfig = useConfigStore(state => state.saveConfig);
+  const loadAllConfig = useConfigStore(state => state.loadAllConfig);
   const hasGeneralUnsaved = useConfigStore(state => state.unsavedChanges.includes('general'));
   const sectionError = useConfigStore(state => state.sectionErrors.general);
   const lastSaved = useConfigStore(state => state.sectionLastSaved.general);
   const general = configurations.general || {};
+  
+  // Ensure data is loaded when tab is active
+  useEffect(() => {
+    if (tenantId && Object.keys(configurations).length === 0) {
+      console.log('⚙️ General tab: Loading config for tenant:', tenantId);
+      loadAllConfig(tenantId);
+    }
+  }, [tenantId, configurations, loadAllConfig]);
 
   const handleChange = (field: string, value: any) => {
     updateConfig('general', { ...general, [field]: value });

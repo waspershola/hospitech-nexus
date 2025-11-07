@@ -1,11 +1,9 @@
 import { useEffect, useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useConfigStore } from '@/stores/configStore';
-import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card } from '@/components/ui/card';
-import { Save, RotateCcw, Settings, DollarSign, Palette, FileText, Users, Lock, Clock, Mail, Database, Globe, Building2, MessageSquare } from 'lucide-react';
-import { toast } from 'sonner';
+import { Settings, DollarSign, Palette, FileText, Users, Lock, Clock, Mail, Database, Globe, Building2, MessageSquare } from 'lucide-react';
 import { ConfigurationStatus } from '@/components/configuration/shared/ConfigurationStatus';
 import { GeneralTab } from '@/components/configuration/tabs/GeneralTab';
 import { BrandingTab } from '@/components/configuration/tabs/BrandingTab';
@@ -43,12 +41,9 @@ const tabs = [
 
 export default function ConfigurationCenter() {
   const { tenantId, role } = useAuth();
+  const setTenantId = useConfigStore(state => state.setTenantId);
   const loadAllConfig = useConfigStore(state => state.loadAllConfig);
-  const saveAllChanges = useConfigStore(state => state.saveAllChanges);
-  const resetChanges = useConfigStore(state => state.resetChanges);
   const unsavedCount = useConfigStore(state => state.unsavedChanges.length);
-  const isSaving = useConfigStore(state => state.isSaving);
-  const savingProgress = useConfigStore(state => state.savingProgress);
   const lastSyncTime = useConfigStore(state => state.lastSyncTime);
   const isLoading = useConfigStore(state => state.isLoading);
   const [activeTab, setActiveTab] = useState('general');
@@ -56,25 +51,12 @@ export default function ConfigurationCenter() {
 
   useEffect(() => {
     if (tenantId) {
+      console.log('🏢 Initializing Configuration Center with tenant:', tenantId);
+      setTenantId(tenantId);
       loadAllConfig(tenantId);
     }
-  }, [tenantId, loadAllConfig]);
+  }, [tenantId, setTenantId, loadAllConfig]);
 
-  const handleSaveAll = async () => {
-    try {
-      await saveAllChanges();
-    } catch (error) {
-      console.error('Save all failed:', error);
-      // Error handling is done in the store
-    }
-  };
-
-  const handleReset = () => {
-    if (confirm('Are you sure you want to discard all unsaved changes?')) {
-      resetChanges();
-      toast.info('Changes discarded');
-    }
-  };
 
   if (role !== 'owner' && role !== 'manager') {
     return (
@@ -142,50 +124,12 @@ export default function ConfigurationCenter() {
                 </div>
               )}
 
-              {lastSyncTime && unsavedCount === 0 && !isSaving && (
+              {lastSyncTime && unsavedCount === 0 && (
                 <div className="flex items-center gap-2 text-xs text-muted-foreground">
                   <CheckCircle2 className="h-3 w-3 text-success" />
                   <span>Last saved: {lastSyncTime.toLocaleTimeString()}</span>
                 </div>
               )}
-
-              {isSaving && savingProgress.length > 0 && (
-                <div className="flex items-center gap-2 px-3 py-1.5 bg-primary/10 border border-primary/20 rounded-lg">
-                  <Loader2 className="h-3 w-3 text-primary animate-spin" />
-                  <span className="text-sm font-medium text-primary">
-                    Saving {savingProgress.filter(p => p.status === 'saving').length} of {savingProgress.length}...
-                  </span>
-                </div>
-              )}
-
-              <Button
-                variant="outline"
-                size="sm"
-            onClick={handleReset}
-            disabled={unsavedCount === 0 || isSaving}
-              >
-                <RotateCcw className="h-4 w-4 mr-2" />
-                Reset All
-              </Button>
-
-              <Button
-                size="sm"
-            onClick={handleSaveAll}
-            disabled={unsavedCount === 0 || isSaving}
-                className="bg-primary hover:bg-primary/90"
-              >
-                {isSaving ? (
-                  <>
-                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                    Saving...
-                  </>
-                ) : (
-                  <>
-                    <Save className="h-4 w-4 mr-2" />
-                    Save All Changes
-                  </>
-                )}
-              </Button>
             </div>
           </div>
         </div>
