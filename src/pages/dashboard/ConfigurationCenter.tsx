@@ -18,7 +18,7 @@ import { AuditLogsTab } from '@/components/configuration/tabs/AuditLogsTab';
 import { EmailSettingsTab } from '@/components/configuration/tabs/EmailSettingsTab';
 import { MaintenanceTab } from '@/components/configuration/tabs/MaintenanceTab';
 import { DomainsTab } from '@/components/configuration/tabs/DomainsTab';
-import { FinancialOverviewTab } from '@/components/configuration/tabs/FinancialOverviewTab';
+
 import { SMSSettingsTab } from '@/components/configuration/tabs/SMSSettingsTab';
 import { useConfigCompleteness } from '@/hooks/useConfigCompleteness';
 import { Progress } from '@/components/ui/progress';
@@ -27,7 +27,6 @@ import { CheckCircle2, AlertCircle, Loader2 } from 'lucide-react';
 
 const tabs = [
   { id: 'general', label: 'General', icon: Settings },
-  { id: 'finance-overview', label: 'Finance Overview', icon: DollarSign },
   { id: 'branding', label: 'Branding & Theme', icon: Palette },
   { id: 'meta', label: 'Hotel Profile', icon: Building2 },
   { id: 'domains', label: 'Domains', icon: Globe },
@@ -43,6 +42,7 @@ const tabs = [
 
 export default function ConfigurationCenter() {
   const { tenantId, role } = useAuth();
+  const setTenantId = useConfigStore(state => state.setTenantId);
   const loadAllConfig = useConfigStore(state => state.loadAllConfig);
   const saveAllChanges = useConfigStore(state => state.saveAllChanges);
   const resetChanges = useConfigStore(state => state.resetChanges);
@@ -56,9 +56,11 @@ export default function ConfigurationCenter() {
 
   useEffect(() => {
     if (tenantId) {
+      console.log('🔧 ConfigurationCenter: Initializing with tenantId:', tenantId);
+      setTenantId(tenantId);
       loadAllConfig(tenantId);
     }
-  }, [tenantId, loadAllConfig]);
+  }, [tenantId, setTenantId, loadAllConfig]);
 
   const handleSaveAll = async () => {
     try {
@@ -213,10 +215,6 @@ export default function ConfigurationCenter() {
           <TabsContent value="general" className="space-y-6 animate-fade-in">
             <ConfigurationStatus />
             <GeneralTab />
-          </TabsContent>
-
-          <TabsContent value="finance-overview" className="space-y-6 animate-fade-in">
-            <FinancialOverviewTab />
           </TabsContent>
 
           <TabsContent value="branding" className="space-y-6 animate-fade-in">

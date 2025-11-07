@@ -241,7 +241,11 @@ export const useConfigStore = create<ConfigStore>((set, get) => ({
 
   saveConfig: async (key: string) => {
     const { tenantId, configurations } = get();
-    if (!tenantId) return;
+    console.log('💾 saveConfig called:', { key, tenantId, hasConfig: !!configurations[key] });
+    if (!tenantId) {
+      console.error('❌ saveConfig: No tenantId!');
+      return;
+    }
 
     set({ isSaving: true, lastError: null, sectionErrors: { ...get().sectionErrors, [key]: '' } });
 
@@ -261,6 +265,8 @@ export const useConfigStore = create<ConfigStore>((set, get) => ({
               key: fieldKey,
               value: JSON.stringify(fieldValue),
               updated_by: user?.id,
+            }, {
+              onConflict: 'tenant_id,key'
             })
           );
         }
@@ -277,6 +283,8 @@ export const useConfigStore = create<ConfigStore>((set, get) => ({
           key,
           value: configurations[key],
           updated_by: user?.id,
+        }, {
+          onConflict: 'tenant_id,key'
         });
 
         if (error) throw error;
@@ -307,7 +315,11 @@ export const useConfigStore = create<ConfigStore>((set, get) => ({
 
   saveBranding: async () => {
     const { tenantId, branding } = get();
-    if (!tenantId) throw new Error('No tenant ID');
+    console.log('💾 saveBranding called:', { tenantId, branding });
+    if (!tenantId) {
+      console.error('❌ saveBranding: No tenantId!');
+      throw new Error('No tenant ID');
+    }
 
     set({ isSaving: true, lastError: null, sectionErrors: { ...get().sectionErrors, branding: '' } });
 
@@ -359,7 +371,11 @@ export const useConfigStore = create<ConfigStore>((set, get) => ({
 
   saveEmailSettings: async () => {
     const { tenantId, emailSettings } = get();
-    if (!tenantId) throw new Error('No tenant ID');
+    console.log('💾 saveEmailSettings called:', { tenantId, emailSettings });
+    if (!tenantId) {
+      console.error('❌ saveEmailSettings: No tenantId!');
+      throw new Error('No tenant ID');
+    }
 
     set({ isSaving: true, lastError: null, sectionErrors: { ...get().sectionErrors, email_settings: '' } });
 
@@ -411,7 +427,11 @@ export const useConfigStore = create<ConfigStore>((set, get) => ({
 
   saveHotelMeta: async () => {
     const { tenantId, hotelMeta } = get();
-    if (!tenantId) throw new Error('No tenant ID');
+    console.log('💾 saveHotelMeta called:', { tenantId, hotelMeta });
+    if (!tenantId) {
+      console.error('❌ saveHotelMeta: No tenantId!');
+      throw new Error('No tenant ID');
+    }
 
     set({ isSaving: true, lastError: null, sectionErrors: { ...get().sectionErrors, hotel_meta: '' } });
 
