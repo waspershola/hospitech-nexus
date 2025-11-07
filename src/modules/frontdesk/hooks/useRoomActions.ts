@@ -112,14 +112,20 @@ export function useRoomActions() {
 
       // Send check-in SMS notification
       try {
-        const { data: smsSettings } = await supabase
+        console.log('🔔 Starting check-in SMS flow for booking:', booking.id);
+        
+        const { data: smsSettings, error: smsSettingsError } = await supabase
           .from('tenant_sms_settings')
           .select('enabled, auto_send_checkin_reminder')
           .eq('tenant_id', tenantId)
           .maybeSingle();
 
+        console.log('📱 SMS Settings:', { smsSettings, smsSettingsError });
+
         if (smsSettings?.enabled && smsSettings?.auto_send_checkin_reminder) {
-          const { data: fullBooking } = await supabase
+          console.log('✅ SMS is enabled, fetching booking details...');
+          
+          const { data: fullBooking, error: bookingError } = await supabase
             .from('bookings')
             .select(`
               id,
@@ -131,7 +137,11 @@ export function useRoomActions() {
             .eq('id', booking.id)
             .single();
 
+          console.log('📋 Full Booking:', { fullBooking, bookingError });
+
           if (fullBooking?.guest?.phone) {
+            console.log('📞 Guest has phone:', fullBooking.guest.phone);
+            
             const { data: hotelMeta } = await supabase
               .from('hotel_configurations')
               .select('value')
@@ -142,12 +152,23 @@ export function useRoomActions() {
             const hotelName = hotelMeta?.value || 'Our Hotel';
             const message = `Hi ${fullBooking.guest.name}, welcome to ${hotelName}! You're checked into Room ${fullBooking.room?.number}. Enjoy your stay!`;
 
-            // Get user session for auth header
-            const { data: { session } } = await supabase.auth.getSession();
+            console.log('📝 SMS Message:', message);
 
-            supabase.functions.invoke('send-sms', {
+            // Get user session for auth header
+            const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+            console.log('🔑 Session:', { hasSession: !!session, sessionError });
+
+            if (!session) {
+              console.error('❌ No session available for SMS authentication');
+              toast.error('Unable to send SMS: Not authenticated');
+              return data;
+            }
+
+            console.log('📤 Invoking send-sms function...');
+            
+            const smsResult = await supabase.functions.invoke('send-sms', {
               headers: {
-                Authorization: `Bearer ${session?.access_token}`,
+                Authorization: `Bearer ${session.access_token}`,
               },
               body: {
                 tenant_id: tenantId,
@@ -157,17 +178,24 @@ export function useRoomActions() {
                 booking_id: fullBooking.id,
                 guest_id: fullBooking.guest.id,
               },
-            }).then(({ error: smsError }) => {
-              if (smsError) {
-                console.error('Failed to send check-in SMS:', smsError);
-              } else {
-                console.log('Check-in SMS sent successfully');
-              }
             });
+
+            if (smsResult.error) {
+              console.error('❌ Failed to send check-in SMS:', smsResult.error);
+              toast.error('Failed to send check-in SMS notification');
+            } else {
+              console.log('✅ Check-in SMS sent successfully:', smsResult.data);
+              toast.success('Check-in SMS sent!', { duration: 2000 });
+            }
+          } else {
+            console.warn('⚠️ Guest has no phone number');
           }
+        } else {
+          console.log('ℹ️ SMS not enabled or check-in reminder disabled');
         }
       } catch (smsError) {
-        console.error('SMS notification error:', smsError);
+        console.error('❌ SMS notification error:', smsError);
+        toast.error('SMS notification error');
       }
 
       return data;
@@ -215,14 +243,20 @@ export function useRoomActions() {
 
         // Send checkout confirmation SMS
         try {
-          const { data: smsSettings } = await supabase
+          console.log('🔔 Starting checkout SMS flow for booking:', booking.id);
+          
+          const { data: smsSettings, error: smsSettingsError } = await supabase
             .from('tenant_sms_settings')
             .select('enabled, auto_send_checkout_confirmation')
             .eq('tenant_id', tenantId)
             .maybeSingle();
 
+          console.log('📱 SMS Settings:', { smsSettings, smsSettingsError });
+
           if (smsSettings?.enabled && smsSettings?.auto_send_checkout_confirmation) {
-            const { data: fullBooking } = await supabase
+            console.log('✅ SMS is enabled, fetching booking details...');
+            
+            const { data: fullBooking, error: bookingError } = await supabase
               .from('bookings')
               .select(`
                 id,
@@ -232,7 +266,11 @@ export function useRoomActions() {
               .eq('id', booking.id)
               .single();
 
+            console.log('📋 Full Booking:', { fullBooking, bookingError });
+
             if (fullBooking?.guest?.phone) {
+              console.log('📞 Guest has phone:', fullBooking.guest.phone);
+              
               const { data: hotelMeta } = await supabase
                 .from('hotel_configurations')
                 .select('value')
@@ -243,11 +281,22 @@ export function useRoomActions() {
               const hotelName = hotelMeta?.value || 'Our Hotel';
               const message = `Thank you for staying at ${hotelName}! We hope you enjoyed your stay in Room ${fullBooking.room?.number}. Safe travels!`;
 
-              const { data: { session } } = await supabase.auth.getSession();
+              console.log('📝 SMS Message:', message);
 
-              supabase.functions.invoke('send-sms', {
+              const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+              console.log('🔑 Session:', { hasSession: !!session, sessionError });
+
+              if (!session) {
+                console.error('❌ No session available for SMS authentication');
+                toast.error('Unable to send SMS: Not authenticated');
+                return;
+              }
+
+              console.log('📤 Invoking send-sms function...');
+              
+              const smsResult = await supabase.functions.invoke('send-sms', {
                 headers: {
-                  Authorization: `Bearer ${session?.access_token}`,
+                  Authorization: `Bearer ${session.access_token}`,
                 },
                 body: {
                   tenant_id: tenantId,
@@ -257,17 +306,24 @@ export function useRoomActions() {
                   booking_id: fullBooking.id,
                   guest_id: fullBooking.guest.id,
                 },
-              }).then(({ error: smsError }) => {
-                if (smsError) {
-                  console.error('Failed to send checkout SMS:', smsError);
-                } else {
-                  console.log('Checkout SMS sent successfully');
-                }
               });
+
+              if (smsResult.error) {
+                console.error('❌ Failed to send checkout SMS:', smsResult.error);
+                toast.error('Failed to send checkout SMS notification');
+              } else {
+                console.log('✅ Checkout SMS sent successfully:', smsResult.data);
+                toast.success('Checkout SMS sent!', { duration: 2000 });
+              }
+            } else {
+              console.warn('⚠️ Guest has no phone number');
             }
+          } else {
+            console.log('ℹ️ SMS not enabled or checkout confirmation disabled');
           }
         } catch (smsError) {
-          console.error('Checkout SMS notification error:', smsError);
+          console.error('❌ Checkout SMS notification error:', smsError);
+          toast.error('SMS notification error');
         }
       }
     },
