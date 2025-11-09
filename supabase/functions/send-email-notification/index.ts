@@ -76,7 +76,7 @@ serve(async (req: Request) => {
       .from('platform_email_providers')
       .select('*')
       .eq('provider_type', 'resend')
-      .eq('status', 'active')
+      .eq('enabled', true)
       .or(`tenant_id.eq.${tenant_id},tenant_id.is.null`)
       .order('tenant_id', { ascending: false })
       .limit(1)
@@ -112,9 +112,15 @@ serve(async (req: Request) => {
     });
 
     // Send email via Resend
-    const resend = new Resend(provider.api_key);
+    const resend = new Resend(provider.config.apiKey);
+    
+    // Build sender address
+    const senderEmail = provider.config.fromEmail || 'noreply@luxuryhotelpro.com';
+    const senderName = hotelMeta?.hotel_name || 'LuxuryHotelPro';
+    const fromAddress = `${senderName} <${senderEmail}>`;
+    
     const emailResult = await resend.emails.send({
-      from: provider.from_email || 'LuxuryHotelPro <noreply@luxuryhotelpro.com>',
+      from: fromAddress,
       to: [to],
       subject: subject,
       html: bodyHtml,

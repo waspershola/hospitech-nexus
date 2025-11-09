@@ -39,6 +39,7 @@ export function EmailProviderForm({
   // API-based providers
   const [apiKey, setApiKey] = useState(initialData?.config?.apiKey || '');
   const [domain, setDomain] = useState(initialData?.config?.domain || '');
+  const [fromEmail, setFromEmail] = useState(initialData?.config?.fromEmail || '');
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -52,14 +53,19 @@ export function EmailProviderForm({
         user: smtpUser,
         password: smtpPassword,
         secure: smtpSecure,
+        fromEmail,
       };
     } else if (providerType === 'mailgun') {
       config = {
         apiKey,
         domain,
+        fromEmail,
       };
     } else {
-      config = { apiKey };
+      config = { 
+        apiKey,
+        fromEmail,
+      };
     }
 
     onSubmit({
@@ -72,7 +78,7 @@ export function EmailProviderForm({
     });
   };
 
-  const isValid = name && (
+  const isValid = name && fromEmail && (
     (providerType === 'smtp' && smtpHost && smtpPort && smtpUser && smtpPassword) ||
     (providerType === 'mailgun' && apiKey && domain) ||
     (['sendgrid', 'resend'].includes(providerType) && apiKey)
@@ -112,6 +118,22 @@ export function EmailProviderForm({
                 <SelectItem value="resend">Resend</SelectItem>
               </SelectContent>
             </Select>
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="fromEmail">From Email Address</Label>
+            <Input
+              id="fromEmail"
+              type="email"
+              value={fromEmail}
+              onChange={(e) => setFromEmail(e.target.value)}
+              placeholder="noreply@yourdomain.com"
+              required
+            />
+            <p className="text-xs text-muted-foreground">
+              This email will appear as the sender in all outgoing notifications. 
+              Must be verified in your email provider (e.g., Resend domains).
+            </p>
           </div>
 
           {providerType === 'smtp' && (
