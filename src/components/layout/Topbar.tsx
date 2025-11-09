@@ -1,6 +1,6 @@
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
-import { Bell, LogOut, User, Shield } from 'lucide-react';
+import { LogOut, User, Shield } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import {
   DropdownMenu,
@@ -13,6 +13,7 @@ import {
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { formatPlatformRole, formatTenantRole, getRoleBadgeVariant } from '@/lib/roleFormatter';
+import NotificationBell from './NotificationBell';
 
 export default function Topbar() {
   const { user, role, platformRole, signOut } = useAuth();
@@ -33,10 +34,7 @@ export default function Topbar() {
 
   return (
     <div className="flex-1 flex items-center justify-end gap-4">
-      <Button variant="ghost" size="icon" className="relative">
-        <Bell className="w-5 h-5" />
-        <span className="absolute top-1 right-1 h-2 w-2 rounded-full bg-primary"></span>
-      </Button>
+      <NotificationBell />
 
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
