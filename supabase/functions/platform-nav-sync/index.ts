@@ -39,13 +39,13 @@ Deno.serve(async (req) => {
         tenantId = body.tenant_id;
       }
       
-      // Check for authentication and super admin status
+      // Check for authentication and platform admin status
       const { data: { user } } = await supabase.auth.getUser();
       
       console.log('Auth user ID:', user?.id);
       
       if (user) {
-        // Check if user is super_admin (bypasses tenant filtering)
+        // Check if user is any platform admin (bypasses tenant filtering)
         const { data: platformUser, error: platformUserError } = await supabase
           .from('platform_users')
           .select('role, system_locked')
@@ -54,9 +54,10 @@ Deno.serve(async (req) => {
         
         console.log('Platform user query result:', { platformUser, error: platformUserError });
 
-        // If super_admin, return only platform (global) navigation items
-        if (platformUser?.role === 'super_admin') {
-          console.log('Super admin detected - fetching platform navigation only');
+        // If platform admin (any role), return platform navigation items filtered by role
+        const platformRoles = ['super_admin', 'admin', 'support_admin', 'billing_admin', 'marketplace_admin'];
+        if (platformUser && platformRoles.includes(platformUser.role)) {
+          console.log(`Platform admin detected (${platformUser.role}) - fetching platform navigation`);
           
           const { data: platformNavItems, error } = await supabase
             .from('platform_nav_items')
@@ -70,10 +71,20 @@ Deno.serve(async (req) => {
             throw error;
           }
           
-          console.log(`Found ${platformNavItems?.length || 0} platform navigation items for super admin`);
+          // Filter items by user's platform role
+          const filteredItems = platformNavItems?.filter(item => {
+            // If no roles specified, item is available to all
+            if (!item.roles_allowed || item.roles_allowed.length === 0) {
+              return true;
+            }
+            // Check if user's role is in the allowed roles
+            return item.roles_allowed.includes(platformUser.role);
+          }) || [];
+          
+          console.log(`Found ${filteredItems.length} platform navigation items for ${platformUser.role}`);
           
           return new Response(
-            JSON.stringify({ data: platformNavItems }),
+            JSON.stringify({ data: filteredItems }),
             { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
           );
         }
