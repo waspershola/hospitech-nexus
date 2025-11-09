@@ -835,6 +835,7 @@ export type Database = {
           guest_id: string
           id: string
           message: string | null
+          metadata: Json | null
           sent_by: string | null
           status: string | null
           subject: string | null
@@ -847,6 +848,7 @@ export type Database = {
           guest_id: string
           id?: string
           message?: string | null
+          metadata?: Json | null
           sent_by?: string | null
           status?: string | null
           subject?: string | null
@@ -859,6 +861,7 @@ export type Database = {
           guest_id?: string
           id?: string
           message?: string | null
+          metadata?: Json | null
           sent_by?: string | null
           status?: string | null
           subject?: string | null
@@ -3036,6 +3039,72 @@ export type Database = {
           },
         ]
       }
+      qr_codes: {
+        Row: {
+          assigned_to: string
+          created_at: string | null
+          display_name: string | null
+          expires_at: string | null
+          id: string
+          metadata: Json | null
+          room_id: string | null
+          scope: string
+          services: Json | null
+          status: string | null
+          tenant_id: string
+          token: string
+          updated_at: string | null
+          welcome_message: string | null
+        }
+        Insert: {
+          assigned_to: string
+          created_at?: string | null
+          display_name?: string | null
+          expires_at?: string | null
+          id?: string
+          metadata?: Json | null
+          room_id?: string | null
+          scope: string
+          services?: Json | null
+          status?: string | null
+          tenant_id: string
+          token?: string
+          updated_at?: string | null
+          welcome_message?: string | null
+        }
+        Update: {
+          assigned_to?: string
+          created_at?: string | null
+          display_name?: string | null
+          expires_at?: string | null
+          id?: string
+          metadata?: Json | null
+          room_id?: string | null
+          scope?: string
+          services?: Json | null
+          status?: string | null
+          tenant_id?: string
+          token?: string
+          updated_at?: string | null
+          welcome_message?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "qr_codes_room_id_fkey"
+            columns: ["room_id"]
+            isOneToOne: false
+            referencedRelation: "rooms"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "qr_codes_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       receipt_print_logs: {
         Row: {
           booking_id: string | null
@@ -3324,36 +3393,68 @@ export type Database = {
       }
       requests: {
         Row: {
+          assigned_to: string | null
+          completed_at: string | null
           created_at: string | null
           guest_id: string | null
           id: string
+          metadata: Json | null
           note: string | null
+          priority: string | null
+          qr_token: string | null
           room_id: string | null
+          service_category: string | null
           status: string | null
           tenant_id: string
           type: string
         }
         Insert: {
+          assigned_to?: string | null
+          completed_at?: string | null
           created_at?: string | null
           guest_id?: string | null
           id?: string
+          metadata?: Json | null
           note?: string | null
+          priority?: string | null
+          qr_token?: string | null
           room_id?: string | null
+          service_category?: string | null
           status?: string | null
           tenant_id: string
           type: string
         }
         Update: {
+          assigned_to?: string | null
+          completed_at?: string | null
           created_at?: string | null
           guest_id?: string | null
           id?: string
+          metadata?: Json | null
           note?: string | null
+          priority?: string | null
+          qr_token?: string | null
           room_id?: string | null
+          service_category?: string | null
           status?: string | null
           tenant_id?: string
           type?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "fk_requests_qr_token"
+            columns: ["qr_token"]
+            isOneToOne: false
+            referencedRelation: "qr_codes"
+            referencedColumns: ["token"]
+          },
+          {
+            foreignKeyName: "requests_assigned_to_fkey"
+            columns: ["assigned_to"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "requests_guest_id_fkey"
             columns: ["guest_id"]
@@ -5125,6 +5226,17 @@ export type Database = {
           reorder_level: number
         }[]
       }
+      get_request_messages: {
+        Args: { _qr_token: string; _request_id: string }
+        Returns: {
+          created_at: string
+          direction: string
+          id: string
+          message: string
+          sender_name: string
+          sent_by: string
+        }[]
+      }
       get_tenant_by_domain: { Args: { _domain: string }; Returns: string }
       get_user_tenant: { Args: { _user_id: string }; Returns: string }
       has_platform_role: {
@@ -5165,6 +5277,19 @@ export type Database = {
           _org_id: string
         }
         Returns: Json
+      }
+      validate_qr_token: {
+        Args: { _token: string }
+        Returns: {
+          assigned_to: string
+          display_name: string
+          qr_id: string
+          room_id: string
+          scope: string
+          services: Json
+          tenant_id: string
+          welcome_message: string
+        }[]
       }
     }
     Enums: {
