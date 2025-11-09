@@ -61,6 +61,7 @@ import { QRChatInterface } from "./components/qr-portal/QRChatInterface";
 import QRManagement from "./pages/dashboard/QRManagement";
 import GuestRequestsManagement from "./pages/dashboard/GuestRequestsManagement";
 import QRAnalytics from "./pages/dashboard/QRAnalytics";
+import QRPrintables from "./pages/dashboard/QRPrintables";
 
 function PlatformGuard({ children }: { children: React.ReactNode }) {
   const { isPlatformAdmin, isLoading } = usePlatformRole();
@@ -119,6 +120,7 @@ const App = () => (
               <Route path="qr-management" element={<RoleGuard allowedRoles={['owner', 'manager']}><QRManagement /></RoleGuard>} />
               <Route path="guest-requests" element={<GuestRequestsManagement />} />
               <Route path="qr-analytics" element={<RoleGuard allowedRoles={['owner', 'manager']}><QRAnalytics /></RoleGuard>} />
+              <Route path="qr-printables" element={<RoleGuard allowedRoles={['owner', 'manager']}><QRPrintables /></RoleGuard>} />
               
           <Route path="settings" element={<Settings />} />
           <Route path="user-roles" element={<RoleGuard allowedRoles={['owner']}><UserRoles /></RoleGuard>} />
