@@ -55,6 +55,9 @@ import PaymentEnforcement from "./pages/dashboard/PaymentEnforcement";
 import PlatformAnalytics from "./pages/dashboard/PlatformAnalytics";
 import TenantHealthDashboard from "./pages/dashboard/TenantHealthDashboard";
 import { usePlatformRole } from "./hooks/usePlatformRole";
+import { QRLandingPage } from "./components/qr-portal/QRLandingPage";
+import { QRServiceRequestForm } from "./components/qr-portal/QRServiceRequestForm";
+import { QRChatInterface } from "./components/qr-portal/QRChatInterface";
 
 function PlatformGuard({ children }: { children: React.ReactNode }) {
   const { isPlatformAdmin, isLoading } = usePlatformRole();
@@ -149,6 +152,11 @@ const App = () => (
             {/* Payment callback routes */}
             <Route path="/payment/success" element={<PaymentSuccess />} />
             <Route path="/payment/cancel" element={<PaymentCancel />} />
+
+            {/* QR Portal - Public routes (no authentication required) */}
+            <Route path="/qr/:token" element={<QRLandingPage />} />
+            <Route path="/qr/:token/request/:service" element={<QRServiceRequestForm />} />
+            <Route path="/qr/:token/chat/:requestId" element={<QRChatInterface />} />
 
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />

@@ -13,6 +13,12 @@ interface AuthContextType {
   passwordResetRequired: boolean;
   loading: boolean;
   signOut: () => Promise<void>;
+  // Guest mode properties (for QR portal)
+  isGuestMode: boolean;
+  guestId: string | null;
+  qrToken: string | null;
+  setGuestMode: (token: string, guestId: string, tenantId: string) => void;
+  clearGuestMode: () => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -27,6 +33,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [department, setDepartment] = useState<string | null>(null);
   const [passwordResetRequired, setPasswordResetRequired] = useState(false);
   const [loading, setLoading] = useState(true);
+  
+  // Guest mode state (for QR portal)
+  const [isGuestMode, setIsGuestMode] = useState(false);
+  const [guestId, setGuestId] = useState<string | null>(null);
+  const [qrToken, setQrToken] = useState<string | null>(null);
 
   // Checkout reminder scheduler - runs daily at 10 AM
   useEffect(() => {
@@ -199,10 +210,41 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setPlatformRole(null);
     setDepartment(null);
     setPasswordResetRequired(false);
+    clearGuestMode();
+  };
+
+  const setGuestMode = (token: string, guestIdValue: string, tenantIdValue: string) => {
+    setIsGuestMode(true);
+    setQrToken(token);
+    setGuestId(guestIdValue);
+    setTenantId(tenantIdValue);
+    setLoading(false);
+  };
+
+  const clearGuestMode = () => {
+    setIsGuestMode(false);
+    setQrToken(null);
+    setGuestId(null);
   };
 
   return (
-    <AuthContext.Provider value={{ user, session, tenantId, tenantName, role, platformRole, department, passwordResetRequired, loading, signOut }}>
+    <AuthContext.Provider value={{ 
+      user, 
+      session, 
+      tenantId, 
+      tenantName, 
+      role, 
+      platformRole, 
+      department, 
+      passwordResetRequired, 
+      loading, 
+      signOut,
+      isGuestMode,
+      guestId,
+      qrToken,
+      setGuestMode,
+      clearGuestMode
+    }}>
       {children}
     </AuthContext.Provider>
   );
