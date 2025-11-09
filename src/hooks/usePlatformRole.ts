@@ -38,7 +38,8 @@ export function usePlatformRole() {
     fetchPlatformRole();
   }, [user?.id]);
 
-  const isPlatformAdmin = platformRole === 'super_admin' || platformRole === 'admin';
+  const platformRoles = ['super_admin', 'admin', 'support_admin', 'billing_admin', 'marketplace_admin'];
+  const isPlatformAdmin = platformRole ? platformRoles.includes(platformRole) : false;
   const isSuperAdmin = platformRole === 'super_admin';
 
   return {
