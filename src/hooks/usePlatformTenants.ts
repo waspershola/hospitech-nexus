@@ -92,15 +92,9 @@ export function usePlatformTenants() {
         const errorMessage = result?.error || 'Unknown error occurred';
         const failedAt = result?.failed_at || 'unknown';
         
-        // Construct detailed error message
-        let detailedError = errorMessage;
-        if (failedAt === 'validation') {
-          detailedError = `Validation Error: ${errorMessage}`;
-        } else if (failedAt === 'user_creation') {
-          detailedError = `User Creation Failed: ${errorMessage}`;
-        }
-        
-        throw new Error(detailedError);
+        // Pass through the detailed error message from the backend
+        // The backend now provides helpful messages for phone/email conflicts
+        throw new Error(errorMessage);
       }
 
       return result;

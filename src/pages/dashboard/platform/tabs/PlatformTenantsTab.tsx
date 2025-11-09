@@ -275,7 +275,7 @@ export function PlatformTenantsTab() {
                   <p className="text-xs text-green-600">✓ Valid E.164 format</p>
                 )}
                 <p className="text-xs text-muted-foreground">
-                  Required for SMS delivery. Format: +[country code][number]
+                  💡 Phone numbers can be reused across tenants (email must be unique). Required only for SMS delivery.
                 </p>
               </div>
 

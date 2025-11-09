@@ -183,21 +183,28 @@ serve(async (req) => {
 
         tempPassword = generatePassword();
         
-        // Build user creation payload - only include phone if valid E.164 format
-      const createUserPayload: any = {
-        email: owner_email,
-        password: tempPassword,
-        email_confirm: true,
-        user_metadata: {
-          full_name: owner_full_name || 'Admin',
-          // hotel_name removed to prevent duplicate tenant creation via handle_new_user_signup trigger
-          force_password_reset: true,
-        },
-      };
+        // Build user creation payload
+        // IMPORTANT: Only include phone in auth.users when SMS delivery is selected
+        // This prevents phone uniqueness conflicts across tenants
+        const createUserPayload: any = {
+          email: owner_email,
+          password: tempPassword,
+          email_confirm: true,
+          user_metadata: {
+            full_name: owner_full_name || 'Admin',
+            // hotel_name removed to prevent duplicate tenant creation via handle_new_user_signup trigger
+            force_password_reset: true,
+          },
+        };
         
-        // Only include phone if provided AND valid E.164 format
-        if (owner_phone && /^\+[1-9]\d{1,14}$/.test(owner_phone)) {
+        // ONLY include phone in auth.users if SMS delivery is selected
+        // For email/manual delivery, phone will be stored in staff table only
+        if (password_delivery_method === 'sms' && owner_phone && /^\+[1-9]\d{1,14}$/.test(owner_phone)) {
           createUserPayload.phone = owner_phone;
+          createUserPayload.phone_confirm = true;
+          console.log('📱 Phone added to auth.users for SMS delivery');
+        } else {
+          console.log('📱 Phone not added to auth.users (delivery method:', password_delivery_method, ') - will be stored in staff table only');
         }
         
         const { data: authUser, error: authError } = await supabase.auth.admin.createUser(createUserPayload);
@@ -210,10 +217,22 @@ serve(async (req) => {
           await supabase.from('platform_tenants').delete().eq('id', tenant.id);
           await supabase.from('tenants').delete().eq('id', tenant.id);
           
+          // Provide helpful error messages based on error type
+          let errorMessage = `Failed to create owner user: ${authError.message}`;
+          
+          if (authError.message?.toLowerCase().includes('phone') || authError.message?.toLowerCase().includes('unique')) {
+            errorMessage = `Phone number ${owner_phone} is already registered for SMS authentication. ` +
+              `Please either:\n` +
+              `1. Use 'Email' or 'Manual' password delivery (phone will be saved for contact purposes but not for authentication)\n` +
+              `2. Provide a different phone number for SMS-based authentication`;
+          } else if (authError.message?.toLowerCase().includes('email')) {
+            errorMessage = `Email ${owner_email} is already registered. Email addresses must be unique across all tenants.`;
+          }
+          
           return new Response(
             JSON.stringify({ 
               success: false, 
-              error: `Failed to create owner user: ${authError.message}`,
+              error: errorMessage,
               failed_at: 'user_creation',
               details: authError
             }),
@@ -236,6 +255,7 @@ serve(async (req) => {
         console.log('✅ Owner role assigned');
 
         // Create staff record for owner with "management" department
+        // IMPORTANT: Always store phone in staff table, regardless of whether it's in auth.users
         const { error: staffError } = await supabase
           .from('staff')
           .insert({
@@ -243,7 +263,7 @@ serve(async (req) => {
             tenant_id: tenant.id,
             full_name: owner_full_name || hotel_name || 'Owner',
             email: owner_email,
-            phone: owner_phone || null,
+            phone: owner_phone || null, // Store phone for contact purposes
             department: 'management',
             role: 'owner',
             status: 'active',
