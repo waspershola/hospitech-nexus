@@ -64,8 +64,7 @@ export function usePlatformSMSMonitoring() {
     queryFn: async () => {
       const { data: providers, error: providerError } = await supabase
         .from('platform_sms_providers')
-        .select('*')
-        .order('created_at', { ascending: true });
+        .select('*');
 
       if (providerError) throw providerError;
 

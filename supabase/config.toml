@@ -1,5 +1,11 @@
 project_id = "akchmpmzcupzjaeewdui"
 
+[functions.send-password-sms]
+verify_jwt = true
+
+[functions.tenant-user-management]
+verify_jwt = true
+
 [functions.platform-nav-sync]
 verify_jwt = true
 

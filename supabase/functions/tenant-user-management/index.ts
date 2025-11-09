@@ -43,7 +43,7 @@ serve(async (req) => {
       );
     }
 
-    const { action, tenant_id, user_id, email, full_name, role, phone, password, password_delivery_method, updates } = await req.json();
+    const { action, tenant_id, user_id, email, full_name, role, phone, password, password_delivery_method, delivery_method, updates } = await req.json();
 
     console.log('📍 Tenant user management:', { action, tenant_id, user_id, password_delivery_method });
 
@@ -121,7 +121,7 @@ serve(async (req) => {
       };
 
       const tempPassword = password || generatePassword();
-      const deliveryMethod = password_delivery_method || 'email';
+      const actualDeliveryMethod = delivery_method || password_delivery_method || 'email';
       
       const { data: newUser, error: createError } = await supabaseAdmin.auth.admin.createUser({
         email,
@@ -148,12 +148,12 @@ serve(async (req) => {
       // Handle password delivery
       let deliveryResult: any = { success: false };
       
-      if (deliveryMethod === 'email') {
+      if (actualDeliveryMethod === 'email') {
         const { error: resetError } = await supabaseAdmin.auth.resetPasswordForEmail(email, {
           redirectTo: `${Deno.env.get('SUPABASE_URL')}/auth/v1/verify`,
         });
         deliveryResult = { success: !resetError, method: 'email', error: resetError?.message };
-      } else if (deliveryMethod === 'sms' && phone) {
+      } else if (actualDeliveryMethod === 'sms' && phone) {
         const { data: smsData, error: smsError } = await supabaseAdmin.functions.invoke('send-password-sms', {
           body: {
             phone,
@@ -162,17 +162,18 @@ serve(async (req) => {
             user_type: 'tenant_user',
             user_id: newUser.user.id,
             delivered_by: user.id,
+            tenant_id,
           },
         });
         deliveryResult = { success: smsData?.success || false, method: 'sms', error: smsError?.message || smsData?.error };
-      } else if (deliveryMethod === 'manual') {
+      } else if (actualDeliveryMethod === 'manual') {
         deliveryResult = { success: true, method: 'manual', password: tempPassword };
       }
 
       // Log delivery attempt
       await supabaseAdmin.from('password_delivery_log').insert({
         user_id: newUser.user.id,
-        delivery_method: deliveryMethod,
+        delivery_method: actualDeliveryMethod,
         delivered_by: user.id,
         delivery_status: deliveryResult.success ? 'sent' : 'failed',
         error_message: deliveryResult.error || null,
@@ -187,13 +188,13 @@ serve(async (req) => {
           resource_id: newUser.user.id,
           actor_id: user.id,
           actor_role: platformUser.role,
-          payload: { tenant_id, email, role, created_by: user.id, delivery_method: deliveryMethod },
+          payload: { tenant_id, email, role, created_by: user.id, delivery_method: actualDeliveryMethod },
         });
 
-      console.log('✅ User created:', newUser.user.id, 'Delivery:', deliveryMethod);
+      console.log('✅ User created:', newUser.user.id, 'Delivery:', actualDeliveryMethod);
 
       const response: any = { success: true, user_id: newUser.user.id };
-      if (deliveryMethod === 'manual') {
+      if (actualDeliveryMethod === 'manual') {
         response.temporary_password = tempPassword;
         response.delivery_method = 'manual';
       }
@@ -316,7 +317,7 @@ serve(async (req) => {
 
     // RESET PASSWORD
     if (action === 'reset_password' && tenant_id && user_id) {
-      const deliveryMethod = password_delivery_method || 'email';
+      const actualDeliveryMethod = delivery_method || password_delivery_method || 'email';
       
       const { data: userData } = await supabaseAdmin.auth.admin.getUserById(user_id);
       
@@ -345,12 +346,12 @@ serve(async (req) => {
       // Handle delivery
       let deliveryResult: any = { success: false };
       
-      if (deliveryMethod === 'email') {
+      if (actualDeliveryMethod === 'email') {
         const { error: resetError } = await supabaseAdmin.auth.resetPasswordForEmail(userData.user.email, {
           redirectTo: `${Deno.env.get('SUPABASE_URL')}/auth/v1/verify`,
         });
         deliveryResult = { success: !resetError, method: 'email' };
-      } else if (deliveryMethod === 'sms' && userData.user.phone) {
+      } else if (actualDeliveryMethod === 'sms' && userData.user.phone) {
         const { data: smsData } = await supabaseAdmin.functions.invoke('send-password-sms', {
           body: {
             phone: userData.user.phone,
@@ -363,7 +364,7 @@ serve(async (req) => {
           },
         });
         deliveryResult = { success: smsData?.success, method: 'sms', error: smsData?.error };
-      } else if (deliveryMethod === 'manual') {
+      } else if (actualDeliveryMethod === 'manual') {
         deliveryResult = { success: true, method: 'manual', password: tempPassword };
       }
 
@@ -375,11 +376,11 @@ serve(async (req) => {
           resource_id: user_id,
           actor_id: user.id,
           actor_role: platformUser.role,
-          payload: { tenant_id, user_id, delivery_method: deliveryMethod },
+          payload: { tenant_id, user_id, delivery_method: actualDeliveryMethod },
         });
 
       const response: any = { success: true };
-      if (deliveryMethod === 'manual') {
+      if (actualDeliveryMethod === 'manual') {
         response.temporary_password = tempPassword;
       }
 
