@@ -112,6 +112,10 @@ Deno.serve(async (req) => {
       // Send test email using Resend (the only provider we support for now)
       if (provider.provider_type === 'resend') {
         const apiKey = provider.config.apiKey;
+        const fromEmail = provider.config.fromEmail || 'onboarding@resend.dev';
+        
+        // Use admin user email or a configurable test email
+        const testEmailTo = user.email || 'test@example.com';
         
         const testResponse = await fetch('https://api.resend.com/emails', {
           method: 'POST',
@@ -120,10 +124,24 @@ Deno.serve(async (req) => {
             'Content-Type': 'application/json',
           },
           body: JSON.stringify({
-            from: 'onboarding@resend.dev',
-            to: [user.email || 'test@example.com'],
-            subject: 'Test Email from Platform',
-            html: '<h1>Test Email</h1><p>This is a test email from your email provider configuration.</p>',
+            from: fromEmail,
+            to: [testEmailTo],
+            subject: 'Test Email from Email Provider',
+            html: `
+              <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+                <h1 style="color: #333;">Test Email Successful!</h1>
+                <p>This is a test email from your <strong>${provider.name}</strong> email provider configuration.</p>
+                <p><strong>Provider Details:</strong></p>
+                <ul>
+                  <li>Provider: ${provider.provider_type}</li>
+                  <li>From: ${fromEmail}</li>
+                  <li>Status: Active</li>
+                </ul>
+                <p style="color: #666; font-size: 12px; margin-top: 30px;">
+                  If you received this email, your email provider is configured correctly and ready to send transactional emails.
+                </p>
+              </div>
+            `,
           }),
         });
 
