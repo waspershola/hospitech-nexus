@@ -235,6 +235,27 @@ serve(async (req) => {
 
         console.log('✅ Owner role assigned');
 
+        // Create staff record for owner with "management" department
+        const { error: staffError } = await supabase
+          .from('staff')
+          .insert({
+            user_id: adminUser.id,
+            tenant_id: tenant.id,
+            full_name: owner_full_name || hotel_name || 'Owner',
+            email: owner_email,
+            phone: owner_phone || null,
+            department: 'management',
+            role: 'owner',
+            status: 'active',
+          });
+
+        if (staffError) {
+          console.error('⚠️ Staff creation error:', staffError);
+          // Continue anyway - user_roles already created, staff record is for navigation/department access
+        } else {
+          console.log('✅ Staff record created with management department');
+        }
+
         // Handle password delivery
         let deliveryResult: any = { success: false };
         
