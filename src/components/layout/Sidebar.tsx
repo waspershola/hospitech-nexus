@@ -3,6 +3,7 @@ import * as Icons from 'lucide-react';
 import { NavLink } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { useNavigation } from '@/hooks/useNavigation';
+import { usePlatformNavigation } from '@/hooks/usePlatformNavigation';
 import { usePlatformRole } from '@/hooks/usePlatformRole';
 import { Skeleton } from '@/components/ui/skeleton';
 import {
@@ -19,12 +20,23 @@ import {
 } from '@/components/ui/sidebar';
 
 export function AppSidebar() {
-  const { tenantName } = useAuth();
+  const { tenantName, tenantId } = useAuth();
   const { open } = useSidebar();
-  const { data: navItems, isLoading, error } = useNavigation();
+  
+  // Use platform navigation for platform-only users, tenant navigation for tenant users
+  const { data: tenantNavItems, isLoading: tenantLoading, error: tenantError } = useNavigation();
+  const { navigationItems: platformNavItems, isLoading: platformLoading } = usePlatformNavigation();
+  
+  // Determine which navigation to use based on tenant context
+  const isPlatformUser = !tenantId;
+  const navItems = isPlatformUser ? platformNavItems : tenantNavItems;
+  const isLoading = isPlatformUser ? platformLoading : tenantLoading;
+  const error = isPlatformUser ? null : tenantError;
 
   // Debug logging
   console.log('📱 [Sidebar] Render:', { 
+    tenantId,
+    isPlatformUser,
     navItemsCount: navItems?.length, 
     isLoading, 
     hasError: !!error,

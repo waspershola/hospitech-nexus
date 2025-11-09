@@ -58,7 +58,7 @@ serve(async (req) => {
     // CREATE TENANT
     if (action === 'create') {
       const { 
-        hotel_name, owner_email, plan_id, domain, owner_password, owner_phone, 
+        hotel_name, owner_email, owner_full_name, plan_id, domain, owner_phone, 
         password_delivery_method = 'email', provider_id, sender_id, additional_credits 
       } = body;
 
@@ -146,21 +146,42 @@ serve(async (req) => {
 
         tempPassword = generatePassword();
         
-        const { data: authUser, error: authError } = await supabase.auth.admin.createUser({
+        // Build user creation payload - only include phone if valid E.164 format
+        const createUserPayload: any = {
           email: owner_email,
           password: tempPassword,
           email_confirm: true,
           user_metadata: {
-            full_name: 'Admin',
+            full_name: owner_full_name || 'Admin',
             hotel_name,
             force_password_reset: true,
           },
-          phone: owner_phone || undefined,
-        });
+        };
+        
+        // Only include phone if provided AND valid E.164 format
+        if (owner_phone && /^\+[1-9]\d{1,14}$/.test(owner_phone)) {
+          createUserPayload.phone = owner_phone;
+        }
+        
+        const { data: authUser, error: authError } = await supabase.auth.admin.createUser(createUserPayload);
 
         if (authError) {
           console.error('❌ User creation error:', authError);
-          throw authError;
+          
+          // CRITICAL: Rollback tenant creation if user creation fails
+          console.log('🔄 Rolling back tenant creation...');
+          await supabase.from('platform_tenants').delete().eq('id', tenant.id);
+          await supabase.from('tenants').delete().eq('id', tenant.id);
+          
+          return new Response(
+            JSON.stringify({ 
+              success: false, 
+              error: `Failed to create owner user: ${authError.message}`,
+              failed_at: 'user_creation',
+              details: authError
+            }),
+            { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
         }
 
         adminUser = authUser.user;
