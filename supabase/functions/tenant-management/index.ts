@@ -71,8 +71,45 @@ serve(async (req) => {
 
       console.log('🏗️ Creating tenant:', { hotel_name, owner_email, plan_id, domain, password_delivery_method });
 
-      // Create tenant
-      const slug = hotel_name.toLowerCase().replace(/[^a-z0-9]+/g, '-');
+      // Generate unique slug with safety checks
+      const baseSlug = hotel_name.toLowerCase().replace(/[^a-z0-9]+/g, '-');
+      let slug = baseSlug;
+      let attempts = 0;
+      const maxAttempts = 5;
+
+      // Check for existing slug (including soft-deleted tenants) and make it unique if needed
+      while (attempts < maxAttempts) {
+        const { data: existingTenant } = await supabase
+          .from('tenants')
+          .select('id, deleted_at')
+          .eq('slug', slug)
+          .is('deleted_at', null)
+          .maybeSingle();
+        
+        if (!existingTenant) {
+          console.log(`✅ Slug "${slug}" is available`);
+          break; // Slug is unique, use it
+        }
+        
+        // Slug exists for active tenant, append unique suffix
+        attempts++;
+        const suffix = Date.now().toString().slice(-6) + Math.random().toString(36).slice(2, 5);
+        slug = `${baseSlug}-${suffix}`;
+        console.log(`⚠️ Slug collision detected, trying: ${slug} (attempt ${attempts})`);
+      }
+
+      if (attempts >= maxAttempts) {
+        return new Response(
+          JSON.stringify({ 
+            success: false, 
+            error: 'Failed to generate unique tenant slug after multiple attempts',
+            failed_at: 'slug_generation'
+          }),
+          { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      // Create tenant with unique slug
       const { data: tenant, error: tenantError } = await supabase
         .from('tenants')
         .insert({ name: hotel_name, slug })
