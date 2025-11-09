@@ -184,16 +184,16 @@ serve(async (req) => {
         tempPassword = generatePassword();
         
         // Build user creation payload - only include phone if valid E.164 format
-        const createUserPayload: any = {
-          email: owner_email,
-          password: tempPassword,
-          email_confirm: true,
-          user_metadata: {
-            full_name: owner_full_name || 'Admin',
-            hotel_name,
-            force_password_reset: true,
-          },
-        };
+      const createUserPayload: any = {
+        email: owner_email,
+        password: tempPassword,
+        email_confirm: true,
+        user_metadata: {
+          full_name: owner_full_name || 'Admin',
+          // hotel_name removed to prevent duplicate tenant creation via handle_new_user_signup trigger
+          force_password_reset: true,
+        },
+      };
         
         // Only include phone if provided AND valid E.164 format
         if (owner_phone && /^\+[1-9]\d{1,14}$/.test(owner_phone)) {
