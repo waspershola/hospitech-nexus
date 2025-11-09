@@ -359,9 +359,10 @@ serve(async (req) => {
             user_type: 'tenant_user',
             user_id,
             delivered_by: user.id,
+            tenant_id,
           },
         });
-        deliveryResult = { success: smsData?.success, method: 'sms' };
+        deliveryResult = { success: smsData?.success, method: 'sms', error: smsData?.error };
       } else if (deliveryMethod === 'manual') {
         deliveryResult = { success: true, method: 'manual', password: tempPassword };
       }

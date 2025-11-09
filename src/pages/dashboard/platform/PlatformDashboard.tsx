@@ -13,7 +13,8 @@ import { PlatformFeatureFlagsTab } from './tabs/PlatformFeatureFlagsTab';
 import { PlatformBillingTab } from './tabs/PlatformBillingTab';
 import { PlatformDatabaseCleanupTab } from './tabs/PlatformDatabaseCleanupTab';
 import DeletedTenantsView from '@/components/platform/DeletedTenantsView';
-import { Server, Users, ShoppingCart, CreditCard, Shield, MessageSquare, Mail, Flag, Receipt, Trash2, Database } from 'lucide-react';
+import { PlatformSMSManagementTab } from './tabs/PlatformSMSManagementTab';
+import { Server, Users, ShoppingCart, CreditCard, Shield, MessageSquare, Mail, Flag, Receipt, Trash2, Database, Activity } from 'lucide-react';
 
 export default function PlatformDashboard() {
   const [searchParams] = useSearchParams();
@@ -53,6 +54,10 @@ export default function PlatformDashboard() {
           <TabsTrigger value="providers" className="gap-2">
             <Server className="h-4 w-4" />
             SMS Providers
+          </TabsTrigger>
+          <TabsTrigger value="sms-management" className="gap-2">
+            <Activity className="h-4 w-4" />
+            SMS Management
           </TabsTrigger>
           <TabsTrigger value="email-providers" className="gap-2">
             <Mail className="h-4 w-4" />
@@ -102,6 +107,10 @@ export default function PlatformDashboard() {
 
         <TabsContent value="providers">
           <PlatformProvidersTab />
+        </TabsContent>
+
+        <TabsContent value="sms-management">
+          <PlatformSMSManagementTab />
         </TabsContent>
 
         <TabsContent value="email-providers">
