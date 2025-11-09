@@ -14,6 +14,7 @@ import { formatDistanceToNow } from 'date-fns';
 import { Badge } from '@/components/ui/badge';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
+import { ScrollArea } from '@/components/ui/scroll-area';
 
 export function PlatformUsersTab() {
   const { user } = useAuth();
@@ -150,7 +151,8 @@ export function PlatformUsersTab() {
               </Button>
             </div>
           ) : (
-            <Table>
+            <ScrollArea className="h-[calc(100vh-300px)]">
+              <Table>
               <TableHeader>
                 <TableRow>
                   <TableHead>User</TableHead>
@@ -239,6 +241,7 @@ export function PlatformUsersTab() {
                 ))}
               </TableBody>
             </Table>
+            </ScrollArea>
           )}
         </CardContent>
       </Card>

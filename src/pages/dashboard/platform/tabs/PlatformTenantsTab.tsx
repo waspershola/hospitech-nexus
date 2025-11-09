@@ -20,6 +20,7 @@ import { TenantProviderSelector } from '@/components/platform/TenantProviderSele
 import { InitialCreditInput } from '@/components/platform/InitialCreditInput';
 import { PasswordDeliverySelector } from '@/components/platform/PasswordDeliverySelector';
 import { ManualPasswordDialog } from '@/components/platform/ManualPasswordDialog';
+import { ScrollArea } from '@/components/ui/scroll-area';
 
 export function PlatformTenantsTab() {
   const navigate = useNavigate();
@@ -195,14 +196,15 @@ export function PlatformTenantsTab() {
               Create Tenant
             </Button>
           </DialogTrigger>
-          <DialogContent className="max-w-2xl">
+          <DialogContent className="max-w-2xl max-h-[90vh]">
             <DialogHeader>
               <DialogTitle>Create New Tenant</DialogTitle>
               <DialogDescription>
                 Set up a new hotel tenant with admin account, plan, and initial credits
               </DialogDescription>
             </DialogHeader>
-            <form onSubmit={handleCreateTenant} className="space-y-4">
+            <ScrollArea className="max-h-[calc(90vh-180px)] pr-4">
+              <form onSubmit={handleCreateTenant} className="space-y-4">
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="hotel_name">Hotel Name *</Label>
@@ -335,25 +337,26 @@ export function PlatformTenantsTab() {
                 </ul>
               </div>
 
-              <DialogFooter>
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => setIsCreateDialogOpen(false)}
-                >
-                  Cancel
-                </Button>
-                <Button 
-                  type="submit" 
-                  disabled={
-                    createTenant.isPending || 
-                    (passwordDeliveryMethod === 'sms' && (!ownerPhone || !!phoneError))
-                  }
-                >
-                  {createTenant.isPending ? 'Creating...' : 'Create Tenant'}
-                </Button>
-              </DialogFooter>
-            </form>
+                <DialogFooter className="mt-6">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => setIsCreateDialogOpen(false)}
+                  >
+                    Cancel
+                  </Button>
+                  <Button 
+                    type="submit" 
+                    disabled={
+                      createTenant.isPending || 
+                      (passwordDeliveryMethod === 'sms' && (!ownerPhone || !!phoneError))
+                    }
+                  >
+                    {createTenant.isPending ? 'Creating...' : 'Create Tenant'}
+                  </Button>
+                </DialogFooter>
+              </form>
+            </ScrollArea>
           </DialogContent>
         </Dialog>
       </div>
