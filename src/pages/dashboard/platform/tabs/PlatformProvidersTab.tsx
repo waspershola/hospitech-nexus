@@ -1,7 +1,8 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Plus, Power, PowerOff, Edit } from 'lucide-react';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
+import { Plus, Power, PowerOff, Edit, Trash2 } from 'lucide-react';
 import { usePlatformProviders } from '@/hooks/usePlatformProviders';
 import { useState } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
@@ -11,8 +12,10 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Switch } from '@/components/ui/switch';
 
 export function PlatformProvidersTab() {
-  const { providers, isLoading, createProvider, updateProvider } = usePlatformProviders();
+  const { providers, isLoading, createProvider, updateProvider, deleteProvider } = usePlatformProviders();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const [deletingProvider, setDeletingProvider] = useState<{ id: string; name: string } | null>(null);
   const [isEditMode, setIsEditMode] = useState(false);
   const [editingProviderId, setEditingProviderId] = useState<string | null>(null);
   const [formData, setFormData] = useState({
@@ -96,6 +99,22 @@ export function PlatformProvidersTab() {
       id,
       updates: { is_active: !currentStatus },
     });
+  };
+
+  const handleDeleteClick = (provider: any) => {
+    setDeletingProvider({
+      id: provider.id,
+      name: provider.provider_type.toUpperCase(),
+    });
+    setIsDeleteDialogOpen(true);
+  };
+
+  const handleDeleteConfirm = async () => {
+    if (deletingProvider) {
+      await deleteProvider.mutateAsync(deletingProvider.id);
+      setIsDeleteDialogOpen(false);
+      setDeletingProvider(null);
+    }
   };
 
   if (isLoading) {
@@ -249,6 +268,14 @@ export function PlatformProvidersTab() {
                     )}
                     {provider.is_active ? 'Deactivate' : 'Activate'}
                   </Button>
+                  <Button
+                    variant="destructive"
+                    size="sm"
+                    onClick={() => handleDeleteClick(provider)}
+                  >
+                    <Trash2 className="h-4 w-4 mr-2" />
+                    Delete
+                  </Button>
                 </div>
               </div>
             </CardHeader>
@@ -265,6 +292,24 @@ export function PlatformProvidersTab() {
           </Card>
         ))}
       </div>
+
+      <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete SMS Provider</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete the <strong>{deletingProvider?.name}</strong> provider? 
+              This action cannot be undone and may affect SMS delivery if this provider is currently in use.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDeleteConfirm} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+              Delete Provider
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
