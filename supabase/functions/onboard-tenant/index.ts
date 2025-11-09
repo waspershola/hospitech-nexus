@@ -69,7 +69,7 @@ serve(async (req) => {
       }));
 
       const { error: navInsertError } = await supabase
-        .from('navigation_items')
+        .from('platform_nav_items')
         .insert(tenantNav);
 
       if (navInsertError) console.error('Navigation insert error:', navInsertError);
