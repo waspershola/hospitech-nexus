@@ -1,7 +1,7 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Plus, Power, PowerOff } from 'lucide-react';
+import { Plus, Power, PowerOff, Edit } from 'lucide-react';
 import { usePlatformProviders } from '@/hooks/usePlatformProviders';
 import { useState } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
@@ -13,6 +13,8 @@ import { Switch } from '@/components/ui/switch';
 export function PlatformProvidersTab() {
   const { providers, isLoading, createProvider, updateProvider } = usePlatformProviders();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [isEditMode, setIsEditMode] = useState(false);
+  const [editingProviderId, setEditingProviderId] = useState<string | null>(null);
   const [formData, setFormData] = useState({
     provider_type: 'twilio',
     api_key_encrypted: '',
@@ -23,8 +25,37 @@ export function PlatformProvidersTab() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    await createProvider.mutateAsync(formData);
+    
+    if (isEditMode && editingProviderId) {
+      // Update existing provider
+      const updates: any = {
+        provider_type: formData.provider_type,
+        is_active: formData.is_active,
+      };
+      
+      // Only include credentials if they were changed (not empty)
+      if (formData.api_key_encrypted) {
+        updates.api_key_encrypted = formData.api_key_encrypted;
+      }
+      if (formData.api_secret_encrypted) {
+        updates.api_secret_encrypted = formData.api_secret_encrypted;
+      }
+      if (formData.default_sender_id) {
+        updates.default_sender_id = formData.default_sender_id;
+      }
+      
+      await updateProvider.mutateAsync({
+        id: editingProviderId,
+        updates,
+      });
+    } else {
+      // Create new provider
+      await createProvider.mutateAsync(formData);
+    }
+    
     setIsDialogOpen(false);
+    setIsEditMode(false);
+    setEditingProviderId(null);
     setFormData({
       provider_type: 'twilio',
       api_key_encrypted: '',
@@ -32,6 +63,32 @@ export function PlatformProvidersTab() {
       default_sender_id: '',
       is_active: true,
     });
+  };
+
+  const handleEdit = (provider: any) => {
+    setIsEditMode(true);
+    setEditingProviderId(provider.id);
+    setFormData({
+      provider_type: provider.provider_type,
+      api_key_encrypted: '', // Don't show encrypted values
+      api_secret_encrypted: '',
+      default_sender_id: provider.default_sender_id || '',
+      is_active: provider.is_active,
+    });
+    setIsDialogOpen(true);
+  };
+
+  const handleAddNew = () => {
+    setIsEditMode(false);
+    setEditingProviderId(null);
+    setFormData({
+      provider_type: 'twilio',
+      api_key_encrypted: '',
+      api_secret_encrypted: '',
+      default_sender_id: '',
+      is_active: true,
+    });
+    setIsDialogOpen(true);
   };
 
   const toggleProviderStatus = async (id: string, currentStatus: boolean) => {
@@ -51,14 +108,14 @@ export function PlatformProvidersTab() {
         <h2 className="text-xl font-semibold">SMS Providers</h2>
         <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
           <DialogTrigger asChild>
-            <Button>
+            <Button onClick={handleAddNew}>
               <Plus className="h-4 w-4 mr-2" />
               Add Provider
             </Button>
           </DialogTrigger>
           <DialogContent>
             <DialogHeader>
-              <DialogTitle>Add SMS Provider</DialogTitle>
+              <DialogTitle>{isEditMode ? 'Edit SMS Provider' : 'Add SMS Provider'}</DialogTitle>
             </DialogHeader>
             <form onSubmit={handleSubmit} className="space-y-4">
               <div className="space-y-2">
@@ -86,8 +143,14 @@ export function PlatformProvidersTab() {
                   onChange={(e) =>
                     setFormData({ ...formData, api_key_encrypted: e.target.value })
                   }
-                  required
+                  placeholder={isEditMode ? 'Leave empty to keep current value' : ''}
+                  required={!isEditMode}
                 />
+                {isEditMode && (
+                  <p className="text-xs text-muted-foreground">
+                    Leave empty to keep the current API key
+                  </p>
+                )}
               </div>
 
               {formData.provider_type === 'twilio' && (
@@ -99,8 +162,14 @@ export function PlatformProvidersTab() {
                     onChange={(e) =>
                       setFormData({ ...formData, api_secret_encrypted: e.target.value })
                     }
-                    required
+                    placeholder={isEditMode ? 'Leave empty to keep current value' : ''}
+                    required={!isEditMode}
                   />
+                  {isEditMode && (
+                    <p className="text-xs text-muted-foreground">
+                      Leave empty to keep the current auth token
+                    </p>
+                  )}
                 </div>
               )}
 
@@ -112,11 +181,13 @@ export function PlatformProvidersTab() {
                     onChange={(e) =>
                       setFormData({ ...formData, default_sender_id: e.target.value })
                     }
-                    placeholder="e.g., HotelMgmt"
-                    required
+                    placeholder={isEditMode ? 'Leave empty to keep current value' : 'e.g., HotelMgmt'}
+                    required={!isEditMode}
                   />
                   <p className="text-xs text-muted-foreground">
-                    Enter your pre-registered Termii Sender ID
+                    {isEditMode 
+                      ? 'Update your pre-registered Termii Sender ID or leave empty to keep current'
+                      : 'Enter your pre-registered Termii Sender ID'}
                   </p>
                 </div>
               )}
@@ -132,7 +203,7 @@ export function PlatformProvidersTab() {
               </div>
 
               <Button type="submit" className="w-full">
-                Create Provider
+                {isEditMode ? 'Update Provider' : 'Create Provider'}
               </Button>
             </form>
           </DialogContent>
@@ -157,18 +228,28 @@ export function PlatformProvidersTab() {
                     Created {new Date(provider.created_at).toLocaleDateString()}
                   </p>
                 </div>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => toggleProviderStatus(provider.id, provider.is_active)}
-                >
-                  {provider.is_active ? (
-                    <PowerOff className="h-4 w-4 mr-2" />
-                  ) : (
-                    <Power className="h-4 w-4 mr-2" />
-                  )}
-                  {provider.is_active ? 'Deactivate' : 'Activate'}
-                </Button>
+                <div className="flex gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => handleEdit(provider)}
+                  >
+                    <Edit className="h-4 w-4 mr-2" />
+                    Edit
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => toggleProviderStatus(provider.id, provider.is_active)}
+                  >
+                    {provider.is_active ? (
+                      <PowerOff className="h-4 w-4 mr-2" />
+                    ) : (
+                      <Power className="h-4 w-4 mr-2" />
+                    )}
+                    {provider.is_active ? 'Deactivate' : 'Activate'}
+                  </Button>
+                </div>
               </div>
             </CardHeader>
             <CardContent>
