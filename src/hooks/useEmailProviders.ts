@@ -87,19 +87,34 @@ export function useEmailProviders() {
 
   const testProvider = useMutation({
     mutationFn: async (id: string) => {
-      // This would call a separate test endpoint
       const { data, error } = await supabase.functions.invoke(`email-provider/${id}/test`, {
         method: 'POST',
       });
 
       if (error) throw error;
+      
+      // Check if the response indicates failure
+      if (data && !data.success) {
+        throw new Error(data.message || data.error || 'Test failed');
+      }
+      
       return data;
     },
     onSuccess: () => {
       toast.success('Test email sent successfully');
     },
     onError: (error: Error) => {
-      toast.error(error.message || 'Failed to send test email');
+      // Parse error message for better display
+      const errorMessage = error.message || 'Failed to send test email';
+      
+      // Show more helpful toast for domain verification issues
+      if (errorMessage.includes('verify a domain') || errorMessage.includes('Domain verification')) {
+        toast.error('Resend domain verification required. Please verify your domain at resend.com/domains to send test emails.', {
+          duration: 6000,
+        });
+      } else {
+        toast.error(errorMessage);
+      }
     },
   });
 

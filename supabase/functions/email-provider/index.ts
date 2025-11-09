@@ -131,7 +131,28 @@ Deno.serve(async (req) => {
 
         if (!testResponse.ok) {
           console.error('Resend test error:', testData);
-          throw new Error(testData.message || 'Failed to send test email');
+          
+          // Provide helpful error message for domain verification
+          if (testData.statusCode === 403 && testData.message?.includes('verify a domain')) {
+            return new Response(
+              JSON.stringify({ 
+                success: false, 
+                error: 'Domain verification required',
+                message: 'To send test emails, you need to verify a domain at resend.com/domains. With an unverified domain, Resend only allows sending to your account email.',
+                details: testData.message 
+              }),
+              { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 400 }
+            );
+          }
+          
+          return new Response(
+            JSON.stringify({ 
+              success: false, 
+              error: 'Test email failed',
+              message: testData.message || 'Failed to send test email' 
+            }),
+            { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 400 }
+          );
         }
 
         console.log('Test email sent successfully:', testData);
