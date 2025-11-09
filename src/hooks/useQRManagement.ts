@@ -157,6 +157,38 @@ export function useQRManagement() {
     }
   };
 
+  const bulkCreateQRCodes = async (
+    scope: 'room' | 'common_area' | 'facility',
+    quantity: number,
+    prefix: string,
+    services: string[],
+    welcomeMessage: string
+  ): Promise<boolean> => {
+    setIsCreating(true);
+    try {
+      const promises = Array.from({ length: quantity }, (_, i) => {
+        const displayName = prefix ? `${prefix}${i + 1}` : `${scope}-${i + 1}`;
+        return createQRCode({
+          assigned_to: displayName,
+          scope,
+          services,
+          display_name: displayName,
+          welcome_message: welcomeMessage,
+        });
+      });
+
+      await Promise.all(promises);
+      toast.success(`Successfully generated ${quantity} QR codes`);
+      return true;
+    } catch (err) {
+      console.error('[useQRManagement] Error bulk creating QR codes:', err);
+      toast.error('Failed to generate some QR codes');
+      return false;
+    } finally {
+      setIsCreating(false);
+    }
+  };
+
   useEffect(() => {
     fetchQRCodes();
   }, [tenantId]);
@@ -171,5 +203,6 @@ export function useQRManagement() {
     createQRCode,
     updateQRCode,
     deleteQRCode,
+    bulkCreateQRCodes,
   };
 }
