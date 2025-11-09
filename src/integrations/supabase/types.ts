@@ -2828,10 +2828,10 @@ export type Database = {
         Row: {
           created_at: string
           email: string
+          full_name: string
           id: string
           last_active: string | null
           metadata: Json | null
-          name: string
           password_delivery_method: string | null
           phone: string | null
           role: Database["public"]["Enums"]["app_role"]
@@ -2842,10 +2842,10 @@ export type Database = {
         Insert: {
           created_at?: string
           email: string
+          full_name: string
           id?: string
           last_active?: string | null
           metadata?: Json | null
-          name: string
           password_delivery_method?: string | null
           phone?: string | null
           role: Database["public"]["Enums"]["app_role"]
@@ -2856,10 +2856,10 @@ export type Database = {
         Update: {
           created_at?: string
           email?: string
+          full_name?: string
           id?: string
           last_active?: string | null
           metadata?: Json | null
-          name?: string
           password_delivery_method?: string | null
           phone?: string | null
           role?: Database["public"]["Enums"]["app_role"]

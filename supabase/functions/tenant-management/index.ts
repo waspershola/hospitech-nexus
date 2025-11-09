@@ -86,21 +86,65 @@ serve(async (req) => {
 
       console.log('✅ Tenant created:', tenant.id);
 
+      // Validate phone format if provided (E.164 format)
+      if (owner_phone && !/^\+[1-9]\d{1,14}$/.test(owner_phone)) {
+        await supabase.from('platform_tenants').delete().eq('id', tenant.id);
+        return new Response(
+          JSON.stringify({ 
+            success: false, 
+            error: 'Invalid phone number format. Must be in E.164 format (e.g., +234XXXXXXXXXX)',
+            failed_at: 'validation'
+          }),
+          { 
+            status: 400, 
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+          }
+        );
+      }
+
+      // Validate delivery method
+      const deliveryMethod = password_delivery_method || 'email';
+      if (deliveryMethod === 'sms' && !owner_phone) {
+        await supabase.from('platform_tenants').delete().eq('id', tenant.id);
+        return new Response(
+          JSON.stringify({ 
+            success: false, 
+            error: 'Phone number is required for SMS delivery',
+            failed_at: 'validation'
+          }),
+          { 
+            status: 400, 
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+          }
+        );
+      }
+
       // Create admin user for tenant
       let adminUser = null;
       let tempPassword = '';
       try {
-        // Generate strong password if not provided
+        // Always generate strong temporary password (never accept custom - security best practice)
         const generatePassword = () => {
-          const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*';
-          let pwd = '';
-          for (let i = 0; i < 14; i++) {
-            pwd += chars.charAt(Math.floor(Math.random() * chars.length));
+          const uppercase = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+          const lowercase = 'abcdefghijklmnopqrstuvwxyz';
+          const numbers = '0123456789';
+          const special = '!@#$%^&*';
+          const all = uppercase + lowercase + numbers + special;
+          
+          let password = '';
+          password += uppercase[Math.floor(Math.random() * uppercase.length)];
+          password += lowercase[Math.floor(Math.random() * lowercase.length)];
+          password += numbers[Math.floor(Math.random() * numbers.length)];
+          password += special[Math.floor(Math.random() * special.length)];
+          
+          for (let i = 4; i < 14; i++) {
+            password += all[Math.floor(Math.random() * all.length)];
           }
-          return pwd;
+          
+          return password.split('').sort(() => Math.random() - 0.5).join('');
         };
 
-        tempPassword = owner_password || generatePassword();
+        tempPassword = generatePassword();
         
         const { data: authUser, error: authError } = await supabase.auth.admin.createUser({
           email: owner_email,

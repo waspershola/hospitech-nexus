@@ -6,8 +6,9 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { usePlatformUsers, type PlatformUser } from '@/hooks/usePlatformUsers';
 import { PlatformUserForm } from '@/components/platform/PlatformUserForm';
 import { ManualPasswordDialog } from '@/components/platform/ManualPasswordDialog';
+import { PasswordResetDialog } from '@/components/platform/PasswordResetDialog';
 import { getRoleBadge } from '@/components/platform/PlatformRoleSelector';
-import { UserPlus, Mail, Pencil, Trash2, Shield, Clock } from 'lucide-react';
+import { UserPlus, Mail, Pencil, Trash2, Shield, Clock, RotateCw } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { formatDistanceToNow } from 'date-fns';
 import { Badge } from '@/components/ui/badge';
@@ -26,6 +27,10 @@ export function PlatformUsersTab() {
     password: string;
     userEmail: string;
   }>({ open: false, password: '', userEmail: '' });
+  const [resetPasswordDialog, setResetPasswordDialog] = useState<{
+    open: boolean;
+    user: PlatformUser | null;
+  }>({ open: false, user: null });
 
   const handleCreate = (data: { 
     email: string; 
@@ -81,8 +86,15 @@ export function PlatformUsersTab() {
     });
   };
 
-  const handlePasswordReset = (userId: string) => {
+  const handlePasswordReset = (user: PlatformUser) => {
+    setResetPasswordDialog({ open: true, user });
+  };
+
+  const handleResetPasswordSubmit = async (userId: string, deliveryMethod: string) => {
+    // Platform user password reset would need edge function update similar to tenant users
+    // For now, fallback to email only
     sendPasswordReset.mutate(userId);
+    setResetPasswordDialog({ open: false, user: null });
   };
 
   if (isLoading) {
@@ -191,11 +203,11 @@ export function PlatformUsersTab() {
                         <Button
                           variant="ghost"
                           size="sm"
-                          onClick={() => handlePasswordReset(platformUser.user_id)}
+                          onClick={() => handlePasswordReset(platformUser)}
                           disabled={sendPasswordReset.isPending || platformUser.system_locked}
-                          title={platformUser.system_locked ? "Cannot reset password for protected account" : "Send password reset"}
+                          title={platformUser.system_locked ? "Cannot reset password for protected account" : "Reset password"}
                         >
-                          <Mail className="h-4 w-4" />
+                          <RotateCw className="h-4 w-4" />
                         </Button>
                         <Button
                           variant="ghost"
@@ -285,6 +297,23 @@ export function PlatformUsersTab() {
         password={manualPasswordDialog.password}
         userEmail={manualPasswordDialog.userEmail}
       />
+
+      {/* Password Reset Dialog */}
+      {resetPasswordDialog.user && (
+        <PasswordResetDialog
+          open={resetPasswordDialog.open}
+          onOpenChange={(open) => setResetPasswordDialog({ open, user: null })}
+          user={{
+            id: resetPasswordDialog.user.user_id,
+            email: resetPasswordDialog.user.email,
+            phone: resetPasswordDialog.user.phone,
+            full_name: resetPasswordDialog.user.full_name,
+          }}
+          userType="platform"
+          onReset={handleResetPasswordSubmit}
+          isResetting={sendPasswordReset.isPending}
+        />
+      )}
     </>
   );
 }

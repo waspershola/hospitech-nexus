@@ -51,7 +51,7 @@ export function PlatformTenantsTab() {
   const [hotelName, setHotelName] = useState('');
   const [ownerEmail, setOwnerEmail] = useState('');
   const [ownerPhone, setOwnerPhone] = useState('');
-  const [ownerPassword, setOwnerPassword] = useState('');
+  const [ownerFullName, setOwnerFullName] = useState('');
   const [passwordDeliveryMethod, setPasswordDeliveryMethod] = useState<'email' | 'sms' | 'manual'>('email');
   const [selectedPlan, setSelectedPlan] = useState('');
   const [domain, setDomain] = useState('');
@@ -66,8 +66,8 @@ export function PlatformTenantsTab() {
     const result = await createTenant.mutateAsync({
       hotel_name: hotelName,
       owner_email: ownerEmail,
+      owner_full_name: ownerFullName || hotelName,
       owner_phone: ownerPhone || undefined,
-      owner_password: ownerPassword || undefined,
       password_delivery_method: passwordDeliveryMethod,
       plan_id: selectedPlan,
       domain: domain || undefined,
@@ -88,7 +88,7 @@ export function PlatformTenantsTab() {
     setHotelName('');
     setOwnerEmail('');
     setOwnerPhone('');
-    setOwnerPassword('');
+    setOwnerFullName('');
     setPasswordDeliveryMethod('email');
     setSelectedPlan('');
     setDomain('');
@@ -218,36 +218,44 @@ export function PlatformTenantsTab() {
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="owner_phone">Owner Phone {passwordDeliveryMethod === 'sms' && '*'}</Label>
+                  <Label htmlFor="owner_full_name">Owner Name</Label>
                   <Input
-                    id="owner_phone"
-                    type="tel"
-                    value={ownerPhone}
-                    onChange={(e) => setOwnerPhone(e.target.value)}
-                    placeholder="+234..."
-                    required={passwordDeliveryMethod === 'sms'}
+                    id="owner_full_name"
+                    value={ownerFullName}
+                    onChange={(e) => setOwnerFullName(e.target.value)}
+                    placeholder="e.g., John Doe"
                   />
+                  <p className="text-xs text-muted-foreground">
+                    Optional - defaults to hotel name
+                  </p>
                 </div>
               </div>
 
-              <PasswordDeliverySelector
-                value={passwordDeliveryMethod}
-                onChange={setPasswordDeliveryMethod}
-                userEmail={ownerEmail}
-                userPhone={ownerPhone}
-              />
-
               <div className="space-y-2">
-                <Label htmlFor="owner_password">Password (Optional)</Label>
+                <Label htmlFor="owner_phone">Owner Phone {passwordDeliveryMethod === 'sms' && '*'}</Label>
                 <Input
-                  id="owner_password"
-                  type="password"
-                  value={ownerPassword}
-                  onChange={(e) => setOwnerPassword(e.target.value)}
-                  placeholder="Leave blank to auto-generate"
+                  id="owner_phone"
+                  type="tel"
+                  value={ownerPhone}
+                  onChange={(e) => setOwnerPhone(e.target.value)}
+                  placeholder="+234XXXXXXXXXX (E.164 format)"
+                  required={passwordDeliveryMethod === 'sms'}
                 />
                 <p className="text-xs text-muted-foreground">
-                  A secure password will be generated if left blank
+                  Required for SMS delivery. Format: +[country code][number]
+                </p>
+              </div>
+
+              <div className="space-y-2">
+                <Label>Password Delivery Method *</Label>
+                <PasswordDeliverySelector
+                  value={passwordDeliveryMethod}
+                  onChange={setPasswordDeliveryMethod}
+                  userEmail={ownerEmail}
+                  userPhone={ownerPhone}
+                />
+                <p className="text-xs text-muted-foreground">
+                  A secure temporary password will be auto-generated and delivered via your chosen method
                 </p>
               </div>
 

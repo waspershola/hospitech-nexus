@@ -9,8 +9,9 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/comp
 
 interface TenantUserTableProps {
   users: TenantUser[];
+  isLoading?: boolean;
   onEdit: (user: TenantUser) => void;
-  onResetPassword: (userId: string) => void;
+  onResetPassword: (user: TenantUser) => void;
   onSuspend: (userId: string) => void;
   onActivate: (userId: string) => void;
 }
@@ -123,7 +124,7 @@ export function TenantUserTable({
                       <UserCog className="h-4 w-4 mr-2" />
                       Edit User
                     </DropdownMenuItem>
-                    <DropdownMenuItem onClick={() => onResetPassword(user.id)}>
+                    <DropdownMenuItem onClick={() => onResetPassword(user)}>
                       <KeyRound className="h-4 w-4 mr-2" />
                       Reset Password
                     </DropdownMenuItem>

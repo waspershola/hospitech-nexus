@@ -137,16 +137,27 @@ export function useTenantUsers(tenantId: string | undefined) {
   });
 
   const resetPassword = useMutation({
-    mutationFn: async (data: { tenant_id: string; user_id: string }) => {
+    mutationFn: async (data: { tenantId: string; userId: string; deliveryMethod: string }) => {
       const { data: result, error } = await supabase.functions.invoke('tenant-user-management', {
-        body: { action: 'reset_password', ...data },
+        body: { 
+          action: 'reset_password', 
+          tenant_id: data.tenantId, 
+          user_id: data.userId,
+          delivery_method: data.deliveryMethod
+        },
       });
 
       if (error) throw error;
       return result;
     },
-    onSuccess: () => {
-      toast({ title: 'Success', description: 'Password reset email sent' });
+    onSuccess: (data, variables) => {
+      const message = variables.deliveryMethod === 'manual' 
+        ? 'Password reset. Copy the temporary password shown.'
+        : variables.deliveryMethod === 'sms'
+        ? 'Password reset and sent via SMS'
+        : 'Password reset email sent';
+        
+      toast({ title: 'Success', description: message });
     },
     onError: (error: any) => {
       toast({ 
