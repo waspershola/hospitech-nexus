@@ -661,56 +661,76 @@ serve(async (req) => {
 
     console.log('Payment processing complete:', payment.id);
 
-    // Send payment received SMS notification
+    // Send payment notifications
     try {
       if (guest_id) {
-        const { data: smsSettings } = await supabase
-          .from('tenant_sms_settings')
-          .select('enabled, auto_send_payment_confirmation')
-          .eq('tenant_id', tenant_id)
-          .maybeSingle();
+        const { data: guest } = await supabase
+          .from('guests')
+          .select('phone, name, email')
+          .eq('id', guest_id)
+          .single();
 
-        if (smsSettings?.enabled && smsSettings?.auto_send_payment_confirmation) {
-          const { data: guest } = await supabase
-            .from('guests')
-            .select('phone, name, email')
-            .eq('id', guest_id)
-            .single();
+        if (guest) {
+          const { data: hotelMeta } = await supabase
+            .from('hotel_meta')
+            .select('hotel_name, contact_phone')
+            .eq('tenant_id', tenant_id)
+            .maybeSingle();
 
-          if (guest) {
-            const { data: hotelMeta } = await supabase
-              .from('hotel_configurations')
-              .select('value')
-              .eq('tenant_id', tenant_id)
-              .eq('key', 'hotel_name')
+          const { data: financials } = await supabase
+            .from('hotel_financials')
+            .select('currency_symbol')
+            .eq('tenant_id', tenant_id)
+            .maybeSingle();
+
+          const hotelName = hotelMeta?.hotel_name || 'Hotel';
+          const hotelPhone = hotelMeta?.contact_phone || 'our frontdesk';
+          const currencySymbol = financials?.currency_symbol || '₦';
+
+          // Check SMS settings for payment confirmation
+          const { data: smsSettings } = await supabase
+            .from('tenant_sms_settings')
+            .select('enabled, auto_send_payment_confirmation')
+            .eq('tenant_id', tenant_id)
+            .maybeSingle();
+
+          // Send SMS if enabled
+          if (smsSettings?.enabled && smsSettings?.auto_send_payment_confirmation && guest.phone) {
+            const message = `Payment received: ${currencySymbol}${amount.toLocaleString()} via ${method}. Ref: ${transaction_ref}. Thank you! Questions? Call ${hotelPhone} - ${hotelName}`;
+
+            await supabase.functions.invoke('send-sms', {
+              headers: {
+                Authorization: `Bearer ${Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')}`,
+              },
+              body: {
+                tenant_id,
+                to: guest.phone,
+                message,
+                event_key: 'payment_received',
+                booking_id,
+                guest_id,
+              },
+            });
+
+            console.log('Payment confirmation SMS sent to:', guest.phone);
+          }
+
+          // Send email if guest has email (independent of SMS settings)
+          if (guest.email) {
+            console.log('Sending payment confirmation email...');
+            
+            // Check if email provider is configured
+            const { data: emailProvider } = await supabase
+              .from('platform_email_providers')
+              .select('id, enabled')
+              .eq('provider_type', 'resend')
+              .eq('enabled', true)
+              .or(`tenant_id.eq.${tenant_id},tenant_id.is.null`)
+              .order('tenant_id', { ascending: false })
+              .limit(1)
               .maybeSingle();
 
-            const hotelName = hotelMeta?.value || 'Hotel';
-
-            if (guest.phone) {
-              const message = `Payment received: ₦${amount.toLocaleString()} via ${method}. Ref: ${transaction_ref}. Thank you! - ${hotelName}`;
-
-              await supabase.functions.invoke('send-sms', {
-                headers: {
-                  Authorization: `Bearer ${Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')}`,
-                },
-                body: {
-                  tenant_id,
-                  to: guest.phone,
-                  message,
-                  event_key: 'payment_received',
-                  booking_id,
-                  guest_id,
-                },
-              });
-
-              console.log('Payment confirmation SMS sent to:', guest.phone);
-            }
-
-            // Send email notification (fire-and-forget)
-            if (guest.email) {
-              console.log('Sending payment confirmation email...');
-              
+            if (emailProvider) {
               await supabase.functions.invoke('send-email-notification', {
                 body: {
                   tenant_id,
@@ -729,12 +749,16 @@ serve(async (req) => {
               }).catch((error) => {
                 console.error('Email send exception:', error);
               });
+              
+              console.log('Payment confirmation email sent to:', guest.email);
+            } else {
+              console.log('Email provider not configured, skipping email notification');
             }
           }
         }
       }
-    } catch (smsError) {
-      console.error('Payment notification error:', smsError);
+    } catch (notificationError) {
+      console.error('Payment notification error:', notificationError);
       // Don't fail the payment if notifications fail
     }
 

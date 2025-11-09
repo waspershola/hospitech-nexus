@@ -485,7 +485,7 @@ serve(async (req) => {
       });
     }
 
-    // Send SMS booking confirmation if enabled
+    // Send booking confirmation notifications
     try {
       const { data: smsSettings } = await supabaseClient
         .from('tenant_sms_settings')
@@ -502,65 +502,68 @@ serve(async (req) => {
 
         const { data: hotelMeta } = await supabaseClient
           .from('hotel_meta')
-          .select('hotel_name')
+          .select('hotel_name, contact_phone')
           .eq('tenant_id', tenant_id)
           .maybeSingle();
 
-        if (guest?.phone && hotelMeta?.hotel_name) {
+        if (guest && hotelMeta?.hotel_name) {
           const checkInDate = new Date(check_in).toLocaleDateString();
-          const message = `Hi ${guest.name}, your booking at ${hotelMeta.hotel_name} is confirmed! Room: ${room?.number || 'TBD'}, Check-in: ${checkInDate}. Ref: ${newBooking.booking_reference || newBooking.id.substring(0, 8)}`;
-
-          // Fire-and-forget SMS send (don't block booking response)
-          supabaseClient.functions.invoke('send-sms', {
-            headers: {
-              Authorization: `Bearer ${Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')}`,
-            },
-            body: {
-              tenant_id,
-              to: guest.phone,
-              message,
-              event_key: 'booking_confirmed',
-              booking_id: newBooking.id,
-              guest_id,
-            },
-          }).then((result) => {
-            if (result.error) {
-              console.error('SMS send failed:', result.error);
-            } else {
-              console.log('SMS booking confirmation sent:', result.data);
-            }
-          }).catch((error) => {
-            console.error('SMS send exception:', error);
-          });
-        }
-
-        // Send email notification (fire-and-forget)
-        if (guest?.email) {
-          console.log('Sending booking confirmation email...');
+          const hotelPhone = hotelMeta.contact_phone || 'our frontdesk';
           
-          supabaseClient.functions.invoke('send-email-notification', {
-            body: {
-              tenant_id,
-              to: guest.email,
-              event_key: 'booking_confirmed',
-              variables: {
-                guest_name: guest.name,
-                booking_reference: newBooking.booking_reference || newBooking.id.substring(0, 8),
-                room_number: room?.number || 'TBD',
-                check_in_date: new Date(check_in).toLocaleDateString(),
-                check_out_date: new Date(check_out).toLocaleDateString(),
+          // Send SMS if phone available
+          if (guest.phone) {
+            const message = `Hi ${guest.name}, your booking at ${hotelMeta.hotel_name} is confirmed! Room: ${room?.number || 'TBD'}, Check-in: ${checkInDate}. Ref: ${newBooking.booking_reference || newBooking.id.substring(0, 8)}. Questions? Call ${hotelPhone}`;
+
+            supabaseClient.functions.invoke('send-sms', {
+              headers: {
+                Authorization: `Bearer ${Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')}`,
               },
-              booking_id: newBooking.id,
-              guest_id,
-            },
-          }).catch((error) => {
-            console.error('Email send exception:', error);
-          });
+              body: {
+                tenant_id,
+                to: guest.phone,
+                message,
+                event_key: 'booking_confirmed',
+                booking_id: newBooking.id,
+                guest_id,
+              },
+            }).then((result) => {
+              if (result.error) {
+                console.error('SMS send failed:', result.error);
+              } else {
+                console.log('SMS booking confirmation sent:', result.data);
+              }
+            }).catch((error) => {
+              console.error('SMS send exception:', error);
+            });
+          }
+
+          // Send email if email available
+          if (guest.email) {
+            console.log('Sending booking confirmation email...');
+            
+            supabaseClient.functions.invoke('send-email-notification', {
+              body: {
+                tenant_id,
+                to: guest.email,
+                event_key: 'booking_confirmed',
+                variables: {
+                  guest_name: guest.name,
+                  booking_reference: newBooking.booking_reference || newBooking.id.substring(0, 8),
+                  room_number: room?.number || 'TBD',
+                  check_in_date: checkInDate,
+                  check_out_date: new Date(check_out).toLocaleDateString(),
+                },
+                booking_id: newBooking.id,
+                guest_id,
+              },
+            }).catch((error) => {
+              console.error('Email send exception:', error);
+            });
+          }
         }
       }
-    } catch (smsError) {
-      // Log but don't fail booking if SMS fails
-      console.error('SMS notification error:', smsError);
+    } catch (notificationError) {
+      console.error('Notification error:', notificationError);
     }
 
     return new Response(
