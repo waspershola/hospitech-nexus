@@ -207,12 +207,20 @@ Deno.serve(async (req) => {
     }
 
     // UPDATE provider
-    if (req.method === 'PATCH' && providerId) {
+    if (req.method === 'PATCH') {
       const text = await req.text();
       if (!text) {
         throw new Error('Request body is required');
       }
-      const body: Partial<EmailProviderConfig> = JSON.parse(text);
+      const body: Partial<EmailProviderConfig> & { id?: string } = JSON.parse(text);
+      
+      const providerId = body.id;
+      if (!providerId) {
+        throw new Error('Provider ID is required in request body');
+      }
+      
+      // Remove id from updates
+      delete body.id;
 
       // Validate provider-specific config if provided
       if (body.provider_type && body.config) {
@@ -267,11 +275,21 @@ Deno.serve(async (req) => {
     }
 
     // DELETE provider
-    if (req.method === 'DELETE' && providerId) {
+    if (req.method === 'DELETE') {
+      const text = await req.text();
+      if (!text) {
+        throw new Error('Request body is required');
+      }
+      const body: { id: string } = JSON.parse(text);
+      
+      if (!body.id) {
+        throw new Error('Provider ID is required in request body');
+      }
+      
       const { error } = await supabase
         .from('platform_email_providers')
         .delete()
-        .eq('id', providerId);
+        .eq('id', body.id);
 
       if (error) throw error;
 
@@ -280,11 +298,11 @@ Deno.serve(async (req) => {
         event_type: 'email_provider_deleted',
         user_id: user.id,
         metadata: {
-          provider_id: providerId,
+          provider_id: body.id,
         },
       });
 
-      console.log(`Email provider deleted: ${providerId}`);
+      console.log(`Email provider deleted: ${body.id}`);
 
       return new Response(null, {
         headers: corsHeaders,

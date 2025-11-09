@@ -50,9 +50,9 @@ export function useEmailProviders() {
 
   const updateProvider = useMutation({
     mutationFn: async ({ id, ...updates }: Partial<EmailProvider> & { id: string }) => {
-      const { data, error } = await supabase.functions.invoke(`email-provider/${id}`, {
+      const { data, error } = await supabase.functions.invoke('email-provider', {
         method: 'PATCH',
-        body: updates,
+        body: { id, ...updates },
       });
 
       if (error) throw error;
@@ -69,8 +69,9 @@ export function useEmailProviders() {
 
   const deleteProvider = useMutation({
     mutationFn: async (id: string) => {
-      const { error } = await supabase.functions.invoke(`email-provider/${id}`, {
+      const { error } = await supabase.functions.invoke('email-provider', {
         method: 'DELETE',
+        body: { id },
       });
 
       if (error) throw error;
