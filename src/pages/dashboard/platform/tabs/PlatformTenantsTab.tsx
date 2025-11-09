@@ -59,42 +59,66 @@ export function PlatformTenantsTab() {
   const [initialSenderId, setInitialSenderId] = useState('');
   const [additionalCredits, setAdditionalCredits] = useState('');
   const [manualPasswordData, setManualPasswordData] = useState<{ password: string; email: string } | null>(null);
+  const [phoneError, setPhoneError] = useState<string | null>(null);
+
+  const validatePhone = (phone: string): string | null => {
+    if (!phone) return null;
+    if (!/^\+[1-9]\d{1,14}$/.test(phone)) {
+      return 'Invalid E.164 format. Must start with + and country code (e.g., +234XXXXXXXXXX)';
+    }
+    return null;
+  };
+
+  const handlePhoneChange = (value: string) => {
+    setOwnerPhone(value);
+    setPhoneError(validatePhone(value));
+  };
 
   const handleCreateTenant = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    const result = await createTenant.mutateAsync({
-      hotel_name: hotelName,
-      owner_email: ownerEmail,
-      owner_full_name: ownerFullName || hotelName,
-      owner_phone: ownerPhone || undefined,
-      password_delivery_method: passwordDeliveryMethod,
-      plan_id: selectedPlan,
-      domain: domain || undefined,
-      provider_id: initialProvider || undefined,
-      sender_id: initialSenderId || undefined,
-      additional_credits: additionalCredits ? parseInt(additionalCredits) : undefined,
-    });
-
-    // Check if manual password delivery
-    if (passwordDeliveryMethod === 'manual' && result?.temporary_password) {
-      setManualPasswordData({
-        password: result.temporary_password,
-        email: ownerEmail,
-      });
+    // Validate phone if SMS delivery selected
+    if (passwordDeliveryMethod === 'sms' && phoneError) {
+      return;
     }
+    
+    try {
+      const result = await createTenant.mutateAsync({
+        hotel_name: hotelName,
+        owner_email: ownerEmail,
+        owner_full_name: ownerFullName || hotelName,
+        owner_phone: ownerPhone || undefined,
+        password_delivery_method: passwordDeliveryMethod,
+        plan_id: selectedPlan,
+        domain: domain || undefined,
+        provider_id: initialProvider || undefined,
+        sender_id: initialSenderId || undefined,
+        additional_credits: additionalCredits ? parseInt(additionalCredits) : undefined,
+      });
 
-    setIsCreateDialogOpen(false);
-    setHotelName('');
-    setOwnerEmail('');
-    setOwnerPhone('');
-    setOwnerFullName('');
-    setPasswordDeliveryMethod('email');
-    setSelectedPlan('');
-    setDomain('');
-    setInitialProvider('');
-    setInitialSenderId('');
-    setAdditionalCredits('');
+      // Check if manual password delivery
+      if (passwordDeliveryMethod === 'manual' && result?.temporary_password) {
+        setManualPasswordData({
+          password: result.temporary_password,
+          email: ownerEmail,
+        });
+      }
+
+      setIsCreateDialogOpen(false);
+      setHotelName('');
+      setOwnerEmail('');
+      setOwnerPhone('');
+      setOwnerFullName('');
+      setPasswordDeliveryMethod('email');
+      setSelectedPlan('');
+      setDomain('');
+      setInitialProvider('');
+      setInitialSenderId('');
+      setAdditionalCredits('');
+      setPhoneError(null);
+    } catch (error: any) {
+      console.error('Tenant creation error:', error);
+    }
   };
 
   const handleAssignProvider = async (e: React.FormEvent) => {
@@ -237,10 +261,17 @@ export function PlatformTenantsTab() {
                   id="owner_phone"
                   type="tel"
                   value={ownerPhone}
-                  onChange={(e) => setOwnerPhone(e.target.value)}
+                  onChange={(e) => handlePhoneChange(e.target.value)}
                   placeholder="+234XXXXXXXXXX (E.164 format)"
                   required={passwordDeliveryMethod === 'sms'}
+                  className={phoneError ? 'border-destructive' : ''}
                 />
+                {phoneError && (
+                  <p className="text-xs text-destructive">{phoneError}</p>
+                )}
+                {!phoneError && ownerPhone && (
+                  <p className="text-xs text-green-600">✓ Valid E.164 format</p>
+                )}
                 <p className="text-xs text-muted-foreground">
                   Required for SMS delivery. Format: +[country code][number]
                 </p>
@@ -312,7 +343,13 @@ export function PlatformTenantsTab() {
                 >
                   Cancel
                 </Button>
-                <Button type="submit" disabled={createTenant.isPending}>
+                <Button 
+                  type="submit" 
+                  disabled={
+                    createTenant.isPending || 
+                    (passwordDeliveryMethod === 'sms' && (!ownerPhone || !!phoneError))
+                  }
+                >
                   {createTenant.isPending ? 'Creating...' : 'Create Tenant'}
                 </Button>
               </DialogFooter>
