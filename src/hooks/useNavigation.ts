@@ -98,9 +98,11 @@ export function useNavigation() {
           }
           
           // Check department access (empty array means visible to all departments)
+          // IMPORTANT: Owners bypass department restrictions to see all navigation
           const allowedDepts = item.departments_allowed || [];
           const hasAccess = 
             allowedDepts.length === 0 || // All departments
+            role === 'owner' || // Owners see everything
             (department && allowedDepts.includes(department)); // Specific department match
           
           if (!hasAccess) {
