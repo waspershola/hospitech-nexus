@@ -496,7 +496,7 @@ serve(async (req) => {
       if (smsSettings?.enabled && smsSettings.auto_send_booking_confirmation) {
         const { data: guest } = await supabaseClient
           .from('guests')
-          .select('name, phone')
+          .select('name, phone, email')
           .eq('id', guest_id)
           .maybeSingle();
 
@@ -531,6 +531,30 @@ serve(async (req) => {
             }
           }).catch((error) => {
             console.error('SMS send exception:', error);
+          });
+        }
+
+        // Send email notification (fire-and-forget)
+        if (guest?.email) {
+          console.log('Sending booking confirmation email...');
+          
+          supabaseClient.functions.invoke('send-email-notification', {
+            body: {
+              tenant_id,
+              to: guest.email,
+              event_key: 'booking_confirmed',
+              variables: {
+                guest_name: guest.name,
+                booking_reference: newBooking.booking_reference || newBooking.id.substring(0, 8),
+                room_number: room?.number || 'TBD',
+                check_in_date: new Date(check_in).toLocaleDateString(),
+                check_out_date: new Date(check_out).toLocaleDateString(),
+              },
+              booking_id: newBooking.id,
+              guest_id,
+            },
+          }).catch((error) => {
+            console.error('Email send exception:', error);
           });
         }
       }

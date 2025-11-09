@@ -5,19 +5,29 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Switch } from '@/components/ui/switch';
-import { Hotel, MapPin, Phone, ShieldCheck, Clock } from 'lucide-react';
+import { Hotel, MapPin, Phone, ShieldCheck, Clock, MessageSquare } from 'lucide-react';
 
 export function GeneralTab() {
   const configurations = useConfigStore(state => state.configurations);
+  const hotelMeta = useConfigStore(state => state.hotelMeta);
   const updateConfig = useConfigStore(state => state.updateConfig);
+  const updateHotelMeta = useConfigStore(state => state.updateHotelMeta);
   const saveConfig = useConfigStore(state => state.saveConfig);
+  const saveHotelMeta = useConfigStore(state => state.saveHotelMeta);
   const hasGeneralUnsaved = useConfigStore(state => state.unsavedChanges.includes('general'));
+  const hasMetaUnsaved = useConfigStore(state => state.unsavedChanges.includes('hotel_meta'));
   const sectionError = useConfigStore(state => state.sectionErrors.general);
+  const metaError = useConfigStore(state => state.sectionErrors.hotel_meta);
   const lastSaved = useConfigStore(state => state.sectionLastSaved.general);
+  const metaLastSaved = useConfigStore(state => state.sectionLastSaved.hotel_meta);
   const general = configurations.general || {};
 
   const handleChange = (field: string, value: any) => {
     updateConfig('general', { ...general, [field]: value });
+  };
+
+  const handleMetaChange = (field: string, value: any) => {
+    updateHotelMeta({ [field]: value });
   };
 
   return (
@@ -118,6 +128,32 @@ export function GeneralTab() {
           </div>
         </div>
       </ConfigCard>
+
+      <ConfigCard
+        title="Frontdesk Contact"
+        description="Official contact number for guest notifications"
+        icon={MessageSquare}
+        onSave={saveHotelMeta}
+        hasUnsavedChanges={hasMetaUnsaved}
+        lastSaved={metaLastSaved}
+        error={metaError}
+        sectionKey="hotel_meta"
+      >
+        <div className="space-y-2">
+          <Label htmlFor="contact_phone">Frontdesk Phone Number</Label>
+          <Input
+            id="contact_phone"
+            type="tel"
+            value={hotelMeta.contact_phone || ''}
+            onChange={(e) => handleMetaChange('contact_phone', e.target.value)}
+            placeholder="+234 XXX XXX XXXX"
+          />
+          <p className="text-xs text-muted-foreground">
+            This number will appear in all guest notifications (SMS and email). Leave empty to use generic contact text.
+          </p>
+        </div>
+      </ConfigCard>
+
 
       <ConfigCard
         title="Address"

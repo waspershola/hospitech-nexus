@@ -353,17 +353,19 @@ serve(async (req) => {
           .from('bookings')
           .select(`
             id,
-            guest:guests!guest_id(id, name, phone),
+            guest:guests!guest_id(id, name, phone, email),
             room:rooms!room_id(number)
           `)
           .eq('id', bookingId)
           .eq('tenant_id', booking.tenant_id)
           .maybeSingle();
 
-        console.log('[complete-checkout] Full booking for SMS:', fullBooking);
+        console.log('[complete-checkout] Full booking for notifications:', fullBooking);
 
         const guest = Array.isArray(fullBooking?.guest) ? fullBooking?.guest[0] : fullBooking?.guest;
         const room = Array.isArray(fullBooking?.room) ? fullBooking?.room[0] : fullBooking?.room;
+        
+        const roomNumber = room?.number || 'N/A';
 
         if (guest?.phone) {
           // Fetch hotel name
@@ -374,8 +376,6 @@ serve(async (req) => {
             .single();
 
           const hotelName = tenant?.name || 'Hotel';
-          const roomNumber = room?.number || 'N/A';
-          const guestName = guest.name;
 
           const message = `Thank you for staying at ${hotelName}! We hope you enjoyed your stay in Room ${roomNumber}. Safe travels!`;
 
@@ -401,12 +401,33 @@ serve(async (req) => {
         } else {
           console.log('[complete-checkout] No guest phone number, skipping SMS');
         }
+
+        // Send email notification (fire-and-forget)
+        if (guest?.email) {
+          console.log('[complete-checkout] Sending checkout email...');
+          
+          await supabaseClient.functions.invoke('send-email-notification', {
+            body: {
+              tenant_id: booking.tenant_id,
+              to: guest.email,
+              event_key: 'checkout_confirmation',
+              variables: {
+                guest_name: guest.name,
+                room_number: roomNumber,
+              },
+              booking_id: bookingId,
+              guest_id: guest.id,
+            },
+          }).catch((error) => {
+            console.error('[complete-checkout] Email send exception:', error);
+          });
+        }
       } else {
         console.log('[complete-checkout] SMS notifications disabled or auto-send off');
       }
-    } catch (smsError) {
-      // Don't block checkout if SMS fails
-      console.error('[complete-checkout] SMS error (non-blocking):', smsError);
+    } catch (notificationError) {
+      // Don't block checkout if notifications fail
+      console.error('[complete-checkout] Notification error (non-blocking):', notificationError);
     }
 
     return new Response(

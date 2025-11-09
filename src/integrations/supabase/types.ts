@@ -2141,6 +2141,53 @@ export type Database = {
         }
         Relationships: []
       }
+      platform_email_templates: {
+        Row: {
+          body_html: string
+          body_text: string | null
+          created_at: string | null
+          event_key: string
+          id: string
+          is_active: boolean | null
+          language: string | null
+          subject: string
+          tenant_id: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          body_html: string
+          body_text?: string | null
+          created_at?: string | null
+          event_key: string
+          id?: string
+          is_active?: boolean | null
+          language?: string | null
+          subject: string
+          tenant_id?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          body_html?: string
+          body_text?: string | null
+          created_at?: string | null
+          event_key?: string
+          id?: string
+          is_active?: boolean | null
+          language?: string | null
+          subject?: string
+          tenant_id?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "platform_email_templates_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       platform_feature_flags: {
         Row: {
           created_at: string
@@ -4070,6 +4117,65 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "suppliers_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      tenant_email_usage_logs: {
+        Row: {
+          booking_id: string | null
+          created_at: string | null
+          error_message: string | null
+          event_key: string | null
+          failed_at: string | null
+          guest_id: string | null
+          id: string
+          message_id: string | null
+          provider: string | null
+          recipient: string
+          sent_at: string | null
+          status: string | null
+          subject: string | null
+          tenant_id: string
+        }
+        Insert: {
+          booking_id?: string | null
+          created_at?: string | null
+          error_message?: string | null
+          event_key?: string | null
+          failed_at?: string | null
+          guest_id?: string | null
+          id?: string
+          message_id?: string | null
+          provider?: string | null
+          recipient: string
+          sent_at?: string | null
+          status?: string | null
+          subject?: string | null
+          tenant_id: string
+        }
+        Update: {
+          booking_id?: string | null
+          created_at?: string | null
+          error_message?: string | null
+          event_key?: string | null
+          failed_at?: string | null
+          guest_id?: string | null
+          id?: string
+          message_id?: string | null
+          provider?: string | null
+          recipient?: string
+          sent_at?: string | null
+          status?: string | null
+          subject?: string | null
+          tenant_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tenant_email_usage_logs_tenant_id_fkey"
             columns: ["tenant_id"]
             isOneToOne: false
             referencedRelation: "tenants"

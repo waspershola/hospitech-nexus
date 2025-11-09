@@ -673,11 +673,11 @@ serve(async (req) => {
         if (smsSettings?.enabled && smsSettings?.auto_send_payment_confirmation) {
           const { data: guest } = await supabase
             .from('guests')
-            .select('phone, name')
+            .select('phone, name, email')
             .eq('id', guest_id)
             .single();
 
-          if (guest?.phone) {
+          if (guest) {
             const { data: hotelMeta } = await supabase
               .from('hotel_configurations')
               .select('value')
@@ -686,29 +686,56 @@ serve(async (req) => {
               .maybeSingle();
 
             const hotelName = hotelMeta?.value || 'Hotel';
-            const message = `Payment received: ₦${amount.toLocaleString()} via ${method}. Ref: ${transaction_ref}. Thank you! - ${hotelName}`;
 
-            await supabase.functions.invoke('send-sms', {
-              headers: {
-                Authorization: `Bearer ${Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')}`,
-              },
-              body: {
-                tenant_id,
-                to: guest.phone,
-                message,
-                event_key: 'payment_received',
-                booking_id,
-                guest_id,
-              },
-            });
+            if (guest.phone) {
+              const message = `Payment received: ₦${amount.toLocaleString()} via ${method}. Ref: ${transaction_ref}. Thank you! - ${hotelName}`;
 
-            console.log('Payment confirmation SMS sent to:', guest.phone);
+              await supabase.functions.invoke('send-sms', {
+                headers: {
+                  Authorization: `Bearer ${Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')}`,
+                },
+                body: {
+                  tenant_id,
+                  to: guest.phone,
+                  message,
+                  event_key: 'payment_received',
+                  booking_id,
+                  guest_id,
+                },
+              });
+
+              console.log('Payment confirmation SMS sent to:', guest.phone);
+            }
+
+            // Send email notification (fire-and-forget)
+            if (guest.email) {
+              console.log('Sending payment confirmation email...');
+              
+              await supabase.functions.invoke('send-email-notification', {
+                body: {
+                  tenant_id,
+                  to: guest.email,
+                  event_key: 'payment_received',
+                  variables: {
+                    guest_name: guest.name,
+                    receipt_number: transaction_ref,
+                    amount: amount.toFixed(2),
+                    payment_method: method || 'N/A',
+                    payment_date: new Date().toLocaleDateString(),
+                  },
+                  booking_id,
+                  guest_id,
+                },
+              }).catch((error) => {
+                console.error('Email send exception:', error);
+              });
+            }
           }
         }
       }
     } catch (smsError) {
-      console.error('Payment SMS error:', smsError);
-      // Don't fail the payment if SMS fails
+      console.error('Payment notification error:', smsError);
+      // Don't fail the payment if notifications fail
     }
 
     return new Response(
