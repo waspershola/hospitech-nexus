@@ -316,7 +316,7 @@ serve(async (req) => {
 
     // RESET PASSWORD
     if (action === 'reset_password' && tenant_id && user_id) {
-      const { delivery_method = 'email' } = await req.json();
+      const deliveryMethod = password_delivery_method || 'email';
       
       const { data: userData } = await supabaseAdmin.auth.admin.getUserById(user_id);
       
@@ -345,12 +345,12 @@ serve(async (req) => {
       // Handle delivery
       let deliveryResult: any = { success: false };
       
-      if (delivery_method === 'email') {
+      if (deliveryMethod === 'email') {
         const { error: resetError } = await supabaseAdmin.auth.resetPasswordForEmail(userData.user.email, {
           redirectTo: `${Deno.env.get('SUPABASE_URL')}/auth/v1/verify`,
         });
         deliveryResult = { success: !resetError, method: 'email' };
-      } else if (delivery_method === 'sms' && userData.user.phone) {
+      } else if (deliveryMethod === 'sms' && userData.user.phone) {
         const { data: smsData } = await supabaseAdmin.functions.invoke('send-password-sms', {
           body: {
             phone: userData.user.phone,
@@ -362,7 +362,7 @@ serve(async (req) => {
           },
         });
         deliveryResult = { success: smsData?.success, method: 'sms' };
-      } else if (delivery_method === 'manual') {
+      } else if (deliveryMethod === 'manual') {
         deliveryResult = { success: true, method: 'manual', password: tempPassword };
       }
 
@@ -374,11 +374,11 @@ serve(async (req) => {
           resource_id: user_id,
           actor_id: user.id,
           actor_role: platformUser.role,
-          payload: { tenant_id, user_id, delivery_method },
+          payload: { tenant_id, user_id, delivery_method: deliveryMethod },
         });
 
       const response: any = { success: true };
-      if (delivery_method === 'manual') {
+      if (deliveryMethod === 'manual') {
         response.temporary_password = tempPassword;
       }
 
