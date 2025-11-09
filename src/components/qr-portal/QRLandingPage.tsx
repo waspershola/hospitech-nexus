@@ -1,16 +1,19 @@
 import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useQRToken } from '@/hooks/useQRToken';
-import { Loader2, Hotel, Wifi, Coffee, Sparkles, Phone, Mail } from 'lucide-react';
+import { Loader2, UtensilsCrossed, Wifi, Coffee, Sparkles, Phone, Mail, Wrench, Bell, MessageCircle } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 
 const SERVICE_ICONS: Record<string, any> = {
   housekeeping: Sparkles,
-  room_service: Coffee,
-  maintenance: Wifi,
-  concierge: Hotel,
+  room_service: UtensilsCrossed,
+  maintenance: Wrench,
+  concierge: Bell,
+  digital_menu: UtensilsCrossed,
+  wifi: Wifi,
+  feedback: MessageCircle,
 };
 
 export function QRLandingPage() {
@@ -61,87 +64,150 @@ export function QRLandingPage() {
 
   return (
     <div 
-      className="min-h-screen bg-gradient-to-br from-background to-muted p-4"
-      style={{
-        '--primary': branding?.primary_color || 'hsl(var(--primary))',
-      } as React.CSSProperties}
+      className="min-h-screen bg-gradient-to-br from-background via-muted/30 to-accent/10 p-4 animate-fade-in"
     >
-      <div className="max-w-2xl mx-auto space-y-6 py-8">
-        {/* Header */}
-        <div className="text-center space-y-4">
+      <div className="max-w-4xl mx-auto space-y-8 py-8">
+        {/* Header with Logo */}
+        <div className="text-center space-y-6">
           {branding?.logo_url && (
             <img 
               src={branding.logo_url} 
               alt="Hotel Logo" 
-              className="h-16 mx-auto object-contain"
+              className="h-20 mx-auto object-contain animate-fade-in drop-shadow-lg"
             />
           )}
-          <div>
-            <h1 className="text-3xl font-bold text-foreground">
+          <div className="space-y-3">
+            <h1 className="text-4xl md:text-5xl font-display font-bold bg-gradient-to-r from-primary via-accent to-primary bg-clip-text text-transparent animate-fade-in">
               {tenant?.hotel_name || 'Guest Portal'}
             </h1>
-            <p className="text-lg text-muted-foreground mt-2">{display_name}</p>
+            <p className="text-xl text-muted-foreground font-medium">{display_name}</p>
           </div>
         </div>
 
-        {/* Welcome Message */}
-        <Card>
+        {/* Welcome Message Card */}
+        <Card className="backdrop-blur-sm bg-card/80 border-2 shadow-luxury hover:shadow-glow transition-all duration-500">
           <CardContent className="pt-6">
-            <p className="text-center text-muted-foreground">{welcome_message}</p>
+            <p className="text-center text-muted-foreground text-lg leading-relaxed">{welcome_message}</p>
           </CardContent>
         </Card>
 
-        {/* Services Grid */}
+        {/* Enhanced Services Grid */}
         <div className="space-y-4">
-          <h2 className="text-xl font-semibold text-foreground">Available Services</h2>
-          <div className="grid gap-4 sm:grid-cols-2">
+          <h2 className="text-2xl font-display font-semibold text-foreground">Available Services</h2>
+          <div className="grid gap-6 sm:grid-cols-2">
+            {/* Digital Menu */}
+            <Card 
+              className="group cursor-pointer bg-card/80 backdrop-blur-sm border-2 border-transparent 
+                         hover:border-accent/50 hover:shadow-2xl hover:shadow-accent/20 
+                         transition-all duration-500 hover:scale-[1.03] animate-fade-in"
+              onClick={() => navigate(`/qr/${token}/menu`)}
+            >
+              <CardHeader className="space-y-4">
+                <div className="p-4 rounded-full bg-gradient-to-br from-amber-400/10 to-amber-600/10 
+                                w-fit group-hover:from-amber-400/20 group-hover:to-amber-600/20 
+                                group-hover:scale-110 transition-all duration-300">
+                  <UtensilsCrossed className="h-8 w-8 text-amber-500" />
+                </div>
+                <CardTitle className="text-xl font-display">Digital Menu</CardTitle>
+                <CardDescription className="font-body">Browse our menu and place orders</CardDescription>
+              </CardHeader>
+            </Card>
+
+            {/* WiFi Credentials */}
+            <Card 
+              className="group cursor-pointer bg-card/80 backdrop-blur-sm border-2 border-transparent 
+                         hover:border-blue-500/50 hover:shadow-2xl hover:shadow-blue-500/20 
+                         transition-all duration-500 hover:scale-[1.03] animate-fade-in"
+              onClick={() => navigate(`/qr/${token}/wifi`)}
+            >
+              <CardHeader className="space-y-4">
+                <div className="p-4 rounded-full bg-gradient-to-br from-blue-400/10 to-cyan-600/10 
+                                w-fit group-hover:from-blue-400/20 group-hover:to-cyan-600/20 
+                                group-hover:scale-110 transition-all duration-300">
+                  <Wifi className="h-8 w-8 text-blue-500" />
+                </div>
+                <CardTitle className="text-xl font-display">WiFi Access</CardTitle>
+                <CardDescription className="font-body">Connect to our network</CardDescription>
+              </CardHeader>
+            </Card>
+
+            {/* Dynamic Services from QR Config */}
             {services.map((service) => {
-              const Icon = SERVICE_ICONS[service] || Hotel;
+              const Icon = SERVICE_ICONS[service] || Bell;
+              const colorMap: Record<string, string> = {
+                housekeeping: 'purple',
+                room_service: 'orange',
+                maintenance: 'red',
+                concierge: 'indigo',
+              };
+              const color = colorMap[service] || 'primary';
+              
               return (
                 <Card 
                   key={service}
-                  className="cursor-pointer hover:shadow-lg transition-shadow"
+                  className={`group cursor-pointer bg-card/80 backdrop-blur-sm border-2 border-transparent 
+                             hover:border-${color}-500/50 hover:shadow-2xl hover:shadow-${color}-500/20 
+                             transition-all duration-500 hover:scale-[1.03] animate-fade-in`}
                   onClick={() => navigate(`/qr/${token}/request/${service}`)}
                 >
-                  <CardHeader className="space-y-2">
-                    <div className="flex items-center gap-3">
-                      <div className="p-2 rounded-lg bg-primary/10">
-                        <Icon className="h-6 w-6 text-primary" />
-                      </div>
-                      <CardTitle className="text-base capitalize">
-                        {service.replace('_', ' ')}
-                      </CardTitle>
+                  <CardHeader className="space-y-4">
+                    <div className={`p-4 rounded-full bg-gradient-to-br from-${color}-400/10 to-${color}-600/10 
+                                    w-fit group-hover:from-${color}-400/20 group-hover:to-${color}-600/20 
+                                    group-hover:scale-110 transition-all duration-300`}>
+                      <Icon className={`h-8 w-8 text-${color}-500`} />
                     </div>
+                    <CardTitle className="text-xl font-display capitalize">
+                      {service.replace('_', ' ')}
+                    </CardTitle>
+                    <CardDescription className="font-body">Request assistance</CardDescription>
                   </CardHeader>
                 </Card>
               );
             })}
+
+            {/* Feedback */}
+            <Card 
+              className="group cursor-pointer bg-card/80 backdrop-blur-sm border-2 border-transparent 
+                         hover:border-green-500/50 hover:shadow-2xl hover:shadow-green-500/20 
+                         transition-all duration-500 hover:scale-[1.03] animate-fade-in"
+              onClick={() => navigate(`/qr/${token}/feedback`)}
+            >
+              <CardHeader className="space-y-4">
+                <div className="p-4 rounded-full bg-gradient-to-br from-green-400/10 to-emerald-600/10 
+                                w-fit group-hover:from-green-400/20 group-hover:to-emerald-600/20 
+                                group-hover:scale-110 transition-all duration-300">
+                  <MessageCircle className="h-8 w-8 text-green-500" />
+                </div>
+                <CardTitle className="text-xl font-display">Share Feedback</CardTitle>
+                <CardDescription className="font-body">Help us improve</CardDescription>
+              </CardHeader>
+            </Card>
           </div>
         </div>
 
         {/* Contact Info */}
         {(tenant?.contact_phone || tenant?.contact_email) && (
-          <Card>
+          <Card className="backdrop-blur-sm bg-card/80 border-2 shadow-card">
             <CardHeader>
-              <CardTitle className="text-base">Need Immediate Assistance?</CardTitle>
+              <CardTitle className="text-lg font-display">Need Immediate Assistance?</CardTitle>
             </CardHeader>
-            <CardContent className="space-y-2">
+            <CardContent className="space-y-3">
               {tenant.contact_phone && (
                 <a 
                   href={`tel:${tenant.contact_phone}`}
-                  className="flex items-center gap-2 text-muted-foreground hover:text-foreground transition-colors"
+                  className="flex items-center gap-3 p-3 rounded-lg hover:bg-muted/50 transition-colors group"
                 >
-                  <Phone className="h-4 w-4" />
-                  <span>{tenant.contact_phone}</span>
+                  <Phone className="h-5 w-5 text-muted-foreground group-hover:text-foreground transition-colors" />
+                  <span className="font-medium">{tenant.contact_phone}</span>
                 </a>
               )}
               {tenant.contact_email && (
                 <a 
                   href={`mailto:${tenant.contact_email}`}
-                  className="flex items-center gap-2 text-muted-foreground hover:text-foreground transition-colors"
+                  className="flex items-center gap-3 p-3 rounded-lg hover:bg-muted/50 transition-colors group"
                 >
-                  <Mail className="h-4 w-4" />
-                  <span>{tenant.contact_email}</span>
+                  <Mail className="h-5 w-5 text-muted-foreground group-hover:text-foreground transition-colors" />
+                  <span className="font-medium">{tenant.contact_email}</span>
                 </a>
               )}
             </CardContent>

@@ -892,6 +892,124 @@ export type Database = {
           },
         ]
       }
+      guest_feedback: {
+        Row: {
+          category: string | null
+          comment: string | null
+          created_at: string | null
+          id: string
+          qr_token: string
+          rating: number | null
+          request_id: string | null
+          tenant_id: string
+        }
+        Insert: {
+          category?: string | null
+          comment?: string | null
+          created_at?: string | null
+          id?: string
+          qr_token: string
+          rating?: number | null
+          request_id?: string | null
+          tenant_id: string
+        }
+        Update: {
+          category?: string | null
+          comment?: string | null
+          created_at?: string | null
+          id?: string
+          qr_token?: string
+          rating?: number | null
+          request_id?: string | null
+          tenant_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "guest_feedback_request_id_fkey"
+            columns: ["request_id"]
+            isOneToOne: false
+            referencedRelation: "requests"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "guest_feedback_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      guest_orders: {
+        Row: {
+          created_at: string | null
+          guest_name: string | null
+          id: string
+          items: Json
+          qr_token: string
+          request_id: string | null
+          room_id: string | null
+          special_instructions: string | null
+          status: string | null
+          subtotal: number
+          tenant_id: string
+          total: number
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          guest_name?: string | null
+          id?: string
+          items: Json
+          qr_token: string
+          request_id?: string | null
+          room_id?: string | null
+          special_instructions?: string | null
+          status?: string | null
+          subtotal: number
+          tenant_id: string
+          total: number
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          guest_name?: string | null
+          id?: string
+          items?: Json
+          qr_token?: string
+          request_id?: string | null
+          room_id?: string | null
+          special_instructions?: string | null
+          status?: string | null
+          subtotal?: number
+          tenant_id?: string
+          total?: number
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "guest_orders_request_id_fkey"
+            columns: ["request_id"]
+            isOneToOne: false
+            referencedRelation: "requests"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "guest_orders_room_id_fkey"
+            columns: ["room_id"]
+            isOneToOne: false
+            referencedRelation: "rooms"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "guest_orders_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       guests: {
         Row: {
           created_at: string | null
@@ -1485,6 +1603,65 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "inventory_items_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      menu_items: {
+        Row: {
+          category: string
+          created_at: string | null
+          currency: string | null
+          description: string | null
+          dietary_tags: string[] | null
+          display_order: number | null
+          id: string
+          image_url: string | null
+          is_available: boolean | null
+          name: string
+          preparation_time: string | null
+          price: number
+          tenant_id: string
+          updated_at: string | null
+        }
+        Insert: {
+          category: string
+          created_at?: string | null
+          currency?: string | null
+          description?: string | null
+          dietary_tags?: string[] | null
+          display_order?: number | null
+          id?: string
+          image_url?: string | null
+          is_available?: boolean | null
+          name: string
+          preparation_time?: string | null
+          price: number
+          tenant_id: string
+          updated_at?: string | null
+        }
+        Update: {
+          category?: string
+          created_at?: string | null
+          currency?: string | null
+          description?: string | null
+          dietary_tags?: string[] | null
+          display_order?: number | null
+          id?: string
+          image_url?: string | null
+          is_available?: boolean | null
+          name?: string
+          preparation_time?: string | null
+          price?: number
+          tenant_id?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "menu_items_tenant_id_fkey"
             columns: ["tenant_id"]
             isOneToOne: false
             referencedRelation: "tenants"
@@ -5081,6 +5258,50 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "wallets_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      wifi_credentials: {
+        Row: {
+          created_at: string | null
+          id: string
+          instructions: string | null
+          is_active: boolean | null
+          location: string | null
+          network_name: string
+          password: string
+          qr_data: string | null
+          tenant_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          instructions?: string | null
+          is_active?: boolean | null
+          location?: string | null
+          network_name: string
+          password: string
+          qr_data?: string | null
+          tenant_id: string
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          instructions?: string | null
+          is_active?: boolean | null
+          location?: string | null
+          network_name?: string
+          password?: string
+          qr_data?: string | null
+          tenant_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "wifi_credentials_tenant_id_fkey"
             columns: ["tenant_id"]
             isOneToOne: false
             referencedRelation: "tenants"

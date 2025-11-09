@@ -3,6 +3,7 @@ import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import { lazy, Suspense } from "react";
 import { AuthProvider } from "./contexts/AuthContext";
 import Index from "./pages/Index";
 import NotFound from "./pages/NotFound";
@@ -58,6 +59,14 @@ import { usePlatformRole } from "./hooks/usePlatformRole";
 import { QRLandingPage } from "./components/qr-portal/QRLandingPage";
 import { QRServiceRequestForm } from "./components/qr-portal/QRServiceRequestForm";
 import { QRChatInterface } from "./components/qr-portal/QRChatInterface";
+import { Loader2 } from "lucide-react";
+
+// Lazy load QR portal pages for better performance
+const QRMenuBrowser = lazy(() => import("./components/qr-portal/QRMenuBrowser").then(m => ({ default: m.QRMenuBrowser })));
+const QRWifiCredentials = lazy(() => import("./components/qr-portal/QRWifiCredentials").then(m => ({ default: m.QRWifiCredentials })));
+const QRFeedback = lazy(() => import("./components/qr-portal/QRFeedback").then(m => ({ default: m.QRFeedback })));
+const QRRedirect = lazy(() => import("./components/qr-portal/QRRedirect").then(m => ({ default: m.QRRedirect })));
+
 import QRManagement from "./pages/dashboard/QRManagement";
 import GuestRequestsManagement from "./pages/dashboard/GuestRequestsManagement";
 import QRAnalytics from "./pages/dashboard/QRAnalytics";
@@ -165,6 +174,26 @@ const App = () => (
             <Route path="/qr/:token" element={<QRLandingPage />} />
             <Route path="/qr/:token/request/:service" element={<QRServiceRequestForm />} />
             <Route path="/qr/:token/chat/:requestId" element={<QRChatInterface />} />
+            <Route path="/qr/:token/menu" element={
+              <Suspense fallback={<div className="min-h-screen flex items-center justify-center"><Loader2 className="h-8 w-8 animate-spin" /></div>}>
+                <QRMenuBrowser />
+              </Suspense>
+            } />
+            <Route path="/qr/:token/wifi" element={
+              <Suspense fallback={<div className="min-h-screen flex items-center justify-center"><Loader2 className="h-8 w-8 animate-spin" /></div>}>
+                <QRWifiCredentials />
+              </Suspense>
+            } />
+            <Route path="/qr/:token/feedback" element={
+              <Suspense fallback={<div className="min-h-screen flex items-center justify-center"><Loader2 className="h-8 w-8 animate-spin" /></div>}>
+                <QRFeedback />
+              </Suspense>
+            } />
+            <Route path="/g/:token" element={
+              <Suspense fallback={<div className="min-h-screen flex items-center justify-center"><Loader2 className="h-8 w-8 animate-spin" /></div>}>
+                <QRRedirect />
+              </Suspense>
+            } />
 
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
