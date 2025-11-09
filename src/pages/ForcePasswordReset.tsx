@@ -36,7 +36,8 @@ export default function ForcePasswordReset() {
       const { error: updateError } = await supabase.auth.updateUser({
         password: newPassword,
         data: {
-          force_password_reset: false
+          force_password_reset: false,
+          requires_password_change: false,
         }
       });
 

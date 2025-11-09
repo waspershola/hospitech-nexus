@@ -9,7 +9,7 @@ export default function ProtectedRoute({ children }: { children: ReactNode }) {
   
   // Check if user needs to reset password
   useEffect(() => {
-    if (user && user.user_metadata?.force_password_reset) {
+    if (user && (user.user_metadata?.force_password_reset || user.user_metadata?.requires_password_change)) {
       navigate('/force-password-reset', { replace: true });
     }
   }, [user, navigate]);

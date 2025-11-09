@@ -3,6 +3,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { PasswordDeliverySelector } from '@/components/platform/PasswordDeliverySelector';
 import { useState, useEffect } from 'react';
 import { TenantUser } from '@/hooks/useTenantUsers';
 
@@ -28,6 +29,7 @@ export function TenantUserDialog({
   const [phone, setPhone] = useState('');
   const [role, setRole] = useState('staff');
   const [password, setPassword] = useState('');
+  const [passwordDeliveryMethod, setPasswordDeliveryMethod] = useState<'email' | 'sms' | 'manual'>('email');
 
   useEffect(() => {
     if (mode === 'edit' && initialData) {
@@ -35,28 +37,40 @@ export function TenantUserDialog({
       setFullName(initialData.full_name || '');
       setPhone(initialData.phone || '');
       setRole(initialData.role);
+      setPasswordDeliveryMethod('email');
     } else {
       setEmail('');
       setFullName('');
       setPhone('');
       setRole('staff');
       setPassword('');
+      setPasswordDeliveryMethod('email');
     }
   }, [mode, initialData, open]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    onSubmit({
-      email,
-      full_name: fullName,
-      phone: phone || undefined,
-      role,
-      password: password || undefined,
-      user_id: initialData?.id,
-    });
+    if (mode === 'create') {
+      onSubmit({
+        email,
+        full_name: fullName,
+        phone,
+        role,
+        password: password || undefined,
+        password_delivery_method: passwordDeliveryMethod,
+      });
+    } else {
+      onSubmit({ 
+        user_id: initialData?.id, 
+        full_name: fullName, 
+        role 
+      });
+    }
   };
 
-  const isValid = email && fullName && role;
+  const isValid = mode === 'edit' 
+    ? fullName.trim() !== '' 
+    : email.trim() !== '' && fullName.trim() !== '' && (passwordDeliveryMethod === 'sms' ? phone.trim() !== '' : true);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -97,14 +111,18 @@ export function TenantUserDialog({
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="phone">Phone (optional)</Label>
+            <Label htmlFor="phone">Phone {passwordDeliveryMethod === 'sms' && '*'}</Label>
             <Input
               id="phone"
               type="tel"
               value={phone}
               onChange={(e) => setPhone(e.target.value)}
               placeholder="+234..."
+              required={passwordDeliveryMethod === 'sms'}
             />
+            {passwordDeliveryMethod === 'sms' && (
+              <p className="text-xs text-muted-foreground">Phone required for SMS delivery</p>
+            )}
           </div>
 
           <div className="space-y-2">
@@ -124,19 +142,28 @@ export function TenantUserDialog({
           </div>
 
           {mode === 'create' && (
-            <div className="space-y-2">
-              <Label htmlFor="password">Password (optional)</Label>
-              <Input
-                id="password"
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                placeholder="Leave blank to auto-generate"
+            <>
+              <PasswordDeliverySelector
+                value={passwordDeliveryMethod}
+                onChange={setPasswordDeliveryMethod}
+                userEmail={email}
+                userPhone={phone}
               />
-              <p className="text-xs text-muted-foreground">
-                A secure password will be auto-generated and emailed if left blank
-              </p>
-            </div>
+              
+              <div className="space-y-2">
+                <Label htmlFor="password">Password (Optional)</Label>
+                <Input
+                  id="password"
+                  type="password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  placeholder="Leave blank to auto-generate"
+                />
+                <p className="text-xs text-muted-foreground">
+                  A secure password will be generated if left blank
+                </p>
+              </div>
+            </>
           )}
 
           <DialogFooter>

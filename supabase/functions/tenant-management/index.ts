@@ -57,7 +57,10 @@ serve(async (req) => {
 
     // CREATE TENANT
     if (action === 'create') {
-      const { hotel_name, owner_email, plan_id, domain, owner_password, provider_id, sender_id, additional_credits } = body;
+      const { 
+        hotel_name, owner_email, plan_id, domain, owner_password, owner_phone, 
+        password_delivery_method = 'email', provider_id, sender_id, additional_credits 
+      } = body;
 
       if (!hotel_name || !owner_email || !plan_id) {
         return new Response(
@@ -66,7 +69,7 @@ serve(async (req) => {
         );
       }
 
-      console.log('🏗️ Creating tenant:', { hotel_name, owner_email, plan_id, domain });
+      console.log('🏗️ Creating tenant:', { hotel_name, owner_email, plan_id, domain, password_delivery_method });
 
       // Create tenant
       const slug = hotel_name.toLowerCase().replace(/[^a-z0-9]+/g, '-');
@@ -85,16 +88,30 @@ serve(async (req) => {
 
       // Create admin user for tenant
       let adminUser = null;
+      let tempPassword = '';
       try {
-        const password = owner_password || Math.random().toString(36).slice(-12) + 'A1!';
+        // Generate strong password if not provided
+        const generatePassword = () => {
+          const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*';
+          let pwd = '';
+          for (let i = 0; i < 14; i++) {
+            pwd += chars.charAt(Math.floor(Math.random() * chars.length));
+          }
+          return pwd;
+        };
+
+        tempPassword = owner_password || generatePassword();
+        
         const { data: authUser, error: authError } = await supabase.auth.admin.createUser({
           email: owner_email,
-          password,
+          password: tempPassword,
           email_confirm: true,
           user_metadata: {
             full_name: 'Admin',
             hotel_name,
+            force_password_reset: true,
           },
+          phone: owner_phone || undefined,
         });
 
         if (authError) {
@@ -115,6 +132,41 @@ serve(async (req) => {
           });
 
         console.log('✅ Owner role assigned');
+
+        // Handle password delivery
+        let deliveryResult: any = { success: false };
+        
+        if (password_delivery_method === 'email') {
+          const { error: resetError } = await supabase.auth.resetPasswordForEmail(owner_email, {
+            redirectTo: `${Deno.env.get('SUPABASE_URL')}/auth/v1/verify`,
+          });
+          deliveryResult = { success: !resetError, method: 'email' };
+        } else if (password_delivery_method === 'sms' && owner_phone) {
+          const { data: smsData } = await supabase.functions.invoke('send-password-sms', {
+            body: {
+              phone: owner_phone,
+              password: tempPassword,
+              user_name: 'Admin',
+              user_type: 'tenant_user',
+              user_id: adminUser.id,
+              delivered_by: user.id,
+            },
+          });
+          deliveryResult = { success: smsData?.success, method: 'sms' };
+        } else if (password_delivery_method === 'manual') {
+          deliveryResult = { success: true, method: 'manual', password: tempPassword };
+        }
+
+        // Log password delivery
+        if (adminUser) {
+          await supabase.from('password_delivery_log').insert({
+            user_id: adminUser.id,
+            delivery_method: password_delivery_method,
+            delivered_by: user.id,
+            delivery_status: deliveryResult.success ? 'sent' : 'failed',
+            metadata: { phone: owner_phone || null, tenant_id: tenant.id, is_owner: true },
+          });
+        }
       } catch (err) {
         console.error('⚠️ User creation failed, continuing:', err);
       }
@@ -270,15 +322,23 @@ serve(async (req) => {
 
       console.log('✅ Tenant creation complete:', tenant.id);
 
+      const response: any = { 
+        success: true, 
+        tenant: {
+          ...tenant,
+          admin_email: owner_email,
+          admin_user_id: adminUser?.id,
+        }
+      };
+
+      // Include temp password if manual delivery
+      if (password_delivery_method === 'manual' && tempPassword) {
+        response.temporary_password = tempPassword;
+        response.delivery_method = 'manual';
+      }
+
       return new Response(
-        JSON.stringify({ 
-          success: true, 
-          tenant: {
-            ...tenant,
-            admin_email: owner_email,
-            admin_user_id: adminUser?.id,
-          }
-        }),
+        JSON.stringify(response),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }

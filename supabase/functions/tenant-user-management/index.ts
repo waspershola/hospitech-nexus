@@ -43,9 +43,9 @@ serve(async (req) => {
       );
     }
 
-    const { action, tenant_id, user_id, email, full_name, role, phone, password, updates } = await req.json();
+    const { action, tenant_id, user_id, email, full_name, role, phone, password, password_delivery_method, updates } = await req.json();
 
-    console.log('📍 Tenant user management:', { action, tenant_id, user_id });
+    console.log('📍 Tenant user management:', { action, tenant_id, user_id, password_delivery_method });
 
     // LIST USERS
     if (action === 'list' && tenant_id) {
@@ -99,7 +99,29 @@ serve(async (req) => {
 
     // CREATE USER
     if (action === 'create' && tenant_id && email) {
-      const tempPassword = password || Math.random().toString(36).slice(-12) + 'A1!';
+      // Generate strong temporary password (14 chars)
+      const generatePassword = () => {
+        const uppercase = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+        const lowercase = 'abcdefghijklmnopqrstuvwxyz';
+        const numbers = '0123456789';
+        const special = '!@#$%^&*';
+        const all = uppercase + lowercase + numbers + special;
+        
+        let pwd = '';
+        pwd += uppercase[Math.floor(Math.random() * uppercase.length)];
+        pwd += lowercase[Math.floor(Math.random() * lowercase.length)];
+        pwd += numbers[Math.floor(Math.random() * numbers.length)];
+        pwd += special[Math.floor(Math.random() * special.length)];
+        
+        for (let i = 4; i < 14; i++) {
+          pwd += all[Math.floor(Math.random() * all.length)];
+        }
+        
+        return pwd.split('').sort(() => Math.random() - 0.5).join('');
+      };
+
+      const tempPassword = password || generatePassword();
+      const deliveryMethod = password_delivery_method || 'email';
       
       const { data: newUser, error: createError } = await supabaseAdmin.auth.admin.createUser({
         email,
@@ -107,6 +129,7 @@ serve(async (req) => {
         email_confirm: true,
         user_metadata: {
           full_name: full_name || '',
+          force_password_reset: true,
         },
         phone: phone || undefined,
       });
@@ -122,6 +145,40 @@ serve(async (req) => {
           status: 'active',
         });
 
+      // Handle password delivery
+      let deliveryResult: any = { success: false };
+      
+      if (deliveryMethod === 'email') {
+        const { error: resetError } = await supabaseAdmin.auth.resetPasswordForEmail(email, {
+          redirectTo: `${Deno.env.get('SUPABASE_URL')}/auth/v1/verify`,
+        });
+        deliveryResult = { success: !resetError, method: 'email', error: resetError?.message };
+      } else if (deliveryMethod === 'sms' && phone) {
+        const { data: smsData, error: smsError } = await supabaseAdmin.functions.invoke('send-password-sms', {
+          body: {
+            phone,
+            password: tempPassword,
+            user_name: full_name || email,
+            user_type: 'tenant_user',
+            user_id: newUser.user.id,
+            delivered_by: user.id,
+          },
+        });
+        deliveryResult = { success: smsData?.success || false, method: 'sms', error: smsError?.message || smsData?.error };
+      } else if (deliveryMethod === 'manual') {
+        deliveryResult = { success: true, method: 'manual', password: tempPassword };
+      }
+
+      // Log delivery attempt
+      await supabaseAdmin.from('password_delivery_log').insert({
+        user_id: newUser.user.id,
+        delivery_method: deliveryMethod,
+        delivered_by: user.id,
+        delivery_status: deliveryResult.success ? 'sent' : 'failed',
+        error_message: deliveryResult.error || null,
+        metadata: { phone: phone || null, tenant_id },
+      });
+
       await supabaseAdmin
         .from('platform_audit_stream')
         .insert({
@@ -130,13 +187,19 @@ serve(async (req) => {
           resource_id: newUser.user.id,
           actor_id: user.id,
           actor_role: platformUser.role,
-          payload: { tenant_id, email, role, created_by: user.id },
+          payload: { tenant_id, email, role, created_by: user.id, delivery_method: deliveryMethod },
         });
 
-      console.log('✅ User created:', newUser.user.id);
+      console.log('✅ User created:', newUser.user.id, 'Delivery:', deliveryMethod);
+
+      const response: any = { success: true, user_id: newUser.user.id };
+      if (deliveryMethod === 'manual') {
+        response.temporary_password = tempPassword;
+        response.delivery_method = 'manual';
+      }
 
       return new Response(
-        JSON.stringify({ success: true, user_id: newUser.user.id }),
+        JSON.stringify(response),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
@@ -253,15 +316,55 @@ serve(async (req) => {
 
     // RESET PASSWORD
     if (action === 'reset_password' && tenant_id && user_id) {
+      const { delivery_method = 'email' } = await req.json();
+      
       const { data: userData } = await supabaseAdmin.auth.admin.getUserById(user_id);
       
       if (!userData.user?.email) {
         throw new Error('User email not found');
       }
 
-      await supabaseAdmin.auth.resetPasswordForEmail(userData.user.email, {
-        redirectTo: `${Deno.env.get('SUPABASE_URL')}/auth/v1/verify`,
+      // Generate new temp password
+      const generatePassword = () => {
+        const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*';
+        let pwd = '';
+        for (let i = 0; i < 14; i++) {
+          pwd += chars.charAt(Math.floor(Math.random() * chars.length));
+        }
+        return pwd;
+      };
+
+      const tempPassword = generatePassword();
+
+      // Update user with new password and force reset flag
+      await supabaseAdmin.auth.admin.updateUserById(user_id, {
+        password: tempPassword,
+        user_metadata: { force_password_reset: true },
       });
+
+      // Handle delivery
+      let deliveryResult: any = { success: false };
+      
+      if (delivery_method === 'email') {
+        const { error: resetError } = await supabaseAdmin.auth.resetPasswordForEmail(userData.user.email, {
+          redirectTo: `${Deno.env.get('SUPABASE_URL')}/auth/v1/verify`,
+        });
+        deliveryResult = { success: !resetError, method: 'email' };
+      } else if (delivery_method === 'sms' && userData.user.phone) {
+        const { data: smsData } = await supabaseAdmin.functions.invoke('send-password-sms', {
+          body: {
+            phone: userData.user.phone,
+            password: tempPassword,
+            user_name: userData.user.user_metadata?.full_name || userData.user.email,
+            user_type: 'tenant_user',
+            user_id,
+            delivered_by: user.id,
+          },
+        });
+        deliveryResult = { success: smsData?.success, method: 'sms' };
+      } else if (delivery_method === 'manual') {
+        deliveryResult = { success: true, method: 'manual', password: tempPassword };
+      }
 
       await supabaseAdmin
         .from('platform_audit_stream')
@@ -271,11 +374,16 @@ serve(async (req) => {
           resource_id: user_id,
           actor_id: user.id,
           actor_role: platformUser.role,
-          payload: { tenant_id, user_id },
+          payload: { tenant_id, user_id, delivery_method },
         });
 
+      const response: any = { success: true };
+      if (delivery_method === 'manual') {
+        response.temporary_password = tempPassword;
+      }
+
       return new Response(
-        JSON.stringify({ success: true }),
+        JSON.stringify(response),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }

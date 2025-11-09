@@ -18,6 +18,8 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel,
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { TenantProviderSelector } from '@/components/platform/TenantProviderSelector';
 import { InitialCreditInput } from '@/components/platform/InitialCreditInput';
+import { PasswordDeliverySelector } from '@/components/platform/PasswordDeliverySelector';
+import { ManualPasswordDialog } from '@/components/platform/ManualPasswordDialog';
 
 export function PlatformTenantsTab() {
   const navigate = useNavigate();
@@ -48,20 +50,25 @@ export function PlatformTenantsTab() {
   // Create tenant form state
   const [hotelName, setHotelName] = useState('');
   const [ownerEmail, setOwnerEmail] = useState('');
+  const [ownerPhone, setOwnerPhone] = useState('');
   const [ownerPassword, setOwnerPassword] = useState('');
+  const [passwordDeliveryMethod, setPasswordDeliveryMethod] = useState<'email' | 'sms' | 'manual'>('email');
   const [selectedPlan, setSelectedPlan] = useState('');
   const [domain, setDomain] = useState('');
   const [initialProvider, setInitialProvider] = useState('');
   const [initialSenderId, setInitialSenderId] = useState('');
   const [additionalCredits, setAdditionalCredits] = useState('');
+  const [manualPasswordData, setManualPasswordData] = useState<{ password: string; email: string } | null>(null);
 
   const handleCreateTenant = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    await createTenant.mutateAsync({
+    const result = await createTenant.mutateAsync({
       hotel_name: hotelName,
       owner_email: ownerEmail,
+      owner_phone: ownerPhone || undefined,
       owner_password: ownerPassword || undefined,
+      password_delivery_method: passwordDeliveryMethod,
       plan_id: selectedPlan,
       domain: domain || undefined,
       provider_id: initialProvider || undefined,
@@ -69,10 +76,20 @@ export function PlatformTenantsTab() {
       additional_credits: additionalCredits ? parseInt(additionalCredits) : undefined,
     });
 
+    // Check if manual password delivery
+    if (passwordDeliveryMethod === 'manual' && result?.temporary_password) {
+      setManualPasswordData({
+        password: result.temporary_password,
+        email: ownerEmail,
+      });
+    }
+
     setIsCreateDialogOpen(false);
     setHotelName('');
     setOwnerEmail('');
+    setOwnerPhone('');
     setOwnerPassword('');
+    setPasswordDeliveryMethod('email');
     setSelectedPlan('');
     setDomain('');
     setInitialProvider('');
@@ -201,18 +218,37 @@ export function PlatformTenantsTab() {
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="owner_password">Password (optional)</Label>
+                  <Label htmlFor="owner_phone">Owner Phone {passwordDeliveryMethod === 'sms' && '*'}</Label>
                   <Input
-                    id="owner_password"
-                    type="password"
-                    value={ownerPassword}
-                    onChange={(e) => setOwnerPassword(e.target.value)}
-                    placeholder="Leave blank to auto-generate"
+                    id="owner_phone"
+                    type="tel"
+                    value={ownerPhone}
+                    onChange={(e) => setOwnerPhone(e.target.value)}
+                    placeholder="+234..."
+                    required={passwordDeliveryMethod === 'sms'}
                   />
-                  <p className="text-xs text-muted-foreground">
-                    If not provided, a secure password will be auto-generated
-                  </p>
                 </div>
+              </div>
+
+              <PasswordDeliverySelector
+                value={passwordDeliveryMethod}
+                onChange={setPasswordDeliveryMethod}
+                userEmail={ownerEmail}
+                userPhone={ownerPhone}
+              />
+
+              <div className="space-y-2">
+                <Label htmlFor="owner_password">Password (Optional)</Label>
+                <Input
+                  id="owner_password"
+                  type="password"
+                  value={ownerPassword}
+                  onChange={(e) => setOwnerPassword(e.target.value)}
+                  placeholder="Leave blank to auto-generate"
+                />
+                <p className="text-xs text-muted-foreground">
+                  A secure password will be generated if left blank
+                </p>
               </div>
 
               <div className="space-y-2">
@@ -566,6 +602,13 @@ export function PlatformTenantsTab() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <ManualPasswordDialog
+        open={!!manualPasswordData}
+        onOpenChange={(open) => !open && setManualPasswordData(null)}
+        password={manualPasswordData?.password || ''}
+        userEmail={manualPasswordData?.email}
+      />
     </div>
   );
 }

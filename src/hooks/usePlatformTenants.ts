@@ -71,7 +71,9 @@ export function usePlatformTenants() {
     mutationFn: async (tenantData: {
       hotel_name: string;
       owner_email: string;
+      owner_phone?: string;
       owner_password?: string;
+      password_delivery_method?: 'email' | 'sms' | 'manual';
       plan_id: string;
       domain?: string;
       provider_id?: string;

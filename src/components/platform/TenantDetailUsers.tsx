@@ -4,6 +4,7 @@ import { UserPlus } from 'lucide-react';
 import { useTenantUsers } from '@/hooks/useTenantUsers';
 import { TenantUserTable } from '@/components/platform/TenantUserTable';
 import { TenantUserDialog } from '@/components/platform/TenantUserDialog';
+import { ManualPasswordDialog } from '@/components/platform/ManualPasswordDialog';
 import { useState } from 'react';
 
 interface TenantDetailUsersProps {
@@ -24,6 +25,7 @@ export default function TenantDetailUsers({ tenantId }: TenantDetailUsersProps) 
   const [userDialogOpen, setUserDialogOpen] = useState(false);
   const [userDialogMode, setUserDialogMode] = useState<'create' | 'edit'>('create');
   const [selectedUser, setSelectedUser] = useState<any>(null);
+  const [manualPasswordData, setManualPasswordData] = useState<{ password: string; user: any } | null>(null);
 
   const handleCreateUser = () => {
     setUserDialogMode('create');
@@ -39,10 +41,18 @@ export default function TenantDetailUsers({ tenantId }: TenantDetailUsersProps) 
 
   const handleUserSubmit = async (data: any) => {
     if (userDialogMode === 'create') {
-      await createUser.mutateAsync({
+      const result = await createUser.mutateAsync({
         tenant_id: tenantId,
         ...data,
       });
+      
+      // Check if manual password delivery
+      if (data.password_delivery_method === 'manual' && result?.temporary_password) {
+        setManualPasswordData({
+          password: result.temporary_password,
+          user: { email: data.email, name: data.full_name }
+        });
+      }
     } else {
       await updateUser.mutateAsync({
         tenant_id: tenantId,
@@ -101,6 +111,14 @@ export default function TenantDetailUsers({ tenantId }: TenantDetailUsersProps) 
         isSubmitting={createUser.isPending || updateUser.isPending}
         mode={userDialogMode}
         initialData={selectedUser}
+      />
+
+      <ManualPasswordDialog
+        open={!!manualPasswordData}
+        onOpenChange={(open) => !open && setManualPasswordData(null)}
+        password={manualPasswordData?.password || ''}
+        userEmail={manualPasswordData?.user?.email}
+        userFullName={manualPasswordData?.user?.name}
       />
     </>
   );
