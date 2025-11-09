@@ -80,18 +80,37 @@ export function usePlatformTenants() {
       sender_id?: string;
       additional_credits?: number;
     }) => {
-      const { data, error } = await supabase.functions.invoke('tenant-management', {
+      const { data: result, error } = await supabase.functions.invoke('tenant-management', {
         body: { ...tenantData, action: 'create' },
       });
 
-      if (error) throw error;
-      return data;
+      if (error) {
+        throw new Error(error.message);
+      }
+
+      if (!result?.success) {
+        const errorMessage = result?.error || 'Unknown error occurred';
+        const failedAt = result?.failed_at || 'unknown';
+        
+        // Construct detailed error message
+        let detailedError = errorMessage;
+        if (failedAt === 'validation') {
+          detailedError = `Validation Error: ${errorMessage}`;
+        } else if (failedAt === 'user_creation') {
+          detailedError = `User Creation Failed: ${errorMessage}`;
+        }
+        
+        throw new Error(detailedError);
+      }
+
+      return result;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['platform-tenants'] });
       toast.success('Tenant created successfully');
     },
-    onError: (error: any) => {
+    onError: (error: Error) => {
+      console.error('Tenant creation error:', error);
       toast.error(error.message || 'Failed to create tenant');
     },
   });

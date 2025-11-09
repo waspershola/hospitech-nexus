@@ -12,8 +12,9 @@ import { PlatformPaymentProvidersTab } from './tabs/PlatformPaymentProvidersTab'
 import { PlatformFeatureFlagsTab } from './tabs/PlatformFeatureFlagsTab';
 import { PlatformNavigationTab } from './tabs/PlatformNavigationTab';
 import { PlatformBillingTab } from './tabs/PlatformBillingTab';
+import { PlatformDatabaseCleanupTab } from './tabs/PlatformDatabaseCleanupTab';
 import DeletedTenantsView from '@/components/platform/DeletedTenantsView';
-import { Server, Users, ShoppingCart, CreditCard, Shield, MessageSquare, Mail, Flag, Navigation2, Receipt, Trash2 } from 'lucide-react';
+import { Server, Users, ShoppingCart, CreditCard, Shield, MessageSquare, Mail, Flag, Navigation2, Receipt, Trash2, Database } from 'lucide-react';
 
 export default function PlatformDashboard() {
   const [searchParams] = useSearchParams();
@@ -74,6 +75,10 @@ export default function PlatformDashboard() {
             <Receipt className="h-4 w-4" />
             Billing
           </TabsTrigger>
+          <TabsTrigger value="cleanup" className="gap-2">
+            <Database className="h-4 w-4" />
+            DB Cleanup
+          </TabsTrigger>
           <TabsTrigger value="marketplace" className="gap-2">
             <ShoppingCart className="h-4 w-4" />
             Marketplace
@@ -122,6 +127,10 @@ export default function PlatformDashboard() {
 
         <TabsContent value="billing">
           <PlatformBillingTab />
+        </TabsContent>
+
+        <TabsContent value="cleanup">
+          <PlatformDatabaseCleanupTab />
         </TabsContent>
 
         <TabsContent value="marketplace">
