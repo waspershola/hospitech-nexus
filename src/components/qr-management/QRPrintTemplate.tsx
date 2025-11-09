@@ -1,5 +1,5 @@
 import { useRef } from 'react';
-import QRCode from 'qrcode.react';
+import { QRCodeSVG } from 'qrcode.react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Printer, Download } from 'lucide-react';
@@ -12,7 +12,7 @@ interface QRPrintTemplateProps {
     display_name: string;
     scope: string;
     assigned_to: string;
-    room?: { number: string };
+    room_id?: string | null;
   };
   branding?: {
     hotel_name?: string;
@@ -96,12 +96,12 @@ export default function QRPrintTemplate({
               <h2 className="text-3xl font-display font-bold" style={{ color: primaryColor }}>
                 {qrCode.display_name}
               </h2>
-              {qrCode.room && (
-                <p className="text-xl text-muted-foreground">Room {qrCode.room.number}</p>
+              {qrCode.room_id && (
+                <p className="text-xl text-muted-foreground">Room {qrCode.room_id}</p>
               )}
             </div>
             <div className="bg-white p-4 rounded-lg">
-              <QRCode
+              <QRCodeSVG
                 id={'qr-canvas-' + qrCode.id}
                 value={qrUrl}
                 size={180}
@@ -119,7 +119,7 @@ export default function QRPrintTemplate({
         return (
           <div className="w-[300px] h-[300px] bg-background border-2 border-border rounded-full p-6 flex flex-col items-center justify-center">
             <div className="bg-white p-3 rounded-lg mb-3">
-              <QRCode
+              <QRCodeSVG
                 id={'qr-canvas-' + qrCode.id}
                 value={qrUrl}
                 size={160}
@@ -128,7 +128,7 @@ export default function QRPrintTemplate({
               />
             </div>
             <p className="text-xs font-semibold text-center" style={{ color: primaryColor }}>
-              {qrCode.room ? `Room ${qrCode.room.number}` : qrCode.scope.toUpperCase()}
+              {qrCode.room_id ? `Room ${qrCode.room_id}` : qrCode.scope.toUpperCase()}
             </p>
           </div>
         );
@@ -146,12 +146,12 @@ export default function QRPrintTemplate({
               <h2 className="text-4xl text-foreground">
                 {qrCode.display_name}
               </h2>
-              {qrCode.room && (
-                <p className="text-3xl text-muted-foreground">Room {qrCode.room.number}</p>
+              {qrCode.room_id && (
+                <p className="text-3xl text-muted-foreground">Room {qrCode.room_id}</p>
               )}
             </div>
             <div className="bg-white p-8 rounded-2xl shadow-xl">
-              <QRCode
+              <QRCodeSVG
                 id={'qr-canvas-' + qrCode.id}
                 value={qrUrl}
                 size={400}
@@ -183,15 +183,15 @@ export default function QRPrintTemplate({
               <h2 className="text-2xl font-display font-bold" style={{ color: primaryColor }}>
                 {qrCode.display_name}
               </h2>
-              {qrCode.room && (
-                <p className="text-xl text-muted-foreground">Room {qrCode.room.number}</p>
+              {qrCode.room_id && (
+                <p className="text-xl text-muted-foreground">Room {qrCode.room_id}</p>
               )}
               <p className="text-sm text-muted-foreground capitalize">
                 {qrCode.scope.replace('_', ' ')} Services
               </p>
             </div>
             <div className="bg-white p-6 rounded-xl shadow-lg">
-              <QRCode
+              <QRCodeSVG
                 id={'qr-canvas-' + qrCode.id}
                 value={qrUrl}
                 size={220}

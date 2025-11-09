@@ -95,7 +95,7 @@ export default function QRPrintables() {
                   {qrCodes?.map(qr => (
                     <SelectItem key={qr.id} value={qr.id}>
                       {qr.display_name}
-                      {qr.room && ` - Room ${qr.room.number}`}
+                      {qr.room_id && ` - Room ${qr.room_id}`}
                       {` (${qr.scope})`}
                     </SelectItem>
                   ))}
@@ -163,8 +163,8 @@ export default function QRPrintables() {
                   <p><strong>Name:</strong> {selectedQRCode.display_name}</p>
                   <p><strong>Scope:</strong> {selectedQRCode.scope}</p>
                   <p><strong>Assigned to:</strong> {selectedQRCode.assigned_to}</p>
-                  {selectedQRCode.room && (
-                    <p><strong>Room:</strong> {selectedQRCode.room.number}</p>
+                  {selectedQRCode.room_id && (
+                    <p><strong>Room:</strong> {selectedQRCode.room_id}</p>
                   )}
                 </div>
               </div>
