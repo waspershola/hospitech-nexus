@@ -23,6 +23,7 @@ export function usePlatformProviders() {
       provider_type: string;
       api_key_encrypted: string;
       api_secret_encrypted?: string;
+      default_sender_id?: string;
       config?: any;
       is_active: boolean;
     }) => {
@@ -54,6 +55,7 @@ export function usePlatformProviders() {
         provider_type: string;
         api_key_encrypted: string;
         api_secret_encrypted: string;
+        default_sender_id: string;
         config: any;
         is_active: boolean;
       }>;

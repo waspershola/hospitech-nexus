@@ -165,7 +165,13 @@ serve(async (req) => {
             tenant_id,
           },
         });
-        deliveryResult = { success: smsData?.success || false, method: 'sms', error: smsError?.message || smsData?.error };
+        
+        if (smsError || !smsData?.success) {
+          console.error('❌ SMS delivery failed during user creation:', smsError || smsData?.error);
+          throw new Error(`Failed to send SMS: ${smsData?.error || smsError?.message || 'Unknown error'}`);
+        }
+        
+        deliveryResult = { success: true, method: 'sms', provider: smsData.provider, message_id: smsData.message_id };
       } else if (actualDeliveryMethod === 'manual') {
         deliveryResult = { success: true, method: 'manual', password: tempPassword };
       }
@@ -352,7 +358,7 @@ serve(async (req) => {
         });
         deliveryResult = { success: !resetError, method: 'email' };
       } else if (actualDeliveryMethod === 'sms' && userData.user.phone) {
-        const { data: smsData } = await supabaseAdmin.functions.invoke('send-password-sms', {
+        const { data: smsData, error: smsError } = await supabaseAdmin.functions.invoke('send-password-sms', {
           body: {
             phone: userData.user.phone,
             password: tempPassword,
@@ -363,7 +369,13 @@ serve(async (req) => {
             tenant_id,
           },
         });
-        deliveryResult = { success: smsData?.success, method: 'sms', error: smsData?.error };
+        
+        if (smsError || !smsData?.success) {
+          console.error('❌ SMS delivery failed during password reset:', smsError || smsData?.error);
+          throw new Error(`Failed to send SMS: ${smsData?.error || smsError?.message || 'Unknown error'}`);
+        }
+        
+        deliveryResult = { success: true, method: 'sms', provider: smsData.provider, message_id: smsData.message_id };
       } else if (actualDeliveryMethod === 'manual') {
         deliveryResult = { success: true, method: 'manual', password: tempPassword };
       }

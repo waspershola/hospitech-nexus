@@ -168,7 +168,7 @@ serve(async (req) => {
     if (!providerConfig) {
       const { data: defaultProvider } = await supabase
         .from('platform_sms_providers')
-        .select('id, provider_type, api_key_encrypted, api_secret_encrypted, is_active')
+        .select('id, provider_type, api_key_encrypted, api_secret_encrypted, default_sender_id, is_active')
         .eq('is_active', true)
         .order('created_at', { ascending: true })
         .limit(1)
@@ -176,7 +176,8 @@ serve(async (req) => {
 
       if (defaultProvider) {
         providerConfig = defaultProvider;
-        console.log('Using default platform SMS provider:', providerConfig.provider_type);
+        senderId = defaultProvider.default_sender_id || 'HotelMgmt';
+        console.log('Using default platform SMS provider:', providerConfig.provider_type, 'Sender ID:', senderId);
       }
     }
 
@@ -229,40 +230,57 @@ serve(async (req) => {
       error: result.error 
     });
 
-    // Log delivery attempt to password_delivery_log
+    // Log delivery attempt to password_delivery_log (ALWAYS LOG)
     if (user_id) {
-      await supabase.from('password_delivery_log').insert({
-        user_id,
-        delivery_method: 'sms',
-        delivered_by: delivered_by || null,
-        delivery_status: result.success ? 'sent' : 'failed',
-        error_message: result.success ? null : result.error,
-        metadata: {
-          phone: formattedPhone,
-          user_type,
-          provider: providerConfig.provider_type,
-          message_id: result.messageId || null,
-          platform_provider_id: providerConfig.id,
-        },
-      });
+      try {
+        const { error: logError } = await supabase.from('password_delivery_log').insert({
+          user_id,
+          delivery_method: 'sms',
+          delivered_by: delivered_by || null,
+          delivery_status: result.success ? 'sent' : 'failed',
+          error_message: result.success ? null : result.error,
+          metadata: {
+            phone: formattedPhone,
+            user_type,
+            provider: providerConfig.provider_type,
+            message_id: result.messageId || null,
+            platform_provider_id: providerConfig.id,
+            sender_id: senderId,
+          },
+        });
+
+        if (logError) {
+          console.error('❌ Failed to log password delivery:', logError);
+        } else {
+          console.log('✅ Password delivery logged successfully');
+        }
+      } catch (logErr) {
+        console.error('❌ Exception while logging password delivery:', logErr);
+      }
     }
 
     // Log to platform audit stream
     if (tenant_id) {
-      await supabase.from('platform_audit_stream').insert({
-        actor_id: '00000000-0000-0000-0000-000000000000',
-        action: 'password_sms_sent',
-        resource_type: 'sms',
-        resource_id: user_id || null,
-        payload: {
-          tenant_id,
-          recipient: formattedPhone,
-          user_type,
-          status: result.success ? 'sent' : 'failed',
-          provider: providerConfig.provider_type,
-          source: 'password_reset',
-        },
-      });
+      try {
+        await supabase.from('platform_audit_stream').insert({
+          actor_id: '00000000-0000-0000-0000-000000000000',
+          action: 'password_sms_sent',
+          resource_type: 'sms',
+          resource_id: user_id || null,
+          payload: {
+            tenant_id,
+            recipient: formattedPhone,
+            user_type,
+            status: result.success ? 'sent' : 'failed',
+            provider: providerConfig.provider_type,
+            source: 'password_reset',
+            sender_id: senderId,
+            error: result.error,
+          },
+        });
+      } catch (auditErr) {
+        console.error('❌ Failed to log to audit stream:', auditErr);
+      }
     }
 
     if (!result.success) {

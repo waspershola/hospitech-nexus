@@ -17,6 +17,7 @@ export function PlatformProvidersTab() {
     provider_type: 'twilio',
     api_key_encrypted: '',
     api_secret_encrypted: '',
+    default_sender_id: '',
     is_active: true,
   });
 
@@ -28,6 +29,7 @@ export function PlatformProvidersTab() {
       provider_type: 'twilio',
       api_key_encrypted: '',
       api_secret_encrypted: '',
+      default_sender_id: '',
       is_active: true,
     });
   };
@@ -102,6 +104,23 @@ export function PlatformProvidersTab() {
                 </div>
               )}
 
+              {formData.provider_type === 'termii' && (
+                <div className="space-y-2">
+                  <Label>Sender ID (Registered with Termii)</Label>
+                  <Input
+                    value={formData.default_sender_id}
+                    onChange={(e) =>
+                      setFormData({ ...formData, default_sender_id: e.target.value })
+                    }
+                    placeholder="e.g., HotelMgmt"
+                    required
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    Enter your pre-registered Termii Sender ID
+                  </p>
+                </div>
+              )}
+
               <div className="flex items-center justify-between">
                 <Label>Active</Label>
                 <Switch
@@ -153,8 +172,13 @@ export function PlatformProvidersTab() {
               </div>
             </CardHeader>
             <CardContent>
-              <div className="text-sm text-muted-foreground">
-                API Key: {provider.api_key_encrypted.substring(0, 12)}...
+              <div className="text-sm text-muted-foreground space-y-1">
+                <div>API Key: {provider.api_key_encrypted.substring(0, 12)}...</div>
+                {provider.default_sender_id && (
+                  <div className="flex items-center gap-2">
+                    Sender ID: <Badge variant="outline">{provider.default_sender_id}</Badge>
+                  </div>
+                )}
               </div>
             </CardContent>
           </Card>
