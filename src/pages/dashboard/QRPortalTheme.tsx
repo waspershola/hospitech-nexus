@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { useAuth } from '@/contexts/AuthContext';
 import { useConfigStore } from '@/stores/configStore';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
@@ -55,17 +56,30 @@ const THEME_OPTIONS = [
 ];
 
 export default function QRPortalTheme() {
+  const { tenantId } = useAuth();
   const configurations = useConfigStore(state => state.configurations);
   const hotelMeta = useConfigStore(state => state.hotelMeta);
   const branding = useConfigStore(state => state.branding);
   const updateBranding = useConfigStore(state => state.updateBranding);
   const saveBranding = useConfigStore(state => state.saveBranding);
+  const setTenantId = useConfigStore(state => state.setTenantId);
+  const loadAllConfig = useConfigStore(state => state.loadAllConfig);
+  const isLoading = useConfigStore(state => state.isLoading);
   const hasUnsaved = useConfigStore(state => state.unsavedChanges.includes('branding'));
   const error = useConfigStore(state => state.sectionErrors.branding);
   const lastSaved = useConfigStore(state => state.sectionLastSaved.branding);
   const general = configurations.general || {};
 
   const [logoPreview, setLogoPreview] = useState<string | null>(branding.logo_url || null);
+
+  // Initialize tenant ID and load configuration
+  useEffect(() => {
+    if (tenantId) {
+      console.log('🎨 QRPortalTheme: Initializing with tenantId:', tenantId);
+      setTenantId(tenantId);
+      loadAllConfig(tenantId);
+    }
+  }, [tenantId, setTenantId, loadAllConfig]);
 
   const handleChange = (field: string, value: any) => {
     updateBranding({ [field]: value });
@@ -94,9 +108,30 @@ export default function QRPortalTheme() {
   };
 
   const handleSave = async () => {
-    await saveBranding();
-    toast.success('Theme settings saved successfully');
+    if (!tenantId) {
+      toast.error('No tenant ID found. Please refresh and try again.');
+      return;
+    }
+    try {
+      await saveBranding();
+      toast.success('Theme settings saved successfully');
+    } catch (error) {
+      console.error('Failed to save theme:', error);
+      toast.error('Failed to save theme settings');
+    }
   };
+
+  // Show loading state while config is loading
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="text-center space-y-4">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto"></div>
+          <p className="text-muted-foreground">Loading theme settings...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6 pb-8">
