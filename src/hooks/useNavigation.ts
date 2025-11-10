@@ -16,6 +16,7 @@ export interface NavigationItem {
   is_active: boolean;
   description?: string;
   metadata?: Record<string, any>;
+  children?: NavigationItem[]; // For hierarchical navigation
 }
 
 /**
@@ -115,7 +116,20 @@ export function useNavigation() {
       
       console.log('✅ [Navigation] Filtered navigation items:', filtered.length);
       console.log('✅ [Navigation] Items:', filtered.map(item => item.name).join(', '));
-      return filtered;
+      
+      // Build hierarchical structure (parent-child relationships)
+      const parentItems = filtered.filter(item => !item.parent_id);
+      const childItems = filtered.filter(item => item.parent_id);
+      
+      const hierarchical = parentItems.map(parent => ({
+        ...parent,
+        children: childItems
+          .filter(child => child.parent_id === parent.id)
+          .sort((a, b) => a.order_index - b.order_index)
+      })).sort((a, b) => a.order_index - b.order_index);
+      
+      console.log('✅ [Navigation] Hierarchical structure:', hierarchical.length, 'parents');
+      return hierarchical;
       } catch (error) {
         console.error('❌ [Navigation] Fatal error:', error);
         throw error;

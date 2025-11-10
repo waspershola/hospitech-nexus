@@ -71,6 +71,10 @@ import QRManagement from "./pages/dashboard/QRManagement";
 import GuestRequestsManagement from "./pages/dashboard/GuestRequestsManagement";
 import QRAnalytics from "./pages/dashboard/QRAnalytics";
 import QRPrintables from "./pages/dashboard/QRPrintables";
+import QRPortalFeatures from "./pages/dashboard/QRPortalFeatures";
+import QRPortalTheme from "./pages/dashboard/QRPortalTheme";
+import WiFiManager from "./pages/dashboard/WiFiManager";
+import MenuManagement from "./pages/dashboard/MenuManagement";
 
 function PlatformGuard({ children }: { children: React.ReactNode }) {
   const { isPlatformAdmin, isLoading } = usePlatformRole();
@@ -130,6 +134,10 @@ const App = () => (
               <Route path="guest-requests" element={<GuestRequestsManagement />} />
               <Route path="qr-analytics" element={<RoleGuard allowedRoles={['owner', 'manager']}><QRAnalytics /></RoleGuard>} />
               <Route path="qr-printables" element={<RoleGuard allowedRoles={['owner', 'manager']}><QRPrintables /></RoleGuard>} />
+              <Route path="qr-portal-features" element={<RoleGuard allowedRoles={['owner', 'manager']}><QRPortalFeatures /></RoleGuard>} />
+              <Route path="qr-portal-theme" element={<RoleGuard allowedRoles={['owner', 'manager']}><QRPortalTheme /></RoleGuard>} />
+              <Route path="wifi-manager" element={<RoleGuard allowedRoles={['owner', 'manager']}><WiFiManager /></RoleGuard>} />
+              <Route path="menu-management" element={<RoleGuard allowedRoles={['owner', 'manager']}><MenuManagement /></RoleGuard>} />
               
           <Route path="settings" element={<Settings />} />
           <Route path="user-roles" element={<RoleGuard allowedRoles={['owner']}><UserRoles /></RoleGuard>} />

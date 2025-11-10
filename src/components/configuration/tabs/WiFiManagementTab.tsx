@@ -9,7 +9,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Switch } from '@/components/ui/switch';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Wifi, Plus, Pencil, Trash2, QrCode, Eye, EyeOff } from 'lucide-react';
@@ -115,6 +115,9 @@ export function WiFiManagementTab() {
                   <DialogTitle>
                     {editingItem ? 'Edit WiFi Credentials' : 'Add WiFi Credentials'}
                   </DialogTitle>
+                  <DialogDescription>
+                    {editingItem ? 'Update the WiFi network details' : 'Add a new WiFi network for guest access'}
+                  </DialogDescription>
                 </DialogHeader>
                 <div className="space-y-4">
                   <div className="space-y-2">
@@ -274,6 +277,9 @@ export function WiFiManagementTab() {
         <DialogContent className="max-w-sm">
           <DialogHeader>
             <DialogTitle>WiFi QR Code - {qrPreview?.location}</DialogTitle>
+            <DialogDescription>
+              Scan this QR code to automatically connect to the WiFi network
+            </DialogDescription>
           </DialogHeader>
           {qrPreview && (
             <div className="flex flex-col items-center gap-4 py-4">

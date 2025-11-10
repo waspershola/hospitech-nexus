@@ -1,9 +1,10 @@
-import { Hotel } from 'lucide-react';
+import { Hotel, ChevronDown } from 'lucide-react';
 import * as Icons from 'lucide-react';
 import { NavLink } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { useNavigation } from '@/hooks/useNavigation';
 import { Skeleton } from '@/components/ui/skeleton';
+import { useState } from 'react';
 import {
   Sidebar,
   SidebarContent,
@@ -13,13 +14,18 @@ import {
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
+  SidebarMenuSub,
+  SidebarMenuSubItem,
+  SidebarMenuSubButton,
   SidebarHeader,
   useSidebar,
 } from '@/components/ui/sidebar';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 
 export function AppSidebar() {
   const { tenantName } = useAuth();
   const { open } = useSidebar();
+  const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({});
   
   // Use unified navigation hook for all users (platform and tenant)
   const { data: navItems, isLoading, error } = useNavigation();
@@ -75,6 +81,57 @@ export function AppSidebar() {
               <SidebarMenu>
                 {navItems.map((item) => {
                   const IconComponent = Icons[item.icon as keyof typeof Icons] as any;
+                  
+                  // Parent item with children (collapsible group)
+                  if (item.children && item.children.length > 0) {
+                    const isOpen = openGroups[item.id] ?? true;
+                    
+                    return (
+                      <Collapsible
+                        key={item.id}
+                        open={isOpen}
+                        onOpenChange={(open) => setOpenGroups(prev => ({ ...prev, [item.id]: open }))}
+                      >
+                        <SidebarMenuItem>
+                          <CollapsibleTrigger asChild>
+                            <SidebarMenuButton tooltip={item.name}>
+                              {IconComponent && <IconComponent className="h-5 w-5 shrink-0" />}
+                              {open && <span>{item.name}</span>}
+                              {open && <ChevronDown className={`ml-auto h-4 w-4 transition-transform ${isOpen ? 'rotate-180' : ''}`} />}
+                            </SidebarMenuButton>
+                          </CollapsibleTrigger>
+                          <CollapsibleContent>
+                            <SidebarMenuSub>
+                              {item.children.map((child) => {
+                                const ChildIcon = Icons[child.icon as keyof typeof Icons] as any;
+                                return (
+                                  <SidebarMenuSubItem key={child.id}>
+                                    <SidebarMenuSubButton asChild>
+                                      <NavLink
+                                        to={child.path}
+                                        className={({ isActive }) =>
+                                          `flex items-center gap-3 px-3 py-2 rounded-xl transition-colors ${
+                                            isActive
+                                              ? 'bg-sidebar-primary/20 text-sidebar-primary font-semibold'
+                                              : 'text-sidebar-foreground hover:bg-sidebar-accent/20 hover:text-sidebar-primary'
+                                          }`
+                                        }
+                                      >
+                                        {ChildIcon && <ChildIcon className="h-4 w-4 shrink-0" />}
+                                        {open && <span>{child.name}</span>}
+                                      </NavLink>
+                                    </SidebarMenuSubButton>
+                                  </SidebarMenuSubItem>
+                                );
+                              })}
+                            </SidebarMenuSub>
+                          </CollapsibleContent>
+                        </SidebarMenuItem>
+                      </Collapsible>
+                    );
+                  }
+                  
+                  // Regular nav item (no children)
                   return (
                     <SidebarMenuItem key={item.id}>
                       <SidebarMenuButton asChild tooltip={item.name}>

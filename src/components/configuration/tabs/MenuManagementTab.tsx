@@ -10,7 +10,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Switch } from '@/components/ui/switch';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 import { Badge } from '@/components/ui/badge';
 import { UtensilsCrossed, Plus, Pencil, Trash2, Image as ImageIcon, Upload, Loader2 } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
@@ -161,6 +161,9 @@ export function MenuManagementTab() {
                   <DialogTitle>
                     {editingItem ? 'Edit Menu Item' : 'Add Menu Item'}
                   </DialogTitle>
+                  <DialogDescription>
+                    {editingItem ? 'Update menu item details and availability' : 'Create a new menu item for your digital menu'}
+                  </DialogDescription>
                 </DialogHeader>
                 <div className="space-y-4">
                   <div className="grid grid-cols-2 gap-4">

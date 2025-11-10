@@ -67,7 +67,9 @@ export function useCheckoutReminderScheduler() {
       return () => clearInterval(interval2h);
     }, ms2h);
 
-    console.log(`Checkout reminders scheduled: 24h in ${Math.round(ms24h / 1000 / 60)} min, 2h in ${Math.round(ms2h / 1000 / 60)} min`);
+    console.log(`✅ [Checkout Reminders] Scheduled:`);
+    console.log(`   • 24h reminder at: ${next24h.toLocaleString()} (in ${Math.round(ms24h / 60000)} minutes)`);
+    console.log(`   • 2h reminder at: ${next2h.toLocaleString()} (in ${Math.round(ms2h / 60000)} minutes)`);
 
     return () => {
       clearTimeout(timer24h);
