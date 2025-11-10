@@ -5322,6 +5322,7 @@ export type Database = {
       wifi_credentials: {
         Row: {
           created_at: string | null
+          display_order: number | null
           id: string
           instructions: string | null
           is_active: boolean | null
@@ -5333,6 +5334,7 @@ export type Database = {
         }
         Insert: {
           created_at?: string | null
+          display_order?: number | null
           id?: string
           instructions?: string | null
           is_active?: boolean | null
@@ -5344,6 +5346,7 @@ export type Database = {
         }
         Update: {
           created_at?: string | null
+          display_order?: number | null
           id?: string
           instructions?: string | null
           is_active?: boolean | null
