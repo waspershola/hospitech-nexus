@@ -1631,6 +1631,74 @@ export type Database = {
           },
         ]
       }
+      laundry_items: {
+        Row: {
+          approved_at: string | null
+          approved_by: string | null
+          category: string
+          created_at: string | null
+          created_by: string | null
+          currency: string | null
+          display_order: number | null
+          id: string
+          image_url: string | null
+          is_available: boolean | null
+          item_name: string
+          price: number
+          service_type: string
+          status: string | null
+          tenant_id: string
+          turnaround_time: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          approved_at?: string | null
+          approved_by?: string | null
+          category: string
+          created_at?: string | null
+          created_by?: string | null
+          currency?: string | null
+          display_order?: number | null
+          id?: string
+          image_url?: string | null
+          is_available?: boolean | null
+          item_name: string
+          price: number
+          service_type: string
+          status?: string | null
+          tenant_id: string
+          turnaround_time?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          approved_at?: string | null
+          approved_by?: string | null
+          category?: string
+          created_at?: string | null
+          created_by?: string | null
+          currency?: string | null
+          display_order?: number | null
+          id?: string
+          image_url?: string | null
+          is_available?: boolean | null
+          item_name?: string
+          price?: number
+          service_type?: string
+          status?: string | null
+          tenant_id?: string
+          turnaround_time?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "laundry_items_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       menu_items: {
         Row: {
           approved_at: string | null
@@ -4107,6 +4175,74 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "sms_templates_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      spa_services: {
+        Row: {
+          approved_at: string | null
+          approved_by: string | null
+          category: string
+          created_at: string | null
+          created_by: string | null
+          currency: string | null
+          description: string | null
+          display_order: number | null
+          duration: string | null
+          id: string
+          image_url: string | null
+          is_available: boolean | null
+          price: number
+          service_name: string
+          status: string | null
+          tenant_id: string
+          updated_at: string | null
+        }
+        Insert: {
+          approved_at?: string | null
+          approved_by?: string | null
+          category: string
+          created_at?: string | null
+          created_by?: string | null
+          currency?: string | null
+          description?: string | null
+          display_order?: number | null
+          duration?: string | null
+          id?: string
+          image_url?: string | null
+          is_available?: boolean | null
+          price: number
+          service_name: string
+          status?: string | null
+          tenant_id: string
+          updated_at?: string | null
+        }
+        Update: {
+          approved_at?: string | null
+          approved_by?: string | null
+          category?: string
+          created_at?: string | null
+          created_by?: string | null
+          currency?: string | null
+          description?: string | null
+          display_order?: number | null
+          duration?: string | null
+          id?: string
+          image_url?: string | null
+          is_available?: boolean | null
+          price?: number
+          service_name?: string
+          status?: string | null
+          tenant_id?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "spa_services_tenant_id_fkey"
             columns: ["tenant_id"]
             isOneToOne: false
             referencedRelation: "tenants"
