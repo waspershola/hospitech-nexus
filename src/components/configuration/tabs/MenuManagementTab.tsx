@@ -17,6 +17,7 @@ import { Card, CardContent } from '@/components/ui/card';
 
 const CATEGORIES = ['breakfast', 'appetizers', 'main_course', 'desserts', 'beverages', 'sides'];
 const DIETARY_TAGS = ['vegetarian', 'vegan', 'gluten-free', 'dairy-free', 'spicy', 'halal', 'kosher'];
+const MENU_TYPES = ['restaurant', 'room_service', 'bar', 'breakfast'];
 
 export function MenuManagementTab() {
   const { tenantId } = useAuth();
@@ -36,6 +37,7 @@ export function MenuManagementTab() {
     price: 0,
     currency: 'NGN',
     category: 'main_course',
+    menu_type: 'restaurant',
     image_url: '',
     is_available: true,
     preparation_time: '',
@@ -98,6 +100,7 @@ export function MenuManagementTab() {
       price: 0,
       currency: 'NGN',
       category: 'main_course',
+      menu_type: 'restaurant',
       image_url: '',
       is_available: true,
       preparation_time: '',
@@ -211,6 +214,28 @@ export function MenuManagementTab() {
                         </SelectContent>
                       </Select>
                     </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="menu_type">Menu Type *</Label>
+                    <Select
+                      value={formData.menu_type || 'restaurant'}
+                      onValueChange={(value) => setFormData(prev => ({ ...prev, menu_type: value }))}
+                    >
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {MENU_TYPES.map(type => (
+                          <SelectItem key={type} value={type} className="capitalize">
+                            {type.replace('_', ' ')}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <p className="text-xs text-muted-foreground">
+                      Restaurant: Dine-in menu | Room Service: In-room delivery | Bar: Bar menu | Breakfast: Breakfast menu
+                    </p>
                   </div>
 
                   <div className="space-y-2">
