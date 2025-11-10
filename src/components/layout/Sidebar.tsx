@@ -3,6 +3,7 @@ import * as Icons from 'lucide-react';
 import { NavLink } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { useNavigation } from '@/hooks/useNavigation';
+import { useRequestNotificationCount } from '@/hooks/useRequestNotificationCount';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useState } from 'react';
 import {
@@ -26,6 +27,7 @@ export function AppSidebar() {
   const { tenantName } = useAuth();
   const { open } = useSidebar();
   const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({});
+  const notificationCount = useRequestNotificationCount();
   
   // Use unified navigation hook for all users (platform and tenant)
   const { data: navItems, isLoading, error } = useNavigation();
@@ -107,7 +109,7 @@ export function AppSidebar() {
                                 return (
                                   <SidebarMenuSubItem key={child.id}>
                                     <SidebarMenuSubButton asChild>
-                                      <NavLink
+                                       <NavLink
                                         to={child.path}
                                         className={({ isActive }) =>
                                           `flex items-center gap-3 px-3 py-2 rounded-xl transition-colors ${
@@ -118,7 +120,16 @@ export function AppSidebar() {
                                         }
                                       >
                                         {ChildIcon && <ChildIcon className="h-4 w-4 shrink-0" />}
-                                        {open && <span>{child.name}</span>}
+                                        {open && (
+                                          <span className="flex items-center justify-between flex-1">
+                                            <span>{child.name}</span>
+                                            {child.path === '/dashboard/department-requests' && notificationCount > 0 && (
+                                              <span className="ml-2 flex h-5 min-w-[20px] items-center justify-center rounded-full bg-red-500 px-1.5 text-xs font-medium text-white">
+                                                {notificationCount > 99 ? '99+' : notificationCount}
+                                              </span>
+                                            )}
+                                          </span>
+                                        )}
                                       </NavLink>
                                     </SidebarMenuSubButton>
                                   </SidebarMenuSubItem>
@@ -147,7 +158,16 @@ export function AppSidebar() {
                           }
                         >
                           {IconComponent && <IconComponent className="h-5 w-5 shrink-0" />}
-                          {open && <span>{item.name}</span>}
+                          {open && (
+                            <span className="flex items-center justify-between flex-1">
+                              <span>{item.name}</span>
+                              {item.path === '/dashboard/department-requests' && notificationCount > 0 && (
+                                <span className="ml-2 flex h-5 min-w-[20px] items-center justify-center rounded-full bg-red-500 px-1.5 text-xs font-medium text-white">
+                                  {notificationCount > 99 ? '99+' : notificationCount}
+                                </span>
+                              )}
+                            </span>
+                          )}
                         </NavLink>
                       </SidebarMenuButton>
                     </SidebarMenuItem>

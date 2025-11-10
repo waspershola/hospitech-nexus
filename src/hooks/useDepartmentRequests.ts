@@ -4,6 +4,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
 import { useNotificationSound } from './useNotificationSound';
+import { calculateEscalatedPriority, type Priority } from '@/utils/priorityEscalation';
 
 export interface DepartmentRequest {
   id: string;
@@ -24,6 +25,8 @@ export interface DepartmentRequest {
   completed_at?: string;
   room?: { number: string };
   guest?: { name: string };
+  escalated_priority?: Priority;
+  is_escalated?: boolean;
 }
 
 export interface DepartmentMetrics {
@@ -65,7 +68,22 @@ export function useDepartmentRequests(department?: string) {
       const { data, error } = await query;
       
       if (error) throw error;
-      return (data || []) as unknown as DepartmentRequest[];
+      
+      // Calculate escalated priority for each request
+      const requestsWithEscalation = (data || []).map(request => {
+        const escalatedPriority = calculateEscalatedPriority(
+          request.priority as Priority,
+          request.created_at
+        );
+        
+        return {
+          ...request,
+          escalated_priority: escalatedPriority,
+          is_escalated: escalatedPriority !== request.priority,
+        };
+      });
+
+      return requestsWithEscalation as unknown as DepartmentRequest[];
     },
     enabled: !!tenantId,
   });

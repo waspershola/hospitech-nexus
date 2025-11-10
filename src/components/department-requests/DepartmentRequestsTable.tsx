@@ -18,8 +18,9 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { MoreHorizontal, UserPlus, MessageSquare, CheckCircle, XCircle, Clock } from 'lucide-react';
+import { MoreHorizontal, UserPlus, MessageSquare, CheckCircle, XCircle, Clock, TrendingUp } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
+import { getPriorityColor } from '@/utils/priorityEscalation';
 
 interface DepartmentRequestsTableProps {
   requests: DepartmentRequest[];
@@ -118,9 +119,16 @@ export function DepartmentRequestsTable({
                   </div>
                 </TableCell>
                 <TableCell>
-                  <Badge className={PRIORITY_COLORS[request.priority] || ''}>
-                    {request.priority}
-                  </Badge>
+                  <div className="flex items-center gap-2">
+                    <Badge className={getPriorityColor(request.escalated_priority || request.priority as any)}>
+                      {request.escalated_priority || request.priority}
+                    </Badge>
+                    {request.is_escalated && (
+                      <span title="Priority auto-escalated based on time elapsed">
+                        <TrendingUp className="h-4 w-4 text-orange-500" />
+                      </span>
+                    )}
+                  </div>
                 </TableCell>
                 <TableCell>
                   <Badge className={STATUS_COLORS[request.status] || ''}>
