@@ -74,12 +74,21 @@ export default function QRPortalTheme() {
 
   // Initialize tenant ID and load configuration
   useEffect(() => {
+    console.log('🎨 QRPortalTheme: tenantId from auth:', tenantId);
     if (tenantId) {
-      console.log('🎨 QRPortalTheme: Initializing with tenantId:', tenantId);
+      console.log('🎨 QRPortalTheme: Setting tenantId in store and loading config');
       setTenantId(tenantId);
       loadAllConfig(tenantId);
+    } else {
+      console.warn('🎨 QRPortalTheme: No tenantId available from auth context');
     }
   }, [tenantId, setTenantId, loadAllConfig]);
+
+  // Debug: Log store state
+  useEffect(() => {
+    const storeTenantId = useConfigStore.getState().tenantId;
+    console.log('🎨 QRPortalTheme: Store tenantId:', storeTenantId);
+  }, [branding]);
 
   const handleChange = (field: string, value: any) => {
     updateBranding({ [field]: value });
@@ -108,10 +117,25 @@ export default function QRPortalTheme() {
   };
 
   const handleSave = async () => {
+    console.log('🎨 QRPortalTheme: handleSave called');
+    console.log('🎨 QRPortalTheme: tenantId from auth:', tenantId);
+    console.log('🎨 QRPortalTheme: tenantId from store:', useConfigStore.getState().tenantId);
+    
     if (!tenantId) {
+      console.error('🎨 QRPortalTheme: No tenantId from auth context!');
       toast.error('No tenant ID found. Please refresh and try again.');
       return;
     }
+    
+    // Ensure store has the tenant ID
+    const storeTenantId = useConfigStore.getState().tenantId;
+    if (!storeTenantId) {
+      console.log('🎨 QRPortalTheme: Setting tenantId in store before save');
+      setTenantId(tenantId);
+      // Wait a moment for state to update
+      await new Promise(resolve => setTimeout(resolve, 100));
+    }
+    
     try {
       await saveBranding();
       toast.success('Theme settings saved successfully');
@@ -121,13 +145,15 @@ export default function QRPortalTheme() {
     }
   };
 
-  // Show loading state while config is loading
-  if (isLoading) {
+  // Show loading state while config is loading or tenant ID not ready
+  if (isLoading || !tenantId) {
     return (
       <div className="flex items-center justify-center min-h-screen">
         <div className="text-center space-y-4">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto"></div>
-          <p className="text-muted-foreground">Loading theme settings...</p>
+          <p className="text-muted-foreground">
+            {!tenantId ? 'Waiting for authentication...' : 'Loading theme settings...'}
+          </p>
         </div>
       </div>
     );
