@@ -36,19 +36,17 @@ serve(async (req) => {
 
     const supabase = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
-      Deno.env.get('SUPABASE_ANON_KEY') ?? '',
-      {
-        global: {
-          headers: { Authorization: authHeader },
-        },
-      }
+      Deno.env.get('SUPABASE_ANON_KEY') ?? ''
     );
 
-    // Verify user authentication
+    // Extract JWT token from Authorization header
+    const token = authHeader.replace('Bearer ', '');
+
+    // Verify user authentication by passing token explicitly
     const {
       data: { user },
       error: authError,
-    } = await supabase.auth.getUser();
+    } = await supabase.auth.getUser(token);
 
     if (authError || !user) {
       console.error('[qr-generate] Authentication failed:', authError);
