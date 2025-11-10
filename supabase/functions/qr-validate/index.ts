@@ -75,7 +75,7 @@ serve(async (req) => {
     // Fetch tenant branding for portal customization
     const { data: branding } = await supabase
       .from('hotel_branding')
-      .select('primary_color, logo_url, favicon_url')
+      .select('primary_color, logo_url, favicon_url, qr_theme, qr_primary_color, qr_accent_color')
       .eq('tenant_id', qrData.tenant_id)
       .single();
 

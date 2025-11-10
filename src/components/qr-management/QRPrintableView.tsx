@@ -146,11 +146,11 @@ export function QRPrintableView({
       </div>
 
       {/* Professional QR Code Layout */}
-      <Card className="overflow-hidden print:shadow-none print:border-0">
-        <CardContent className="p-0 flex items-center justify-center bg-gradient-to-br from-background to-muted/30">
+      <Card className="overflow-hidden print:shadow-none print:border-0 print:m-0">
+        <CardContent className="p-0 flex items-center justify-center bg-gradient-to-br from-background to-muted/30 print:bg-white print-container">
           <div
             ref={printRef}
-            className="bg-white p-12 flex flex-col items-center justify-center"
+            className="bg-white p-12 flex flex-col items-center justify-center print:mx-auto"
             style={{
               width: `${config.width}px`,
               minHeight: `${config.height}px`,
