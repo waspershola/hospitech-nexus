@@ -4,7 +4,7 @@ import { useConfigStore } from '@/stores/configStore';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card } from '@/components/ui/card';
-import { Save, RotateCcw, Settings, DollarSign, Palette, FileText, Users, Lock, Clock, Mail, Database, Globe, Building2, MessageSquare } from 'lucide-react';
+import { Save, RotateCcw, Settings, DollarSign, Palette, FileText, Users, Lock, Clock, Mail, Database, Globe, Building2, MessageSquare, UtensilsCrossed, Wifi } from 'lucide-react';
 import { toast } from 'sonner';
 import { ConfigurationStatus } from '@/components/configuration/shared/ConfigurationStatus';
 import { GeneralTab } from '@/components/configuration/tabs/GeneralTab';
@@ -18,6 +18,8 @@ import { AuditLogsTab } from '@/components/configuration/tabs/AuditLogsTab';
 import { EmailSettingsTab } from '@/components/configuration/tabs/EmailSettingsTab';
 import { MaintenanceTab } from '@/components/configuration/tabs/MaintenanceTab';
 import { DomainsTab } from '@/components/configuration/tabs/DomainsTab';
+import { MenuManagementTab } from '@/components/configuration/tabs/MenuManagementTab';
+import { WiFiManagementTab } from '@/components/configuration/tabs/WiFiManagementTab';
 
 import { SMSSettingsTab } from '@/components/configuration/tabs/SMSSettingsTab';
 import { useConfigCompleteness } from '@/hooks/useConfigCompleteness';
@@ -30,6 +32,8 @@ const tabs = [
   { id: 'branding', label: 'Branding & Theme', icon: Palette },
   { id: 'meta', label: 'Hotel Profile', icon: Building2 },
   { id: 'domains', label: 'Domains', icon: Globe },
+  { id: 'menu', label: 'Menu Management', icon: UtensilsCrossed },
+  { id: 'wifi', label: 'WiFi Manager', icon: Wifi },
   { id: 'documents', label: 'Documents', icon: FileText },
   { id: 'guest', label: 'Guest Experience', icon: Users },
   { id: 'checkout', label: 'Checkout Policy', icon: Clock },
@@ -239,6 +243,14 @@ export default function ConfigurationCenter() {
 
           <TabsContent value="domains" className="space-y-6 animate-fade-in">
             <DomainsTab />
+          </TabsContent>
+
+          <TabsContent value="menu" className="space-y-6 animate-fade-in">
+            <MenuManagementTab />
+          </TabsContent>
+
+          <TabsContent value="wifi" className="space-y-6 animate-fade-in">
+            <WiFiManagementTab />
           </TabsContent>
 
           <TabsContent value="permissions" className="space-y-6 animate-fade-in">

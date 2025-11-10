@@ -326,6 +326,7 @@ export function QRMenuBrowser() {
                       alt={item.name}
                       className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
                       loading="lazy"
+                      decoding="async"
                     />
                     {item.dietary_tags && item.dietary_tags.length > 0 && (
                       <div className="absolute top-2 left-2 flex gap-1 flex-wrap">

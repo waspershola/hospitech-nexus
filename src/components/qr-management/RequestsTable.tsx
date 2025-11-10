@@ -1,5 +1,5 @@
 import { format } from 'date-fns';
-import { MessageSquare, Clock, CheckCircle2, XCircle } from 'lucide-react';
+import { MessageSquare, Clock, CheckCircle2, XCircle, UtensilsCrossed } from 'lucide-react';
 import {
   Table,
   TableBody,
@@ -23,6 +23,7 @@ interface RequestsTableProps {
   isLoading: boolean;
   onViewChat: (request: any) => void;
   onUpdateStatus: (requestId: string, status: string) => Promise<boolean>;
+  onViewOrder?: (request: any) => void;
 }
 
 export default function RequestsTable({
@@ -30,6 +31,7 @@ export default function RequestsTable({
   isLoading,
   onViewChat,
   onUpdateStatus,
+  onViewOrder,
 }: RequestsTableProps) {
   const getStatusBadge = (status: string) => {
     const config: Record<string, { variant: any; icon: any }> = {
@@ -98,13 +100,23 @@ export default function RequestsTable({
           {requests.map((request) => (
             <TableRow key={request.id}>
               <TableCell>
-                <div>
-                  <div className="font-medium capitalize">
-                    {request.service_category.replace('_', ' ')}
+                <div className="space-y-1">
+                  <div className="flex items-center gap-2">
+                    {request.service_category === 'menu_order' && (
+                      <Badge variant="secondary" className="gap-1">
+                        <UtensilsCrossed className="h-3 w-3" />
+                        Menu Order
+                      </Badge>
+                    )}
+                    <span className="font-medium capitalize">
+                      {request.service_category.replace('_', ' ')}
+                    </span>
                   </div>
                   {request.note && (
                     <div className="text-sm text-muted-foreground line-clamp-1">
-                      {request.note}
+                      {request.service_category === 'housekeeping' 
+                        ? `${JSON.parse(request.note).length} services selected`
+                        : request.note}
                     </div>
                   )}
                 </div>
@@ -145,14 +157,26 @@ export default function RequestsTable({
                 {format(new Date(request.created_at), 'MMM d, h:mm a')}
               </TableCell>
               <TableCell className="text-right">
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => onViewChat(request)}
-                >
-                  <MessageSquare className="h-4 w-4 mr-2" />
-                  Chat
-                </Button>
+                <div className="flex gap-2 justify-end">
+                  {request.service_category === 'menu_order' && onViewOrder && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => onViewOrder(request)}
+                    >
+                      <UtensilsCrossed className="h-4 w-4 mr-2" />
+                      View Order
+                    </Button>
+                  )}
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => onViewChat(request)}
+                  >
+                    <MessageSquare className="h-4 w-4 mr-2" />
+                    Chat
+                  </Button>
+                </div>
               </TableCell>
             </TableRow>
           ))}

@@ -8,6 +8,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Checkbox } from '@/components/ui/checkbox';
 import { ArrowLeft, Send } from 'lucide-react';
 
 export function QRServiceRequestForm() {
@@ -20,17 +21,42 @@ export function QRServiceRequestForm() {
   const [guestContact, setGuestContact] = useState('');
   const [note, setNote] = useState('');
   const [priority, setPriority] = useState<'low' | 'normal' | 'high' | 'urgent'>('normal');
+  const [housekeepingServices, setHousekeepingServices] = useState<string[]>([]);
+
+  const HOUSEKEEPING_SERVICES = [
+    { id: 'room_cleaning', label: 'Room Cleaning (Full Service)' },
+    { id: 'fresh_towels', label: 'Fresh Towels' },
+    { id: 'fresh_linens', label: 'Fresh Bed Linens' },
+    { id: 'toiletries', label: 'Toiletries Refill' },
+    { id: 'minibar', label: 'Minibar Restock' },
+    { id: 'pillows', label: 'Extra Pillows & Blankets' },
+    { id: 'trash', label: 'Trash Removal' },
+    { id: 'vacuum', label: 'Vacuum Cleaning' },
+  ];
+
+  const toggleService = (serviceId: string) => {
+    setHousekeepingServices(prev =>
+      prev.includes(serviceId)
+        ? prev.filter(id => id !== serviceId)
+        : [...prev, serviceId]
+    );
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
     if (!token || !service) return;
 
+    // For housekeeping, use selected services as note
+    const finalNote = service === 'housekeeping' 
+      ? JSON.stringify(housekeepingServices)
+      : note;
+
     const request = await createRequest({
       qr_token: token,
       type: service,
       service_category: service,
-      note,
+      note: finalNote,
       priority,
       guest_name: guestName || 'Guest',
       guest_contact: guestContact,
@@ -107,19 +133,50 @@ export function QRServiceRequestForm() {
                 </Select>
               </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="note">Details</Label>
-                <Textarea
-                  id="note"
-                  placeholder="Describe your request..."
-                  value={note}
-                  onChange={(e) => setNote(e.target.value)}
-                  rows={4}
-                  required
-                />
-              </div>
+              {service === 'housekeeping' ? (
+                <div className="space-y-3">
+                  <Label>Select Services</Label>
+                  <div className="grid gap-3">
+                    {HOUSEKEEPING_SERVICES.map(item => (
+                      <Card
+                        key={item.id}
+                        className={`cursor-pointer transition-all border-2 ${
+                          housekeepingServices.includes(item.id)
+                            ? 'border-accent bg-accent/5'
+                            : 'border-border hover:border-accent/50'
+                        }`}
+                        onClick={() => toggleService(item.id)}
+                      >
+                        <CardContent className="flex items-center gap-3 p-4">
+                          <Checkbox
+                            checked={housekeepingServices.includes(item.id)}
+                            onCheckedChange={() => toggleService(item.id)}
+                          />
+                          <span className="font-medium">{item.label}</span>
+                        </CardContent>
+                      </Card>
+                    ))}
+                  </div>
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  <Label htmlFor="note">Details</Label>
+                  <Textarea
+                    id="note"
+                    placeholder="Describe your request..."
+                    value={note}
+                    onChange={(e) => setNote(e.target.value)}
+                    rows={4}
+                    required
+                  />
+                </div>
+              )}
 
-              <Button type="submit" className="w-full" disabled={isCreating}>
+              <Button 
+                type="submit" 
+                className="w-full" 
+                disabled={isCreating || (service === 'housekeeping' && housekeepingServices.length === 0) || (service !== 'housekeeping' && !note)}
+              >
                 {isCreating ? (
                   'Submitting...'
                 ) : (
