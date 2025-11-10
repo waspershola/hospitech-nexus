@@ -68,6 +68,8 @@ const QRFeedback = lazy(() => import("./components/qr-portal/QRFeedback").then(m
 const QRRedirect = lazy(() => import("./components/qr-portal/QRRedirect").then(m => ({ default: m.QRRedirect })));
 const QRLaundryService = lazy(() => import("./components/qr-portal/QRLaundryService").then(m => ({ default: m.QRLaundryService })));
 const QRSpaBooking = lazy(() => import("./components/qr-portal/QRSpaBooking").then(m => ({ default: m.QRSpaBooking })));
+const QRDiningReservation = lazy(() => import("./components/qr-portal/QRDiningReservation").then(m => ({ default: m.QRDiningReservation })));
+const QRRoomService = lazy(() => import("./components/qr-portal/QRRoomService").then(m => ({ default: m.QRRoomService })));
 
 import QRManagement from "./pages/dashboard/QRManagement";
 import GuestRequestsManagement from "./pages/dashboard/GuestRequestsManagement";
@@ -209,6 +211,16 @@ const App = () => (
             <Route path="/qr/:token/spa" element={
               <Suspense fallback={<div className="min-h-screen flex items-center justify-center"><Loader2 className="h-8 w-8 animate-spin" /></div>}>
                 <QRSpaBooking />
+              </Suspense>
+            } />
+            <Route path="/qr/:token/dining" element={
+              <Suspense fallback={<div className="min-h-screen flex items-center justify-center"><Loader2 className="h-8 w-8 animate-spin" /></div>}>
+                <QRDiningReservation />
+              </Suspense>
+            } />
+            <Route path="/qr/:token/room-service" element={
+              <Suspense fallback={<div className="min-h-screen flex items-center justify-center"><Loader2 className="h-8 w-8 animate-spin" /></div>}>
+                <QRRoomService />
               </Suspense>
             } />
             <Route path="/g/:token" element={

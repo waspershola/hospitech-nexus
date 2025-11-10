@@ -3792,6 +3792,86 @@ export type Database = {
           },
         ]
       }
+      restaurant_reservations: {
+        Row: {
+          cancellation_reason: string | null
+          cancelled_at: string | null
+          completed_at: string | null
+          confirmed_at: string | null
+          confirmed_by: string | null
+          created_at: string | null
+          guest_contact: string | null
+          guest_email: string | null
+          guest_name: string
+          id: string
+          metadata: Json | null
+          number_of_guests: number
+          qr_token: string | null
+          reservation_date: string
+          reservation_time: string
+          seated_at: string | null
+          special_requests: string | null
+          status: string | null
+          table_number: string | null
+          tenant_id: string
+          updated_at: string | null
+        }
+        Insert: {
+          cancellation_reason?: string | null
+          cancelled_at?: string | null
+          completed_at?: string | null
+          confirmed_at?: string | null
+          confirmed_by?: string | null
+          created_at?: string | null
+          guest_contact?: string | null
+          guest_email?: string | null
+          guest_name: string
+          id?: string
+          metadata?: Json | null
+          number_of_guests: number
+          qr_token?: string | null
+          reservation_date: string
+          reservation_time: string
+          seated_at?: string | null
+          special_requests?: string | null
+          status?: string | null
+          table_number?: string | null
+          tenant_id: string
+          updated_at?: string | null
+        }
+        Update: {
+          cancellation_reason?: string | null
+          cancelled_at?: string | null
+          completed_at?: string | null
+          confirmed_at?: string | null
+          confirmed_by?: string | null
+          created_at?: string | null
+          guest_contact?: string | null
+          guest_email?: string | null
+          guest_name?: string
+          id?: string
+          metadata?: Json | null
+          number_of_guests?: number
+          qr_token?: string | null
+          reservation_date?: string
+          reservation_time?: string
+          seated_at?: string | null
+          special_requests?: string | null
+          status?: string | null
+          table_number?: string | null
+          tenant_id?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "restaurant_reservations_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       role_permissions: {
         Row: {
           can_delete: boolean | null
