@@ -1,121 +1,245 @@
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useState, useEffect, useMemo } from 'react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
-import { useToast } from '@/hooks/use-toast';
+import { toast } from 'sonner';
 
 export interface DepartmentRequest {
   id: string;
   tenant_id: string;
-  request_number: string;
-  department: string;
-  requested_by: string;
-  approved_by?: string;
-  issued_by?: string;
-  status: 'pending' | 'approved' | 'issued' | 'rejected' | 'cancelled';
-  items: RequestItem[];
-  purpose?: string;
+  guest_id: string | null;
+  room_id: string | null;
+  type: string;
+  service_category: string;
+  note: string;
+  status: string;
   priority: string;
-  requested_at: string;
-  approved_at?: string;
-  issued_at?: string;
+  qr_token: string;
+  metadata: any;
   created_at: string;
-  updated_at: string;
+  updated_at?: string;
+  assigned_to?: string | null;
+  assigned_department?: string;
+  completed_at?: string;
+  room?: { number: string };
+  guest?: { name: string };
 }
 
-export interface RequestItem {
-  item_id: string;
-  requested_qty: number;
-  issued_qty?: number;
+export interface DepartmentMetrics {
+  totalRequests: number;
+  pendingRequests: number;
+  inProgressRequests: number;
+  completedToday: number;
+  avgResponseTimeMinutes: number;
+  myAssignedRequests: number;
 }
 
-interface RequestPayload {
-  action: 'create' | 'approve' | 'issue' | 'reject' | 'cancel';
-  request_id?: string;
-  department?: string;
-  items?: RequestItem[];
-  purpose?: string;
-  priority?: 'urgent' | 'normal' | 'low';
-  notes?: string;
-}
-
-export function useDepartmentRequests() {
-  const { tenantId } = useAuth();
-  const { toast } = useToast();
+export function useDepartmentRequests(department?: string) {
+  const { tenantId, user } = useAuth();
   const queryClient = useQueryClient();
+  const [isUpdating, setIsUpdating] = useState(false);
 
-  const { data: requests, isLoading } = useQuery({
-    queryKey: ['department-requests', tenantId],
+  // Fetch department requests with room and guest info
+  const { data: requests = [], isLoading } = useQuery({
+    queryKey: ['department-requests', tenantId, department],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from('department_requests')
+      if (!tenantId) return [];
+      
+      let query = supabase
+        .from('requests')
         .select(`
           *,
-          staff:requested_by (
-            id,
-            full_name,
-            department
-          ),
-          approver:approved_by (
-            id,
-            full_name
-          ),
-          issuer:issued_by (
-            id,
-            full_name
-          )
+          room:rooms(number),
+          guest:guests(name)
         `)
         .eq('tenant_id', tenantId)
         .order('created_at', { ascending: false });
 
+      // Filter by department if specified
+      if (department && department !== 'all') {
+        query = query.eq('assigned_department', department);
+      }
+
+      const { data, error } = await query;
+      
       if (error) throw error;
-      return data as any[];
+      return (data || []) as unknown as DepartmentRequest[];
     },
     enabled: !!tenantId,
   });
 
-  const processRequest = useMutation({
-    mutationFn: async (payload: RequestPayload) => {
-      const { data, error } = await supabase.functions.invoke('process-department-request', {
-        body: payload,
-      });
+  // Real-time subscription for new and updated requests
+  useEffect(() => {
+    if (!tenantId) return;
+
+    console.log('[useDepartmentRequests] Setting up real-time subscription for department:', department);
+
+    const channel = supabase
+      .channel('department-requests-changes')
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'requests',
+          filter: department && department !== 'all' ? `assigned_department=eq.${department}` : undefined,
+        },
+        (payload) => {
+          console.log('[useDepartmentRequests] New request received:', payload);
+          queryClient.invalidateQueries({ queryKey: ['department-requests'] });
+          
+          // Show notification
+          const newRequest = payload.new as DepartmentRequest;
+          toast.info('New Request', {
+            description: `${newRequest.service_category} - ${newRequest.metadata?.guest_name || 'Guest'}`,
+          });
+        }
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'requests',
+          filter: department && department !== 'all' ? `assigned_department=eq.${department}` : undefined,
+        },
+        (payload) => {
+          console.log('[useDepartmentRequests] Request updated:', payload);
+          queryClient.invalidateQueries({ queryKey: ['department-requests'] });
+        }
+      )
+      .subscribe();
+
+    return () => {
+      console.log('[useDepartmentRequests] Cleaning up real-time subscription');
+      supabase.removeChannel(channel);
+    };
+  }, [tenantId, department, queryClient]);
+
+  // Calculate metrics
+  const metrics: DepartmentMetrics = useMemo(() => {
+    const now = new Date();
+    const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+
+    const pendingRequests = requests.filter(r => r.status === 'pending');
+    const inProgressRequests = requests.filter(r => r.status === 'in_progress');
+    const completedToday = requests.filter(
+      r => (r.status === 'completed' || r.status === 'approved') && r.updated_at && new Date(r.updated_at) >= todayStart
+    ).length;
+
+    // Calculate average response time for completed requests today
+    const completedTodayRequests = requests.filter(
+      r => (r.status === 'completed' || r.status === 'approved') && r.updated_at && new Date(r.updated_at) >= todayStart
+    );
+    
+    const totalResponseTime = completedTodayRequests.reduce((sum, request) => {
+      if (!request.updated_at) return sum;
+      const created = new Date(request.created_at).getTime();
+      const updated = new Date(request.updated_at).getTime();
+      return sum + (updated - created);
+    }, 0);
+
+    const avgResponseTimeMinutes = completedTodayRequests.length > 0
+      ? Math.round(totalResponseTime / completedTodayRequests.length / 60000)
+      : 0;
+
+    const myAssignedRequests = requests.filter(
+      r => r.assigned_to === user?.id && r.status !== 'completed' && r.status !== 'cancelled'
+    ).length;
+
+    return {
+      totalRequests: requests.length,
+      pendingRequests: pendingRequests.length,
+      inProgressRequests: inProgressRequests.length,
+      completedToday,
+      avgResponseTimeMinutes,
+      myAssignedRequests,
+    };
+  }, [requests, user]);
+
+  // Assign request to current user
+  const claimRequest = async (requestId: string) => {
+    if (!user) return;
+    
+    setIsUpdating(true);
+    try {
+      const { error } = await supabase
+        .from('requests')
+        .update({
+          assigned_to: user.id,
+          status: 'in_progress',
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', requestId);
 
       if (error) throw error;
-      return data;
-    },
-    onSuccess: (data, variables) => {
-      queryClient.invalidateQueries({ queryKey: ['department-requests', tenantId] });
-      
-      if (variables.action === 'issue') {
-        queryClient.invalidateQueries({ queryKey: ['stock-movements', tenantId] });
-        queryClient.invalidateQueries({ queryKey: ['store-stock', tenantId] });
-        queryClient.invalidateQueries({ queryKey: ['department-stock', tenantId] });
-      }
-      
-      const actionMessages: Record<string, string> = {
-        create: 'Request created successfully',
-        approve: 'Request approved successfully',
-        issue: 'Items issued successfully',
-        reject: 'Request rejected',
-        cancel: 'Request cancelled',
-      };
-      
-      toast({
-        title: 'Success',
-        description: actionMessages[variables.action] || 'Request processed',
-      });
-    },
-    onError: (error: any) => {
-      toast({
-        title: 'Error',
-        description: error.message || 'Failed to process request',
-        variant: 'destructive',
-      });
-    },
-  });
+
+      queryClient.invalidateQueries({ queryKey: ['department-requests'] });
+      toast.success('Request claimed successfully');
+    } catch (error) {
+      console.error('Error claiming request:', error);
+      toast.error('Failed to claim request');
+    } finally {
+      setIsUpdating(false);
+    }
+  };
+
+  // Update request status
+  const updateRequestStatus = async (requestId: string, status: string) => {
+    setIsUpdating(true);
+    try {
+      const { error } = await supabase
+        .from('requests')
+        .update({
+          status,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', requestId);
+
+      if (error) throw error;
+
+      queryClient.invalidateQueries({ queryKey: ['department-requests'] });
+      toast.success('Status updated successfully');
+    } catch (error) {
+      console.error('Error updating status:', error);
+      toast.error('Failed to update status');
+    } finally {
+      setIsUpdating(false);
+    }
+  };
+
+  // Unassign request (return to pool)
+  const unassignRequest = async (requestId: string) => {
+    setIsUpdating(true);
+    try {
+      const { error } = await supabase
+        .from('requests')
+        .update({
+          assigned_to: null,
+          status: 'pending',
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', requestId);
+
+      if (error) throw error;
+
+      queryClient.invalidateQueries({ queryKey: ['department-requests'] });
+      toast.success('Request returned to pool');
+    } catch (error) {
+      console.error('Error unassigning request:', error);
+      toast.error('Failed to unassign request');
+    } finally {
+      setIsUpdating(false);
+    }
+  };
 
   return {
     requests,
     isLoading,
-    processRequest,
+    isUpdating,
+    metrics,
+    claimRequest,
+    updateRequestStatus,
+    unassignRequest,
   };
 }

@@ -69,6 +69,7 @@ const QRRedirect = lazy(() => import("./components/qr-portal/QRRedirect").then(m
 
 import QRManagement from "./pages/dashboard/QRManagement";
 import GuestRequestsManagement from "./pages/dashboard/GuestRequestsManagement";
+import DepartmentRequestsDashboard from "./pages/dashboard/DepartmentRequestsDashboard";
 import QRAnalytics from "./pages/dashboard/QRAnalytics";
 import QRPrintables from "./pages/dashboard/QRPrintables";
 import QRPortalFeatures from "./pages/dashboard/QRPortalFeatures";
@@ -132,6 +133,7 @@ const App = () => (
               <Route path="bar-dashboard" element={<RoleGuard allowedRoles={['owner', 'manager', 'bar', 'supervisor']}><BarDashboard /></RoleGuard>} />
               <Route path="qr-management" element={<RoleGuard allowedRoles={['owner', 'manager']}><QRManagement /></RoleGuard>} />
               <Route path="guest-requests" element={<GuestRequestsManagement />} />
+              <Route path="department-requests" element={<DepartmentRequestsDashboard />} />
               <Route path="qr-analytics" element={<RoleGuard allowedRoles={['owner', 'manager']}><QRAnalytics /></RoleGuard>} />
               <Route path="qr-printables" element={<RoleGuard allowedRoles={['owner', 'manager']}><QRPrintables /></RoleGuard>} />
               <Route path="qr-portal-features" element={<RoleGuard allowedRoles={['owner', 'manager']}><QRPortalFeatures /></RoleGuard>} />
