@@ -18,6 +18,10 @@ interface QRCode {
   metadata: any;
   created_at: string;
   updated_at: string;
+  room?: {
+    id: string;
+    number: string;
+  } | null;
 }
 
 interface CreateQRData {
@@ -58,7 +62,10 @@ export function useQRManagement() {
     try {
       const { data, error } = await supabase
         .from('qr_codes')
-        .select('*')
+        .select(`
+          *,
+          room:rooms(id, number)
+        `)
         .eq('tenant_id', tenantId)
         .order('created_at', { ascending: false });
 

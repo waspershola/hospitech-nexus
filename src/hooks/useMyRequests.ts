@@ -8,7 +8,7 @@ interface ServiceRequest {
   priority: string;
   note: string;
   created_at: string;
-  metadata: Record<string, any>;
+  metadata: any;
 }
 
 export function useMyRequests(qrToken: string | null) {

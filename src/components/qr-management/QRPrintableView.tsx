@@ -17,6 +17,10 @@ interface QRPrintableViewProps {
     assigned_to: string;
     room_id?: string | null;
     services?: string[];
+    room?: {
+      id: string;
+      number: string;
+    } | null;
   };
   branding?: {
     hotel_name?: string;
@@ -185,7 +189,7 @@ export function QRPrintableView({
                 size === 'poster' ? 'text-2xl' : size === 'large' ? 'text-xl' : size === 'medium' ? 'text-lg' : 'text-base'
               }`}
             >
-              {qrCode.room_id ? `Room ${qrCode.room_id}` : qrCode.display_name}
+              {qrCode.room?.number || qrCode.assigned_to || qrCode.display_name}
             </p>
 
             {/* QR Code Container */}
