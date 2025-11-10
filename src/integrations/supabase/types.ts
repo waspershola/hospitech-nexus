@@ -1644,6 +1644,7 @@ export type Database = {
           id: string
           image_url: string | null
           is_available: boolean | null
+          menu_type: string | null
           name: string
           preparation_time: string | null
           price: number
@@ -1663,6 +1664,7 @@ export type Database = {
           id?: string
           image_url?: string | null
           is_available?: boolean | null
+          menu_type?: string | null
           name: string
           preparation_time?: string | null
           price: number
@@ -1682,6 +1684,7 @@ export type Database = {
           id?: string
           image_url?: string | null
           is_available?: boolean | null
+          menu_type?: string | null
           name?: string
           preparation_time?: string | null
           price?: number

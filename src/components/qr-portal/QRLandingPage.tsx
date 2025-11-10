@@ -3,7 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { useQRToken } from '@/hooks/useQRToken';
 import { useQRTheme } from '@/hooks/useQRTheme';
 import { useMyRequests } from '@/hooks/useMyRequests';
-import { UtensilsCrossed, Wifi, Wrench, Bell, MessageCircle, Phone, Clock, Sparkles, Crown } from 'lucide-react';
+import { UtensilsCrossed, Wifi, Wrench, Bell, MessageCircle, Phone, Clock, Sparkles, Crown, Utensils, Shirt as ShirtIcon, Headphones, LucideIcon } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { LuxuryHeader } from '@/components/qr-portal/LuxuryHeader';
@@ -12,14 +12,60 @@ import { LoadingState } from '@/components/qr-portal/LoadingState';
 import { OfflineIndicator } from '@/components/qr-portal/OfflineIndicator';
 import { MyRequestsButton } from '@/components/qr-portal/MyRequestsButton';
 
-const SERVICE_ICONS: Record<string, any> = {
-  housekeeping: Sparkles,
-  room_service: UtensilsCrossed,
-  maintenance: Wrench,
-  concierge: Bell,
+const SERVICE_ICONS: Record<string, LucideIcon> = {
   digital_menu: UtensilsCrossed,
   wifi: Wifi,
+  room_service: Utensils,
+  housekeeping: Sparkles,
+  maintenance: Wrench,
+  concierge: Headphones,
   feedback: MessageCircle,
+  spa: Sparkles,
+  laundry: ShirtIcon,
+  dining: UtensilsCrossed,
+};
+
+const SERVICE_CONFIG: Record<string, { title: string; description: string }> = {
+  digital_menu: { 
+    title: 'Digital Menu', 
+    description: 'Browse our menu and place orders' 
+  },
+  wifi: { 
+    title: 'WiFi Access', 
+    description: 'Connect to our network' 
+  },
+  room_service: { 
+    title: 'Room Service', 
+    description: 'Order food and beverages to your room' 
+  },
+  housekeeping: { 
+    title: 'Housekeeping', 
+    description: 'Request housekeeping services' 
+  },
+  maintenance: { 
+    title: 'Maintenance', 
+    description: 'Report maintenance issues' 
+  },
+  concierge: { 
+    title: 'Concierge', 
+    description: 'Get assistance from concierge' 
+  },
+  feedback: { 
+    title: 'Share Feedback', 
+    description: 'Help us improve your experience' 
+  },
+  spa: { 
+    title: 'Spa Services', 
+    description: 'Book spa treatments' 
+  },
+  laundry: { 
+    title: 'Laundry Service', 
+    description: 'Request laundry services' 
+  },
+  dining: { 
+    title: 'Dining Reservations', 
+    description: 'Reserve a table at our restaurant' 
+  },
 };
 
 export function QRLandingPage() {
@@ -154,62 +200,39 @@ export function QRLandingPage() {
           </div>
 
           <div className="grid gap-4">
-            {/* Digital Menu - Only if in services array AND enabled */}
-            {services.includes('digital_menu') && showMenu && (
-              <ServiceCard
-                icon={UtensilsCrossed}
-                title="Digital Menu"
-                description="Browse our menu and place orders"
-                onClick={() => navigate(`/qr/${token}/menu`)}
-              />
-            )}
-
-            {/* WiFi Credentials - Only if in services array AND enabled */}
-            {services.includes('wifi') && showWifi && (
-              <ServiceCard
-                icon={Wifi}
-                title="WiFi Access"
-                description="Connect to our network"
-                onClick={() => navigate(`/qr/${token}/wifi`)}
-              />
-            )}
-
-            {/* Dynamic Services from QR Config */}
+            {/* Dynamically render all services from qrData.services */}
             {services.map((service) => {
-              const Icon = SERVICE_ICONS[service] || Bell;
-              const titleMap: Record<string, string> = {
-                housekeeping: 'Housekeeping',
-                room_service: 'Room Service',
-                maintenance: 'Maintenance',
-                concierge: 'Concierge',
-              };
-              const descriptionMap: Record<string, string> = {
-                housekeeping: 'Request housekeeping services',
-                room_service: 'Order food and beverages',
-                maintenance: 'Report maintenance issues',
-                concierge: 'Get assistance from concierge',
-              };
+              const IconComponent = SERVICE_ICONS[service];
+              const config = SERVICE_CONFIG[service];
               
+              // Skip if service not configured
+              if (!IconComponent || !config) return null;
+              
+              // Skip if conditionally disabled by feature flags
+              if (service === 'digital_menu' && !showMenu) return null;
+              if (service === 'wifi' && !showWifi) return null;
+              if (service === 'feedback' && !showFeedback) return null;
+
+              // Determine route based on service type
+              let route = `/qr/${token}/request/${service}`;
+              if (service === 'digital_menu') route = `/qr/${token}/menu`;
+              if (service === 'wifi') route = `/qr/${token}/wifi`;
+              if (service === 'feedback') route = `/qr/${token}/feedback`;
+              if (service === 'room_service') route = `/qr/${token}/room-service`;
+              if (service === 'laundry') route = `/qr/${token}/laundry`;
+              if (service === 'spa') route = `/qr/${token}/spa`;
+              if (service === 'dining') route = `/qr/${token}/dining`;
+
               return (
                 <ServiceCard
                   key={service}
-                  icon={Icon}
-                  title={titleMap[service] || service.replace('_', ' ')}
-                  description={descriptionMap[service] || 'Request assistance'}
-                  onClick={() => navigate(`/qr/${token}/request/${service}`)}
+                  icon={IconComponent}
+                  title={config.title}
+                  description={config.description}
+                  onClick={() => navigate(route)}
                 />
               );
             })}
-
-            {/* Feedback */}
-            {showFeedback && (
-              <ServiceCard
-                icon={MessageCircle}
-                title="Share Feedback"
-                description="Help us improve your experience"
-                onClick={() => navigate(`/qr/${token}/feedback`)}
-              />
-            )}
           </div>
         </div>
 

@@ -66,6 +66,8 @@ export function QRMenuBrowser() {
         .select('*')
         .eq('tenant_id', qrData.tenant_id)
         .eq('is_available', true)
+        .eq('status', 'approved')
+        .eq('menu_type', 'restaurant')
         .order('display_order', { ascending: true });
       
       if (error) throw error;
