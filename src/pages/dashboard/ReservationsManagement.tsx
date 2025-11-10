@@ -29,9 +29,8 @@ interface Reservation {
 }
 
 export default function ReservationsManagement() {
-  const { user } = useAuth();
+  const { user, tenantId } = useAuth();
   const queryClient = useQueryClient();
-  const tenantId = user?.user_metadata?.tenantId;
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingReservation, setEditingReservation] = useState<Reservation | null>(null);
   const [statusFilter, setStatusFilter] = useState('all');

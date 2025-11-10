@@ -27,9 +27,8 @@ interface LaundryItem {
 }
 
 export default function LaundryManagement() {
-  const { user } = useAuth();
+  const { user, tenantId } = useAuth();
   const queryClient = useQueryClient();
-  const tenantId = user?.user_metadata?.tenantId;
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingItem, setEditingItem] = useState<LaundryItem | null>(null);
   const [categoryFilter, setCategoryFilter] = useState('all');
