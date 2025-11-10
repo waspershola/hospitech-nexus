@@ -28,9 +28,8 @@ interface SpaService {
 }
 
 export default function SpaManagement() {
-  const { user } = useAuth();
+  const { user, tenantId } = useAuth();
   const queryClient = useQueryClient();
-  const tenantId = user?.user_metadata?.tenantId;
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingService, setEditingService] = useState<SpaService | null>(null);
   const [categoryFilter, setCategoryFilter] = useState('all');
