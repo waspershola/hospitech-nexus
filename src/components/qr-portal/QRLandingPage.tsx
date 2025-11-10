@@ -2,11 +2,14 @@ import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useQRToken } from '@/hooks/useQRToken';
 import { useQRTheme } from '@/hooks/useQRTheme';
-import { Loader2, UtensilsCrossed, Wifi, Coffee, Sparkles, Phone, Mail, Wrench, Bell, MessageCircle, Crown, Clock, AlertCircle } from 'lucide-react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { UtensilsCrossed, Wifi, Wrench, Bell, MessageCircle, Phone, Clock, Sparkles, Crown } from 'lucide-react';
+import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { LuxuryHeader } from '@/components/qr-portal/LuxuryHeader';
 import { ServiceCard } from '@/components/qr-portal/ServiceCard';
+import { LoadingState } from '@/components/qr-portal/LoadingState';
+import { OfflineIndicator } from '@/components/qr-portal/OfflineIndicator';
+import { MyRequestsButton } from '@/components/qr-portal/MyRequestsButton';
 
 const SERVICE_ICONS: Record<string, any> = {
   housekeeping: Sparkles,
@@ -36,49 +39,29 @@ export function QRLandingPage() {
 
   if (isValidating) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-primary/5 via-accent/5 to-background">
-        <Card className="max-w-md shadow-2xl border-primary/20 bg-card/90 backdrop-blur-sm">
-          <CardContent className="pt-6 text-center space-y-6">
-            <div className="w-20 h-20 mx-auto bg-gradient-to-br from-primary to-accent rounded-full shadow-lg flex items-center justify-center">
-              <Crown className="h-10 w-10 text-primary-foreground animate-pulse" />
-            </div>
-            <div className="space-y-2">
-              <div className="flex items-center justify-center gap-2">
-                <Sparkles className="h-5 w-5 text-primary animate-pulse" />
-                <h2 className="text-lg font-serif text-foreground">Loading Your Portal</h2>
-                <Sparkles className="h-5 w-5 text-primary animate-pulse" />
-              </div>
-              <p className="text-muted-foreground">Please wait...</p>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
+      <>
+        <OfflineIndicator />
+        <LoadingState
+          branding={qrData?.branding}
+          hotelName={qrData?.tenant?.hotel_name || 'Guest Portal'}
+          message="Validating QR code..."
+          variant="luxury"
+        />
+      </>
     );
   }
 
   if (error || !qrData) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-primary/5 via-accent/5 to-background p-4">
-        <Card className="max-w-md w-full shadow-2xl border-destructive/20 bg-card/90 backdrop-blur-sm">
-          <CardContent className="pt-6 text-center space-y-6">
-            <div className="w-20 h-20 mx-auto bg-gradient-to-br from-destructive to-destructive/80 rounded-full shadow-lg flex items-center justify-center">
-              <AlertCircle className="h-10 w-10 text-destructive-foreground" />
-            </div>
-            <div className="space-y-2">
-              <h2 className="text-xl font-serif text-foreground mb-4">Connection Failed</h2>
-              <p className="text-muted-foreground text-sm">
-                {error || 'This QR code is invalid or has expired.'}
-              </p>
-            </div>
-            <Button 
-              onClick={() => window.location.reload()} 
-              className="w-full bg-gradient-to-r from-primary to-accent hover:from-primary/90 hover:to-accent/90 text-primary-foreground font-medium px-8 py-3 rounded-full shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-300"
-            >
-              Try Again
-            </Button>
-          </CardContent>
-        </Card>
-      </div>
+      <>
+        <OfflineIndicator />
+        <LoadingState
+          branding={null}
+          hotelName="Connection Failed"
+          message={error || 'This QR code is invalid or has expired.'}
+          variant="simple"
+        />
+      </>
     );
   }
 
@@ -129,20 +112,24 @@ export function QRLandingPage() {
   const showCalling = tenant?.qr_calling_enabled ?? true;
 
   return (
-    <div 
-      id="qr-portal-root"
-      className="min-h-screen bg-gradient-to-br from-background via-muted/30 to-accent/10 animate-fade-in"
-    >
-      {/* Luxury Header */}
-      <LuxuryHeader 
-        logoUrl={branding?.logo_url}
-        hotelName={tenant?.hotel_name || 'Guest Portal'}
-        displayName={display_name}
-        themeGradient={themeColors.gradient}
-      />
+    <>
+      {/* Offline Indicator */}
+      <OfflineIndicator />
 
-      {/* Main Content Container */}
-      <div className="max-w-2xl mx-auto px-4 space-y-8 pb-12">
+      <div 
+        id="qr-portal-root"
+        className="min-h-screen bg-gradient-to-br from-background via-muted/30 to-accent/10 animate-fade-in"
+      >
+        {/* Luxury Header */}
+        <LuxuryHeader 
+          logoUrl={branding?.logo_url}
+          hotelName={tenant?.hotel_name || 'Guest Portal'}
+          displayName={display_name}
+          themeGradient={themeColors.gradient}
+        />
+
+        {/* Main Content Container */}
+        <div className="max-w-2xl mx-auto px-4 space-y-8 pb-12">
         {/* Welcome Message Card */}
         <Card className="shadow-2xl backdrop-blur-sm bg-card/80 border-2 border-primary/10 hover:border-primary/20 transition-all duration-500">
           <CardContent className="p-8 text-center space-y-2">
@@ -246,15 +233,22 @@ export function QRLandingPage() {
           </Card>
         )}
 
-        {/* Footer */}
-        <div className="text-center py-6 space-y-3">
-          <div className="flex items-center justify-center gap-2 text-muted-foreground">
-            <Clock className="h-4 w-4" />
-            <span className="text-sm">Available 24/7</span>
+          {/* Footer */}
+          <div className="text-center py-6 space-y-3">
+            <div className="flex items-center justify-center gap-2 text-muted-foreground">
+              <Clock className="h-4 w-4" />
+              <span className="text-sm">Available 24/7</span>
+            </div>
+            <p className="text-muted-foreground text-xs">Powered by luxuryhotelpro.com</p>
           </div>
-          <p className="text-muted-foreground text-xs">Powered by luxuryhotelpro.com</p>
         </div>
       </div>
-    </div>
+
+      {/* Floating My Requests Button */}
+      <MyRequestsButton
+        pendingCount={2} // TODO: Connect to actual request count
+        branding={branding}
+      />
+    </>
   );
 }
