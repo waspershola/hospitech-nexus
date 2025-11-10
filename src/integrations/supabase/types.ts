@@ -832,7 +832,7 @@ export type Database = {
         Row: {
           created_at: string | null
           direction: string
-          guest_id: string
+          guest_id: string | null
           id: string
           message: string | null
           metadata: Json | null
@@ -845,7 +845,7 @@ export type Database = {
         Insert: {
           created_at?: string | null
           direction: string
-          guest_id: string
+          guest_id?: string | null
           id?: string
           message?: string | null
           metadata?: Json | null
@@ -858,7 +858,7 @@ export type Database = {
         Update: {
           created_at?: string | null
           direction?: string
-          guest_id?: string
+          guest_id?: string | null
           id?: string
           message?: string | null
           metadata?: Json | null

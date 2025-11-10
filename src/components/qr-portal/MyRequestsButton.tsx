@@ -6,9 +6,19 @@ import { Badge } from '@/components/ui/badge';
 import { useQRThemeColors } from '@/hooks/useQRTheme';
 import { cn } from '@/lib/utils';
 
+interface ServiceRequest {
+  id: string;
+  service_category: string;
+  status: string;
+  created_at: string;
+  note?: string;
+}
+
 interface MyRequestsButtonProps {
   /** Number of pending requests */
   pendingCount?: number;
+  /** Array of actual requests */
+  requests?: ServiceRequest[];
   /** Branding configuration for theme colors */
   branding?: {
     qr_theme?: string;
@@ -21,14 +31,18 @@ interface MyRequestsButtonProps {
   isOpen?: boolean;
   /** Callback when panel open state changes */
   onOpenChange?: (open: boolean) => void;
+  /** Callback when a request is clicked */
+  onViewRequest?: (requestId: string) => void;
 }
 
 export function MyRequestsButton({
   pendingCount = 0,
+  requests = [],
   branding,
   onClick,
   isOpen: controlledIsOpen,
   onOpenChange,
+  onViewRequest,
 }: MyRequestsButtonProps) {
   const [internalIsOpen, setInternalIsOpen] = useState(false);
   
@@ -124,7 +138,7 @@ export function MyRequestsButton({
               <CardDescription>Track your service requests</CardDescription>
             </CardHeader>
             <CardContent className="space-y-3">
-              {pendingCount === 0 ? (
+              {requests.length === 0 ? (
                 <div className="text-center py-8">
                   <MessageCircle className="h-12 w-12 mx-auto mb-3 opacity-30" />
                   <p className="text-sm text-muted-foreground">No active requests</p>
@@ -134,39 +148,52 @@ export function MyRequestsButton({
                 </div>
               ) : (
                 <div className="space-y-2">
-                  {/* Example request items */}
-                  <div className="p-3 rounded-lg bg-muted/50 border">
-                    <div className="flex items-start justify-between gap-2">
-                      <div className="flex-1">
-                        <p className="text-sm font-medium">Housekeeping Request</p>
-                        <p className="text-xs text-muted-foreground mt-0.5">
-                          Extra towels requested
-                        </p>
+                  {/* Real request items */}
+                  {requests.slice(0, 3).map((request) => (
+                    <div 
+                      key={request.id}
+                      className="p-3 rounded-lg bg-muted/50 border cursor-pointer hover:bg-muted/70 transition-colors"
+                      onClick={() => onViewRequest?.(request.id)}
+                    >
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="flex-1">
+                          <p className="text-sm font-medium capitalize">
+                            {request.service_category.replace('_', ' ')}
+                          </p>
+                          {request.note && (
+                            <p className="text-xs text-muted-foreground mt-0.5 line-clamp-1">
+                              {request.note}
+                            </p>
+                          )}
+                        </div>
+                        <Badge 
+                          variant="outline" 
+                          className="text-xs capitalize"
+                          style={{ 
+                            borderColor: colors.primary,
+                            color: colors.primary 
+                          }}
+                        >
+                          {request.status}
+                        </Badge>
                       </div>
-                      <Badge 
-                        variant="outline" 
-                        className="text-xs"
-                        style={{ 
-                          borderColor: colors.primary,
-                          color: colors.primary 
-                        }}
-                      >
-                        Pending
-                      </Badge>
+                      <p className="text-xs text-muted-foreground mt-2">
+                        {new Date(request.created_at).toLocaleTimeString([], { 
+                          hour: '2-digit', 
+                          minute: '2-digit' 
+                        })}
+                      </p>
                     </div>
-                    <p className="text-xs text-muted-foreground mt-2">
-                      5 minutes ago
-                    </p>
-                  </div>
+                  ))}
                   
-                  {pendingCount > 1 && (
+                  {requests.length > 3 && (
                     <div className="text-center pt-2">
                       <Button 
                         variant="link" 
                         size="sm"
                         style={{ color: colors.primary }}
                       >
-                        View all requests ({pendingCount})
+                        View all {requests.length} requests
                       </Button>
                     </div>
                   )}

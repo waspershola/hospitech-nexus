@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useQRToken } from '@/hooks/useQRToken';
 import { useQRTheme } from '@/hooks/useQRTheme';
+import { useMyRequests } from '@/hooks/useMyRequests';
 import { UtensilsCrossed, Wifi, Wrench, Bell, MessageCircle, Phone, Clock, Sparkles, Crown } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -26,6 +27,9 @@ export function QRLandingPage() {
   const navigate = useNavigate();
   const { qrData, isValidating, error, validateToken } = useQRToken();
   const [hasValidated, setHasValidated] = useState(false);
+
+  // Phase 3: Dynamic My Requests
+  const { requests, pendingCount } = useMyRequests(token || null);
 
   // Apply QR theme dynamically
   useQRTheme(qrData?.branding, 'qr-portal-root');
@@ -246,8 +250,10 @@ export function QRLandingPage() {
 
       {/* Floating My Requests Button */}
       <MyRequestsButton
-        pendingCount={2} // TODO: Connect to actual request count
+        pendingCount={pendingCount}
+        requests={requests}
         branding={branding}
+        onViewRequest={(requestId) => navigate(`/qr/${token}/chat/${requestId}`)}
       />
     </>
   );

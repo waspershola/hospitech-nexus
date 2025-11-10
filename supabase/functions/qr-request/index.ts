@@ -78,6 +78,20 @@ serve(async (req) => {
         );
       }
 
+      // Phase 2: Service to department routing configuration
+      const SERVICE_DEPARTMENT_MAP: Record<string, string> = {
+        'room_service': 'restaurant',
+        'housekeeping': 'housekeeping',
+        'maintenance': 'maintenance',
+        'concierge': 'front_office',
+        'digital_menu': 'restaurant',
+        'feedback': 'front_office',
+        'wifi': 'front_office',
+      };
+
+      const assignedDepartment = SERVICE_DEPARTMENT_MAP[requestData.service_category] || 'front_office';
+      console.log(`[qr-request] Routing ${requestData.service_category} → ${assignedDepartment}`);
+
       // Create the request
       const { data: newRequest, error: insertError } = await supabase
         .from('requests')
@@ -90,11 +104,14 @@ serve(async (req) => {
           status: 'pending',
           priority: requestData.priority || 'normal',
           qr_token: requestData.qr_token,
+          assigned_department: assignedDepartment,
+          assigned_to: null, // NULL = pool assignment
           metadata: {
             guest_name: requestData.guest_name || 'Guest',
             guest_contact: requestData.guest_contact || '',
             qr_location: qr.assigned_to,
             qr_scope: qr.scope,
+            routed_department: assignedDepartment,
           },
         })
         .select()
@@ -110,13 +127,14 @@ serve(async (req) => {
 
       console.log('[qr-request] Request created successfully:', newRequest.id);
 
-      // Create initial chat message if note exists
+      // Phase 1: Create initial chat message if note exists (with null guest_id for anonymous)
       if (requestData.note && requestData.note.trim() !== '') {
+        console.log('[qr-request] Creating initial message with null guest_id for anonymous guest');
         await supabase
           .from('guest_communications')
           .insert({
             tenant_id: qr.tenant_id,
-            guest_id: newRequest.guest_id || '00000000-0000-0000-0000-000000000000',
+            guest_id: null, // Phase 1: Allow null for anonymous QR guests
             type: 'note',
             direction: 'inbound',
             message: requestData.note,
@@ -163,12 +181,13 @@ serve(async (req) => {
         );
       }
 
-      // Create message
+      // Phase 1: Create message with null guest_id for anonymous guests
+      console.log('[qr-request] Creating message with null guest_id for anonymous guest');
       const { data: newMessage, error: messageError } = await supabase
         .from('guest_communications')
         .insert({
           tenant_id: request.tenant_id,
-          guest_id: request.guest_id || '00000000-0000-0000-0000-000000000000',
+          guest_id: null, // Phase 1: Allow null for anonymous QR guests
           type: 'note',
           direction: messageData.direction,
           message: messageData.message,
