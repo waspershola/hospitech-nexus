@@ -78,7 +78,7 @@ export function useQRManagement() {
       const { data: result, error } = await supabase.functions.invoke('qr-generate', {
         body: {
           action: 'create',
-          ...data,
+          qr_codes: [data],
         },
       });
 
@@ -107,7 +107,7 @@ export function useQRManagement() {
         body: {
           action: 'update',
           qr_id: qrId,
-          ...data,
+          updates: data,
         },
       });
 

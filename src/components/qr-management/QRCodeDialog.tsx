@@ -5,6 +5,7 @@ import * as z from 'zod';
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogHeader,
   DialogTitle,
   DialogFooter,
@@ -112,6 +113,9 @@ export default function QRCodeDialog({ open, onOpenChange, qrCode, onSave }: QRC
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>{qrCode ? 'Edit QR Code' : 'Create QR Code'}</DialogTitle>
+          <DialogDescription>
+            {qrCode ? 'Update QR code details and settings' : 'Create a new QR code for guest services'}
+          </DialogDescription>
         </DialogHeader>
 
         <Form {...form}>
