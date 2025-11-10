@@ -140,4 +140,21 @@ All colors MUST be HSL.
   h1, h2, h3, h4, h5, h6 {
     @apply font-display;
   }
+
+  /* Print Styles */
+  @media print {
+    .no-print {
+      display: none !important;
+    }
+    
+    body {
+      margin: 0;
+      padding: 0;
+    }
+    
+    @page {
+      size: auto;
+      margin: 0;
+    }
+  }
 }

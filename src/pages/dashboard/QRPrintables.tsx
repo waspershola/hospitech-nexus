@@ -11,18 +11,19 @@ import {
 } from '@/components/ui/select';
 import { useQRManagement } from '@/hooks/useQRManagement';
 import { Skeleton } from '@/components/ui/skeleton';
-import QRPrintTemplate from '@/components/qr-management/QRPrintTemplate';
+import { QRSizeSelector, QRSize } from '@/components/qr-management/QRSizeSelector';
+import { QRPrintableView } from '@/components/qr-management/QRPrintableView';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
-
-type TemplateType = 'card' | 'tent' | 'sticker' | 'poster';
+import { Eye, Layers } from 'lucide-react';
 
 export default function QRPrintables() {
   const { tenantId } = useAuth();
-  const { qrCodes, isLoading } = useQRManagement();
+  const { qrCodes, isLoading, deleteQRCode } = useQRManagement();
   const [selectedQR, setSelectedQR] = useState<string>('');
-  const [template, setTemplate] = useState<TemplateType>('card');
+  const [qrSize, setQrSize] = useState<QRSize>('medium');
+  const [showPrintView, setShowPrintView] = useState(false);
 
   // Fetch branding info
   const { data: branding } = useQuery({
@@ -55,11 +56,34 @@ export default function QRPrintables() {
 
   const selectedQRCode = qrCodes?.find(qr => qr.id === selectedQR);
 
+  const handleDelete = async () => {
+    if (selectedQRCode && window.confirm(`Delete QR code for ${selectedQRCode.display_name}?`)) {
+      await deleteQRCode(selectedQRCode.id);
+      setSelectedQR('');
+      setShowPrintView(false);
+    }
+  };
+
   if (isLoading) {
     return (
       <div className="space-y-6">
         <Skeleton className="h-10 w-64" />
         <Skeleton className="h-96" />
+      </div>
+    );
+  }
+
+  // Show full print view when preview is clicked
+  if (showPrintView && selectedQRCode) {
+    return (
+      <div className="space-y-6">
+        <QRPrintableView
+          qrCode={selectedQRCode}
+          branding={branding || undefined}
+          size={qrSize}
+          onBack={() => setShowPrintView(false)}
+          onDelete={handleDelete}
+        />
       </div>
     );
   }
@@ -71,7 +95,7 @@ export default function QRPrintables() {
           Printable QR Codes
         </h1>
         <p className="text-muted-foreground mt-1">
-          Create and print customized QR code templates
+          Select a QR code, choose size, and export as PNG or PDF
         </p>
       </div>
 
@@ -103,58 +127,24 @@ export default function QRPrintables() {
               </Select>
             </div>
 
-            <div className="space-y-2">
-              <Label>Template Style</Label>
-              <Select 
-                value={template} 
-                onValueChange={(value) => setTemplate(value as TemplateType)}
-                disabled={!selectedQR}
-              >
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="card">Standard Card (4x6")</SelectItem>
-                  <SelectItem value="tent">Table Tent Card</SelectItem>
-                  <SelectItem value="sticker">Round Sticker</SelectItem>
-                  <SelectItem value="poster">Large Poster</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
+            {/* QR Size Selector */}
+            <QRSizeSelector
+              value={qrSize}
+              onChange={setQrSize}
+              disabled={!selectedQR}
+            />
 
-            <div className="p-4 bg-muted rounded-lg space-y-2">
-              <p className="text-sm font-semibold">Template Details:</p>
-              <ul className="text-xs text-muted-foreground space-y-1">
-                {template === 'card' && (
-                  <>
-                    <li>• Size: 4" x 6" (standard postcard)</li>
-                    <li>• Best for: Room placement, door hangers</li>
-                    <li>• Includes: Logo, room info, QR code</li>
-                  </>
-                )}
-                {template === 'tent' && (
-                  <>
-                    <li>• Size: 6" x 4" (horizontal fold)</li>
-                    <li>• Best for: Table displays, counters</li>
-                    <li>• Includes: Logo, title, QR code</li>
-                  </>
-                )}
-                {template === 'sticker' && (
-                  <>
-                    <li>• Size: 3" diameter (round)</li>
-                    <li>• Best for: Windows, mirrors, surfaces</li>
-                    <li>• Includes: QR code, room number</li>
-                  </>
-                )}
-                {template === 'poster' && (
-                  <>
-                    <li>• Size: 8" x 10" (large format)</li>
-                    <li>• Best for: Lobby, elevators, hallways</li>
-                    <li>• Includes: Full branding, services list</li>
-                  </>
-                )}
-              </ul>
-            </div>
+            {/* Preview Button */}
+            {selectedQR && (
+              <Button
+                onClick={() => setShowPrintView(true)}
+                className="w-full gap-2"
+                size="lg"
+              >
+                <Eye className="h-4 w-4" />
+                Open Print Preview
+              </Button>
+            )}
 
             {selectedQRCode && (
               <div className="p-4 bg-primary/5 border border-primary/20 rounded-lg space-y-2">
@@ -172,24 +162,52 @@ export default function QRPrintables() {
           </CardContent>
         </Card>
 
-        {/* Preview Panel */}
+        {/* Quick Preview Panel */}
         <div className="space-y-4">
-          {selectedQRCode ? (
-            <QRPrintTemplate
-              qrCode={selectedQRCode}
-              branding={branding || undefined}
-              template={template}
-            />
-          ) : (
-            <Card>
-              <CardContent className="flex items-center justify-center h-96">
-                <div className="text-center text-muted-foreground">
-                  <p className="text-lg font-semibold mb-2">No QR Code Selected</p>
-                  <p className="text-sm">Select a QR code to preview the template</p>
+          <Card>
+            <CardHeader>
+              <CardTitle>Quick Preview</CardTitle>
+              <CardDescription>
+                Preview before printing or exporting
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              {selectedQRCode ? (
+                <div className="space-y-4">
+                  <div className="bg-gradient-to-br from-background to-muted/30 rounded-lg border p-8 flex items-center justify-center min-h-[400px]">
+                    <div className="text-center space-y-4">
+                      <div className="w-32 h-32 mx-auto bg-white rounded-lg border-4 border-primary/20 flex items-center justify-center">
+                        <div className="text-4xl font-bold text-primary">QR</div>
+                      </div>
+                      <div>
+                        <h3 className="text-xl font-serif font-bold text-foreground">
+                          {selectedQRCode.display_name}
+                        </h3>
+                        {selectedQRCode.room_id && (
+                          <p className="text-muted-foreground">Room {selectedQRCode.room_id}</p>
+                        )}
+                      </div>
+                      <div className="flex items-center gap-2 justify-center text-xs text-muted-foreground">
+                        <span className="px-2 py-1 bg-muted rounded">Size: {qrSize}</span>
+                        <span className="px-2 py-1 bg-muted rounded">{selectedQRCode.scope}</span>
+                      </div>
+                    </div>
+                  </div>
+                  <p className="text-xs text-muted-foreground text-center">
+                    Click "Open Print Preview" to see full size and export options
+                  </p>
                 </div>
-              </CardContent>
-            </Card>
-          )}
+              ) : (
+                <div className="flex items-center justify-center h-96">
+                  <div className="text-center text-muted-foreground">
+                    <Layers className="h-12 w-12 mx-auto mb-3 opacity-50" />
+                    <p className="text-lg font-semibold mb-2">No QR Code Selected</p>
+                    <p className="text-sm">Select a QR code to preview</p>
+                  </div>
+                </div>
+              )}
+            </CardContent>
+          </Card>
         </div>
       </div>
 
