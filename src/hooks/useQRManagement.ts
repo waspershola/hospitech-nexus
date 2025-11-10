@@ -82,7 +82,17 @@ export function useQRManagement() {
   const createQRCode = async (data: CreateQRData): Promise<QRCode | null> => {
     setIsCreating(true);
     try {
+      // Get the current session token
+      const { data: { session } } = await supabase.auth.getSession();
+      
+      if (!session) {
+        throw new Error('You must be logged in to create QR codes');
+      }
+
       const { data: result, error } = await supabase.functions.invoke('qr-generate', {
+        headers: {
+          Authorization: `Bearer ${session.access_token}`,
+        },
         body: {
           action: 'create',
           qr_codes: [data],
@@ -110,7 +120,16 @@ export function useQRManagement() {
   const updateQRCode = async (qrId: string, data: UpdateQRData): Promise<boolean> => {
     setIsUpdating(true);
     try {
+      const { data: { session } } = await supabase.auth.getSession();
+      
+      if (!session) {
+        throw new Error('You must be logged in to update QR codes');
+      }
+
       const { data: result, error } = await supabase.functions.invoke('qr-generate', {
+        headers: {
+          Authorization: `Bearer ${session.access_token}`,
+        },
         body: {
           action: 'update',
           qr_id: qrId,
@@ -139,7 +158,16 @@ export function useQRManagement() {
   const deleteQRCode = async (qrId: string): Promise<boolean> => {
     setIsDeleting(true);
     try {
+      const { data: { session } } = await supabase.auth.getSession();
+      
+      if (!session) {
+        throw new Error('You must be logged in to delete QR codes');
+      }
+
       const { data: result, error } = await supabase.functions.invoke('qr-generate', {
+        headers: {
+          Authorization: `Bearer ${session.access_token}`,
+        },
         body: {
           action: 'delete',
           qr_id: qrId,
