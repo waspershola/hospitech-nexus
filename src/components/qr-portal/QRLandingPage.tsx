@@ -154,8 +154,8 @@ export function QRLandingPage() {
           </div>
 
           <div className="grid gap-4">
-            {/* Digital Menu */}
-            {showMenu && (
+            {/* Digital Menu - Only if in services array AND enabled */}
+            {services.includes('digital_menu') && showMenu && (
               <ServiceCard
                 icon={UtensilsCrossed}
                 title="Digital Menu"
@@ -164,8 +164,8 @@ export function QRLandingPage() {
               />
             )}
 
-            {/* WiFi Credentials */}
-            {showWifi && (
+            {/* WiFi Credentials - Only if in services array AND enabled */}
+            {services.includes('wifi') && showWifi && (
               <ServiceCard
                 icon={Wifi}
                 title="WiFi Access"

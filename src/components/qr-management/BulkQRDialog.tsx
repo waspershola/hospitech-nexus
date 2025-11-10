@@ -35,20 +35,24 @@ export interface BulkGenerateData {
 }
 
 const AVAILABLE_SERVICES = [
-  'housekeeping',
-  'room_service',
-  'maintenance',
-  'concierge',
-  'laundry',
-  'spa',
-  'restaurant',
+  { value: 'digital_menu', label: 'Digital Menu' },
+  { value: 'wifi', label: 'WiFi Access' },
+  { value: 'room_service', label: 'Room Service' },
+  { value: 'housekeeping', label: 'Housekeeping' },
+  { value: 'maintenance', label: 'Maintenance' },
+  { value: 'concierge', label: 'Concierge' },
+  { value: 'front_desk', label: 'Front Desk' },
+  { value: 'feedback', label: 'Share Feedback' },
+  { value: 'spa', label: 'Spa Services' },
+  { value: 'laundry', label: 'Laundry' },
+  { value: 'dining', label: 'Dining Reservations' },
 ];
 
 export default function BulkQRDialog({ open, onOpenChange, onGenerate }: BulkQRDialogProps) {
   const [scope, setScope] = useState<'room' | 'common_area' | 'facility'>('room');
   const [quantity, setQuantity] = useState('10');
   const [prefix, setPrefix] = useState('');
-  const [services, setServices] = useState<string[]>(['housekeeping', 'room_service']);
+  const [services, setServices] = useState<string[]>(['digital_menu', 'wifi', 'housekeeping', 'room_service']);
   const [welcomeMessage, setWelcomeMessage] = useState('Welcome! Scan to request services.');
   const [isGenerating, setIsGenerating] = useState(false);
 
@@ -85,7 +89,7 @@ export default function BulkQRDialog({ open, onOpenChange, onGenerate }: BulkQRD
       // Reset form
       setQuantity('10');
       setPrefix('');
-      setServices(['housekeeping', 'room_service']);
+      setServices(['digital_menu', 'wifi', 'housekeeping', 'room_service']);
       setWelcomeMessage('Welcome! Scan to request services.');
     } catch (error) {
       console.error('Bulk generation error:', error);
@@ -155,17 +159,17 @@ export default function BulkQRDialog({ open, onOpenChange, onGenerate }: BulkQRD
             <Label>Available Services</Label>
             <div className="grid grid-cols-2 gap-3 p-4 border rounded-lg bg-muted/30">
               {AVAILABLE_SERVICES.map((service) => (
-                <div key={service} className="flex items-center space-x-2">
+                <div key={service.value} className="flex items-center space-x-2">
                   <Checkbox
-                    id={service}
-                    checked={services.includes(service)}
-                    onCheckedChange={() => handleServiceToggle(service)}
+                    id={service.value}
+                    checked={services.includes(service.value)}
+                    onCheckedChange={() => handleServiceToggle(service.value)}
                   />
                   <Label
-                    htmlFor={service}
-                    className="text-sm font-normal capitalize cursor-pointer"
+                    htmlFor={service.value}
+                    className="text-sm font-normal cursor-pointer"
                   >
-                    {service.replace('_', ' ')}
+                    {service.label}
                   </Label>
                 </div>
               ))}

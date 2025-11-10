@@ -12,7 +12,7 @@ import { Switch } from '@/components/ui/switch';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 import { Badge } from '@/components/ui/badge';
-import { UtensilsCrossed, Plus, Pencil, Trash2, Image as ImageIcon, Upload, Loader2 } from 'lucide-react';
+import { UtensilsCrossed, Plus, Pencil, Trash2, Image as ImageIcon, Upload, Loader2, Check, X } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 
 const CATEGORIES = ['breakfast', 'appetizers', 'main_course', 'desserts', 'beverages', 'sides'];
@@ -21,10 +21,11 @@ const DIETARY_TAGS = ['vegetarian', 'vegan', 'gluten-free', 'dairy-free', 'spicy
 export function MenuManagementTab() {
   const { tenantId } = useAuth();
   const queryClient = useQueryClient();
-  const { createMenuItem, updateMenuItem, deleteMenuItem, uploadImage, isLoading: isSaving } = useMenuManagement();
+  const { createMenuItem, updateMenuItem, deleteMenuItem, uploadImage, approveMenuItem, rejectMenuItem, isLoading: isSaving } = useMenuManagement();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingItem, setEditingItem] = useState<MenuItemData | null>(null);
   const [categoryFilter, setCategoryFilter] = useState('all');
+  const [statusFilter, setStatusFilter] = useState('all');
   const [imagePreview, setImagePreview] = useState<string>('');
   const [isUploading, setIsUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -58,9 +59,11 @@ export function MenuManagementTab() {
     enabled: !!tenantId,
   });
 
-  const filteredItems = categoryFilter === 'all' 
-    ? menuItems 
-    : menuItems.filter(item => item.category === categoryFilter);
+  const filteredItems = menuItems.filter(item => {
+    const matchesCategory = categoryFilter === 'all' || item.category === categoryFilter;
+    const matchesStatus = statusFilter === 'all' || item.status === statusFilter;
+    return matchesCategory && matchesStatus;
+  });
 
   const handleSubmit = async () => {
     if (editingItem?.id) {
@@ -135,19 +138,33 @@ export function MenuManagementTab() {
       >
         <div className="space-y-4">
           <div className="flex items-center justify-between gap-4">
-            <Select value={categoryFilter} onValueChange={setCategoryFilter}>
-              <SelectTrigger className="w-[200px]">
-                <SelectValue placeholder="Filter by category" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Categories</SelectItem>
-                {CATEGORIES.map(cat => (
-                  <SelectItem key={cat} value={cat} className="capitalize">
-                    {cat.replace('_', ' ')}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <div className="flex gap-2">
+              <Select value={categoryFilter} onValueChange={setCategoryFilter}>
+                <SelectTrigger className="w-[200px]">
+                  <SelectValue placeholder="Filter by category" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Categories</SelectItem>
+                  {CATEGORIES.map(cat => (
+                    <SelectItem key={cat} value={cat} className="capitalize">
+                      {cat.replace('_', ' ')}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              
+              <Select value={statusFilter} onValueChange={setStatusFilter}>
+                <SelectTrigger className="w-[200px]">
+                  <SelectValue placeholder="Filter by status" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Statuses</SelectItem>
+                  <SelectItem value="pending_approval">Pending Approval</SelectItem>
+                  <SelectItem value="approved">Approved</SelectItem>
+                  <SelectItem value="archived">Archived</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
 
             <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
               <DialogTrigger asChild>
@@ -383,25 +400,59 @@ export function MenuManagementTab() {
                         ))}
                       </div>
                     )}
-                    <div className="flex gap-2 pt-2">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => handleEdit(item)}
-                        className="flex-1"
-                      >
-                        <Pencil className="h-3 w-3 mr-1" />
-                        Edit
-                      </Button>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => item.id && handleDelete(item.id)}
-                        className="flex-1"
-                      >
-                        <Trash2 className="h-3 w-3 mr-1" />
-                        Delete
-                      </Button>
+                    <div className="flex flex-col gap-2 pt-2">
+                      {item.status === 'pending_approval' && (
+                        <div className="flex gap-2">
+                          <Button
+                            variant="default"
+                            size="sm"
+                            onClick={async () => {
+                              if (item.id) {
+                                await approveMenuItem(item.id);
+                                queryClient.invalidateQueries({ queryKey: ['menu-items'] });
+                              }
+                            }}
+                            className="flex-1"
+                          >
+                            <Check className="h-3 w-3 mr-1" />
+                            Approve
+                          </Button>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={async () => {
+                              if (item.id) {
+                                await rejectMenuItem(item.id);
+                                queryClient.invalidateQueries({ queryKey: ['menu-items'] });
+                              }
+                            }}
+                            className="flex-1"
+                          >
+                            <X className="h-3 w-3 mr-1" />
+                            Reject
+                          </Button>
+                        </div>
+                      )}
+                      <div className="flex gap-2">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleEdit(item)}
+                          className="flex-1"
+                        >
+                          <Pencil className="h-3 w-3 mr-1" />
+                          Edit
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => item.id && handleDelete(item.id)}
+                          className="flex-1"
+                        >
+                          <Trash2 className="h-3 w-3 mr-1" />
+                          Delete
+                        </Button>
+                      </div>
                     </div>
                   </CardContent>
                 </Card>

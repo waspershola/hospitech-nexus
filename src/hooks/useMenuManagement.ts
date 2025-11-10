@@ -16,6 +16,9 @@ export interface MenuItemData {
   preparation_time?: string;
   dietary_tags?: string[];
   display_order?: number;
+  status?: string;
+  approved_by?: string;
+  approved_at?: string;
 }
 
 export function useMenuManagement() {
@@ -32,16 +35,68 @@ export function useMenuManagement() {
         .insert({
           ...item,
           tenant_id: tenantId,
+          status: 'pending_approval', // New items require approval
         })
         .select()
         .single();
 
       if (error) throw error;
-      toast.success('Menu item created');
+      toast.success('Menu item created and awaiting approval');
       return data;
     } catch (err) {
       console.error('Error creating menu item:', err);
       toast.error('Failed to create menu item');
+      return null;
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const approveMenuItem = async (id: string) => {
+    setIsLoading(true);
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error('Not authenticated');
+
+      const { data, error } = await supabase
+        .from('menu_items')
+        .update({
+          status: 'approved',
+          approved_by: user.id,
+          approved_at: new Date().toISOString(),
+        })
+        .eq('id', id)
+        .select()
+        .single();
+
+      if (error) throw error;
+      toast.success('Menu item approved');
+      return data;
+    } catch (err) {
+      console.error('Error approving menu item:', err);
+      toast.error('Failed to approve menu item');
+      return null;
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const rejectMenuItem = async (id: string) => {
+    setIsLoading(true);
+    try {
+      const { data, error } = await supabase
+        .from('menu_items')
+        .update({ status: 'archived' })
+        .eq('id', id)
+        .select()
+        .single();
+
+      if (error) throw error;
+      toast.success('Menu item rejected');
+      return data;
+    } catch (err) {
+      console.error('Error rejecting menu item:', err);
+      toast.error('Failed to reject menu item');
       return null;
     } finally {
       setIsLoading(false);
@@ -180,5 +235,7 @@ export function useMenuManagement() {
     deleteMenuItem,
     uploadImage,
     deleteImage,
+    approveMenuItem,
+    rejectMenuItem,
   };
 }

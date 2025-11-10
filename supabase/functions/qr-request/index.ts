@@ -78,19 +78,24 @@ serve(async (req) => {
         );
       }
 
-      // Phase 2: Service to department routing configuration
+      // Phase 2 & 4: Complete service to department routing
       const SERVICE_DEPARTMENT_MAP: Record<string, string> = {
+        'digital_menu': 'restaurant',
         'room_service': 'restaurant',
+        'menu_order': 'restaurant',
+        'dining': 'restaurant',
         'housekeeping': 'housekeeping',
         'maintenance': 'maintenance',
-        'concierge': 'front_office',
-        'digital_menu': 'restaurant',
-        'feedback': 'front_office',
         'wifi': 'front_office',
+        'concierge': 'concierge',
+        'feedback': 'front_office',
+        'front_desk': 'front_office',
+        'spa': 'spa',
+        'laundry': 'laundry',
       };
 
-      const assignedDepartment = SERVICE_DEPARTMENT_MAP[requestData.service_category] || 'front_office';
-      console.log(`[qr-request] Routing ${requestData.service_category} → ${assignedDepartment}`);
+      const assignedDepartment = SERVICE_DEPARTMENT_MAP[requestData.service_category.toLowerCase()] || 'front_office';
+      console.log(`[qr-request] Phase 4: Routing ${requestData.service_category} → ${assignedDepartment}`);
 
       // Create the request
       const { data: newRequest, error: insertError } = await supabase
@@ -126,6 +131,21 @@ serve(async (req) => {
       }
 
       console.log('[qr-request] Request created successfully:', newRequest.id);
+
+      // Phase 5: Send broadcast notification to both front_office and assigned department
+      try {
+        const broadcastChannel = new BroadcastChannel('qr-requests');
+        broadcastChannel.postMessage({
+          type: 'new_qr_request',
+          request: newRequest,
+          tenant_id: qr.tenant_id,
+          departments: ['front_office', assignedDepartment], // Dual notification
+        });
+        broadcastChannel.close();
+        console.log(`[qr-request] Phase 5: Notifications sent to front_office and ${assignedDepartment}`);
+      } catch (broadcastError) {
+        console.error('[qr-request] Broadcast notification error:', broadcastError);
+      }
 
       // Phase 1: Create initial chat message if note exists (with null guest_id for anonymous)
       if (requestData.note && requestData.note.trim() !== '') {

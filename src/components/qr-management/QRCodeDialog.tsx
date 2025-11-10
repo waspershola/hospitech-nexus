@@ -52,11 +52,14 @@ interface QRCodeDialogProps {
 }
 
 const availableServices = [
+  { value: 'digital_menu', label: 'Digital Menu' },
+  { value: 'wifi', label: 'WiFi Access' },
   { value: 'room_service', label: 'Room Service' },
   { value: 'housekeeping', label: 'Housekeeping' },
   { value: 'maintenance', label: 'Maintenance' },
   { value: 'concierge', label: 'Concierge' },
   { value: 'front_desk', label: 'Front Desk' },
+  { value: 'feedback', label: 'Share Feedback' },
   { value: 'spa', label: 'Spa Services' },
   { value: 'laundry', label: 'Laundry' },
   { value: 'dining', label: 'Dining Reservations' },

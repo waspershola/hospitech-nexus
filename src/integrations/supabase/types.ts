@@ -1633,6 +1633,8 @@ export type Database = {
       }
       menu_items: {
         Row: {
+          approved_at: string | null
+          approved_by: string | null
           category: string
           created_at: string | null
           currency: string | null
@@ -1645,10 +1647,13 @@ export type Database = {
           name: string
           preparation_time: string | null
           price: number
+          status: string | null
           tenant_id: string
           updated_at: string | null
         }
         Insert: {
+          approved_at?: string | null
+          approved_by?: string | null
           category: string
           created_at?: string | null
           currency?: string | null
@@ -1661,10 +1666,13 @@ export type Database = {
           name: string
           preparation_time?: string | null
           price: number
+          status?: string | null
           tenant_id: string
           updated_at?: string | null
         }
         Update: {
+          approved_at?: string | null
+          approved_by?: string | null
           category?: string
           created_at?: string | null
           currency?: string | null
@@ -1677,6 +1685,7 @@ export type Database = {
           name?: string
           preparation_time?: string | null
           price?: number
+          status?: string | null
           tenant_id?: string
           updated_at?: string | null
         }
@@ -3624,6 +3633,7 @@ export type Database = {
       }
       requests: {
         Row: {
+          assigned_department: string | null
           assigned_to: string | null
           completed_at: string | null
           created_at: string | null
@@ -3640,6 +3650,7 @@ export type Database = {
           type: string
         }
         Insert: {
+          assigned_department?: string | null
           assigned_to?: string | null
           completed_at?: string | null
           created_at?: string | null
@@ -3656,6 +3667,7 @@ export type Database = {
           type: string
         }
         Update: {
+          assigned_department?: string | null
           assigned_to?: string | null
           completed_at?: string | null
           created_at?: string | null

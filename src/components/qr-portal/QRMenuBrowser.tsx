@@ -105,18 +105,19 @@ export function QRMenuBrowser() {
       if (orderError) throw orderError;
 
       // Create a request entry for tracking
-      const { data: request, error: requestError } = await supabase
-        .from('requests')
-        .insert({
-          tenant_id: qrData?.tenant_id,
-          qr_token: token,
-          type: 'room_service',
-          service_category: 'menu_order',
-          note: `Order #${order.id.slice(0, 8)}: ${cart.length} items`,
-          priority: 'normal',
-          guest_name: 'Guest',
-          status: 'pending',
-        })
+        const { data: request, error: requestError } = await supabase
+          .from('requests')
+          .insert({
+            tenant_id: qrData?.tenant_id,
+            qr_token: token,
+            type: 'room_service',
+            service_category: 'menu_order',
+            assigned_department: 'restaurant',
+            note: `Order #${order.id.slice(0, 8)}: ${cart.length} items`,
+            priority: 'normal',
+            guest_name: 'Guest',
+            status: 'pending',
+          })
         .select()
         .single();
 
