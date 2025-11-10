@@ -5,7 +5,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
-import { useDepartmentRequests } from '@/hooks/useDepartmentRequests';
+import { useInventoryDepartmentRequests } from '@/hooks/useInventoryDepartmentRequests';
 import { useInventoryItems } from '@/hooks/useInventoryItems';
 import { Plus, Trash2 } from 'lucide-react';
 
@@ -15,7 +15,7 @@ interface DepartmentRequestModalProps {
 }
 
 export function DepartmentRequestModal({ open, onOpenChange }: DepartmentRequestModalProps) {
-  const { processRequest } = useDepartmentRequests();
+  const { processRequest } = useInventoryDepartmentRequests();
   const { items } = useInventoryItems();
   
   const [formData, setFormData] = useState({

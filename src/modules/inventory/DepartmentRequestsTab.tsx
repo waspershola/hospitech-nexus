@@ -7,12 +7,12 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { useDepartmentRequests } from '@/hooks/useDepartmentRequests';
+import { useInventoryDepartmentRequests } from '@/hooks/useInventoryDepartmentRequests';
 import { CheckCircle, XCircle, Package, AlertCircle } from 'lucide-react';
 import { useRole } from '@/hooks/useRole';
 
 export function DepartmentRequestsTab() {
-  const { requests, processRequest } = useDepartmentRequests();
+  const { requests, processRequest } = useInventoryDepartmentRequests();
   const { isOwner, isManager, isStoreManager } = useRole();
   const [selectedRequest, setSelectedRequest] = useState<any>(null);
   const [issueModalOpen, setIssueModalOpen] = useState(false);
@@ -109,8 +109,8 @@ export function DepartmentRequestsTab() {
                 <TableRow key={request.id}>
                   <TableCell className="font-medium">{request.request_number}</TableCell>
                   <TableCell className="capitalize">{request.department.replace('_', ' ')}</TableCell>
-                  <TableCell>{request.staff?.full_name}</TableCell>
-                  <TableCell>{request.items.length} items</TableCell>
+                  <TableCell>{request.requested_by}</TableCell>
+                  <TableCell>{Array.isArray(request.items) ? request.items.length : 0} items</TableCell>
                   <TableCell>
                     <Badge variant={getPriorityColor(request.priority) as any}>
                       {request.priority}
