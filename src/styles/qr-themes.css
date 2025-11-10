@@ -1,0 +1,231 @@
+/* QR Portal Theme System - Predefined Color Schemes */
+/* All colors in HSL format for consistency */
+
+/* Base QR Theme Variables */
+:root {
+  /* Default theme variables */
+  --qr-primary: 45 93% 47%;
+  --qr-accent: 38 92% 50%;
+  --qr-background: 0 0% 100%;
+  --qr-foreground: 0 0% 13%;
+  --qr-muted: 0 0% 96%;
+  --qr-muted-foreground: 0 0% 45%;
+  --qr-border: 0 0% 90%;
+  --qr-card-bg: 0 0% 100%;
+  --qr-card-foreground: 0 0% 13%;
+  
+  /* Gradient presets */
+  --qr-gradient-primary: linear-gradient(135deg, hsl(45 93% 47%), hsl(38 92% 50%));
+  --qr-gradient-subtle: linear-gradient(180deg, hsl(0 0% 98%), hsl(0 0% 96%));
+  
+  /* Shadow presets */
+  --qr-shadow-sm: 0 1px 2px 0 hsl(0 0% 0% / 0.05);
+  --qr-shadow-md: 0 4px 6px -1px hsl(0 0% 0% / 0.1);
+  --qr-shadow-lg: 0 10px 15px -3px hsl(0 0% 0% / 0.1);
+  --qr-shadow-xl: 0 20px 25px -5px hsl(0 0% 0% / 0.1);
+  --qr-shadow-glow: 0 0 20px hsl(var(--qr-primary) / 0.3);
+}
+
+/* Classic Luxury Gold Theme */
+.qr-theme-classic-luxury-gold {
+  --qr-primary: 45 93% 47%;
+  --qr-primary-light: 45 93% 60%;
+  --qr-primary-dark: 45 93% 35%;
+  --qr-accent: 38 92% 50%;
+  --qr-accent-light: 38 92% 65%;
+  --qr-background: 45 40% 98%;
+  --qr-foreground: 25 20% 15%;
+  --qr-muted: 45 30% 95%;
+  --qr-muted-foreground: 25 10% 45%;
+  --qr-card-bg: 0 0% 100%;
+  --qr-gradient-primary: linear-gradient(135deg, hsl(45 93% 47%), hsl(38 92% 50%));
+  --qr-gradient-bg: linear-gradient(180deg, hsl(45 40% 98%), hsl(38 30% 96%));
+  --qr-shadow-glow: 0 0 30px hsl(45 93% 47% / 0.3);
+}
+
+/* Modern Elegant Blue Theme */
+.qr-theme-modern-elegant-blue {
+  --qr-primary: 217 91% 60%;
+  --qr-primary-light: 217 91% 70%;
+  --qr-primary-dark: 217 91% 45%;
+  --qr-accent: 199 89% 48%;
+  --qr-accent-light: 199 89% 60%;
+  --qr-background: 217 30% 98%;
+  --qr-foreground: 217 20% 15%;
+  --qr-muted: 217 25% 95%;
+  --qr-muted-foreground: 217 10% 45%;
+  --qr-card-bg: 0 0% 100%;
+  --qr-gradient-primary: linear-gradient(135deg, hsl(217 91% 60%), hsl(199 89% 48%));
+  --qr-gradient-bg: linear-gradient(180deg, hsl(217 30% 98%), hsl(199 20% 96%));
+  --qr-shadow-glow: 0 0 30px hsl(217 91% 60% / 0.3);
+}
+
+/* Tropical Resort Green Theme */
+.qr-theme-tropical-resort-green {
+  --qr-primary: 142 71% 45%;
+  --qr-primary-light: 142 71% 55%;
+  --qr-primary-dark: 142 71% 35%;
+  --qr-accent: 160 84% 39%;
+  --qr-accent-light: 160 84% 50%;
+  --qr-background: 142 30% 98%;
+  --qr-foreground: 142 20% 15%;
+  --qr-muted: 142 25% 95%;
+  --qr-muted-foreground: 142 10% 45%;
+  --qr-card-bg: 0 0% 100%;
+  --qr-gradient-primary: linear-gradient(135deg, hsl(142 71% 45%), hsl(160 84% 39%));
+  --qr-gradient-bg: linear-gradient(180deg, hsl(142 30% 98%), hsl(160 20% 96%));
+  --qr-shadow-glow: 0 0 30px hsl(142 71% 45% / 0.3);
+}
+
+/* Sunset Coral Theme */
+.qr-theme-sunset-coral {
+  --qr-primary: 14 91% 60%;
+  --qr-primary-light: 14 91% 70%;
+  --qr-primary-dark: 14 91% 50%;
+  --qr-accent: 340 82% 52%;
+  --qr-accent-light: 340 82% 65%;
+  --qr-background: 14 40% 98%;
+  --qr-foreground: 14 20% 15%;
+  --qr-muted: 14 30% 95%;
+  --qr-muted-foreground: 14 10% 45%;
+  --qr-card-bg: 0 0% 100%;
+  --qr-gradient-primary: linear-gradient(135deg, hsl(14 91% 60%), hsl(340 82% 52%));
+  --qr-gradient-bg: linear-gradient(180deg, hsl(14 40% 98%), hsl(340 30% 96%));
+  --qr-shadow-glow: 0 0 30px hsl(14 91% 60% / 0.3);
+}
+
+/* Royal Purple Theme */
+.qr-theme-royal-purple {
+  --qr-primary: 271 91% 65%;
+  --qr-primary-light: 271 91% 75%;
+  --qr-primary-dark: 271 91% 55%;
+  --qr-accent: 291 64% 42%;
+  --qr-accent-light: 291 64% 55%;
+  --qr-background: 271 30% 98%;
+  --qr-foreground: 271 20% 15%;
+  --qr-muted: 271 25% 95%;
+  --qr-muted-foreground: 271 10% 45%;
+  --qr-card-bg: 0 0% 100%;
+  --qr-gradient-primary: linear-gradient(135deg, hsl(271 91% 65%), hsl(291 64% 42%));
+  --qr-gradient-bg: linear-gradient(180deg, hsl(271 30% 98%), hsl(291 20% 96%));
+  --qr-shadow-glow: 0 0 30px hsl(271 91% 65% / 0.3);
+}
+
+/* Dark Mode Variants */
+.dark .qr-theme-classic-luxury-gold {
+  --qr-background: 45 20% 10%;
+  --qr-foreground: 45 10% 95%;
+  --qr-muted: 45 15% 15%;
+  --qr-muted-foreground: 45 10% 65%;
+  --qr-card-bg: 45 15% 12%;
+  --qr-gradient-bg: linear-gradient(180deg, hsl(45 20% 10%), hsl(38 20% 8%));
+}
+
+.dark .qr-theme-modern-elegant-blue {
+  --qr-background: 217 30% 10%;
+  --qr-foreground: 217 10% 95%;
+  --qr-muted: 217 25% 15%;
+  --qr-muted-foreground: 217 10% 65%;
+  --qr-card-bg: 217 25% 12%;
+  --qr-gradient-bg: linear-gradient(180deg, hsl(217 30% 10%), hsl(199 25% 8%));
+}
+
+.dark .qr-theme-tropical-resort-green {
+  --qr-background: 142 25% 10%;
+  --qr-foreground: 142 10% 95%;
+  --qr-muted: 142 20% 15%;
+  --qr-muted-foreground: 142 10% 65%;
+  --qr-card-bg: 142 20% 12%;
+  --qr-gradient-bg: linear-gradient(180deg, hsl(142 25% 10%), hsl(160 20% 8%));
+}
+
+.dark .qr-theme-sunset-coral {
+  --qr-background: 14 30% 10%;
+  --qr-foreground: 14 10% 95%;
+  --qr-muted: 14 25% 15%;
+  --qr-muted-foreground: 14 10% 65%;
+  --qr-card-bg: 14 25% 12%;
+  --qr-gradient-bg: linear-gradient(180deg, hsl(14 30% 10%), hsl(340 25% 8%));
+}
+
+.dark .qr-theme-royal-purple {
+  --qr-background: 271 30% 10%;
+  --qr-foreground: 271 10% 95%;
+  --qr-muted: 271 25% 15%;
+  --qr-muted-foreground: 271 10% 65%;
+  --qr-card-bg: 271 25% 12%;
+  --qr-gradient-bg: linear-gradient(180deg, hsl(271 30% 10%), hsl(291 25% 8%));
+}
+
+/* Utility Classes for QR Portal Components */
+.qr-card {
+  background-color: hsl(var(--qr-card-bg));
+  color: hsl(var(--qr-card-foreground));
+  border-color: hsl(var(--qr-border));
+}
+
+.qr-muted {
+  color: hsl(var(--qr-muted-foreground));
+}
+
+.qr-accent {
+  background: var(--qr-gradient-primary);
+}
+
+.qr-service-card {
+  background-color: hsl(var(--qr-card-bg));
+  border: 2px solid transparent;
+  transition: all 0.3s ease;
+}
+
+.qr-service-card:hover {
+  border-color: hsl(var(--qr-primary) / 0.3);
+  box-shadow: var(--qr-shadow-lg), var(--qr-shadow-glow);
+  transform: scale(1.02);
+}
+
+.qr-button-primary {
+  background: var(--qr-gradient-primary);
+  color: hsl(0 0% 100%);
+  box-shadow: var(--qr-shadow-md);
+  transition: all 0.3s ease;
+}
+
+.qr-button-primary:hover {
+  box-shadow: var(--qr-shadow-lg), var(--qr-shadow-glow);
+  transform: scale(1.05);
+}
+
+/* Custom theme support */
+.qr-theme-custom {
+  /* Custom colors will be injected via inline styles */
+}
+
+/* Animation utilities for QR components */
+@keyframes qr-fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes qr-pulse-glow {
+  0%, 100% {
+    box-shadow: 0 0 20px hsl(var(--qr-primary) / 0.3);
+  }
+  50% {
+    box-shadow: 0 0 30px hsl(var(--qr-primary) / 0.5);
+  }
+}
+
+.qr-animate-in {
+  animation: qr-fade-in 0.5s ease-out;
+}
+
+.qr-pulse-glow {
+  animation: qr-pulse-glow 2s ease-in-out infinite;
+}

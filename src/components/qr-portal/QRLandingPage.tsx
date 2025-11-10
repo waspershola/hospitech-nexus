@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useQRToken } from '@/hooks/useQRToken';
+import { useQRTheme } from '@/hooks/useQRTheme';
 import { Loader2, UtensilsCrossed, Wifi, Coffee, Sparkles, Phone, Mail, Wrench, Bell, MessageCircle, Crown, Clock, AlertCircle } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -22,6 +23,9 @@ export function QRLandingPage() {
   const navigate = useNavigate();
   const { qrData, isValidating, error, validateToken } = useQRToken();
   const [hasValidated, setHasValidated] = useState(false);
+
+  // Apply QR theme dynamically
+  useQRTheme(qrData?.branding, 'qr-portal-root');
 
   useEffect(() => {
     if (token && !hasValidated) {
@@ -126,6 +130,7 @@ export function QRLandingPage() {
 
   return (
     <div 
+      id="qr-portal-root"
       className="min-h-screen bg-gradient-to-br from-background via-muted/30 to-accent/10 animate-fade-in"
     >
       {/* Luxury Header */}

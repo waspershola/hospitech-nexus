@@ -1,5 +1,6 @@
 import { Card } from '@/components/ui/card';
 import { UtensilsCrossed, Wifi, MessageCircle, Crown, Home, Sparkles, Phone, Clock, ChevronRight } from 'lucide-react';
+import { useQRThemeColors } from '@/hooks/useQRTheme';
 
 interface ThemePreviewProps {
   theme: string;
@@ -9,35 +10,13 @@ interface ThemePreviewProps {
   logoUrl?: string;
 }
 
-const THEME_PRESETS: Record<string, { primary: string; accent: string }> = {
-  classic_luxury_gold: {
-    primary: 'hsl(45 93% 47%)',
-    accent: 'hsl(38 92% 50%)',
-  },
-  modern_elegant_blue: {
-    primary: 'hsl(217 91% 60%)',
-    accent: 'hsl(199 89% 48%)',
-  },
-  tropical_resort_green: {
-    primary: 'hsl(142 71% 45%)',
-    accent: 'hsl(160 84% 39%)',
-  },
-  sunset_coral: {
-    primary: 'hsl(14 91% 60%)',
-    accent: 'hsl(340 82% 52%)',
-  },
-  royal_purple: {
-    primary: 'hsl(271 91% 65%)',
-    accent: 'hsl(291 64% 42%)',
-  },
-};
-
 export function ThemePreview({ theme, primaryColor, accentColor, hotelName = 'Your Hotel', logoUrl }: ThemePreviewProps) {
-  const themeColors = theme === 'custom' 
-    ? { primary: primaryColor || 'hsl(45 93% 47%)', accent: accentColor || 'hsl(38 92% 50%)' }
-    : THEME_PRESETS[theme] || THEME_PRESETS.classic_luxury_gold;
-
-  const gradient = `linear-gradient(135deg, ${themeColors.primary}, ${themeColors.accent})`;
+  // Use the hook to get theme colors
+  const colors = useQRThemeColors({
+    qr_theme: theme,
+    qr_primary_color: primaryColor,
+    qr_accent_color: accentColor,
+  });
 
   return (
     <div className="w-full rounded-lg border-2 shadow-xl overflow-hidden bg-gradient-to-br from-background via-muted/30 to-muted/50">
@@ -48,38 +27,38 @@ export function ThemePreview({ theme, primaryColor, accentColor, hotelName = 'Yo
           <div 
             className="w-16 h-16 mx-auto rounded-full backdrop-blur-sm border-2 shadow-xl overflow-hidden flex items-center justify-center"
             style={{ 
-              borderColor: `${themeColors.primary}40`,
-              background: `linear-gradient(135deg, ${themeColors.primary}10, ${themeColors.accent}20)`
+              borderColor: `${colors.primary}40`,
+              background: `linear-gradient(135deg, ${colors.primary}10, ${colors.accent}20)`
             }}
           >
             {logoUrl ? (
               <img src={logoUrl} alt="Logo" className="w-14 h-14 object-cover rounded-full" />
             ) : (
-              <Crown className="h-8 w-8" style={{ color: themeColors.primary }} />
+              <Crown className="h-8 w-8" style={{ color: colors.primary }} />
             )}
           </div>
 
           {/* Hotel Name */}
           <h2 
             className="text-3xl font-serif font-bold bg-clip-text text-transparent"
-            style={{ backgroundImage: gradient }}
+            style={{ backgroundImage: colors.gradient }}
           >
             {hotelName}
           </h2>
 
           {/* Room Info */}
           <div className="flex items-center justify-center gap-3 text-muted-foreground">
-            <Sparkles className="h-4 w-4 animate-pulse" style={{ color: themeColors.primary }} />
+            <Sparkles className="h-4 w-4 animate-pulse" style={{ color: colors.primary }} />
             <div className="flex items-center gap-1.5">
-              <Home className="h-4 w-4" style={{ color: themeColors.primary }} />
+              <Home className="h-4 w-4" style={{ color: colors.primary }} />
               <span 
                 className="text-lg font-bold font-serif bg-clip-text text-transparent"
-                style={{ backgroundImage: gradient }}
+                style={{ backgroundImage: colors.gradient }}
               >
                 Room 101
               </span>
             </div>
-            <Sparkles className="h-4 w-4 animate-pulse" style={{ color: themeColors.accent }} />
+            <Sparkles className="h-4 w-4 animate-pulse" style={{ color: colors.accent }} />
           </div>
 
           <p className="text-sm text-muted-foreground opacity-80">Luxury Guest Services</p>
@@ -89,9 +68,9 @@ export function ThemePreview({ theme, primaryColor, accentColor, hotelName = 'Yo
         <Card className="shadow-lg border-2 bg-card/80 backdrop-blur-sm">
           <div className="p-6 text-center space-y-2">
             <div className="flex items-center justify-center gap-2 mb-2">
-              <Crown className="h-5 w-5" style={{ color: themeColors.primary }} />
+              <Crown className="h-5 w-5" style={{ color: colors.primary }} />
               <h3 className="text-lg font-serif text-foreground">Welcome</h3>
-              <Crown className="h-5 w-5" style={{ color: themeColors.accent }} />
+              <Crown className="h-5 w-5" style={{ color: colors.accent }} />
             </div>
             <p className="text-sm text-muted-foreground">
               Experience seamless service at your fingertips
@@ -105,7 +84,7 @@ export function ThemePreview({ theme, primaryColor, accentColor, hotelName = 'Yo
             <h3 className="text-base font-serif font-semibold text-foreground">Available Services</h3>
             <div 
               className="w-16 h-0.5 mx-auto rounded-full"
-              style={{ background: gradient }}
+              style={{ background: colors.gradient }}
             />
           </div>
 
@@ -125,10 +104,10 @@ export function ThemePreview({ theme, primaryColor, accentColor, hotelName = 'Yo
                   <div 
                     className="w-12 h-12 rounded-xl flex items-center justify-center transition-transform group-hover:scale-110 shrink-0"
                     style={{
-                      background: `linear-gradient(135deg, ${themeColors.primary}15, ${themeColors.accent}25)`
+                      background: `linear-gradient(135deg, ${colors.primary}15, ${colors.accent}25)`
                     }}
                   >
-                    <service.icon className="h-6 w-6" style={{ color: themeColors.primary }} />
+                    <service.icon className="h-6 w-6" style={{ color: colors.primary }} />
                   </div>
 
                   {/* Text */}
@@ -142,7 +121,7 @@ export function ThemePreview({ theme, primaryColor, accentColor, hotelName = 'Yo
                   {/* Arrow */}
                   <div 
                     className="w-8 h-8 rounded-full flex items-center justify-center transition-transform group-hover:scale-110 shrink-0"
-                    style={{ background: gradient }}
+                    style={{ background: colors.gradient }}
                   >
                     <ChevronRight className="h-4 w-4 text-white" />
                   </div>
@@ -159,10 +138,10 @@ export function ThemePreview({ theme, primaryColor, accentColor, hotelName = 'Yo
               <div 
                 className="w-10 h-10 rounded-full flex items-center justify-center shrink-0"
                 style={{
-                  background: `linear-gradient(135deg, ${themeColors.primary}15, ${themeColors.accent}25)`
+                  background: `linear-gradient(135deg, ${colors.primary}15, ${colors.accent}25)`
                 }}
               >
-                <Phone className="h-5 w-5" style={{ color: themeColors.primary }} />
+                <Phone className="h-5 w-5" style={{ color: colors.primary }} />
               </div>
               <div className="flex-1">
                 <h4 className="text-sm font-serif font-semibold text-foreground">Need Assistance?</h4>
@@ -171,7 +150,7 @@ export function ThemePreview({ theme, primaryColor, accentColor, hotelName = 'Yo
             </div>
             <div 
               className="py-2 px-4 rounded-full text-xs text-white text-center font-medium"
-              style={{ background: gradient }}
+              style={{ background: colors.gradient }}
             >
               Call Now
             </div>
