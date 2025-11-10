@@ -3,6 +3,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
+import { useNotificationSound } from './useNotificationSound';
 
 export interface DepartmentRequest {
   id: string;
@@ -38,6 +39,7 @@ export function useDepartmentRequests(department?: string) {
   const { tenantId, user } = useAuth();
   const queryClient = useQueryClient();
   const [isUpdating, setIsUpdating] = useState(false);
+  const { playSound } = useNotificationSound();
 
   // Fetch department requests with room and guest info
   const { data: requests = [], isLoading } = useQuery({
@@ -93,6 +95,9 @@ export function useDepartmentRequests(department?: string) {
           toast.info('New Request', {
             description: `${newRequest.service_category} - ${newRequest.metadata?.guest_name || 'Guest'}`,
           });
+          
+          // Play notification sound
+          playSound('qr_request');
         }
       )
       .on(
