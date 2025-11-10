@@ -8,7 +8,7 @@ import { CreditCard, MessageSquare, Users, Building2, AlertCircle } from 'lucide
 import { useAuth } from '@/contexts/AuthContext';
 
 export function TenantStatusWidget() {
-  const { tenantId } = useAuth();
+  const { tenantId, platformRole } = useAuth();
 
   const { data: planSummary, isLoading } = useQuery({
     queryKey: ['tenant-plan-summary', tenantId],
@@ -62,7 +62,7 @@ export function TenantStatusWidget() {
         },
       };
     },
-    enabled: !!tenantId,
+    enabled: !!tenantId && !!platformRole, // Only fetch if user has platform role
   });
 
   if (isLoading || !planSummary) {

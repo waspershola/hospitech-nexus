@@ -15,11 +15,18 @@ interface QRData {
     primary_color?: string;
     logo_url?: string;
     favicon_url?: string;
+    qr_theme?: string;
+    qr_primary_color?: string;
+    qr_accent_color?: string;
   };
   tenant: {
     hotel_name?: string;
     contact_phone?: string;
     contact_email?: string;
+    qr_menu_enabled?: boolean;
+    qr_wifi_enabled?: boolean;
+    qr_feedback_enabled?: boolean;
+    qr_calling_enabled?: boolean;
   };
 }
 

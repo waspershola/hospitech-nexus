@@ -62,6 +62,50 @@ export function QRLandingPage() {
 
   const { display_name, welcome_message, services, tenant, branding } = qrData;
 
+  // Get theme settings
+  const qrTheme = branding?.qr_theme || 'classic_luxury_gold';
+  const customPrimary = branding?.qr_primary_color;
+  const customAccent = branding?.qr_accent_color;
+
+  // Theme color presets
+  const THEME_COLORS: Record<string, { primary: string; accent: string; gradient: string }> = {
+    classic_luxury_gold: {
+      primary: 'hsl(45 93% 47%)',
+      accent: 'hsl(38 92% 50%)',
+      gradient: 'linear-gradient(135deg, hsl(45 93% 47%), hsl(38 92% 50%))',
+    },
+    modern_elegant_blue: {
+      primary: 'hsl(217 91% 60%)',
+      accent: 'hsl(199 89% 48%)',
+      gradient: 'linear-gradient(135deg, hsl(217 91% 60%), hsl(199 89% 48%))',
+    },
+    tropical_resort_green: {
+      primary: 'hsl(142 71% 45%)',
+      accent: 'hsl(160 84% 39%)',
+      gradient: 'linear-gradient(135deg, hsl(142 71% 45%), hsl(160 84% 39%))',
+    },
+    sunset_coral: {
+      primary: 'hsl(14 91% 60%)',
+      accent: 'hsl(340 82% 52%)',
+      gradient: 'linear-gradient(135deg, hsl(14 91% 60%), hsl(340 82% 52%))',
+    },
+    royal_purple: {
+      primary: 'hsl(271 91% 65%)',
+      accent: 'hsl(291 64% 42%)',
+      gradient: 'linear-gradient(135deg, hsl(271 91% 65%), hsl(291 64% 42%))',
+    },
+  };
+
+  const themeColors = qrTheme === 'custom' && customPrimary && customAccent
+    ? { primary: customPrimary, accent: customAccent, gradient: `linear-gradient(135deg, ${customPrimary}, ${customAccent})` }
+    : THEME_COLORS[qrTheme] || THEME_COLORS.classic_luxury_gold;
+
+  // Feature toggles
+  const showMenu = tenant?.qr_menu_enabled ?? true;
+  const showWifi = tenant?.qr_wifi_enabled ?? true;
+  const showFeedback = tenant?.qr_feedback_enabled ?? true;
+  const showCalling = tenant?.qr_calling_enabled ?? true;
+
   return (
     <div 
       className="min-h-screen bg-gradient-to-br from-background via-muted/30 to-accent/10 p-4 animate-fade-in"
@@ -77,7 +121,10 @@ export function QRLandingPage() {
             />
           )}
           <div className="space-y-3">
-            <h1 className="text-4xl md:text-5xl font-display font-bold bg-gradient-to-r from-primary via-accent to-primary bg-clip-text text-transparent animate-fade-in">
+            <h1 
+              className="text-4xl md:text-5xl font-display font-bold bg-clip-text text-transparent animate-fade-in"
+              style={{ backgroundImage: themeColors.gradient }}
+            >
               {tenant?.hotel_name || 'Guest Portal'}
             </h1>
             <p className="text-xl text-muted-foreground font-medium">{display_name}</p>
@@ -96,7 +143,8 @@ export function QRLandingPage() {
           <h2 className="text-2xl font-display font-semibold text-foreground">Available Services</h2>
           <div className="grid gap-6 sm:grid-cols-2">
             {/* Digital Menu */}
-            <Card 
+            {showMenu && (
+              <Card
               className="group cursor-pointer bg-card/80 backdrop-blur-sm border-2 border-transparent 
                          hover:border-accent/50 hover:shadow-2xl hover:shadow-accent/20 
                          transition-all duration-500 hover:scale-[1.03] animate-fade-in"
@@ -112,9 +160,11 @@ export function QRLandingPage() {
                 <CardDescription className="font-body">Browse our menu and place orders</CardDescription>
               </CardHeader>
             </Card>
+            )}
 
             {/* WiFi Credentials */}
-            <Card 
+            {showWifi && (
+              <Card
               className="group cursor-pointer bg-card/80 backdrop-blur-sm border-2 border-transparent 
                          hover:border-blue-500/50 hover:shadow-2xl hover:shadow-blue-500/20 
                          transition-all duration-500 hover:scale-[1.03] animate-fade-in"
@@ -130,6 +180,7 @@ export function QRLandingPage() {
                 <CardDescription className="font-body">Connect to our network</CardDescription>
               </CardHeader>
             </Card>
+            )}
 
             {/* Dynamic Services from QR Config */}
             {services.map((service) => {
@@ -166,7 +217,8 @@ export function QRLandingPage() {
             })}
 
             {/* Feedback */}
-            <Card 
+            {showFeedback && (
+              <Card
               className="group cursor-pointer bg-card/80 backdrop-blur-sm border-2 border-transparent 
                          hover:border-green-500/50 hover:shadow-2xl hover:shadow-green-500/20 
                          transition-all duration-500 hover:scale-[1.03] animate-fade-in"
@@ -182,11 +234,12 @@ export function QRLandingPage() {
                 <CardDescription className="font-body">Help us improve</CardDescription>
               </CardHeader>
             </Card>
+            )}
           </div>
         </div>
 
         {/* Contact Info */}
-        {(tenant?.contact_phone || tenant?.contact_email) && (
+        {showCalling && (tenant?.contact_phone || tenant?.contact_email) && (
           <Card className="backdrop-blur-sm bg-card/80 border-2 shadow-card">
             <CardHeader>
               <CardTitle className="text-lg font-display">Need Immediate Assistance?</CardTitle>

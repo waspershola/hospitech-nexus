@@ -1,25 +1,33 @@
 import { useConfigStore } from '@/stores/configStore';
 import { ConfigCard } from '../shared/ConfigCard';
 import { PortalPreviewCard } from '../shared/PortalPreviewCard';
+import { ThemePreview } from '@/components/qr-portal/ThemePreview';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Switch } from '@/components/ui/switch';
-import { Hotel, MapPin, Phone, ShieldCheck, Clock, MessageSquare } from 'lucide-react';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Hotel, MapPin, Phone, ShieldCheck, Clock, MessageSquare, Palette, Wifi, UtensilsCrossed } from 'lucide-react';
 
 export function GeneralTab() {
   const configurations = useConfigStore(state => state.configurations);
   const hotelMeta = useConfigStore(state => state.hotelMeta);
+  const branding = useConfigStore(state => state.branding);
   const updateConfig = useConfigStore(state => state.updateConfig);
   const updateHotelMeta = useConfigStore(state => state.updateHotelMeta);
+  const updateBranding = useConfigStore(state => state.updateBranding);
   const saveConfig = useConfigStore(state => state.saveConfig);
   const saveHotelMeta = useConfigStore(state => state.saveHotelMeta);
+  const saveBranding = useConfigStore(state => state.saveBranding);
   const hasGeneralUnsaved = useConfigStore(state => state.unsavedChanges.includes('general'));
   const hasMetaUnsaved = useConfigStore(state => state.unsavedChanges.includes('hotel_meta'));
+  const hasBrandingUnsaved = useConfigStore(state => state.unsavedChanges.includes('branding'));
   const sectionError = useConfigStore(state => state.sectionErrors.general);
   const metaError = useConfigStore(state => state.sectionErrors.hotel_meta);
+  const brandingError = useConfigStore(state => state.sectionErrors.branding);
   const lastSaved = useConfigStore(state => state.sectionLastSaved.general);
   const metaLastSaved = useConfigStore(state => state.sectionLastSaved.hotel_meta);
+  const brandingLastSaved = useConfigStore(state => state.sectionLastSaved.branding);
   const general = configurations.general || {};
 
   const handleChange = (field: string, value: any) => {
@@ -28,6 +36,10 @@ export function GeneralTab() {
 
   const handleMetaChange = (field: string, value: any) => {
     updateHotelMeta({ [field]: value });
+  };
+
+  const handleBrandingChange = (field: string, value: any) => {
+    updateBranding({ [field]: value });
   };
 
   return (
@@ -274,6 +286,175 @@ export function GeneralTab() {
             checked={general.allowCheckoutWithoutPayment ?? true}
             onCheckedChange={(checked) => handleChange('allowCheckoutWithoutPayment', checked)}
           />
+        </div>
+      </ConfigCard>
+
+      {/* QR Portal Theme Customization */}
+      <ConfigCard
+        title="QR Portal Theme"
+        description="Customize the appearance of your guest QR portal"
+        icon={Palette}
+        onSave={saveBranding}
+        hasUnsavedChanges={hasBrandingUnsaved}
+        lastSaved={brandingLastSaved}
+        error={brandingError}
+        sectionKey="branding"
+      >
+        <div className="space-y-6">
+          {/* Theme Preset Selection */}
+          <div className="space-y-2">
+            <Label htmlFor="qr_theme">Theme Preset</Label>
+            <Select
+              value={branding.qr_theme || 'classic_luxury_gold'}
+              onValueChange={(value) => handleBrandingChange('qr_theme', value)}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="Select a theme" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="classic_luxury_gold">Classic Luxury Gold</SelectItem>
+                <SelectItem value="modern_elegant_blue">Modern Elegant Blue</SelectItem>
+                <SelectItem value="tropical_resort_green">Tropical Resort Green</SelectItem>
+                <SelectItem value="sunset_coral">Sunset Coral</SelectItem>
+                <SelectItem value="royal_purple">Royal Purple</SelectItem>
+                <SelectItem value="custom">Custom Colors</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          {/* Custom Color Pickers (shown only for custom theme) */}
+          {branding.qr_theme === 'custom' && (
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="qr_primary_color">Primary Color</Label>
+                <div className="flex gap-2">
+                  <Input
+                    id="qr_primary_color"
+                    type="color"
+                    value={branding.qr_primary_color || '#f59e0b'}
+                    onChange={(e) => handleBrandingChange('qr_primary_color', e.target.value)}
+                    className="w-20 h-10"
+                  />
+                  <Input
+                    value={branding.qr_primary_color || '#f59e0b'}
+                    onChange={(e) => handleBrandingChange('qr_primary_color', e.target.value)}
+                    placeholder="#f59e0b"
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="qr_accent_color">Accent Color</Label>
+                <div className="flex gap-2">
+                  <Input
+                    id="qr_accent_color"
+                    type="color"
+                    value={branding.qr_accent_color || '#f97316'}
+                    onChange={(e) => handleBrandingChange('qr_accent_color', e.target.value)}
+                    className="w-20 h-10"
+                  />
+                  <Input
+                    value={branding.qr_accent_color || '#f97316'}
+                    onChange={(e) => handleBrandingChange('qr_accent_color', e.target.value)}
+                    placeholder="#f97316"
+                  />
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Theme Preview */}
+          <div className="space-y-2">
+            <Label>Preview</Label>
+            <ThemePreview
+              theme={branding.qr_theme || 'classic_luxury_gold'}
+              primaryColor={branding.qr_primary_color}
+              accentColor={branding.qr_accent_color}
+              hotelName={general.hotelName || hotelMeta.hotel_name || 'Your Hotel'}
+            />
+          </div>
+        </div>
+      </ConfigCard>
+
+      {/* QR Portal Features */}
+      <ConfigCard
+        title="QR Portal Features"
+        description="Enable or disable features in your guest QR portal"
+        icon={UtensilsCrossed}
+        onSave={saveHotelMeta}
+        hasUnsavedChanges={hasMetaUnsaved}
+        lastSaved={metaLastSaved}
+        error={metaError}
+        sectionKey="hotel_meta"
+      >
+        <div className="space-y-4">
+          <div className="flex items-center justify-between">
+            <div className="space-y-0.5 flex-1">
+              <Label htmlFor="qr_menu_enabled" className="text-base flex items-center gap-2">
+                <UtensilsCrossed className="h-4 w-4" />
+                Digital Menu
+              </Label>
+              <p className="text-sm text-muted-foreground">
+                Allow guests to browse menu and place orders
+              </p>
+            </div>
+            <Switch
+              id="qr_menu_enabled"
+              checked={hotelMeta.qr_menu_enabled ?? true}
+              onCheckedChange={(checked) => handleMetaChange('qr_menu_enabled', checked)}
+            />
+          </div>
+
+          <div className="flex items-center justify-between">
+            <div className="space-y-0.5 flex-1">
+              <Label htmlFor="qr_wifi_enabled" className="text-base flex items-center gap-2">
+                <Wifi className="h-4 w-4" />
+                WiFi Credentials
+              </Label>
+              <p className="text-sm text-muted-foreground">
+                Show WiFi network details to guests
+              </p>
+            </div>
+            <Switch
+              id="qr_wifi_enabled"
+              checked={hotelMeta.qr_wifi_enabled ?? true}
+              onCheckedChange={(checked) => handleMetaChange('qr_wifi_enabled', checked)}
+            />
+          </div>
+
+          <div className="flex items-center justify-between">
+            <div className="space-y-0.5 flex-1">
+              <Label htmlFor="qr_feedback_enabled" className="text-base flex items-center gap-2">
+                <MessageSquare className="h-4 w-4" />
+                Guest Feedback
+              </Label>
+              <p className="text-sm text-muted-foreground">
+                Enable feedback collection from guests
+              </p>
+            </div>
+            <Switch
+              id="qr_feedback_enabled"
+              checked={hotelMeta.qr_feedback_enabled ?? true}
+              onCheckedChange={(checked) => handleMetaChange('qr_feedback_enabled', checked)}
+            />
+          </div>
+
+          <div className="flex items-center justify-between">
+            <div className="space-y-0.5 flex-1">
+              <Label htmlFor="qr_calling_enabled" className="text-base flex items-center gap-2">
+                <Phone className="h-4 w-4" />
+                Direct Calling
+              </Label>
+              <p className="text-sm text-muted-foreground">
+                Show contact numbers for direct calling
+              </p>
+            </div>
+            <Switch
+              id="qr_calling_enabled"
+              checked={hotelMeta.qr_calling_enabled ?? true}
+              onCheckedChange={(checked) => handleMetaChange('qr_calling_enabled', checked)}
+            />
+          </div>
         </div>
       </ConfigCard>
     </div>
