@@ -15,6 +15,7 @@ import { MobileBottomNav } from '@/modules/frontdesk/components/MobileBottomNav'
 import { AvailabilityCalendar } from '@/modules/frontdesk/components/AvailabilityCalendar';
 import { StatusSyncMonitor } from '@/components/StatusSyncMonitor';
 import { BulkCheckInDrawer } from '@/modules/frontdesk/components/BulkCheckInDrawer';
+import { QRRequestNotificationWidget } from '@/components/frontdesk/QRRequestNotificationWidget';
 import { useOverstayRooms } from '@/hooks/useOverstayRooms';
 import { useRoomActions } from '@/modules/frontdesk/hooks/useRoomActions';
 import { useRoomRealtime, useBookingRealtime, usePaymentRealtime } from '@/hooks/useRoomRealtime';
@@ -94,21 +95,24 @@ export default function FrontDesk() {
           <h2 className="text-lg lg:text-xl font-display font-semibold text-foreground truncate">Room Management</h2>
           <p className="text-xs lg:text-sm text-muted-foreground hidden sm:block">Monitor and manage all rooms from one dashboard</p>
         </div>
-        <Button 
-          onClick={() => setIsBookingFlowOpen(true)} 
-          size="lg"
-          className="hidden sm:flex"
-        >
-          <Plus className="w-4 h-4 mr-2" />
-          New Booking
-        </Button>
-        <Button 
-          onClick={() => setIsBookingFlowOpen(true)} 
-          size="icon"
-          className="sm:hidden"
-        >
-          <Plus className="w-5 h-5" />
-        </Button>
+        <div className="flex items-center gap-2">
+          <QRRequestNotificationWidget />
+          <Button 
+            onClick={() => setIsBookingFlowOpen(true)} 
+            size="lg"
+            className="hidden sm:flex"
+          >
+            <Plus className="w-4 h-4 mr-2" />
+            New Booking
+          </Button>
+          <Button 
+            onClick={() => setIsBookingFlowOpen(true)} 
+            size="icon"
+            className="sm:hidden"
+          >
+            <Plus className="w-5 h-5" />
+          </Button>
+        </div>
       </div>
       
       <div className="flex-1 flex flex-col overflow-hidden">

@@ -1131,6 +1131,9 @@ export type Database = {
           id: string
           logo_url: string | null
           primary_color: string | null
+          qr_accent_color: string | null
+          qr_primary_color: string | null
+          qr_theme: string | null
           receipt_footer: string | null
           receipt_header: string | null
           secondary_color: string | null
@@ -1148,6 +1151,9 @@ export type Database = {
           id?: string
           logo_url?: string | null
           primary_color?: string | null
+          qr_accent_color?: string | null
+          qr_primary_color?: string | null
+          qr_theme?: string | null
           receipt_footer?: string | null
           receipt_header?: string | null
           secondary_color?: string | null
@@ -1165,6 +1171,9 @@ export type Database = {
           id?: string
           logo_url?: string | null
           primary_color?: string | null
+          qr_accent_color?: string | null
+          qr_primary_color?: string | null
+          qr_theme?: string | null
           receipt_footer?: string | null
           receipt_header?: string | null
           secondary_color?: string | null
@@ -1421,6 +1430,10 @@ export type Database = {
           description: string | null
           hotel_name: string | null
           id: string
+          qr_calling_enabled: boolean | null
+          qr_feedback_enabled: boolean | null
+          qr_menu_enabled: boolean | null
+          qr_wifi_enabled: boolean | null
           social_links: Json | null
           tagline: string | null
           tenant_id: string
@@ -1433,6 +1446,10 @@ export type Database = {
           description?: string | null
           hotel_name?: string | null
           id?: string
+          qr_calling_enabled?: boolean | null
+          qr_feedback_enabled?: boolean | null
+          qr_menu_enabled?: boolean | null
+          qr_wifi_enabled?: boolean | null
           social_links?: Json | null
           tagline?: string | null
           tenant_id: string
@@ -1445,6 +1462,10 @@ export type Database = {
           description?: string | null
           hotel_name?: string | null
           id?: string
+          qr_calling_enabled?: boolean | null
+          qr_feedback_enabled?: boolean | null
+          qr_menu_enabled?: boolean | null
+          qr_wifi_enabled?: boolean | null
           social_links?: Json | null
           tagline?: string | null
           tenant_id?: string
@@ -1734,6 +1755,39 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      notification_sounds: {
+        Row: {
+          category: string | null
+          created_at: string | null
+          file_path: string
+          id: string
+          is_default: boolean | null
+          name: string
+          tenant_id: string
+          updated_at: string | null
+        }
+        Insert: {
+          category?: string | null
+          created_at?: string | null
+          file_path: string
+          id?: string
+          is_default?: boolean | null
+          name: string
+          tenant_id: string
+          updated_at?: string | null
+        }
+        Update: {
+          category?: string | null
+          created_at?: string | null
+          file_path?: string
+          id?: string
+          is_default?: boolean | null
+          name?: string
+          tenant_id?: string
+          updated_at?: string | null
+        }
+        Relationships: []
       }
       organization_members: {
         Row: {

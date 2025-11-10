@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
@@ -12,7 +12,7 @@ import { Switch } from '@/components/ui/switch';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from '@/components/ui/dialog';
 import { Badge } from '@/components/ui/badge';
-import { UtensilsCrossed, Plus, Pencil, Trash2, Image as ImageIcon } from 'lucide-react';
+import { UtensilsCrossed, Plus, Pencil, Trash2, Image as ImageIcon, Upload, Loader2 } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 
 const CATEGORIES = ['breakfast', 'appetizers', 'main_course', 'desserts', 'beverages', 'sides'];
@@ -21,10 +21,13 @@ const DIETARY_TAGS = ['vegetarian', 'vegan', 'gluten-free', 'dairy-free', 'spicy
 export function MenuManagementTab() {
   const { tenantId } = useAuth();
   const queryClient = useQueryClient();
-  const { createMenuItem, updateMenuItem, deleteMenuItem, isLoading: isSaving } = useMenuManagement();
+  const { createMenuItem, updateMenuItem, deleteMenuItem, uploadImage, isLoading: isSaving } = useMenuManagement();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingItem, setEditingItem] = useState<MenuItemData | null>(null);
   const [categoryFilter, setCategoryFilter] = useState('all');
+  const [imagePreview, setImagePreview] = useState<string>('');
+  const [isUploading, setIsUploading] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [formData, setFormData] = useState<MenuItemData>({
     name: '',
@@ -85,6 +88,7 @@ export function MenuManagementTab() {
   const handleCloseDialog = () => {
     setIsDialogOpen(false);
     setEditingItem(null);
+    setImagePreview('');
     setFormData({
       name: '',
       description: '',
@@ -97,6 +101,20 @@ export function MenuManagementTab() {
       dietary_tags: [],
       display_order: 0,
     });
+  };
+
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setIsUploading(true);
+    const publicUrl = await uploadImage(file);
+    setIsUploading(false);
+
+    if (publicUrl) {
+      setFormData(prev => ({ ...prev, image_url: publicUrl }));
+      setImagePreview(publicUrl);
+    }
   };
 
   const toggleDietaryTag = (tag: string) => {
@@ -217,15 +235,58 @@ export function MenuManagementTab() {
                   </div>
 
                   <div className="space-y-2">
-                    <Label htmlFor="image_url">Image URL *</Label>
-                    <Input
-                      id="image_url"
-                      value={formData.image_url}
-                      onChange={(e) => setFormData(prev => ({ ...prev, image_url: e.target.value }))}
-                      placeholder="https://..."
-                    />
+                    <Label>Menu Item Image *</Label>
+                    {(imagePreview || formData.image_url) && (
+                      <div className="relative w-full h-48 rounded-lg overflow-hidden border">
+                        <img
+                          src={imagePreview || formData.image_url}
+                          alt="Preview"
+                          className="w-full h-full object-cover"
+                        />
+                      </div>
+                    )}
+                    <div className="flex gap-2">
+                      <input
+                        ref={fileInputRef}
+                        type="file"
+                        accept="image/*"
+                        onChange={handleImageUpload}
+                        className="hidden"
+                      />
+                      <Button
+                        type="button"
+                        variant="outline"
+                        onClick={() => fileInputRef.current?.click()}
+                        disabled={isUploading}
+                        className="flex-1"
+                      >
+                        {isUploading ? (
+                          <>
+                            <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                            Uploading...
+                          </>
+                        ) : (
+                          <>
+                            <Upload className="h-4 w-4 mr-2" />
+                            Upload Image
+                          </>
+                        )}
+                      </Button>
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="image_url_manual">Or paste image URL</Label>
+                      <Input
+                        id="image_url_manual"
+                        value={formData.image_url}
+                        onChange={(e) => {
+                          setFormData(prev => ({ ...prev, image_url: e.target.value }));
+                          setImagePreview(e.target.value);
+                        }}
+                        placeholder="https://..."
+                      />
+                    </div>
                     <p className="text-xs text-muted-foreground">
-                      Paste an image URL or upload to Supabase Storage
+                      Upload an image (max 10MB) or paste a URL. Images are automatically optimized to WebP format.
                     </p>
                   </div>
 

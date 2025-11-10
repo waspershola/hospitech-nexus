@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
+import { useRingtone } from '@/hooks/useRingtone';
 
 export interface Notification {
   id: string;
@@ -18,6 +19,7 @@ export function useNotifications() {
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const { tenantId, user } = useAuth();
+  const { playRingtone } = useRingtone();
 
   useEffect(() => {
     if (!tenantId || !user) return;
@@ -52,6 +54,11 @@ export function useNotifications() {
 
           setNotifications(prev => [notification, ...prev]);
           setUnreadCount(prev => prev + 1);
+
+          // Play notification sound for QR requests
+          if (newRequest.qr_token) {
+            playRingtone('/sounds/notification-default.mp3');
+          }
 
           // Show toast notification
           toast.info(notification.title, {
@@ -114,6 +121,9 @@ export function useNotifications() {
 
               setNotifications(prev => [notification, ...prev]);
               setUnreadCount(prev => prev + 1);
+
+              // Play notification sound
+              playRingtone('/sounds/notification-default.mp3');
 
               // Show toast notification
               toast.info(notification.title, {
