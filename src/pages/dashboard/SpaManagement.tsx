@@ -87,7 +87,16 @@ export default function SpaManagement() {
       resetForm();
       setIsDialogOpen(false);
     },
-    onError: () => toast.error('Failed to create service'),
+    onError: (error: any) => {
+      console.error('❌ Spa service creation failed:', error);
+      console.error('Error details:', {
+        message: error?.message,
+        hint: error?.hint,
+        details: error?.details,
+        code: error?.code,
+      });
+      toast.error(`Failed to create service: ${error?.message || 'Unknown error'}`);
+    },
   });
 
   const updateService = useMutation({
@@ -105,7 +114,10 @@ export default function SpaManagement() {
       setIsDialogOpen(false);
       setEditingService(null);
     },
-    onError: () => toast.error('Failed to update service'),
+    onError: (error: any) => {
+      console.error('❌ Spa service update failed:', error);
+      toast.error(`Failed to update service: ${error?.message || 'Unknown error'}`);
+    },
   });
 
   const deleteService = useMutation({
@@ -117,7 +129,10 @@ export default function SpaManagement() {
       queryClient.invalidateQueries({ queryKey: ['spa-services'] });
       toast.success('Service deleted successfully');
     },
-    onError: () => toast.error('Failed to delete service'),
+    onError: (error: any) => {
+      console.error('❌ Spa service deletion failed:', error);
+      toast.error(`Failed to delete service: ${error?.message || 'Unknown error'}`);
+    },
   });
 
   const handleSubmit = (e: React.FormEvent) => {

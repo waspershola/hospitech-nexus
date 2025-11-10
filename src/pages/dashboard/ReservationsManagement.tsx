@@ -88,7 +88,16 @@ export default function ReservationsManagement() {
       resetForm();
       setIsDialogOpen(false);
     },
-    onError: () => toast.error('Failed to create reservation'),
+    onError: (error: any) => {
+      console.error('❌ Reservation creation failed:', error);
+      console.error('Error details:', {
+        message: error?.message,
+        hint: error?.hint,
+        details: error?.details,
+        code: error?.code,
+      });
+      toast.error(`Failed to create reservation: ${error?.message || 'Unknown error'}`);
+    },
   });
 
   const updateReservation = useMutation({
@@ -106,7 +115,10 @@ export default function ReservationsManagement() {
       setIsDialogOpen(false);
       setEditingReservation(null);
     },
-    onError: () => toast.error('Failed to update reservation'),
+    onError: (error: any) => {
+      console.error('❌ Reservation update failed:', error);
+      toast.error(`Failed to update reservation: ${error?.message || 'Unknown error'}`);
+    },
   });
 
   const deleteReservation = useMutation({
@@ -121,7 +133,10 @@ export default function ReservationsManagement() {
       queryClient.invalidateQueries({ queryKey: ['restaurant-reservations'] });
       toast.success('Reservation deleted successfully');
     },
-    onError: () => toast.error('Failed to delete reservation'),
+    onError: (error: any) => {
+      console.error('❌ Reservation deletion failed:', error);
+      toast.error(`Failed to delete reservation: ${error?.message || 'Unknown error'}`);
+    },
   });
 
   const handleSubmit = (e: React.FormEvent) => {

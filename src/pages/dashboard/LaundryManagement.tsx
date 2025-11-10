@@ -86,7 +86,16 @@ export default function LaundryManagement() {
       resetForm();
       setIsDialogOpen(false);
     },
-    onError: () => toast.error('Failed to create item'),
+    onError: (error: any) => {
+      console.error('❌ Laundry item creation failed:', error);
+      console.error('Error details:', {
+        message: error?.message,
+        hint: error?.hint,
+        details: error?.details,
+        code: error?.code,
+      });
+      toast.error(`Failed to create item: ${error?.message || 'Unknown error'}`);
+    },
   });
 
   const updateItem = useMutation({
@@ -104,7 +113,10 @@ export default function LaundryManagement() {
       setIsDialogOpen(false);
       setEditingItem(null);
     },
-    onError: () => toast.error('Failed to update item'),
+    onError: (error: any) => {
+      console.error('❌ Laundry item update failed:', error);
+      toast.error(`Failed to update item: ${error?.message || 'Unknown error'}`);
+    },
   });
 
   const deleteItem = useMutation({
@@ -116,7 +128,10 @@ export default function LaundryManagement() {
       queryClient.invalidateQueries({ queryKey: ['laundry-items'] });
       toast.success('Item deleted successfully');
     },
-    onError: () => toast.error('Failed to delete item'),
+    onError: (error: any) => {
+      console.error('❌ Laundry item deletion failed:', error);
+      toast.error(`Failed to delete item: ${error?.message || 'Unknown error'}`);
+    },
   });
 
   const handleSubmit = (e: React.FormEvent) => {
