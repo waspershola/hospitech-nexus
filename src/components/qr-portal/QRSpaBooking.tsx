@@ -53,10 +53,22 @@ export function QRSpaBooking() {
 
   const createSpaBooking = useMutation({
     mutationFn: async () => {
+      // Phase 3: Enhanced validation and logging
       if (!token || !selectedService || !qrData?.tenant_id) {
+        console.error('[QRSpaBooking] Missing required data:', {
+          has_token: !!token,
+          has_service: !!selectedService,
+          has_tenant_id: !!qrData?.tenant_id,
+        });
         toast.error('Session not ready. Please wait and try again.');
         return;
       }
+
+      console.log('[QRSpaBooking] Creating spa booking:', {
+        service_name: selectedService.service_name,
+        preferred_datetime: preferredDateTime,
+        tenant_id: qrData?.tenant_id,
+      });
 
       const { data: request, error } = await supabase
         .from('requests')
@@ -82,7 +94,17 @@ export function QRSpaBooking() {
         .select()
         .single();
 
-      if (error) throw error;
+      if (error) {
+        console.error('[QRSpaBooking] Request insert error:', {
+          message: error.message,
+          code: error.code,
+          details: error.details,
+          hint: error.hint,
+        });
+        throw error;
+      }
+
+      console.log('[QRSpaBooking] Request created:', request.id);
       return request;
     },
     onSuccess: (data) => {
@@ -91,11 +113,18 @@ export function QRSpaBooking() {
       setPreferredDateTime('');
       setSpecialRequests('');
       if (data) {
+        console.log('[QRSpaBooking] Navigating to chat:', data.id);
         navigate(`/qr/${token}/chat/${data.id}`);
       }
     },
-    onError: () => {
-      toast.error('Failed to submit spa booking');
+    onError: (error: any) => {
+      console.error('[QRSpaBooking] Mutation error:', {
+        message: error?.message,
+        code: error?.code,
+        details: error?.details,
+        error,
+      });
+      toast.error(`Error: ${error?.message || 'Failed to submit spa booking'}`);
     },
   });
 

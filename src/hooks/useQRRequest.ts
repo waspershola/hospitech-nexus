@@ -43,6 +43,14 @@ export function useQRRequest(): UseQRRequestReturn {
     setError(null);
 
     try {
+      // Phase 3: Enhanced logging before API call
+      console.log('[useQRRequest] Creating request:', {
+        qr_token: data.qr_token?.substring(0, 8) + '...',
+        service_category: data.service_category,
+        priority: data.priority,
+        has_note: !!data.note,
+      });
+
       const { data: result, error: functionError } = await supabase.functions.invoke('qr-request', {
         body: {
           action: 'create_request',
@@ -51,28 +59,48 @@ export function useQRRequest(): UseQRRequestReturn {
       });
 
       if (functionError) {
-        console.error('[useQRRequest] Error creating request:', functionError);
-        setError('Failed to create request');
-        toast.error('Failed to create request');
+        console.error('[useQRRequest] Edge function error:', {
+          message: functionError.message,
+          context: functionError.context,
+          details: functionError,
+        });
+        const errorMsg = functionError.message || 'Failed to create request';
+        setError(errorMsg);
+        toast.error(`Error: ${errorMsg}`);
         setIsCreating(false);
         return null;
       }
 
       if (!result?.success) {
-        setError(result?.error || 'Failed to create request');
-        toast.error(result?.error || 'Failed to create request');
+        console.error('[useQRRequest] Request failed:', {
+          error: result?.error,
+          details: result?.details,
+          full_response: result,
+        });
+        const errorMsg = result?.error || 'Failed to create request';
+        setError(errorMsg);
+        toast.error(`Failed: ${errorMsg}`);
         setIsCreating(false);
         return null;
       }
 
+      console.log('[useQRRequest] Request created successfully:', {
+        id: result.data?.id,
+        service_category: result.data?.service_category,
+      });
       setRequest(result.data);
       toast.success('Request created successfully');
       setIsCreating(false);
       return result.data;
-    } catch (err) {
-      console.error('[useQRRequest] Unexpected error:', err);
-      setError('An unexpected error occurred');
-      toast.error('An unexpected error occurred');
+    } catch (err: any) {
+      console.error('[useQRRequest] Unexpected error:', {
+        message: err?.message,
+        stack: err?.stack,
+        error: err,
+      });
+      const errorMsg = err?.message || 'An unexpected error occurred';
+      setError(errorMsg);
+      toast.error(`Error: ${errorMsg}`);
       setIsCreating(false);
       return null;
     }

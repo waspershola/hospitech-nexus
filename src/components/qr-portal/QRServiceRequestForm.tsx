@@ -46,29 +46,52 @@ export function QRServiceRequestForm() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
+    // Phase 3: Enhanced validation and logging
     if (!token || !service || !qrData?.tenant_id) {
+      console.error('[QRServiceRequestForm] Missing required data:', {
+        has_token: !!token,
+        has_service: !!service,
+        has_tenant_id: !!qrData?.tenant_id,
+      });
       toast.error('Session not ready. Please wait and try again.');
       return;
     }
 
-    // For housekeeping, use selected services as note
-    const finalNote = service === 'housekeeping' 
-      ? JSON.stringify(housekeepingServices)
-      : note;
+    try {
+      // For housekeeping, use selected services as note
+      const finalNote = service === 'housekeeping' 
+        ? JSON.stringify(housekeepingServices)
+        : note;
 
-    const request = await createRequest({
-      qr_token: token,
-      type: service,
-      service_category: service,
-      note: finalNote,
-      priority,
-      guest_name: guestName || 'Guest',
-      guest_contact: guestContact,
-    });
+      console.log('[QRServiceRequestForm] Submitting request:', {
+        service,
+        priority,
+        has_note: !!finalNote,
+        tenant_id: qrData.tenant_id,
+      });
 
-    if (request) {
-      // Navigate to chat view
-      navigate(`/qr/${token}/chat/${request.id}`);
+      const request = await createRequest({
+        qr_token: token,
+        type: service,
+        service_category: service,
+        note: finalNote,
+        priority,
+        guest_name: guestName || 'Guest',
+        guest_contact: guestContact,
+      });
+
+      if (request) {
+        console.log('[QRServiceRequestForm] Request created, navigating to chat:', request.id);
+        navigate(`/qr/${token}/chat/${request.id}`);
+      } else {
+        console.error('[QRServiceRequestForm] Request creation returned null');
+      }
+    } catch (err: any) {
+      console.error('[QRServiceRequestForm] Unexpected error in handleSubmit:', {
+        message: err?.message,
+        error: err,
+      });
+      toast.error(`Error: ${err?.message || 'Failed to submit request'}`);
     }
   };
 

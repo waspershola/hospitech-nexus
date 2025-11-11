@@ -25,13 +25,26 @@ export function QRDiningReservation() {
 
   const createReservation = useMutation({
     mutationFn: async () => {
+      // Phase 3: Enhanced validation and logging
       if (!token || !qrData?.tenant_id) {
+        console.error('[QRDiningReservation] Missing required data:', {
+          has_token: !!token,
+          has_tenant_id: !!qrData?.tenant_id,
+        });
         toast.error('Session not ready. Please wait and try again.');
         return;
       }
       if (!token || !guestName || !reservationDate || !reservationTime || !numberOfGuests) {
         throw new Error('Please fill in all required fields');
       }
+
+      console.log('[QRDiningReservation] Creating reservation:', {
+        guest_name: guestName,
+        date: reservationDate,
+        time: reservationTime,
+        guests: numberOfGuests,
+        tenant_id: qrData?.tenant_id,
+      });
 
       const { data: reservation, error: reservationError } = await supabase
         .from('restaurant_reservations')
@@ -50,7 +63,17 @@ export function QRDiningReservation() {
         .select()
         .single();
 
-      if (reservationError) throw reservationError;
+      if (reservationError) {
+        console.error('[QRDiningReservation] Reservation insert error:', {
+          message: reservationError.message,
+          code: reservationError.code,
+          details: reservationError.details,
+          hint: reservationError.hint,
+        });
+        throw reservationError;
+      }
+
+      console.log('[QRDiningReservation] Reservation created:', reservation.id);
 
       // Create a request entry for tracking and notifications
       const { data: request, error: requestError } = await supabase
@@ -74,8 +97,16 @@ export function QRDiningReservation() {
         .select()
         .single();
 
-      if (requestError) throw requestError;
+      if (requestError) {
+        console.error('[QRDiningReservation] Request insert error:', {
+          message: requestError.message,
+          code: requestError.code,
+          details: requestError.details,
+        });
+        throw requestError;
+      }
 
+      console.log('[QRDiningReservation] Request created:', request.id);
       return { reservation, request };
     },
     onSuccess: (data) => {
@@ -90,11 +121,18 @@ export function QRDiningReservation() {
       setSpecialRequests('');
       
       if (data?.request) {
+        console.log('[QRDiningReservation] Navigating to chat:', data.request.id);
         navigate(`/qr/${token}/chat/${data.request.id}`);
       }
     },
     onError: (error: any) => {
-      toast.error(error.message || 'Failed to submit reservation');
+      console.error('[QRDiningReservation] Mutation error:', {
+        message: error?.message,
+        code: error?.code,
+        details: error?.details,
+        error,
+      });
+      toast.error(`Error: ${error.message || 'Failed to submit reservation'}`);
     },
   });
 

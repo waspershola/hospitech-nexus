@@ -65,7 +65,13 @@ export function QRLaundryService() {
 
   const createLaundryRequest = useMutation({
     mutationFn: async () => {
+      // Phase 3: Enhanced validation and logging
       if (!token || cart.length === 0 || !qrData?.tenant_id) {
+        console.error('[QRLaundryService] Missing required data:', {
+          has_token: !!token,
+          cart_length: cart.length,
+          has_tenant_id: !!qrData?.tenant_id,
+        });
         toast.error('Session not ready. Please wait and try again.');
         return;
       }
@@ -79,6 +85,12 @@ export function QRLaundryService() {
       }));
 
       const total = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+
+      console.log('[QRLaundryService] Creating laundry request:', {
+        items_count: items.length,
+        total,
+        tenant_id: qrData?.tenant_id,
+      });
 
       const { data: request, error } = await supabase
         .from('requests')
@@ -97,7 +109,17 @@ export function QRLaundryService() {
         .select()
         .single();
 
-      if (error) throw error;
+      if (error) {
+        console.error('[QRLaundryService] Request insert error:', {
+          message: error.message,
+          code: error.code,
+          details: error.details,
+          hint: error.hint,
+        });
+        throw error;
+      }
+
+      console.log('[QRLaundryService] Request created:', request.id);
       return request;
     },
     onSuccess: (data) => {
@@ -105,11 +127,18 @@ export function QRLaundryService() {
       setCart([]);
       setSpecialInstructions('');
       if (data) {
+        console.log('[QRLaundryService] Navigating to chat:', data.id);
         navigate(`/qr/${token}/chat/${data.id}`);
       }
     },
-    onError: () => {
-      toast.error('Failed to submit laundry request');
+    onError: (error: any) => {
+      console.error('[QRLaundryService] Mutation error:', {
+        message: error?.message,
+        code: error?.code,
+        details: error?.details,
+        error,
+      });
+      toast.error(`Error: ${error?.message || 'Failed to submit laundry request'}`);
     },
   });
 

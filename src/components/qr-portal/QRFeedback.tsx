@@ -25,10 +25,23 @@ export function QRFeedback() {
 
   const submitFeedback = useMutation({
     mutationFn: async () => {
+      // Phase 3: Enhanced validation and logging
       if (!token || rating === 0 || !qrData?.tenant_id) {
+        console.error('[QRFeedback] Missing required data:', {
+          has_token: !!token,
+          rating,
+          has_tenant_id: !!qrData?.tenant_id,
+        });
         toast.error('Session not ready. Please wait and try again.');
         return;
       }
+
+      console.log('[QRFeedback] Submitting feedback:', {
+        rating,
+        category,
+        has_comment: !!comment,
+        tenant_id: qrData?.tenant_id,
+      });
 
       const { error } = await supabase
         .from('guest_feedback')
@@ -40,14 +53,30 @@ export function QRFeedback() {
           comment,
         });
 
-      if (error) throw error;
+      if (error) {
+        console.error('[QRFeedback] Insert error:', {
+          message: error.message,
+          code: error.code,
+          details: error.details,
+          hint: error.hint,
+        });
+        throw error;
+      }
+
+      console.log('[QRFeedback] Feedback submitted successfully');
     },
     onSuccess: () => {
       setSubmitted(true);
       toast.success('Thank you for your feedback!');
     },
-    onError: () => {
-      toast.error('Failed to submit feedback');
+    onError: (error: any) => {
+      console.error('[QRFeedback] Mutation error:', {
+        message: error?.message,
+        code: error?.code,
+        details: error?.details,
+        error,
+      });
+      toast.error(`Error: ${error?.message || 'Failed to submit feedback'}`);
     },
   });
 
