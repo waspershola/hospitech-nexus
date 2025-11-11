@@ -22,7 +22,7 @@ interface WiFiCredential {
 export function QRWifiCredentials() {
   const { token } = useParams<{ token: string }>();
   const navigate = useNavigate();
-  const { qrData } = useQRToken();
+  const { qrData } = useQRToken(token);
   const [copiedField, setCopiedField] = useState<string | null>(null);
 
   const { data: credentials = [], isLoading } = useQuery({

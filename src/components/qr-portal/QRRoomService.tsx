@@ -34,7 +34,7 @@ export function QRRoomService() {
   const { token } = useParams<{ token: string }>();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
-  const { qrData } = useQRToken();
+  const { qrData } = useQRToken(token);
   const [cart, setCart] = useState<CartItem[]>([]);
   const [specialInstructions, setSpecialInstructions] = useState('');
   const [isCartOpen, setIsCartOpen] = useState(false);

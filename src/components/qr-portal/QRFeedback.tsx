@@ -16,7 +16,7 @@ type FeedbackCategory = 'service' | 'cleanliness' | 'food' | 'overall' | 'staff'
 export function QRFeedback() {
   const { token } = useParams<{ token: string }>();
   const navigate = useNavigate();
-  const { qrData } = useQRToken();
+  const { qrData } = useQRToken(token);
   const [rating, setRating] = useState(0);
   const [hoverRating, setHoverRating] = useState(0);
   const [category, setCategory] = useState<FeedbackCategory>('overall');

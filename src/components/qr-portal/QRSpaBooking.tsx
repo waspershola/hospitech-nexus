@@ -26,7 +26,7 @@ interface SpaService {
 export function QRSpaBooking() {
   const { token } = useParams<{ token: string }>();
   const navigate = useNavigate();
-  const { qrData } = useQRToken();
+  const { qrData } = useQRToken(token);
   const [selectedService, setSelectedService] = useState<SpaService | null>(null);
   const [preferredDateTime, setPreferredDateTime] = useState('');
   const [specialRequests, setSpecialRequests] = useState('');

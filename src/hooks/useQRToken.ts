@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 
@@ -30,6 +30,12 @@ interface QRData {
   };
 }
 
+interface CachedSession {
+  qrData: QRData;
+  expiresAt: number;
+  token: string;
+}
+
 interface UseQRTokenReturn {
   qrData: QRData | null;
   isValidating: boolean;
@@ -37,17 +43,75 @@ interface UseQRTokenReturn {
   validateToken: (token: string) => Promise<boolean>;
 }
 
-export function useQRToken(): UseQRTokenReturn {
+const QR_SESSION_KEY = 'qr_portal_session';
+const SESSION_DURATION = 24 * 60 * 60 * 1000; // 24 hours in milliseconds
+
+// Helper to get cached session
+const getCachedSession = (token: string): QRData | null => {
+  try {
+    const cached = localStorage.getItem(QR_SESSION_KEY);
+    if (!cached) return null;
+
+    const session: CachedSession = JSON.parse(cached);
+    
+    // Check if token matches and session hasn't expired
+    if (session.token === token && session.expiresAt > Date.now()) {
+      console.log('[useQRToken] Using cached session (expires in', Math.round((session.expiresAt - Date.now()) / 1000 / 60), 'minutes)');
+      return session.qrData;
+    }
+
+    // Session expired or token mismatch, clear it
+    localStorage.removeItem(QR_SESSION_KEY);
+    return null;
+  } catch (err) {
+    console.error('[useQRToken] Error reading cached session:', err);
+    localStorage.removeItem(QR_SESSION_KEY);
+    return null;
+  }
+};
+
+// Helper to cache session
+const cacheSession = (token: string, qrData: QRData): void => {
+  try {
+    const session: CachedSession = {
+      qrData,
+      token,
+      expiresAt: Date.now() + SESSION_DURATION,
+    };
+    localStorage.setItem(QR_SESSION_KEY, JSON.stringify(session));
+    console.log('[useQRToken] Session cached for 24 hours');
+  } catch (err) {
+    console.error('[useQRToken] Error caching session:', err);
+  }
+};
+
+export function useQRToken(initialToken?: string): UseQRTokenReturn {
   const [qrData, setQrData] = useState<QRData | null>(null);
   const [isValidating, setIsValidating] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const { setGuestMode } = useAuth();
 
-  const validateToken = async (token: string): Promise<boolean> => {
+  const validateToken = useCallback(async (token: string): Promise<boolean> => {
+    // Check cache first
+    const cached = getCachedSession(token);
+    if (cached) {
+      setQrData(cached);
+      setIsValidating(false);
+      setError(null);
+      
+      // Set guest mode from cached data
+      const guestId = `guest-${Date.now()}-${Math.random().toString(36).substring(7)}`;
+      setGuestMode(token, guestId, cached.tenant_id);
+      
+      return true;
+    }
+
+    // No cache, validate with server
     setIsValidating(true);
     setError(null);
 
     try {
+      console.log('[useQRToken] Validating token with server...');
       const { data, error: functionError } = await supabase.functions.invoke('qr-validate', {
         body: { token },
       });
@@ -60,13 +124,16 @@ export function useQRToken(): UseQRTokenReturn {
       }
 
       if (!data?.success) {
-        setError(data?.error || 'Invalid QR code');
+        setError(data?.error || 'Invalid QR code or expired. Please scan again.');
         setIsValidating(false);
         return false;
       }
 
-      // Store QR data
+      // Store QR data in state
       setQrData(data.data);
+      
+      // Cache the session for 24h
+      cacheSession(token, data.data);
 
       // Set guest mode in auth context
       const guestId = `guest-${Date.now()}-${Math.random().toString(36).substring(7)}`;
@@ -76,11 +143,18 @@ export function useQRToken(): UseQRTokenReturn {
       return true;
     } catch (err) {
       console.error('[useQRToken] Unexpected error:', err);
-      setError('An unexpected error occurred');
+      setError('An unexpected error occurred. Please try again.');
       setIsValidating(false);
       return false;
     }
-  };
+  }, [setGuestMode]);
+
+  // Auto-validate on mount if initialToken provided
+  useEffect(() => {
+    if (initialToken && !qrData && !isValidating) {
+      validateToken(initialToken);
+    }
+  }, [initialToken, qrData, isValidating, validateToken]);
 
   return {
     qrData,

@@ -14,7 +14,7 @@ import { toast } from 'sonner';
 export function QRDiningReservation() {
   const { token } = useParams<{ token: string }>();
   const navigate = useNavigate();
-  const { qrData } = useQRToken();
+  const { qrData } = useQRToken(token);
   const [guestName, setGuestName] = useState('');
   const [guestContact, setGuestContact] = useState('');
   const [guestEmail, setGuestEmail] = useState('');

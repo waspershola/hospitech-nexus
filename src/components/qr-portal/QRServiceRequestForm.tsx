@@ -2,7 +2,6 @@ import { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useQRRequest } from '@/hooks/useQRRequest';
 import { useQRToken } from '@/hooks/useQRToken';
-import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -16,7 +15,7 @@ import { ArrowLeft, Send, Loader2 } from 'lucide-react';
 export function QRServiceRequestForm() {
   const { token, service } = useParams<{ token: string; service: string }>();
   const navigate = useNavigate();
-  const { qrData } = useQRToken();
+  const { qrData } = useQRToken(token);
   const { isCreating, createRequest } = useQRRequest();
 
   const [guestName, setGuestName] = useState('');
@@ -73,9 +72,18 @@ export function QRServiceRequestForm() {
     }
   };
 
+  if (!qrData || !qrData.tenant_id) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        <p className="ml-3 text-muted-foreground">Loading your session...</p>
+      </div>
+    );
+  }
+
   return (
-    <div className="min-h-screen bg-gradient-to-br from-background to-muted p-4">
-      <div className="max-w-2xl mx-auto space-y-6 py-8">
+    <div className="min-h-screen bg-gradient-to-br from-background via-background to-accent/5 py-8 px-4">
+      <div className="max-w-2xl mx-auto space-y-6">
         {/* Header */}
         <div className="flex items-center gap-4">
           <Button

@@ -56,20 +56,30 @@ import PaymentEnforcement from "./pages/dashboard/PaymentEnforcement";
 import PlatformAnalytics from "./pages/dashboard/PlatformAnalytics";
 import TenantHealthDashboard from "./pages/dashboard/TenantHealthDashboard";
 import { usePlatformRole } from "./hooks/usePlatformRole";
-import { QRLandingPage } from "./components/qr-portal/QRLandingPage";
-import { QRServiceRequestForm } from "./components/qr-portal/QRServiceRequestForm";
-import { QRChatInterface } from "./components/qr-portal/QRChatInterface";
 import { Loader2 } from "lucide-react";
 
-// Lazy load QR portal pages for better performance
+// Lazy load ALL QR portal components for better performance
+const QRLandingPage = lazy(() => import("./components/qr-portal/QRLandingPage").then(m => ({ default: m.QRLandingPage })));
+const QRServiceRequestForm = lazy(() => import("./components/qr-portal/QRServiceRequestForm").then(m => ({ default: m.QRServiceRequestForm })));
+const QRChatInterface = lazy(() => import("./components/qr-portal/QRChatInterface").then(m => ({ default: m.QRChatInterface })));
 const QRMenuBrowser = lazy(() => import("./components/qr-portal/QRMenuBrowser").then(m => ({ default: m.QRMenuBrowser })));
 const QRWifiCredentials = lazy(() => import("./components/qr-portal/QRWifiCredentials").then(m => ({ default: m.QRWifiCredentials })));
 const QRFeedback = lazy(() => import("./components/qr-portal/QRFeedback").then(m => ({ default: m.QRFeedback })));
-const QRRedirect = lazy(() => import("./components/qr-portal/QRRedirect").then(m => ({ default: m.QRRedirect })));
 const QRLaundryService = lazy(() => import("./components/qr-portal/QRLaundryService").then(m => ({ default: m.QRLaundryService })));
 const QRSpaBooking = lazy(() => import("./components/qr-portal/QRSpaBooking").then(m => ({ default: m.QRSpaBooking })));
 const QRDiningReservation = lazy(() => import("./components/qr-portal/QRDiningReservation").then(m => ({ default: m.QRDiningReservation })));
 const QRRoomService = lazy(() => import("./components/qr-portal/QRRoomService").then(m => ({ default: m.QRRoomService })));
+const QRRedirect = lazy(() => import("./components/qr-portal/QRRedirect").then(m => ({ default: m.QRRedirect })));
+
+// Shared loading component for QR portal
+const QRLoadingFallback = () => (
+  <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-background via-background to-accent/5">
+    <div className="text-center space-y-4">
+      <Loader2 className="h-12 w-12 animate-spin text-primary mx-auto" />
+      <p className="text-muted-foreground animate-pulse">Loading...</p>
+    </div>
+  </div>
+);
 
 import QRManagement from "./pages/dashboard/QRManagement";
 import GuestRequestsManagement from "./pages/dashboard/GuestRequestsManagement";
@@ -190,47 +200,59 @@ const App = () => (
             <Route path="/payment/success" element={<PaymentSuccess />} />
             <Route path="/payment/cancel" element={<PaymentCancel />} />
 
-            {/* QR Portal - Public routes (no authentication required) */}
-            <Route path="/qr/:token" element={<QRLandingPage />} />
-            <Route path="/qr/:token/request/:service" element={<QRServiceRequestForm />} />
-            <Route path="/qr/:token/chat/:requestId" element={<QRChatInterface />} />
+            {/* QR Portal - Public routes (no authentication required) - ALL LAZY LOADED */}
+            <Route path="/qr/:token" element={
+              <Suspense fallback={<QRLoadingFallback />}>
+                <QRLandingPage />
+              </Suspense>
+            } />
+            <Route path="/qr/:token/request/:service" element={
+              <Suspense fallback={<QRLoadingFallback />}>
+                <QRServiceRequestForm />
+              </Suspense>
+            } />
+            <Route path="/qr/:token/chat/:requestId" element={
+              <Suspense fallback={<QRLoadingFallback />}>
+                <QRChatInterface />
+              </Suspense>
+            } />
             <Route path="/qr/:token/menu" element={
-              <Suspense fallback={<div className="min-h-screen flex items-center justify-center"><Loader2 className="h-8 w-8 animate-spin" /></div>}>
+              <Suspense fallback={<QRLoadingFallback />}>
                 <QRMenuBrowser />
               </Suspense>
             } />
             <Route path="/qr/:token/wifi" element={
-              <Suspense fallback={<div className="min-h-screen flex items-center justify-center"><Loader2 className="h-8 w-8 animate-spin" /></div>}>
+              <Suspense fallback={<QRLoadingFallback />}>
                 <QRWifiCredentials />
               </Suspense>
             } />
             <Route path="/qr/:token/feedback" element={
-              <Suspense fallback={<div className="min-h-screen flex items-center justify-center"><Loader2 className="h-8 w-8 animate-spin" /></div>}>
+              <Suspense fallback={<QRLoadingFallback />}>
                 <QRFeedback />
               </Suspense>
             } />
             <Route path="/qr/:token/laundry" element={
-              <Suspense fallback={<div className="min-h-screen flex items-center justify-center"><Loader2 className="h-8 w-8 animate-spin" /></div>}>
+              <Suspense fallback={<QRLoadingFallback />}>
                 <QRLaundryService />
               </Suspense>
             } />
             <Route path="/qr/:token/spa" element={
-              <Suspense fallback={<div className="min-h-screen flex items-center justify-center"><Loader2 className="h-8 w-8 animate-spin" /></div>}>
+              <Suspense fallback={<QRLoadingFallback />}>
                 <QRSpaBooking />
               </Suspense>
             } />
             <Route path="/qr/:token/dining" element={
-              <Suspense fallback={<div className="min-h-screen flex items-center justify-center"><Loader2 className="h-8 w-8 animate-spin" /></div>}>
+              <Suspense fallback={<QRLoadingFallback />}>
                 <QRDiningReservation />
               </Suspense>
             } />
             <Route path="/qr/:token/room-service" element={
-              <Suspense fallback={<div className="min-h-screen flex items-center justify-center"><Loader2 className="h-8 w-8 animate-spin" /></div>}>
+              <Suspense fallback={<QRLoadingFallback />}>
                 <QRRoomService />
               </Suspense>
             } />
             <Route path="/g/:token" element={
-              <Suspense fallback={<div className="min-h-screen flex items-center justify-center"><Loader2 className="h-8 w-8 animate-spin" /></div>}>
+              <Suspense fallback={<QRLoadingFallback />}>
                 <QRRedirect />
               </Suspense>
             } />

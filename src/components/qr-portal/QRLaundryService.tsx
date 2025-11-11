@@ -39,7 +39,7 @@ const SERVICE_TYPE_LABELS: Record<string, string> = {
 export function QRLaundryService() {
   const { token } = useParams<{ token: string }>();
   const navigate = useNavigate();
-  const { qrData } = useQRToken();
+  const { qrData } = useQRToken(token);
   const [cart, setCart] = useState<CartItem[]>([]);
   const [specialInstructions, setSpecialInstructions] = useState('');
   const [activeCategory, setActiveCategory] = useState('all');

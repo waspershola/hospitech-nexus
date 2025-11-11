@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useQRToken } from '@/hooks/useQRToken';
 import { useQRTheme } from '@/hooks/useQRTheme';
@@ -71,21 +71,15 @@ const SERVICE_CONFIG: Record<string, { title: string; description: string }> = {
 export function QRLandingPage() {
   const { token } = useParams<{ token: string }>();
   const navigate = useNavigate();
-  const { qrData, isValidating, error, validateToken } = useQRToken();
-  const [hasValidated, setHasValidated] = useState(false);
+  
+  // Auto-validate token with 24h caching
+  const { qrData, isValidating, error } = useQRToken(token);
 
   // Phase 3: Dynamic My Requests
   const { requests, pendingCount } = useMyRequests(token || null);
 
   // Apply QR theme dynamically
   useQRTheme(qrData?.branding, 'qr-portal-root');
-
-  useEffect(() => {
-    if (token && !hasValidated) {
-      validateToken(token);
-      setHasValidated(true);
-    }
-  }, [token, validateToken, hasValidated]);
 
   if (isValidating) {
     return (
