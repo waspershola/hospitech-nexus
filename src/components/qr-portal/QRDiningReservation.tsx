@@ -25,6 +25,10 @@ export function QRDiningReservation() {
 
   const createReservation = useMutation({
     mutationFn: async () => {
+      if (!token || !qrData?.tenant_id) {
+        toast.error('Session not ready. Please wait and try again.');
+        return;
+      }
       if (!token || !guestName || !reservationDate || !reservationTime || !numberOfGuests) {
         throw new Error('Please fill in all required fields');
       }
@@ -96,8 +100,21 @@ export function QRDiningReservation() {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    if (!qrData?.tenant_id) {
+      toast.error('Session not ready. Please wait and try again.');
+      return;
+    }
     createReservation.mutate();
   };
+
+  if (!qrData || !qrData.tenant_id) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        <p className="ml-3 text-muted-foreground">Loading your session...</p>
+      </div>
+    );
+  }
 
   // Get minimum date (today)
   const today = new Date().toISOString().split('T')[0];

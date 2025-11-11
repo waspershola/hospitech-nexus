@@ -1,7 +1,9 @@
 import { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useQRRequest } from '@/hooks/useQRRequest';
+import { useQRToken } from '@/hooks/useQRToken';
 import { useAuth } from '@/contexts/AuthContext';
+import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -9,12 +11,12 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Checkbox } from '@/components/ui/checkbox';
-import { ArrowLeft, Send } from 'lucide-react';
+import { ArrowLeft, Send, Loader2 } from 'lucide-react';
 
 export function QRServiceRequestForm() {
   const { token, service } = useParams<{ token: string; service: string }>();
   const navigate = useNavigate();
-  const { qrToken } = useAuth();
+  const { qrData } = useQRToken();
   const { isCreating, createRequest } = useQRRequest();
 
   const [guestName, setGuestName] = useState('');
@@ -44,8 +46,11 @@ export function QRServiceRequestForm() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-
-    if (!token || !service) return;
+    
+    if (!token || !service || !qrData?.tenant_id) {
+      toast.error('Session not ready. Please wait and try again.');
+      return;
+    }
 
     // For housekeeping, use selected services as note
     const finalNote = service === 'housekeeping' 
@@ -175,10 +180,14 @@ export function QRServiceRequestForm() {
               <Button 
                 type="submit" 
                 className="w-full" 
-                disabled={isCreating || (service === 'housekeeping' && housekeepingServices.length === 0) || (service !== 'housekeeping' && !note)}
+                size="lg"
+                disabled={isCreating || (service === 'housekeeping' && housekeepingServices.length === 0) || (service !== 'housekeeping' && !note) || !qrData?.tenant_id}
               >
                 {isCreating ? (
-                  'Submitting...'
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Submitting...
+                  </>
                 ) : (
                   <>
                     <Send className="mr-2 h-4 w-4" />

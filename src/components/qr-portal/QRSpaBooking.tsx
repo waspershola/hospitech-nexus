@@ -53,7 +53,10 @@ export function QRSpaBooking() {
 
   const createSpaBooking = useMutation({
     mutationFn: async () => {
-      if (!token || !selectedService) return;
+      if (!token || !selectedService || !qrData?.tenant_id) {
+        toast.error('Session not ready. Please wait and try again.');
+        return;
+      }
 
       const { data: request, error } = await supabase
         .from('requests')
@@ -101,10 +104,11 @@ export function QRSpaBooking() {
     ? spaServices 
     : spaServices.filter(item => item.category === activeCategory);
 
-  if (isLoading) {
+  if (isLoading || !qrData || !qrData.tenant_id) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        <p className="ml-3 text-muted-foreground">Loading your session...</p>
       </div>
     );
   }
@@ -231,7 +235,7 @@ export function QRSpaBooking() {
                 <Button
                   className="flex-1"
                   onClick={() => createSpaBooking.mutate()}
-                  disabled={createSpaBooking.isPending}
+                  disabled={createSpaBooking.isPending || !qrData?.tenant_id}
                 >
                   {createSpaBooking.isPending ? 'Submitting...' : 'Submit Booking'}
                 </Button>

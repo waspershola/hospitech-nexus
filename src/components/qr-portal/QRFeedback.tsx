@@ -8,7 +8,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { ArrowLeft, Star, Check } from 'lucide-react';
+import { ArrowLeft, Star, Check, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 
 type FeedbackCategory = 'service' | 'cleanliness' | 'food' | 'overall' | 'staff';
@@ -25,7 +25,10 @@ export function QRFeedback() {
 
   const submitFeedback = useMutation({
     mutationFn: async () => {
-      if (!token || rating === 0) return;
+      if (!token || rating === 0 || !qrData?.tenant_id) {
+        toast.error('Session not ready. Please wait and try again.');
+        return;
+      }
 
       const { error } = await supabase
         .from('guest_feedback')
@@ -47,6 +50,15 @@ export function QRFeedback() {
       toast.error('Failed to submit feedback');
     },
   });
+
+  if (!qrData || !qrData.tenant_id) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        <p className="ml-3 text-muted-foreground">Loading your session...</p>
+      </div>
+    );
+  }
 
   if (submitted) {
     return (

@@ -78,7 +78,10 @@ export function QRMenuBrowser() {
 
   const createOrder = useMutation({
     mutationFn: async () => {
-      if (!token || cart.length === 0) return;
+      if (!token || cart.length === 0 || !qrData?.tenant_id) {
+        toast.error('Session not ready. Please wait and try again.');
+        return;
+      }
 
       const items = cart.map(item => ({
         item_id: item.id,
@@ -181,10 +184,11 @@ export function QRMenuBrowser() {
   const cartTotal = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
   const cartCount = cart.reduce((sum, item) => sum + item.quantity, 0);
 
-  if (isLoading) {
+  if (isLoading || !qrData || !qrData.tenant_id) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        <p className="ml-3 text-muted-foreground">Loading your session...</p>
       </div>
     );
   }
@@ -289,7 +293,7 @@ export function QRMenuBrowser() {
                       size="lg"
                       className="w-full"
                       onClick={() => createOrder.mutate()}
-                      disabled={createOrder.isPending}
+                      disabled={createOrder.isPending || !qrData?.tenant_id}
                     >
                       {createOrder.isPending ? 'Placing Order...' : 'Place Order'}
                     </Button>
