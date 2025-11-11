@@ -42,6 +42,14 @@ serve(async (req) => {
     if (action === 'create_request') {
       const requestData: ServiceRequest = body;
 
+      // Phase 1: Enhanced validation with detailed logging
+      console.log('[qr-request] Received request data:', {
+        has_qr_token: !!requestData.qr_token,
+        service_category: requestData.service_category,
+        priority: requestData.priority,
+        has_note: !!requestData.note,
+      });
+
       // Validate QR token
       if (!requestData.qr_token || typeof requestData.qr_token !== 'string') {
         console.error('[qr-request] Invalid QR token');
@@ -67,6 +75,9 @@ serve(async (req) => {
       }
 
       const qr = qrData[0];
+      
+      // Phase 1: Log tenant_id for debugging
+      console.log('[qr-request] Validated QR token - tenant_id:', qr.tenant_id, 'room_id:', qr.room_id);
 
       // Validate service is allowed for this QR code
       const allowedServices = qr.services || [];
@@ -76,6 +87,13 @@ serve(async (req) => {
           JSON.stringify({ success: false, error: 'Service not available for this location' }),
           { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
+      }
+
+      // Phase 1: Validate and normalize priority enum
+      const validPriorities = ['low', 'normal', 'high', 'urgent'];
+      if (!requestData.priority || !validPriorities.includes(requestData.priority)) {
+        console.warn('[qr-request] Invalid priority value:', requestData.priority, '- defaulting to "normal"');
+        requestData.priority = 'normal';
       }
 
       // Phase 2 & 4: Complete service to department routing
@@ -94,38 +112,64 @@ serve(async (req) => {
         'laundry': 'laundry',
       };
 
-      const assignedDepartment = SERVICE_DEPARTMENT_MAP[requestData.service_category.toLowerCase()] || 'front_office';
-      console.log(`[qr-request] Phase 4: Routing ${requestData.service_category} → ${assignedDepartment}`);
+      const assignedDepartment = SERVICE_DEPARTMENT_MAP[requestData.service_category.toLowerCase()];
+      
+      // Phase 1: Validate service_category mapping
+      if (!assignedDepartment) {
+        console.warn('[qr-request] Unknown service category:', requestData.service_category, '- defaulting to front_office');
+      }
+      
+      const finalDepartment = assignedDepartment || 'front_office';
+      console.log(`[qr-request] Phase 4: Routing ${requestData.service_category} → ${finalDepartment}`);
+
+      // Phase 1: Log request payload before insert
+      const requestPayload = {
+        tenant_id: qr.tenant_id,
+        room_id: qr.room_id,
+        type: requestData.type || requestData.service_category,
+        service_category: requestData.service_category,
+        note: requestData.note || '',
+        status: 'pending',
+        priority: requestData.priority,
+        qr_token: requestData.qr_token,
+        assigned_department: finalDepartment,
+        assigned_to: null, // NULL = pool assignment
+        metadata: {
+          guest_name: requestData.guest_name || 'Guest',
+          guest_contact: requestData.guest_contact || '',
+          qr_location: qr.assigned_to,
+          qr_scope: qr.scope,
+          routed_department: finalDepartment,
+        },
+      };
+      
+      console.log('[qr-request] Inserting request with payload:', {
+        tenant_id: requestPayload.tenant_id,
+        service_category: requestPayload.service_category,
+        priority: requestPayload.priority,
+        assigned_department: requestPayload.assigned_department,
+      });
 
       // Create the request
       const { data: newRequest, error: insertError } = await supabase
         .from('requests')
-        .insert({
-          tenant_id: qr.tenant_id,
-          room_id: qr.room_id,
-          type: requestData.type || requestData.service_category,
-          service_category: requestData.service_category,
-          note: requestData.note || '',
-          status: 'pending',
-          priority: requestData.priority || 'normal',
-          qr_token: requestData.qr_token,
-          assigned_department: assignedDepartment,
-          assigned_to: null, // NULL = pool assignment
-          metadata: {
-            guest_name: requestData.guest_name || 'Guest',
-            guest_contact: requestData.guest_contact || '',
-            qr_location: qr.assigned_to,
-            qr_scope: qr.scope,
-            routed_department: assignedDepartment,
-          },
-        })
+        .insert(requestPayload)
         .select()
         .single();
 
       if (insertError) {
-        console.error('[qr-request] Insert error:', insertError);
+        console.error('[qr-request] Insert error:', {
+          message: insertError.message,
+          code: insertError.code,
+          details: insertError.details,
+          hint: insertError.hint,
+        });
         return new Response(
-          JSON.stringify({ success: false, error: insertError.message }),
+          JSON.stringify({ 
+            success: false, 
+            error: insertError.message,
+            details: insertError.details || 'Check edge function logs for details',
+          }),
           { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
       }
@@ -139,10 +183,10 @@ serve(async (req) => {
           type: 'new_qr_request',
           request: newRequest,
           tenant_id: qr.tenant_id,
-          departments: ['front_office', assignedDepartment], // Dual notification
+          departments: ['front_office', finalDepartment], // Dual notification
         });
         broadcastChannel.close();
-        console.log(`[qr-request] Phase 5: Notifications sent to front_office and ${assignedDepartment}`);
+        console.log(`[qr-request] Phase 5: Notifications sent to front_office and ${finalDepartment}`);
       } catch (broadcastError) {
         console.error('[qr-request] Broadcast notification error:', broadcastError);
       }
