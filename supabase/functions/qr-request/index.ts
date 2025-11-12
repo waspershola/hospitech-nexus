@@ -220,17 +220,20 @@ serve(async (req) => {
 
       console.log('[qr-request] Request created successfully:', newRequest.id);
 
-      // Phase 5: Send broadcast notification to both front_office and assigned department
+      // Phase 6: Send Supabase Realtime broadcast notification
       try {
-        const broadcastChannel = new BroadcastChannel('qr-requests');
-        broadcastChannel.postMessage({
-          type: 'new_qr_request',
-          request: newRequest,
-          tenant_id: qr.tenant_id,
-          departments: ['front_office', finalDepartment], // Dual notification
+        const notificationChannel = supabase.channel(`qr-notifications-${qr.tenant_id}`);
+        await notificationChannel.send({
+          type: 'broadcast',
+          event: 'new_qr_request',
+          payload: {
+            type: 'new_qr_request',
+            request: newRequest,
+            tenant_id: qr.tenant_id,
+            departments: ['front_office', finalDepartment],
+          }
         });
-        broadcastChannel.close();
-        console.log(`[qr-request] Phase 5: Notifications sent to front_office and ${finalDepartment}`);
+        console.log(`[qr-request] Phase 6: Realtime broadcast sent to tenant ${qr.tenant_id}`);
       } catch (broadcastError) {
         console.error('[qr-request] Broadcast notification error:', broadcastError);
       }

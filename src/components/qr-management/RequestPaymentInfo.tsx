@@ -22,14 +22,6 @@ export function RequestPaymentInfo({ request }: RequestPaymentInfoProps) {
             {paymentInfo.status}
           </Badge>
         </div>
-        {paymentInfo.amount && (
-          <div className="flex justify-between text-sm">
-            <span className="text-muted-foreground">Amount:</span>
-            <span className="font-semibold">
-              {paymentInfo.currency} {paymentInfo.amount}
-            </span>
-          </div>
-        )}
         <div className="flex justify-between text-sm">
           <span className="text-muted-foreground">Location:</span>
           <span>{paymentInfo.location}</span>

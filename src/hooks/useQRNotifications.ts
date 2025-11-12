@@ -14,7 +14,27 @@ export function useQRNotifications() {
     console.log('[useQRNotifications] Setting up notification listeners for tenant:', tenantId);
 
     const channel = supabase
-      .channel('qr-notifications')
+      .channel(`qr-notifications-${tenantId}`)
+      // Phase 6: Listen to Realtime broadcast from edge function
+      .on('broadcast', { event: 'new_qr_request' }, (payload) => {
+        const data = payload.payload;
+        console.log('[useQRNotifications] Realtime broadcast received:', data);
+        
+        if (data.request) {
+          const request = data.request;
+          
+          // Play ringtone if permission granted
+          if (permissionGranted) {
+            playRingtone('/sounds/notification-default.mp3');
+          }
+          
+          // Show toast notification
+          toast.info('New QR Request', {
+            description: `${request.service_category?.replace('_', ' ')} from ${request.metadata?.room_number || 'guest'}`,
+          });
+        }
+      })
+      // Fallback: Postgres changes subscription
       .on('postgres_changes', {
         event: 'INSERT',
         schema: 'public',
@@ -23,7 +43,7 @@ export function useQRNotifications() {
       }, (payload) => {
         const request = payload.new as any;
         
-        console.log('[useQRNotifications] New QR request detected:', request.id);
+        console.log('[useQRNotifications] Postgres fallback: New QR request detected:', request.id);
         
         // Play ringtone if permission granted
         if (permissionGranted) {

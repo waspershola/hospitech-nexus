@@ -111,9 +111,9 @@ export function DepartmentRequestsTable({
                 <TableCell>
                   <div>
                     <p className="font-medium">{request.metadata?.guest_name || request.guest?.name || 'Guest'}</p>
-                    {request.room && (
+                    {(request.room?.number || request.metadata?.room_number) && (
                       <p className="text-xs text-muted-foreground">
-                        Room {request.room.number}
+                        Room {request.room?.number || request.metadata?.room_number}
                       </p>
                     )}
                   </div>
