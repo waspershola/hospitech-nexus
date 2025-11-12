@@ -14,7 +14,8 @@ import { WalletCreditsTab } from '@/modules/finance-center/WalletCreditsTab';
 import { ReceiptSettingsTab } from '@/modules/finance-center/ReceiptSettingsTab';
 import { ReceiptLogsTab } from '@/modules/finance-center/ReceiptLogsTab';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
-import { Wallet, Building2, TrendingUp, Building, RefreshCcw, MapPin, Shield, BarChart3, Settings, Receipt, CreditCard, Sliders, FileText, Printer } from 'lucide-react';
+import { PlatformFeesTab } from '@/components/finance/PlatformFeesTab';
+import { Wallet, Building2, TrendingUp, Building, RefreshCcw, MapPin, Shield, BarChart3, Settings, Receipt, CreditCard, Sliders, FileText, Printer, DollarSign } from 'lucide-react';
 
 export default function FinanceCenter() {
   return (
@@ -84,6 +85,10 @@ export default function FinanceCenter() {
               <TrendingUp className="w-4 h-4" />
               <span>Analytics</span>
             </TabsTrigger>
+            <TabsTrigger value="platform-fees" className="flex items-center gap-2 whitespace-nowrap">
+              <DollarSign className="w-4 h-4" />
+              <span>Platform Fees</span>
+            </TabsTrigger>
           </TabsList>
         </div>
 
@@ -142,6 +147,10 @@ export default function FinanceCenter() {
 
           <TabsContent value="analytics" className="mt-0">
             <AnalyticsTab />
+          </TabsContent>
+
+          <TabsContent value="platform-fees" className="mt-0">
+            <PlatformFeesTab />
           </TabsContent>
         </div>
       </Tabs>
