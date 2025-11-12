@@ -93,6 +93,13 @@ export function QRRoomService() {
             room_number: (qrData as any)?.room?.number || 'N/A',
             guest_label: 'Guest',
             service_type: 'room_service',
+            payment_info: {
+              billable: true,
+              amount: subtotal,
+              currency: 'NGN',
+              location: 'Restaurant POS',
+              status: 'pending'
+            }
           },
         })
         .select()
