@@ -5,12 +5,14 @@ import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Textarea } from '@/components/ui/textarea';
+import { Separator } from '@/components/ui/separator';
 import { useStaffRequests } from '@/hooks/useStaffRequests';
 import { useStaffChat } from '@/hooks/useStaffChat';
+import { useRequestHistory } from '@/hooks/useRequestHistory';
 import { format } from 'date-fns';
 import { 
   MessageSquare, Clock, CheckCircle2, XCircle, AlertCircle, Send,
-  User, MapPin, Zap, Loader2
+  User, MapPin, Zap, Loader2, History, TrendingUp, BarChart3
 } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -26,6 +28,11 @@ export function QRRequestDrawer({ open, onOpenChange }: QRRequestDrawerProps) {
   const [activeTab, setActiveTab] = useState('pending');
   
   const { messages, sendMessage, isSending } = useStaffChat(selectedRequest?.id);
+  
+  const { stats: historyStats, isLoading: historyLoading } = useRequestHistory(
+    selectedRequest?.room_id || null,
+    selectedRequest?.metadata?.guest_name || null
+  );
 
   const pendingRequests = requests.filter(r => r.status === 'pending');
   const inProgressRequests = requests.filter(r => r.status === 'in_progress');
@@ -212,6 +219,47 @@ export function QRRequestDrawer({ open, onOpenChange }: QRRequestDrawerProps) {
                     )}
                   </div>
                 </div>
+
+                {historyStats && historyStats.totalRequests > 1 && (
+                  <div className="p-4 border-b bg-muted/30">
+                    <div className="flex items-center gap-2 mb-3">
+                      <History className="h-4 w-4 text-muted-foreground" />
+                      <p className="text-xs font-medium text-muted-foreground">
+                        Request History {selectedRequest.room?.number ? `(Room ${selectedRequest.room.number})` : ''}
+                      </p>
+                    </div>
+                    
+                    <div className="grid grid-cols-3 gap-3 mb-3">
+                      <div className="bg-background rounded-lg p-2 text-center">
+                        <p className="text-lg font-bold">{historyStats.totalRequests}</p>
+                        <p className="text-xs text-muted-foreground">Total</p>
+                      </div>
+                      <div className="bg-background rounded-lg p-2 text-center">
+                        <p className="text-lg font-bold text-green-600">{historyStats.completedRequests}</p>
+                        <p className="text-xs text-muted-foreground">Completed</p>
+                      </div>
+                      <div className="bg-background rounded-lg p-2 text-center">
+                        <p className="text-lg font-bold text-blue-600">{historyStats.averageResponseTime}m</p>
+                        <p className="text-xs text-muted-foreground">Avg Time</p>
+                      </div>
+                    </div>
+
+                    {historyStats.commonCategories.length > 0 && (
+                      <div className="space-y-1">
+                        <div className="flex items-center gap-1 mb-1">
+                          <BarChart3 className="h-3 w-3 text-muted-foreground" />
+                          <p className="text-xs text-muted-foreground">Common Requests:</p>
+                        </div>
+                        {historyStats.commonCategories.map((cat) => (
+                          <div key={cat.category} className="flex items-center justify-between text-xs">
+                            <span className="capitalize">{cat.category.replace('_', ' ')}</span>
+                            <Badge variant="secondary" className="h-5">{cat.count}</Badge>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
 
                 {selectedRequest.status !== 'completed' && (
                   <div className="p-4 border-b">
