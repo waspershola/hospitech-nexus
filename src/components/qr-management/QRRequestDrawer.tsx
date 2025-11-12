@@ -7,10 +7,15 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Textarea } from '@/components/ui/textarea';
 import { Separator } from '@/components/ui/separator';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Label } from '@/components/ui/label';
 import { useStaffRequests } from '@/hooks/useStaffRequests';
 import { useStaffChat } from '@/hooks/useStaffChat';
 import { useRequestHistory } from '@/hooks/useRequestHistory';
 import { useOrderDetails } from '@/hooks/useOrderDetails';
+import { useDashboardDefaults } from '@/hooks/useDashboardDefaults';
+import { useFinanceLocations } from '@/hooks/useFinanceLocations';
+import { useFinanceProviders } from '@/hooks/useFinanceProviders';
 import { RequestPaymentInfo } from './RequestPaymentInfo';
 import { RequestCardSkeleton } from './RequestCardSkeleton';
 import { PaymentHistoryTimeline } from './PaymentHistoryTimeline';
@@ -29,12 +34,26 @@ interface QRRequestDrawerProps {
   onOpenChange: (open: boolean) => void;
 }
 
+// Map service categories to dashboard names for auto-selecting payment location
+const SERVICE_TO_DASHBOARD_MAP: Record<string, string> = {
+  'digital_menu': 'restaurant',
+  'room_service': 'restaurant',
+  'spa': 'spa',
+  'laundry': 'bar',
+  'dining_reservation': 'restaurant',
+  'housekeeping': 'front_desk',
+  'maintenance': 'front_desk',
+  'concierge': 'front_desk',
+};
+
 export function QRRequestDrawer({ open, onOpenChange }: QRRequestDrawerProps) {
   const { requests, isLoading, updateRequestStatus } = useStaffRequests();
   const [selectedRequest, setSelectedRequest] = useState<any>(null);
   const [customMessage, setCustomMessage] = useState('');
   const [activeTab, setActiveTab] = useState('pending');
   const [isCollectingPayment, setIsCollectingPayment] = useState(false);
+  const [selectedLocationId, setSelectedLocationId] = useState<string | null>(null);
+  const [selectedProviderId, setSelectedProviderId] = useState<string | null>(null);
   const [quickRepliesOpen, setQuickRepliesOpen] = useState(() => {
     const saved = localStorage.getItem('qr-quick-replies-open');
     return saved !== null ? JSON.parse(saved) : false;
@@ -46,6 +65,11 @@ export function QRRequestDrawer({ open, onOpenChange }: QRRequestDrawerProps) {
     selectedRequest?.room_id || null,
     selectedRequest?.metadata?.guest_name || null
   );
+
+  // Fetch finance data for payment collection
+  const { getDefaultLocation } = useDashboardDefaults();
+  const { locations } = useFinanceLocations();
+  const { providers } = useFinanceProviders();
 
   // Fetch order details if this is a menu/room service request
   const { data: orderDetails, isLoading: orderLoading } = useOrderDetails(
@@ -112,6 +136,28 @@ export function QRRequestDrawer({ open, onOpenChange }: QRRequestDrawerProps) {
     localStorage.setItem('qr-quick-replies-open', JSON.stringify(quickRepliesOpen));
   }, [quickRepliesOpen]);
 
+  // Auto-select payment location based on service category
+  useEffect(() => {
+    if (selectedRequest && !selectedLocationId) {
+      const serviceCategory = selectedRequest.service_category;
+      const dashboardName = SERVICE_TO_DASHBOARD_MAP[serviceCategory];
+      if (dashboardName) {
+        const defaultLocationId = getDefaultLocation(dashboardName);
+        if (defaultLocationId) {
+          setSelectedLocationId(defaultLocationId);
+        }
+      }
+    }
+  }, [selectedRequest, selectedLocationId, getDefaultLocation]);
+
+  // Reset payment selections when request changes
+  useEffect(() => {
+    if (selectedRequest) {
+      setSelectedLocationId(null);
+      setSelectedProviderId(null);
+    }
+  }, [selectedRequest?.id]);
+
   const handleQuickReply = async (template: string) => {
     if (!selectedRequest) return;
     
@@ -144,12 +190,21 @@ export function QRRequestDrawer({ open, onOpenChange }: QRRequestDrawerProps) {
   const handleCollectPayment = async () => {
     if (!selectedRequest || !orderDetails || orderDetails.type !== 'order') return;
     
+    if (!selectedLocationId || !selectedProviderId) {
+      toast.error('Please select payment location and method');
+      return;
+    }
+    
     setIsCollectingPayment(true);
     try {
       const orderData = orderDetails.data as any;
       const { data: { user } } = await supabase.auth.getUser();
       
-      // Update payment metadata
+      // Fetch location and provider details for display
+      const selectedLocation = locations.find(l => l.id === selectedLocationId);
+      const selectedProvider = providers.find(p => p.id === selectedProviderId);
+      
+      // Update payment metadata with location and provider info
       const { error: updateError } = await supabase
         .from('requests')
         .update({
@@ -162,6 +217,11 @@ export function QRRequestDrawer({ open, onOpenChange }: QRRequestDrawerProps) {
               collected_by: user?.id,
               amount: orderData.total,
               currency: orderData.currency || 'NGN',
+              location_id: selectedLocationId,
+              location_name: selectedLocation?.name,
+              provider_id: selectedProviderId,
+              provider_name: selectedProvider?.name,
+              provider_type: selectedProvider?.type,
             }
           }
         })
@@ -175,7 +235,7 @@ export function QRRequestDrawer({ open, onOpenChange }: QRRequestDrawerProps) {
         .map((item: any) => `• ${item.quantity}× ${item.name} - ₦${(item.price * item.quantity).toLocaleString()}`)
         .join('\n');
       
-      const receiptMessage = `✅ Payment Received\n\n${itemsList}\n\n━━━━━━━━━━━━━━━\nTotal Paid: ₦${orderData.total?.toLocaleString()}\nPayment Method: ${selectedRequest.metadata?.payment_info?.location || 'Cash'}\nDate: ${new Date().toLocaleString()}\n\nThank you for your payment! Your receipt has been recorded.`;
+      const receiptMessage = `✅ Payment Received\n\n${itemsList}\n\n━━━━━━━━━━━━━━━\nTotal Paid: ₦${orderData.total?.toLocaleString()}\nPayment Location: ${selectedLocation?.name}\nPayment Method: ${selectedProvider?.name} (${selectedProvider?.type?.toUpperCase()})\nDate: ${new Date().toLocaleString()}\n\nThank you for your payment! Your receipt has been recorded.`;
 
       const { error: messageError } = await supabase
         .from('guest_communications')
@@ -201,13 +261,20 @@ export function QRRequestDrawer({ open, onOpenChange }: QRRequestDrawerProps) {
       }
 
       toast.success(`Payment of ₦${orderData.total?.toLocaleString()} collected successfully!`);
+      
+      // Update local state with payment info
       setSelectedRequest({ 
         ...selectedRequest, 
         metadata: { 
           ...selectedRequest.metadata, 
           payment_info: { 
             ...selectedRequest.metadata?.payment_info,
-            status: 'paid' 
+            status: 'paid',
+            location_id: selectedLocationId,
+            location_name: selectedLocation?.name,
+            provider_id: selectedProviderId,
+            provider_name: selectedProvider?.name,
+            provider_type: selectedProvider?.type,
           } 
         } 
       });
@@ -428,16 +495,61 @@ export function QRRequestDrawer({ open, onOpenChange }: QRRequestDrawerProps) {
                                 </>
                               )}
                               
-                              {/* Payment Collection Button */}
+                              {/* Payment Collection Section */}
                               {selectedRequest.metadata?.payment_info?.billable && 
                                selectedRequest.metadata?.payment_info?.status !== 'paid' && (
                                 <>
                                   <Separator />
+                                  <div className="space-y-3 p-3 bg-muted/30 rounded-lg">
+                                    <div className="space-y-2">
+                                      <Label className="text-sm font-medium">Payment Location</Label>
+                                      <Select 
+                                        value={selectedLocationId || ''} 
+                                        onValueChange={setSelectedLocationId}
+                                      >
+                                        <SelectTrigger>
+                                          <SelectValue placeholder="Select payment location" />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                          {locations
+                                            .filter(l => l.status === 'active')
+                                            .map(location => (
+                                              <SelectItem key={location.id} value={location.id}>
+                                                {location.name}
+                                                {location.department && ` (${location.department.toUpperCase()})`}
+                                              </SelectItem>
+                                            ))}
+                                        </SelectContent>
+                                      </Select>
+                                    </div>
+
+                                    <div className="space-y-2">
+                                      <Label className="text-sm font-medium">Payment Method</Label>
+                                      <Select 
+                                        value={selectedProviderId || ''} 
+                                        onValueChange={setSelectedProviderId}
+                                      >
+                                        <SelectTrigger>
+                                          <SelectValue placeholder="Select payment method" />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                          {providers
+                                            .filter(p => p.status === 'active')
+                                            .map(provider => (
+                                              <SelectItem key={provider.id} value={provider.id}>
+                                                {provider.name} ({provider.type.toUpperCase()})
+                                              </SelectItem>
+                                            ))}
+                                        </SelectContent>
+                                      </Select>
+                                    </div>
+                                  </div>
+                                  
                                   <Button 
                                     className="w-full gap-2" 
                                     variant="default"
                                     onClick={handleCollectPayment}
-                                    disabled={isCollectingPayment}
+                                    disabled={isCollectingPayment || !selectedLocationId || !selectedProviderId}
                                   >
                                     {isCollectingPayment ? (
                                       <Loader2 className="h-4 w-4 animate-spin" />
@@ -452,9 +564,21 @@ export function QRRequestDrawer({ open, onOpenChange }: QRRequestDrawerProps) {
                                 </>
                               )}
                               {selectedRequest.metadata?.payment_info?.status === 'paid' && (
-                                <div className="flex items-center gap-2 p-3 bg-green-500/10 rounded-lg border border-green-500/20">
-                                  <CheckCircle2 className="h-4 w-4 text-green-600" />
-                                  <span className="text-sm font-medium text-green-600">Payment Collected</span>
+                                <div className="space-y-2 p-3 bg-green-500/10 rounded-lg border border-green-500/20">
+                                  <div className="flex items-center gap-2">
+                                    <CheckCircle2 className="h-4 w-4 text-green-600" />
+                                    <span className="text-sm font-medium text-green-600">Payment Collected</span>
+                                  </div>
+                                  {selectedRequest.metadata.payment_info.location_name && (
+                                    <div className="text-xs text-muted-foreground space-y-1">
+                                      <div>Location: {selectedRequest.metadata.payment_info.location_name}</div>
+                                      <div>Method: {selectedRequest.metadata.payment_info.provider_name} ({selectedRequest.metadata.payment_info.provider_type?.toUpperCase()})</div>
+                                      <div>Amount: ₦{selectedRequest.metadata.payment_info.amount?.toLocaleString()}</div>
+                                      {selectedRequest.metadata.payment_info.collected_at && (
+                                        <div>Collected: {new Date(selectedRequest.metadata.payment_info.collected_at).toLocaleString()}</div>
+                                      )}
+                                    </div>
+                                  )}
                                 </div>
                               )}
                             </div>
