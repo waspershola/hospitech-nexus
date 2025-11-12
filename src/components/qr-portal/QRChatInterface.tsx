@@ -2,11 +2,12 @@ import { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useQRChat } from '@/hooks/useQRChat';
 import { useAuth } from '@/contexts/AuthContext';
+import { useOrderDetails } from '@/hooks/useOrderDetails';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { ArrowLeft, Send, CheckCheck } from 'lucide-react';
+import { ArrowLeft, Send, CheckCheck, Package } from 'lucide-react';
 import { format } from 'date-fns';
 
 export function QRChatInterface() {
@@ -14,6 +15,9 @@ export function QRChatInterface() {
   const navigate = useNavigate();
   const { qrToken, guestId } = useAuth();
   const { messages, isLoading, isSending, sendMessage } = useQRChat(requestId || null, qrToken);
+  
+  // Check if this request has a linked order
+  const { data: orderDetails } = useOrderDetails(requestId);
   
   const [messageText, setMessageText] = useState('');
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -42,19 +46,39 @@ export function QRChatInterface() {
       {/* Header */}
       <div className="bg-card border-b p-4">
         <div className="max-w-4xl mx-auto flex items-center gap-4">
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={() => navigate(`/qr/${token}`)}
-          >
-            <ArrowLeft className="h-5 w-5" />
-          </Button>
-          <div>
+          {orderDetails ? (
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => navigate(`/qr/${token}/order/${orderDetails.id}`)}
+            >
+              <ArrowLeft className="h-5 w-5" />
+            </Button>
+          ) : (
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => navigate(`/qr/${token}`)}
+            >
+              <ArrowLeft className="h-5 w-5" />
+            </Button>
+          )}
+          <div className="flex-1">
             <h1 className="text-lg font-semibold">Service Request Chat</h1>
             <p className="text-sm text-muted-foreground">
               Request ID: {requestId?.substring(0, 8)}...
             </p>
           </div>
+          {orderDetails && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => navigate(`/qr/${token}/order/${orderDetails.id}`)}
+            >
+              <Package className="h-4 w-4 mr-2" />
+              View Order
+            </Button>
+          )}
         </div>
       </div>
 

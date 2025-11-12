@@ -158,14 +158,14 @@ export default function RequestsTable({
               </TableCell>
               <TableCell className="text-right">
                 <div className="flex gap-2 justify-end">
-                  {(request.service_category === 'digital_menu' || request.service_category === 'room_service') && onViewOrder && (
+                  {['digital_menu', 'room_service', 'laundry', 'spa'].includes(request.service_category) && onViewOrder && (
                     <Button
                       variant="outline"
                       size="sm"
                       onClick={() => onViewOrder(request)}
                     >
                       <UtensilsCrossed className="h-4 w-4 mr-2" />
-                      View Order
+                      View Details
                     </Button>
                   )}
                   <Button

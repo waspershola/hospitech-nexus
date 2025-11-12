@@ -128,73 +128,78 @@ export function QROrderStatus() {
           </div>
         </div>
 
-        {/* Order Status Card */}
-        <Card>
-          <CardHeader>
-            <div className="flex items-center justify-between">
-              <CardTitle className="text-lg">Order #{order.id.slice(0, 8)}</CardTitle>
-              {getStatusBadge(order.status)}
-            </div>
-            <p className="text-sm text-muted-foreground">
-              Placed {format(new Date(order.created_at), 'PPp')}
-            </p>
+        {/* Order Confirmation Card */}
+        <Card className="bg-gradient-to-br from-primary/10 to-accent/10 border-primary/20">
+          <CardHeader className="text-center pb-4">
+            <CheckCircle2 className="h-16 w-16 text-green-600 mx-auto mb-3" />
+            <CardTitle className="text-2xl font-bold">Order Placed Successfully!</CardTitle>
+            <p className="text-muted-foreground">Your Order</p>
           </CardHeader>
           <CardContent className="space-y-4">
-            {/* Order Items */}
-            <div>
-              <h3 className="font-semibold mb-3">Order Items</h3>
-              <ScrollArea className="max-h-64">
-                <div className="space-y-2">
-                  {(order.items as any[]).map((item: any, idx: number) => (
-                    <div key={idx} className="flex justify-between items-start py-2 border-b last:border-0">
-                      <div className="flex-1">
-                        <p className="font-medium">{item.name}</p>
-                        <p className="text-sm text-muted-foreground">Qty: {item.quantity}</p>
-                      </div>
-                      <p className="font-semibold">₦{(item.price * item.quantity).toFixed(2)}</p>
+            {/* Order Summary Box */}
+            <div className="bg-background rounded-lg p-4 space-y-3">
+              <p className="font-semibold text-lg">
+                {(order.items as any[]).length} {(order.items as any[]).length === 1 ? 'item' : 'items'} selected
+              </p>
+              <Separator />
+              <div className="space-y-2">
+                {(order.items as any[]).map((item: any, idx: number) => (
+                  <div key={idx} className="flex justify-between items-start">
+                    <div className="flex-1">
+                      <p className="font-medium">
+                        {item.quantity}× {item.name}
+                      </p>
                     </div>
-                  ))}
-                </div>
-              </ScrollArea>
-            </div>
-
-            {/* Special Instructions */}
-            {order.special_instructions && (
-              <>
-                <Separator />
-                <div>
-                  <h3 className="font-semibold mb-2">Special Instructions</h3>
-                  <p className="text-sm text-muted-foreground">{order.special_instructions}</p>
-                </div>
-              </>
-            )}
-
-            {/* Total */}
-            <Separator />
-            <div className="space-y-2">
-              <div className="flex justify-between text-sm">
-                <span className="text-muted-foreground">Subtotal</span>
-                <span>₦{order.subtotal.toFixed(2)}</span>
+                    <p className="font-semibold">₦{(item.price * item.quantity).toLocaleString()}</p>
+                  </div>
+                ))}
               </div>
-              <div className="flex justify-between font-bold text-lg">
-                <span>Total</span>
-                <span>₦{order.total.toFixed(2)}</span>
+              <Separator />
+              <div className="flex justify-between items-center">
+                <span className="font-bold text-xl">Total</span>
+                <span className="font-bold text-2xl text-primary">₦{order.total.toLocaleString()}</span>
               </div>
             </div>
 
-            {/* Chat Button */}
+            {/* Kitchen Communication Section */}
             {order.request_id && (
-              <>
-                <Separator />
+              <div className="bg-background rounded-lg p-4 space-y-3">
+                <h3 className="font-semibold text-lg">Kitchen Communication</h3>
+                <div className="flex items-center gap-2">
+                  {getStatusBadge(order.status)}
+                  <span className="text-sm text-muted-foreground">Live chat with our culinary team</span>
+                </div>
+                
+                <div className="bg-green-50 dark:bg-green-950/20 border border-green-200 dark:border-green-800 rounded-lg p-3">
+                  <p className="text-sm font-medium text-green-900 dark:text-green-100">
+                    Order Received!
+                  </p>
+                  <p className="text-xs text-green-700 dark:text-green-300 mt-1">
+                    Our executive chef will message you with updates and any suggestions.
+                  </p>
+                </div>
+
                 <Button
-                  variant="outline"
+                  size="lg"
                   className="w-full gap-2"
                   onClick={() => navigate(`/qr/${token}/chat/${order.request_id}`)}
                 >
-                  <MessageSquare className="h-4 w-4" />
+                  <MessageSquare className="h-5 w-5" />
                   Chat with Kitchen
                 </Button>
-              </>
+                
+                <p className="text-xs text-center text-muted-foreground">
+                  Our culinary team is standing by to assist with your order
+                </p>
+              </div>
+            )}
+
+            {/* Special Instructions */}
+            {order.special_instructions && (
+              <div className="bg-background rounded-lg p-4">
+                <h3 className="font-semibold mb-2">Special Instructions</h3>
+                <p className="text-sm text-muted-foreground">{order.special_instructions}</p>
+              </div>
             )}
           </CardContent>
         </Card>

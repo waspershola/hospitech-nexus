@@ -260,6 +260,27 @@ export function QRRequestDrawer({ open, onOpenChange }: QRRequestDrawerProps) {
                               </div>
                             </>
                           )}
+                          
+                          {/* Payment Collection Button */}
+                          {selectedRequest.metadata?.payment_info?.billable && (
+                            <>
+                              <Separator />
+                              <Button 
+                                className="w-full gap-2" 
+                                variant="default"
+                                onClick={() => {
+                                  toast.success('Payment collection interface would open here');
+                                  // TODO: Integrate with actual payment system
+                                }}
+                              >
+                                <svg className="h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                  <rect x="1" y="4" width="22" height="16" rx="2" ry="2"/>
+                                  <line x1="1" y1="10" x2="23" y2="10"/>
+                                </svg>
+                                Collect Payment (₦{orderDetails.total?.toLocaleString()})
+                              </Button>
+                            </>
+                          )}
                         </div>
                       ) : (
                         <div className="text-xs text-muted-foreground text-center py-2">
@@ -474,6 +495,32 @@ function RequestCard({ request, isSelected, onClick }: any) {
   }[request.status] || { icon: Clock, color: 'text-muted-foreground' };
 
   const Icon = config.icon;
+  
+  // Fetch order details for menu orders to show in card
+  const { data: orderDetails } = useOrderDetails(
+    (request.service_category === 'digital_menu' || request.service_category === 'room_service') 
+      ? request.id 
+      : undefined
+  );
+
+  // Parse order summary from note if available
+  const parseOrderSummary = () => {
+    if (orderDetails?.items) {
+      const items = orderDetails.items as any[];
+      return {
+        itemCount: items.reduce((sum: number, item: any) => sum + item.quantity, 0),
+        items: items.map((item: any) => ({
+          name: item.name,
+          quantity: item.quantity,
+          price: item.price * item.quantity
+        })),
+        total: orderDetails.total
+      };
+    }
+    return null;
+  };
+
+  const orderSummary = parseOrderSummary();
 
   return (
     <button
@@ -482,18 +529,54 @@ function RequestCard({ request, isSelected, onClick }: any) {
         isSelected ? 'bg-accent border-accent-foreground' : 'hover:bg-muted border-transparent'
       }`}
     >
-      <div className="flex items-start justify-between mb-1">
-        <span className="font-medium text-sm capitalize">
-          {request.service_category?.replace('_', ' ')}
-        </span>
-        <Icon className={`h-4 w-4 ${config.color}`} />
+      <div className="flex items-start justify-between mb-2">
+        <div className="flex-1">
+          <div className="flex items-center gap-2 mb-1">
+            <Badge variant="secondary" className="text-xs">
+              {request.service_category?.replace('_', ' ')}
+            </Badge>
+            <Icon className={`h-3 w-3 ${config.color}`} />
+          </div>
+          <p className="text-xs text-muted-foreground">
+            {format(new Date(request.created_at), 'MMM d, h:mm a')}
+          </p>
+        </div>
+        {request.room?.number && (
+          <Badge variant="outline" className="text-xs">
+            Room {request.room.number}
+          </Badge>
+        )}
       </div>
-      <p className="text-xs text-muted-foreground truncate">
-        {request.note || 'No details provided'}
-      </p>
-      <p className="text-xs text-muted-foreground mt-1">
-        {format(new Date(request.created_at), 'h:mm a')}
-      </p>
+
+      {/* Order Items Preview */}
+      {orderSummary ? (
+        <div className="space-y-1 mt-2 p-2 bg-background/50 rounded">
+          <p className="text-xs font-medium">
+            {orderSummary.itemCount} {orderSummary.itemCount === 1 ? 'item' : 'items'}
+          </p>
+          {orderSummary.items.slice(0, 2).map((item: any, idx: number) => (
+            <div key={idx} className="flex justify-between items-center text-xs">
+              <span className="text-muted-foreground truncate flex-1">
+                {item.quantity}× {item.name}
+              </span>
+              <span className="font-medium ml-2">₦{item.price.toLocaleString()}</span>
+            </div>
+          ))}
+          {orderSummary.items.length > 2 && (
+            <p className="text-xs text-muted-foreground">
+              +{orderSummary.items.length - 2} more...
+            </p>
+          )}
+          <div className="flex justify-between items-center text-xs font-bold pt-1 border-t">
+            <span>Total:</span>
+            <span className="text-primary">₦{orderSummary.total?.toLocaleString()}</span>
+          </div>
+        </div>
+      ) : (
+        <p className="text-xs text-muted-foreground truncate mt-2">
+          {request.note || 'No details provided'}
+        </p>
+      )}
     </button>
   );
 }
