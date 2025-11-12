@@ -7,6 +7,7 @@ import { format } from 'date-fns';
 import { SpaBookingDetails } from '@/components/qr-portal/service-details/SpaBookingDetails';
 import { LaundryOrderDetails } from '@/components/qr-portal/service-details/LaundryOrderDetails';
 import { DiningReservationDetails } from '@/components/qr-portal/service-details/DiningReservationDetails';
+import { RequestPaymentInfo } from './RequestPaymentInfo';
 
 interface RequestDetailsDrawerProps {
   request: any;
@@ -115,6 +116,11 @@ export function RequestDetailsDrawer({
               </div>
             )}
           </div>
+
+          <Separator />
+
+          {/* Payment Information */}
+          <RequestPaymentInfo request={request} />
 
           <Separator />
 

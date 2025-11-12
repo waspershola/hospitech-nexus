@@ -103,7 +103,18 @@ export function QRLaundryService() {
           note: `Laundry Service: ${cart.length} items - ${items.map(i => `${i.quantity}x ${i.item_name} (${SERVICE_TYPE_LABELS[i.service_type]})`).join(', ')}${specialInstructions ? ` | Instructions: ${specialInstructions}` : ''}`,
           priority: 'normal',
           status: 'pending',
-          metadata: { items, total, currency: cart[0]?.currency || 'NGN' },
+          metadata: { 
+            items, 
+            total, 
+            currency: cart[0]?.currency || 'NGN',
+            payment_info: {
+              billable: true,
+              amount: total,
+              currency: cart[0]?.currency || 'NGN',
+              status: 'pending',
+              location: 'Laundry Service',
+            },
+          },
         })
         .select()
         .single();

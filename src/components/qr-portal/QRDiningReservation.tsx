@@ -91,6 +91,16 @@ export function QRDiningReservation() {
             reservation_id: reservation.id,
             guest_contact: guestContact,
             guest_email: guestEmail,
+            reservation_date: reservationDate,
+            reservation_time: reservationTime,
+            number_of_guests: parseInt(numberOfGuests),
+            payment_info: {
+              billable: true,
+              amount: null,
+              currency: 'NGN',
+              status: 'pending',
+              location: 'Restaurant POS',
+            },
           },
         })
         .select()

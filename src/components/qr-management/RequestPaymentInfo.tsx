@@ -20,14 +20,18 @@ export function RequestPaymentInfo({ request }: RequestPaymentInfoProps) {
         <CardTitle className="text-sm">Payment Information</CardTitle>
       </CardHeader>
       <CardContent className="space-y-2">
-        {amount && (
-          <div className="flex justify-between text-sm">
-            <span className="text-muted-foreground">Amount:</span>
+        <div className="flex justify-between text-sm">
+          <span className="text-muted-foreground">Amount:</span>
+          {amount ? (
             <span className="font-semibold text-lg">
               {currency === 'NGN' ? '₦' : currency} {amount.toFixed(2)}
             </span>
-          </div>
-        )}
+          ) : (
+            <span className="text-sm text-muted-foreground italic">
+              To be determined after service
+            </span>
+          )}
+        </div>
         <div className="flex justify-between text-sm">
           <span className="text-muted-foreground">Status:</span>
           <Badge variant={paymentInfo.status === 'paid' ? 'default' : 'secondary'}>

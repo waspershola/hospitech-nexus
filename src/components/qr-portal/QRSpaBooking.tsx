@@ -88,6 +88,13 @@ export function QRSpaBooking() {
             price: selectedService.price,
             currency: selectedService.currency,
             preferred_datetime: preferredDateTime,
+            payment_info: {
+              billable: true,
+              amount: selectedService.price,
+              currency: selectedService.currency,
+              status: 'pending',
+              location: 'Spa Center',
+            },
           },
         })
         .select()
