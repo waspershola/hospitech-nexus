@@ -43,10 +43,13 @@ export function useQuickReplyTemplates(serviceCategory?: string) {
   });
 
   const createTemplate = useMutation({
-    mutationFn: async (template: Partial<QuickReplyTemplate>) => {
+    mutationFn: async (template: Omit<QuickReplyTemplate, 'id' | 'created_at' | 'updated_at' | 'tenant_id'>) => {
       const { data, error } = await supabase
         .from('quick_reply_templates')
-        .insert({ ...template, tenant_id: tenantId })
+        .insert({ 
+          ...template, 
+          tenant_id: tenantId!
+        })
         .select()
         .single();
       

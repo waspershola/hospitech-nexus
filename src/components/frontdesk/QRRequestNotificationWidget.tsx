@@ -2,22 +2,21 @@ import { useEffect, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useRingtone } from '@/hooks/useRingtone';
-import { Bell, QrCode } from 'lucide-react';
+import { QrCode } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
-import { useNavigate } from 'react-router-dom';
+import { QRRequestDrawer } from '@/components/qr-management/QRRequestDrawer';
 
 export function QRRequestNotificationWidget() {
   const { tenantId } = useAuth();
   const { playRingtone } = useRingtone();
-  const navigate = useNavigate();
   const [qrRequestCount, setQrRequestCount] = useState(0);
+  const [drawerOpen, setDrawerOpen] = useState(false);
 
   useEffect(() => {
     if (!tenantId) return;
 
-    // Fetch initial count
     const fetchCount = async () => {
       const { count } = await supabase
         .from('requests')
@@ -31,7 +30,6 @@ export function QRRequestNotificationWidget() {
 
     fetchCount();
 
-    // Subscribe to new QR requests
     const channel = supabase
       .channel('qr-requests-notifications')
       .on(
@@ -43,14 +41,11 @@ export function QRRequestNotificationWidget() {
           filter: `tenant_id=eq.${tenantId}`,
         },
         (payload: any) => {
-          // Only process QR-originated requests
           if (payload.new.qr_token) {
             setQrRequestCount(prev => prev + 1);
             
-            // Play notification sound
             playRingtone('/sounds/notification-default.mp3');
             
-            // Show toast notification
             toast.info('New QR Request Received', {
               description: `${payload.new.type} request from ${payload.new.room_number || 'Guest'}`,
               icon: <QrCode className="h-5 w-5 text-primary" />,
@@ -68,7 +63,6 @@ export function QRRequestNotificationWidget() {
           filter: `tenant_id=eq.${tenantId}`,
         },
         (payload: any) => {
-          // Update count when status changes
           if (payload.new.qr_token) {
             fetchCount();
           }
