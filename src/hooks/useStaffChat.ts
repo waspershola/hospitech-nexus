@@ -60,6 +60,7 @@ export function useStaffChat(requestId: string | null) {
 
   const sendMessage = async (message: string): Promise<boolean> => {
     if (!requestId || !user) {
+      console.error('[useStaffChat] Missing requestId or user:', { requestId, user: !!user });
       toast.error('Invalid request or user');
       return false;
     }
@@ -72,15 +73,31 @@ export function useStaffChat(requestId: string | null) {
     setIsSending(true);
     try {
       // Fetch request to get tenant_id
-      const { data: requestData } = await supabase
+      const { data: requestData, error: fetchError } = await supabase
         .from('requests')
         .select('tenant_id, guest_id')
         .eq('id', requestId)
         .single();
 
+      if (fetchError) {
+        console.error('[useStaffChat] Error fetching request:', fetchError);
+        throw new Error(`Failed to fetch request: ${fetchError.message}`);
+      }
+
       if (!requestData) {
+        console.error('[useStaffChat] Request not found:', requestId);
         throw new Error('Request not found');
       }
+
+      console.log('[useStaffChat] Sending message with payload:', {
+        tenant_id: requestData.tenant_id,
+        guest_id: requestData.guest_id,
+        type: 'qr_request',
+        message: message.trim(),
+        direction: 'outbound',
+        sent_by: user.id,
+        metadata: { request_id: requestId },
+      });
 
       const { data, error } = await supabase
         .from('guest_communications')
@@ -96,7 +113,16 @@ export function useStaffChat(requestId: string | null) {
         .select()
         .single();
 
-      if (error) throw error;
+      if (error) {
+        console.error('[useStaffChat] INSERT error details:', {
+          message: error.message,
+          code: error.code,
+          details: error.details,
+          hint: error.hint,
+          full: error,
+        });
+        throw error;
+      }
 
       setMessages((prev) => [
         ...prev,
@@ -110,11 +136,19 @@ export function useStaffChat(requestId: string | null) {
         },
       ]);
 
+      console.log('[useStaffChat] Message sent successfully:', data);
       setIsSending(false);
       return true;
-    } catch (err) {
-      console.error('[useStaffChat] Error sending message:', err);
-      toast.error('Failed to send message');
+    } catch (err: any) {
+      console.error('[useStaffChat] Error sending message:', {
+        message: err?.message,
+        code: err?.code,
+        details: err?.details,
+        hint: err?.hint,
+        stack: err?.stack,
+        full: err,
+      });
+      toast.error(err?.message || 'Failed to send message');
       setIsSending(false);
       return false;
     }
