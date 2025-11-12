@@ -89,6 +89,11 @@ export function QRRequestDrawer({ open, onOpenChange }: QRRequestDrawerProps) {
       .map(q => [q.data.requestId, q.data])
   );
 
+  // Create loading state map
+  const loadingStateMap = Object.fromEntries(
+    orderDetailsQueries.map((q, idx) => [allRequestIds[idx], q.isLoading])
+  );
+
   useEffect(() => {
     if (open && !selectedRequest && pendingRequests.length > 0) {
       setSelectedRequest(pendingRequests[0]);
@@ -204,6 +209,7 @@ export function QRRequestDrawer({ open, onOpenChange }: QRRequestDrawerProps) {
                       isSelected={selectedRequest?.id === req.id}
                       onClick={() => setSelectedRequest(req)}
                       orderDetails={orderDetailsMap[req.id]}
+                      isLoading={loadingStateMap[req.id]}
                     />
                   ))}
                   {pendingRequests.length === 0 && (
@@ -221,6 +227,7 @@ export function QRRequestDrawer({ open, onOpenChange }: QRRequestDrawerProps) {
                       isSelected={selectedRequest?.id === req.id}
                       onClick={() => setSelectedRequest(req)}
                       orderDetails={orderDetailsMap[req.id]}
+                      isLoading={loadingStateMap[req.id]}
                     />
                   ))}
                   {inProgressRequests.length === 0 && (
@@ -534,7 +541,7 @@ export function QRRequestDrawer({ open, onOpenChange }: QRRequestDrawerProps) {
   );
 }
 
-function RequestCard({ request, isSelected, onClick, orderDetails }: any) {
+function RequestCard({ request, isSelected, onClick, orderDetails, isLoading }: any) {
   const config = {
     pending: { icon: Clock, color: 'text-yellow-500' },
     in_progress: { icon: AlertCircle, color: 'text-blue-500' },
@@ -543,8 +550,39 @@ function RequestCard({ request, isSelected, onClick, orderDetails }: any) {
 
   const Icon = config.icon;
 
+  // Render loading skeleton
+  const renderLoadingSkeleton = () => {
+    return (
+      <div className="space-y-2 mt-2 p-2 bg-background/50 rounded border border-border">
+        <div className="flex items-center gap-2">
+          <div className="h-3 w-3 bg-muted rounded-full shimmer" />
+          <div className="h-3 w-20 bg-muted rounded shimmer" />
+        </div>
+        <div className="space-y-1.5">
+          <div className="flex justify-between">
+            <div className="h-3 w-24 bg-muted rounded shimmer" />
+            <div className="h-3 w-12 bg-muted rounded shimmer" />
+          </div>
+          <div className="flex justify-between">
+            <div className="h-3 w-20 bg-muted rounded shimmer" />
+            <div className="h-3 w-10 bg-muted rounded shimmer" />
+          </div>
+        </div>
+        <div className="flex justify-between pt-1 border-t border-border">
+          <div className="h-3 w-12 bg-muted rounded shimmer" />
+          <div className="h-3 w-16 bg-muted rounded shimmer" />
+        </div>
+      </div>
+    );
+  };
+
   // Render service-specific context preview
   const renderContextPreview = () => {
+    // Show loading skeleton while fetching
+    if (isLoading) {
+      return renderLoadingSkeleton();
+    }
+
     if (!orderDetails) {
       return (
         <p className="text-xs text-muted-foreground truncate mt-2">
