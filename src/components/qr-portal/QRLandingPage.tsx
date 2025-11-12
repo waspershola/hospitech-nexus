@@ -262,14 +262,22 @@ export function QRLandingPage() {
               <span className="text-sm">Available 24/7</span>
             </div>
             <p className="text-muted-foreground text-xs">Powered by luxuryhotelpro.com</p>
-            <Button
-              variant="outline"
-              onClick={() => window.location.href = `/qr/${token}/payments`}
-              className="gap-2"
-            >
-              <Receipt className="h-4 w-4" />
-              Payment History
-            </Button>
+            <Card className="shadow-xl border-2 border-primary/20 bg-gradient-to-r from-primary/10 to-accent/10">
+              <CardContent className="p-4">
+                <Button
+                  variant="default"
+                  size="lg"
+                  onClick={() => navigate(`/qr/${token}/payments`)}
+                  className="w-full gap-2 text-base font-semibold"
+                >
+                  <Receipt className="h-5 w-5" />
+                  View Payment History
+                </Button>
+                <p className="text-xs text-center text-muted-foreground mt-2">
+                  Track all your payments and receipts
+                </p>
+              </CardContent>
+            </Card>
           </div>
         </div>
       </div>

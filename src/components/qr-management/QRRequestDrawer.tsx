@@ -488,7 +488,7 @@ export function QRRequestDrawer({ open, onOpenChange }: QRRequestDrawerProps) {
                 </TabsTrigger>
               </TabsList>
 
-              <ScrollArea className="flex-1">
+              <ScrollArea className="flex-1 max-h-[calc(100vh-250px)]">
                 <TabsContent value="pending" className="mt-0 space-y-1 p-2">
                   {pendingRequests.map((req) => (
                     <RequestCard

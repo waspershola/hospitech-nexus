@@ -17,6 +17,7 @@ interface StaffRequest {
   metadata: any;
   created_at: string;
   assigned_to?: string;
+  assigned_department?: string;
   completed_at?: string;
   room?: { number: string };
   guest?: { name: string };

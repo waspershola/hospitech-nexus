@@ -20,7 +20,7 @@ export function DepartmentRequestsWidget({ department, departmentLabel }: Depart
 
   // Filter requests by department
   const departmentRequests = requests.filter(
-    r => r.qr_token && (r.metadata as any)?.assigned_department === department
+    r => r.qr_token && r.assigned_department === department
   );
 
   const pending = departmentRequests.filter(r => r.status === 'pending').length;
