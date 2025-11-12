@@ -82,23 +82,30 @@ export function QRRequestNotificationWidget() {
   }, [tenantId, playRingtone]);
 
   const handleClick = () => {
-    navigate('/dashboard/guest-requests?filter=qr');
+    setDrawerOpen(true);
   };
 
   if (qrRequestCount === 0) return null;
 
   return (
-    <Button
-      variant="outline"
-      size="sm"
-      onClick={handleClick}
-      className="relative gap-2"
-    >
-      <QrCode className="h-4 w-4" />
-      <span className="hidden sm:inline">QR Requests</span>
-      <Badge variant="default" className="ml-1">
-        {qrRequestCount}
-      </Badge>
-    </Button>
+    <>
+      <Button
+        variant="outline"
+        size="sm"
+        onClick={handleClick}
+        className="relative gap-2"
+      >
+        <QrCode className="h-4 w-4" />
+        <span className="hidden sm:inline">QR Requests</span>
+        <Badge variant="default" className="ml-1">
+          {qrRequestCount}
+        </Badge>
+      </Button>
+      
+      <QRRequestDrawer 
+        open={drawerOpen} 
+        onOpenChange={setDrawerOpen} 
+      />
+    </>
   );
 }
