@@ -9,11 +9,12 @@ import { Separator } from '@/components/ui/separator';
 import { useStaffRequests } from '@/hooks/useStaffRequests';
 import { useStaffChat } from '@/hooks/useStaffChat';
 import { useRequestHistory } from '@/hooks/useRequestHistory';
+import { useOrderDetails } from '@/hooks/useOrderDetails';
 import { RequestPaymentInfo } from './RequestPaymentInfo';
 import { format } from 'date-fns';
 import { 
   MessageSquare, Clock, CheckCircle2, XCircle, AlertCircle, Send,
-  User, MapPin, Zap, Loader2, History, TrendingUp, BarChart3
+  User, MapPin, Zap, Loader2, History, TrendingUp, BarChart3, UtensilsCrossed
 } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -33,6 +34,13 @@ export function QRRequestDrawer({ open, onOpenChange }: QRRequestDrawerProps) {
   const { stats: historyStats, isLoading: historyLoading } = useRequestHistory(
     selectedRequest?.room_id || null,
     selectedRequest?.metadata?.guest_name || null
+  );
+
+  // Fetch order details if this is a menu/room service request
+  const { data: orderDetails, isLoading: orderLoading } = useOrderDetails(
+    (selectedRequest?.service_category === 'digital_menu' || selectedRequest?.service_category === 'room_service') 
+      ? selectedRequest?.id 
+      : undefined
   );
 
   // PHASE 7 FIX 3: Ensure proper filtering for drawer tabs
@@ -206,7 +214,62 @@ export function QRRequestDrawer({ open, onOpenChange }: QRRequestDrawerProps) {
                     </div>
                   )}
 
-                  <div className="flex items-center gap-4 text-sm">
+                  {/* Order Details Section */}
+                  {(selectedRequest.service_category === 'digital_menu' || selectedRequest.service_category === 'room_service') && (
+                    <div className="mt-3">
+                      {orderLoading ? (
+                        <div className="flex items-center justify-center py-4">
+                          <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+                        </div>
+                      ) : orderDetails ? (
+                        <div className="border border-border rounded-lg p-3 space-y-3">
+                          <div className="flex items-center gap-2">
+                            <UtensilsCrossed className="h-4 w-4 text-muted-foreground" />
+                            <span className="font-semibold text-sm">Order Details</span>
+                            <Badge variant="outline" className="ml-auto">
+                              Order #{orderDetails.id.slice(0, 8)}
+                            </Badge>
+                          </div>
+                          <Separator />
+                          <div className="space-y-2">
+                            {(orderDetails.items as any[])?.map((item: any, idx: number) => (
+                              <div key={idx} className="flex justify-between items-start text-sm">
+                                <div className="flex-1">
+                                  <p className="font-medium">{item.name}</p>
+                                  <p className="text-xs text-muted-foreground">Qty: {item.quantity}</p>
+                                </div>
+                                <p className="font-semibold">
+                                  ₦{(item.price * item.quantity).toFixed(2)}
+                                </p>
+                              </div>
+                            ))}
+                          </div>
+                          <Separator />
+                          <div className="flex justify-between items-center">
+                            <span className="font-bold">Total:</span>
+                            <span className="font-bold text-lg text-primary">
+                              ₦{orderDetails.total?.toFixed(2)}
+                            </span>
+                          </div>
+                          {orderDetails.special_instructions && (
+                            <>
+                              <Separator />
+                              <div>
+                                <p className="text-xs font-medium text-muted-foreground mb-1">Special Instructions:</p>
+                                <p className="text-sm">{orderDetails.special_instructions}</p>
+                              </div>
+                            </>
+                          )}
+                        </div>
+                      ) : (
+                        <div className="text-xs text-muted-foreground text-center py-2">
+                          No order details found
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  <div className="flex items-center gap-4 text-sm mt-3">
                     {selectedRequest.metadata?.guest_name && (
                       <div className="flex items-center gap-1">
                         <User className="h-3 w-3 text-muted-foreground" />

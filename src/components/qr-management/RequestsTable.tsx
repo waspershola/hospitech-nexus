@@ -158,7 +158,7 @@ export default function RequestsTable({
               </TableCell>
               <TableCell className="text-right">
                 <div className="flex gap-2 justify-end">
-                  {request.service_category === 'menu_order' && onViewOrder && (
+                  {(request.service_category === 'digital_menu' || request.service_category === 'room_service') && onViewOrder && (
                     <Button
                       variant="outline"
                       size="sm"
