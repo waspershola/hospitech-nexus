@@ -1,4 +1,4 @@
-import { DepartmentRequestsWidget } from '@/components/department-dashboards/DepartmentRequestsWidget';
+import { DepartmentRequestsManagement } from '@/components/department-dashboards/DepartmentRequestsManagement';
 import { Wine } from 'lucide-react';
 import { useRole } from '@/hooks/useRole';
 import { Navigate } from 'react-router-dom';
@@ -21,7 +21,7 @@ export default function BarDashboard() {
         <Wine className="h-8 w-8 text-primary" />
       </div>
       
-      <DepartmentRequestsWidget 
+      <DepartmentRequestsManagement 
         department="restaurant" 
         departmentLabel="Bar"
       />
