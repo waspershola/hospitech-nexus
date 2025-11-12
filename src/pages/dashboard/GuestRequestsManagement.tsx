@@ -6,6 +6,7 @@ import { useStaffRequests } from '@/hooks/useStaffRequests';
 import RequestsTable from '@/components/qr-management/RequestsTable';
 import StaffChatDialog from '@/components/qr-management/StaffChatDialog';
 import { OrderDetailsDrawer } from '@/components/qr-management/OrderDetailsDrawer';
+import { RequestDetailsDrawer } from '@/components/qr-management/RequestDetailsDrawer';
 import { Button } from '@/components/ui/button';
 import {
   Select,
@@ -18,6 +19,7 @@ import {
 export default function GuestRequestsManagement() {
   const [selectedRequest, setSelectedRequest] = useState<any>(null);
   const [selectedOrder, setSelectedOrder] = useState<any>(null);
+  const [selectedRequestDetails, setSelectedRequestDetails] = useState<any>(null);
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [priorityFilter, setPriorityFilter] = useState<string>('all');
   const [categoryFilter, setCategoryFilter] = useState<string>('all');
@@ -155,7 +157,14 @@ export default function GuestRequestsManagement() {
         isLoading={isLoading}
         onViewChat={setSelectedRequest}
         onUpdateStatus={updateRequestStatus}
-        onViewOrder={setSelectedOrder}
+        onViewOrder={(request) => {
+          // Route to correct drawer based on service type
+          if (['digital_menu', 'room_service'].includes(request.service_category)) {
+            setSelectedOrder(request);
+          } else {
+            setSelectedRequestDetails(request);
+          }
+        }}
       />
 
       <StaffChatDialog
@@ -172,6 +181,16 @@ export default function GuestRequestsManagement() {
         onOpenChat={() => {
           setSelectedRequest(selectedOrder);
           setSelectedOrder(null);
+        }}
+      />
+
+      <RequestDetailsDrawer
+        request={selectedRequestDetails}
+        open={!!selectedRequestDetails}
+        onOpenChange={(open) => !open && setSelectedRequestDetails(null)}
+        onOpenChat={() => {
+          setSelectedRequest(selectedRequestDetails);
+          setSelectedRequestDetails(null);
         }}
       />
     </div>

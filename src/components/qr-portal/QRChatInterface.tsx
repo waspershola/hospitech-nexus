@@ -57,6 +57,14 @@ export function QRChatInterface() {
             >
               <ArrowLeft className="h-5 w-5" />
             </Button>
+          ) : orderDetails && orderDetails.type === 'request' ? (
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => navigate(`/qr/${token}/request/${requestId}`)}
+            >
+              <ArrowLeft className="h-5 w-5" />
+            </Button>
           ) : (
             <Button
               variant="ghost"
@@ -83,6 +91,16 @@ export function QRChatInterface() {
             >
               <Package className="h-4 w-4 mr-2" />
               View Order
+            </Button>
+          )}
+          {orderDetails && orderDetails.type === 'request' && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => navigate(`/qr/${token}/request/${requestId}`)}
+            >
+              <Package className="h-4 w-4 mr-2" />
+              View Request
             </Button>
           )}
         </div>
