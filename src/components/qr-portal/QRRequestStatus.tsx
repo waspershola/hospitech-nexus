@@ -6,8 +6,10 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
-import { CheckCircle2, MessageSquare, Clock, Calendar, Users, Loader2, ArrowLeft } from 'lucide-react';
-import { format } from 'date-fns';
+import { CheckCircle2, MessageSquare, Loader2, ArrowLeft } from 'lucide-react';
+import { SpaBookingDetails } from './service-details/SpaBookingDetails';
+import { LaundryOrderDetails } from './service-details/LaundryOrderDetails';
+import { DiningReservationDetails } from './service-details/DiningReservationDetails';
 
 export function QRRequestStatus() {
   const { token, requestId } = useParams<{ token: string; requestId: string }>();
@@ -83,86 +85,13 @@ export function QRRequestStatus() {
 
     switch (request.service_category) {
       case 'spa':
-        return (
-          <div className="space-y-4">
-            <div className="p-4 bg-gradient-to-br from-primary/10 to-accent/10 rounded-lg space-y-2">
-              <h3 className="text-2xl font-display font-bold">{meta.service_name || 'Spa Service'}</h3>
-              <div className="flex items-center gap-4 text-sm text-muted-foreground">
-                <span className="flex items-center gap-1">
-                  <Clock className="h-4 w-4" />
-                  {meta.duration || 'N/A'}
-                </span>
-                <span className="text-xl font-bold text-primary">
-                  {meta.currency || 'NGN'} {meta.price || 0}
-                </span>
-              </div>
-            </div>
-            {meta.preferred_datetime && (
-              <div className="flex items-start gap-3 p-3 bg-muted/50 rounded-lg">
-                <Calendar className="h-5 w-5 text-muted-foreground mt-0.5" />
-                <div>
-                  <p className="text-sm font-semibold">Preferred Time</p>
-                  <p className="text-sm text-muted-foreground">
-                    {format(new Date(meta.preferred_datetime as string), 'PPpp')}
-                  </p>
-                </div>
-              </div>
-            )}
-          </div>
-        );
+        return <SpaBookingDetails metadata={meta} />;
 
       case 'laundry':
-        const laundryItems = meta.items || [];
-        return (
-          <div className="space-y-4">
-            <div className="p-4 bg-gradient-to-br from-primary/10 to-accent/10 rounded-lg">
-              <h3 className="text-xl font-display font-bold mb-3">Laundry Items</h3>
-              <p className="text-sm text-muted-foreground mb-3">{laundryItems.length} items selected</p>
-              <div className="space-y-2">
-                {laundryItems.map((item: any, idx: number) => (
-                  <div key={idx} className="flex justify-between text-sm bg-background/50 p-2 rounded">
-                    <span>{item.quantity}× {item.item_name}</span>
-                    <span className="text-muted-foreground">({item.service_type.replace('_', ' ')})</span>
-                  </div>
-                ))}
-              </div>
-              <Separator className="my-3" />
-              <div className="flex justify-between font-bold text-lg">
-                <span>Total:</span>
-                <span className="text-primary">{meta.currency} {meta.total}</span>
-              </div>
-            </div>
-          </div>
-        );
+        return <LaundryOrderDetails metadata={meta} />;
 
       case 'dining_reservation':
-        return (
-          <div className="space-y-4">
-            <div className="p-4 bg-gradient-to-br from-primary/10 to-accent/10 rounded-lg space-y-3">
-              <h3 className="text-2xl font-display font-bold">Table Reservation</h3>
-              <div className="grid grid-cols-2 gap-3">
-                <div className="flex items-start gap-2">
-                  <Calendar className="h-5 w-5 text-muted-foreground mt-0.5" />
-                  <div>
-                    <p className="text-xs text-muted-foreground">Date</p>
-                    <p className="font-semibold">{meta.reservation_date}</p>
-                  </div>
-                </div>
-                <div className="flex items-start gap-2">
-                  <Clock className="h-5 w-5 text-muted-foreground mt-0.5" />
-                  <div>
-                    <p className="text-xs text-muted-foreground">Time</p>
-                    <p className="font-semibold">{meta.reservation_time}</p>
-                  </div>
-                </div>
-              </div>
-              <div className="flex items-center gap-2 pt-2">
-                <Users className="h-5 w-5 text-muted-foreground" />
-                <span className="font-semibold">{meta.number_of_guests} guests</span>
-              </div>
-            </div>
-          </div>
-        );
+        return <DiningReservationDetails metadata={meta} />;
 
       default:
         return (
