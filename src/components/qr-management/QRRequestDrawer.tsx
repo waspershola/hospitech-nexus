@@ -260,15 +260,54 @@ export function QRRequestDrawer({ open, onOpenChange }: QRRequestDrawerProps) {
     }
     
     setIsCollectingPayment(true);
+    
+    // Enhanced logging for debugging payment issues
+    console.log('[Payment Collection] Starting payment collection:', {
+      request_id: selectedRequest.id,
+      service_category: selectedRequest.service_category,
+      location_id: selectedLocationId,
+      provider_id: selectedProviderId,
+      payment_info: selectedRequest.metadata?.payment_info,
+    });
+    
     try {
       const { data: { user } } = await supabase.auth.getUser();
+      
+      if (!user) {
+        console.error('[Payment Collection] No authenticated user found');
+        toast.error('Authentication required to collect payment');
+        return;
+      }
       
       // Fetch location and provider details for display
       const selectedLocation = locations.find(l => l.id === selectedLocationId);
       const selectedProvider = providers.find(p => p.id === selectedProviderId);
       
+      if (!selectedLocation || !selectedProvider) {
+        console.error('[Payment Collection] Location or provider not found:', {
+          selectedLocation,
+          selectedProvider,
+        });
+        toast.error('Invalid payment location or method selected');
+        return;
+      }
+      
       const amount = selectedRequest.metadata?.payment_info?.amount;
       const currency = selectedRequest.metadata?.payment_info?.currency || 'NGN';
+      
+      if (!amount || amount <= 0) {
+        console.error('[Payment Collection] Invalid payment amount:', { amount });
+        toast.error('Invalid payment amount');
+        return;
+      }
+      
+      console.log('[Payment Collection] Payment details validated:', {
+        amount,
+        currency,
+        location: selectedLocation.name,
+        provider: selectedProvider.name,
+        user_id: user.id,
+      });
       
       // Update payment metadata with location and provider info
       const { error: updateError } = await supabase
@@ -293,7 +332,17 @@ export function QRRequestDrawer({ open, onOpenChange }: QRRequestDrawerProps) {
         })
         .eq('id', selectedRequest.id);
 
-      if (updateError) throw updateError;
+      if (updateError) {
+        console.error('[Payment Collection] Failed to update payment status:', {
+          error: updateError,
+          message: updateError.message,
+          code: updateError.code,
+          details: updateError.details,
+        });
+        throw updateError;
+      }
+      
+      console.log('[Payment Collection] Payment metadata updated successfully');
 
       // Send payment confirmation message to guest
       const serviceName = selectedRequest.service_category?.replace('_', ' ').toUpperCase();
@@ -331,9 +380,17 @@ export function QRRequestDrawer({ open, onOpenChange }: QRRequestDrawerProps) {
         });
 
       if (messageError) {
-        console.error('Failed to send payment confirmation:', messageError);
+        console.error('[Payment Collection] Failed to send confirmation message:', {
+          error: messageError,
+          message: messageError.message,
+          code: messageError.code,
+        });
+        console.warn('[Payment Collection] Payment collected but confirmation message failed to send');
+      } else {
+        console.log('[Payment Collection] Confirmation message sent successfully');
       }
 
+      console.log('[Payment Collection] Payment collection completed successfully');
       toast.success(`Payment of ${currency === 'NGN' ? '₦' : currency}${amount?.toLocaleString()} collected successfully!`);
       
       // Update local state

@@ -216,6 +216,7 @@ export function QRLandingPage() {
               if (service === 'laundry') route = `/qr/${token}/laundry`;
               if (service === 'spa') route = `/qr/${token}/spa`;
               if (service === 'dining') route = `/qr/${token}/dining`;
+              if (service === 'housekeeping') route = `/qr/${token}/housekeeping`;
 
               return (
                 <ServiceCard

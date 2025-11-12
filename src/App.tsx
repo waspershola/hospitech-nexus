@@ -69,6 +69,7 @@ const QRLaundryService = lazy(() => import("./components/qr-portal/QRLaundryServ
 const QRSpaBooking = lazy(() => import("./components/qr-portal/QRSpaBooking").then(m => ({ default: m.QRSpaBooking })));
 const QRDiningReservation = lazy(() => import("./components/qr-portal/QRDiningReservation").then(m => ({ default: m.QRDiningReservation })));
 const QRRoomService = lazy(() => import("./components/qr-portal/QRRoomService").then(m => ({ default: m.QRRoomService })));
+const QRHousekeepingService = lazy(() => import("./components/qr-portal/QRHousekeepingService").then(m => ({ default: m.QRHousekeepingService })));
 const QROrderStatus = lazy(() => import("./components/qr-portal/QROrderStatus").then(m => ({ default: m.QROrderStatus })));
 const QRRequestStatus = lazy(() => import("./components/qr-portal/QRRequestStatus").then(m => ({ default: m.QRRequestStatus })));
 const QRRedirect = lazy(() => import("./components/qr-portal/QRRedirect").then(m => ({ default: m.QRRedirect })));
@@ -243,6 +244,11 @@ const App = () => (
             <Route path="/qr/:token/spa" element={
               <Suspense fallback={<QRLoadingFallback />}>
                 <QRSpaBooking />
+              </Suspense>
+            } />
+            <Route path="/qr/:token/housekeeping" element={
+              <Suspense fallback={<QRLoadingFallback />}>
+                <QRHousekeepingService />
               </Suspense>
             } />
             <Route path="/qr/:token/dining" element={
