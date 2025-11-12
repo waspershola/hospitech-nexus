@@ -122,10 +122,51 @@ serve(async (req) => {
       const finalDepartment = assignedDepartment || 'front_office';
       console.log(`[qr-request] Phase 4: Routing ${requestData.service_category} → ${finalDepartment}`);
 
+      // Phase 2: Resolve room_id from QR code assignment
+      let resolvedRoomId = qr.room_id;
+      let roomNumber = null;
+      let roomName = null;
+      
+      if (!resolvedRoomId && qr.assigned_to) {
+        console.log('[qr-request] Looking up room from QR assigned_to:', qr.assigned_to);
+        const { data: room, error: roomError } = await supabase
+          .from('rooms')
+          .select('id, number, name')
+          .eq('id', qr.assigned_to)
+          .single();
+        
+        if (room && !roomError) {
+          resolvedRoomId = room.id;
+          roomNumber = room.number;
+          roomName = room.name;
+          console.log('[qr-request] Resolved room:', { id: room.id, number: room.number, name: room.name });
+        }
+      }
+
+      // Phase 3: Payment integration metadata
+      const PAYMENT_LOCATION_MAP: Record<string, string> = {
+        'restaurant': 'Restaurant POS',
+        'room_service': 'Restaurant POS',
+        'digital_menu': 'Restaurant POS',
+        'menu_order': 'Restaurant POS',
+        'laundry': 'Laundry Service',
+        'spa': 'Spa Center',
+        'housekeeping': 'Housekeeping',
+        'maintenance': 'Maintenance',
+      };
+
+      const billableServices = ['restaurant', 'room_service', 'digital_menu', 'menu_order', 'laundry', 'spa'];
+      const paymentInfo = {
+        location: PAYMENT_LOCATION_MAP[requestData.service_category.toLowerCase()] || 'Front Desk',
+        status: 'pending',
+        currency: 'NGN',
+        billable: billableServices.includes(requestData.service_category.toLowerCase()),
+      };
+
       // Phase 1: Log request payload before insert
       const requestPayload = {
         tenant_id: qr.tenant_id,
-        room_id: qr.room_id,
+        room_id: resolvedRoomId,
         type: requestData.type || requestData.service_category,
         service_category: requestData.service_category,
         note: requestData.note || '',
@@ -140,6 +181,9 @@ serve(async (req) => {
           qr_location: qr.assigned_to,
           qr_scope: qr.scope,
           routed_department: finalDepartment,
+          room_number: roomNumber || qr.assigned_to,
+          room_name: roomName,
+          payment_info: paymentInfo,
         },
       };
       

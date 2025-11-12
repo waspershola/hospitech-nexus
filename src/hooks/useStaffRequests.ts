@@ -54,6 +54,11 @@ export function useStaffRequests() {
   };
 
   const updateRequestStatus = async (requestId: string, status: string): Promise<boolean> => {
+    // Phase 4: Optimistic update
+    setRequests(prev => prev.map(r => 
+      r.id === requestId ? { ...r, status } : r
+    ));
+
     try {
       const { error } = await supabase
         .from('requests')
@@ -63,11 +68,12 @@ export function useStaffRequests() {
       if (error) throw error;
 
       toast.success('Request status updated');
-      await fetchRequests();
       return true;
     } catch (err) {
       console.error('[useStaffRequests] Error updating status:', err);
       toast.error('Failed to update request status');
+      // Revert optimistic update on error
+      await fetchRequests();
       return false;
     }
   };
@@ -94,8 +100,18 @@ export function useStaffRequests() {
       )
       .subscribe();
 
+    // Phase 4: Add broadcast channel for instant updates
+    const bc = new BroadcastChannel('qr-requests');
+    bc.onmessage = (event) => {
+      if (event.data.type === 'new_request' && event.data.tenant_id === tenantId) {
+        console.log('[useStaffRequests] Broadcast: New request detected');
+        fetchRequests();
+      }
+    };
+
     return () => {
       supabase.removeChannel(channel);
+      bc.close();
     };
   }, [tenantId]);
 

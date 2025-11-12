@@ -4,8 +4,12 @@ import { AppSidebar } from './Sidebar';
 import Topbar from './Topbar';
 import MobileNav from './MobileNav';
 import { AudioPermissionPrompt } from '@/components/notifications/AudioPermissionPrompt';
+import { useQRNotifications } from '@/hooks/useQRNotifications';
 
 export default function DashboardShell() {
+  // Phase 5: Unified ringtone system
+  useQRNotifications();
+  
   return (
     <SidebarProvider>
       <div className="flex min-h-screen w-full bg-background">

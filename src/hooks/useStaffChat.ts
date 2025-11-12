@@ -10,6 +10,15 @@ interface ChatMessage {
   sent_by: string | null;
   sender_name: string;
   created_at: string;
+  request?: {
+    id: string;
+    service_category: string;
+    status: string;
+    room_id: string | null;
+    priority: string;
+    metadata: any;
+    room?: { number: string; name: string };
+  };
 }
 
 export function useStaffChat(requestId: string | null) {
@@ -31,7 +40,16 @@ export function useStaffChat(requestId: string | null) {
           direction,
           sent_by,
           created_at,
-          metadata
+          metadata,
+          request:requests!inner(
+            id,
+            service_category,
+            status,
+            room_id,
+            priority,
+            metadata,
+            room:rooms(number, name)
+          )
         `)
         .eq('metadata->>request_id', requestId)
         .order('created_at', { ascending: true });
@@ -47,6 +65,7 @@ export function useStaffChat(requestId: string | null) {
           ? (msg.metadata?.guest_name || 'Guest')
           : 'Staff',
         created_at: msg.created_at,
+        request: msg.request,
       }));
 
       setMessages(formattedMessages);

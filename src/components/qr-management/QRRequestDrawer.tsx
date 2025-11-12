@@ -9,6 +9,7 @@ import { Separator } from '@/components/ui/separator';
 import { useStaffRequests } from '@/hooks/useStaffRequests';
 import { useStaffChat } from '@/hooks/useStaffChat';
 import { useRequestHistory } from '@/hooks/useRequestHistory';
+import { RequestPaymentInfo } from './RequestPaymentInfo';
 import { format } from 'date-fns';
 import { 
   MessageSquare, Clock, CheckCircle2, XCircle, AlertCircle, Send,
@@ -261,6 +262,10 @@ export function QRRequestDrawer({ open, onOpenChange }: QRRequestDrawerProps) {
                   </div>
                 )}
 
+                <div className="p-4">
+                  <RequestPaymentInfo request={selectedRequest} />
+                </div>
+
                 {selectedRequest.status !== 'completed' && (
                   <div className="p-4 border-b">
                     <p className="text-xs font-medium text-muted-foreground mb-2">Quick Replies</p>
@@ -282,6 +287,32 @@ export function QRRequestDrawer({ open, onOpenChange }: QRRequestDrawerProps) {
                 )}
 
                 <ScrollArea className="flex-1 p-4">
+                  {messages.length > 0 && messages[0].request && (
+                    <div className="mb-4 p-3 bg-muted/50 border rounded-lg">
+                      <div className="flex items-center justify-between mb-2">
+                        <div>
+                          <p className="text-sm font-medium capitalize">
+                            {messages[0].request.service_category.replace('_', ' ')}
+                          </p>
+                          {messages[0].request.room && (
+                            <p className="text-xs text-muted-foreground">
+                              Room {messages[0].request.room.number}
+                              {messages[0].request.room.name && ` - ${messages[0].request.room.name}`}
+                            </p>
+                          )}
+                        </div>
+                        <Badge variant="outline" className="capitalize">
+                          {messages[0].request.status}
+                        </Badge>
+                      </div>
+                      {messages[0].request.priority && (
+                        <Badge variant="secondary" className="text-xs">
+                          {messages[0].request.priority} priority
+                        </Badge>
+                      )}
+                    </div>
+                  )}
+                  
                   <div className="space-y-4">
                     {messages.map((msg) => (
                       <div
