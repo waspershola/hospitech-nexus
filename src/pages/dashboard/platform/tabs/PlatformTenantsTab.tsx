@@ -5,7 +5,7 @@ import { usePlatformTenants } from '@/hooks/usePlatformTenants';
 import { usePlatformProviders } from '@/hooks/usePlatformProviders';
 import { usePlatformPlans } from '@/hooks/usePlatformPlans';
 import { useSoftDelete } from '@/hooks/useSoftDelete';
-import { CreditCard, Plus, Trash2, PlayCircle, PauseCircle, Building2, AlertTriangle, MoreVertical, Package, Activity, Settings } from 'lucide-react';
+import { CreditCard, Plus, Trash2, PlayCircle, PauseCircle, Building2, AlertTriangle, MoreVertical, Package, Activity, Settings, DollarSign } from 'lucide-react';
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
@@ -21,6 +21,7 @@ import { InitialCreditInput } from '@/components/platform/InitialCreditInput';
 import { PasswordDeliverySelector } from '@/components/platform/PasswordDeliverySelector';
 import { ManualPasswordDialog } from '@/components/platform/ManualPasswordDialog';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { FeeConfigModal } from '@/components/platform/FeeConfigModal';
 
 export function PlatformTenantsTab() {
   const navigate = useNavigate();
@@ -47,6 +48,8 @@ export function PlatformTenantsTab() {
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
   const [tenantToDelete, setTenantToDelete] = useState<string | null>(null);
+  const [isFeeConfigOpen, setIsFeeConfigOpen] = useState(false);
+  const [feeConfigTenant, setFeeConfigTenant] = useState<{ id: string; name: string } | null>(null);
 
   // Create tenant form state
   const [hotelName, setHotelName] = useState('');
@@ -460,6 +463,14 @@ export function PlatformTenantsTab() {
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
                         <DropdownMenuLabel>Quick Actions</DropdownMenuLabel>
+                        <DropdownMenuItem onClick={() => {
+                          setFeeConfigTenant({ id: tenant.id, name: tenant.domain || 'Unnamed Tenant' });
+                          setIsFeeConfigOpen(true);
+                        }}>
+                          <DollarSign className="h-4 w-4 mr-2" />
+                          Fee Configuration
+                        </DropdownMenuItem>
+                        <DropdownMenuSeparator />
                         <DropdownMenuItem onClick={() => navigate(`/dashboard/platform/tenants/${tenant.id}?tab=package`)}>
                           <Package className="h-4 w-4 mr-2" />
                           Change Plan
@@ -656,6 +667,16 @@ export function PlatformTenantsTab() {
         onOpenChange={(open) => !open && setManualPasswordData(null)}
         password={manualPasswordData?.password || ''}
         userEmail={manualPasswordData?.email}
+      />
+
+      <FeeConfigModal
+        open={isFeeConfigOpen}
+        onClose={() => {
+          setIsFeeConfigOpen(false);
+          setFeeConfigTenant(null);
+        }}
+        tenantId={feeConfigTenant?.id || ''}
+        tenantName={feeConfigTenant?.name || ''}
       />
     </div>
   );
