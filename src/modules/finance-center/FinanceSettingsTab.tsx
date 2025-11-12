@@ -2,6 +2,7 @@ import { CurrencySettingsCard } from '@/components/finance/CurrencySettingsCard'
 import { TaxSettingsCard } from '@/components/finance/TaxSettingsCard';
 import { ServiceChargeCard } from '@/components/finance/ServiceChargeCard';
 import { DashboardDefaultsCard } from './DashboardDefaultsCard';
+import { PlatformFeesTab } from '@/components/finance/PlatformFeesTab';
 
 export function FinanceSettingsTab() {
   return (
@@ -18,6 +19,10 @@ export function FinanceSettingsTab() {
         <TaxSettingsCard />
         <ServiceChargeCard />
         <DashboardDefaultsCard />
+      </div>
+
+      <div className="mt-8">
+        <PlatformFeesTab />
       </div>
     </div>
   );
