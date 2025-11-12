@@ -93,6 +93,7 @@ import MenuManagement from "./pages/dashboard/MenuManagement";
 import ReservationsManagement from "./pages/dashboard/ReservationsManagement";
 import LaundryManagement from "./pages/dashboard/LaundryManagement";
 import SpaManagement from "./pages/dashboard/SpaManagement";
+import QuickReplyTemplatesManagement from "./pages/dashboard/QuickReplyTemplatesManagement";
 
 function PlatformGuard({ children }: { children: React.ReactNode }) {
   const { isPlatformAdmin, isLoading } = usePlatformRole();
@@ -160,6 +161,7 @@ const App = () => (
               <Route path="reservations-management" element={<RoleGuard allowedRoles={['owner', 'manager', 'restaurant', 'frontdesk']}><ReservationsManagement /></RoleGuard>} />
               <Route path="laundry-management" element={<RoleGuard allowedRoles={['owner', 'manager', 'housekeeping']}><LaundryManagement /></RoleGuard>} />
               <Route path="spa-management" element={<RoleGuard allowedRoles={['owner', 'manager', 'spa']}><SpaManagement /></RoleGuard>} />
+              <Route path="quick-reply-templates" element={<RoleGuard allowedRoles={['owner', 'manager']}><QuickReplyTemplatesManagement /></RoleGuard>} />
               
           <Route path="settings" element={<Settings />} />
           <Route path="user-roles" element={<RoleGuard allowedRoles={['owner']}><UserRoles /></RoleGuard>} />

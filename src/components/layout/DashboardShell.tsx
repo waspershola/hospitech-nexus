@@ -3,6 +3,7 @@ import { SidebarProvider, SidebarTrigger } from '@/components/ui/sidebar';
 import { AppSidebar } from './Sidebar';
 import Topbar from './Topbar';
 import MobileNav from './MobileNav';
+import { AudioPermissionPrompt } from '@/components/notifications/AudioPermissionPrompt';
 
 export default function DashboardShell() {
   return (
@@ -23,6 +24,9 @@ export default function DashboardShell() {
           <MobileNav />
         </div>
       </div>
+      
+      {/* Audio permission prompt - shows once on first visit */}
+      <AudioPermissionPrompt />
     </SidebarProvider>
   );
 }
