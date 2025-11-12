@@ -119,9 +119,20 @@ export function QRMenuBrowser() {
         .select()
         .single();
 
-      if (requestError) throw requestError;
+      if (requestError) {
+        console.error('[QRMenuBrowser] Request creation failed:', requestError);
+        throw requestError;
+      }
+      
+      if (!request?.id) {
+        console.error('[QRMenuBrowser] Request created but no ID returned:', request);
+        throw new Error('Failed to create request - no ID returned');
+      }
+      
+      console.log('[QRMenuBrowser] Request created successfully:', request.id);
 
       // Now create order WITH request_id already populated
+      console.log('[QRMenuBrowser] Creating order with request_id:', request.id);
       const { data: order, error: orderError } = await supabase
         .from('guest_orders')
         .insert({
@@ -138,7 +149,12 @@ export function QRMenuBrowser() {
         .select()
         .single();
 
-      if (orderError) throw orderError;
+      if (orderError) {
+        console.error('[QRMenuBrowser] Order creation failed:', orderError);
+        throw orderError;
+      }
+      
+      console.log('[QRMenuBrowser] Order created successfully with request_id:', order.request_id);
 
       return { order, request };
     },
