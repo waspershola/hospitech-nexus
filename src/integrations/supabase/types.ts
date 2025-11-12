@@ -2538,6 +2538,149 @@ export type Database = {
         }
         Relationships: []
       }
+      platform_fee_configurations: {
+        Row: {
+          active: boolean | null
+          applies_to: string[] | null
+          billing_cycle: string | null
+          booking_fee: number | null
+          created_at: string | null
+          created_by: string | null
+          fee_type: string | null
+          id: string
+          mode: string | null
+          payer: string | null
+          qr_fee: number | null
+          tenant_id: string
+          trial_days: number | null
+          trial_exemption_enabled: boolean | null
+          updated_at: string | null
+          updated_by: string | null
+        }
+        Insert: {
+          active?: boolean | null
+          applies_to?: string[] | null
+          billing_cycle?: string | null
+          booking_fee?: number | null
+          created_at?: string | null
+          created_by?: string | null
+          fee_type?: string | null
+          id?: string
+          mode?: string | null
+          payer?: string | null
+          qr_fee?: number | null
+          tenant_id: string
+          trial_days?: number | null
+          trial_exemption_enabled?: boolean | null
+          updated_at?: string | null
+          updated_by?: string | null
+        }
+        Update: {
+          active?: boolean | null
+          applies_to?: string[] | null
+          billing_cycle?: string | null
+          booking_fee?: number | null
+          created_at?: string | null
+          created_by?: string | null
+          fee_type?: string | null
+          id?: string
+          mode?: string | null
+          payer?: string | null
+          qr_fee?: number | null
+          tenant_id?: string
+          trial_days?: number | null
+          trial_exemption_enabled?: boolean | null
+          updated_at?: string | null
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "platform_fee_configurations_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: true
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      platform_fee_ledger: {
+        Row: {
+          base_amount: number
+          billed_at: string | null
+          billing_cycle: string | null
+          created_at: string | null
+          fee_amount: number
+          fee_type: string | null
+          id: string
+          invoice_id: string | null
+          metadata: Json | null
+          paid_at: string | null
+          payer: string | null
+          rate: number | null
+          reference_id: string
+          reference_type: string
+          status: string | null
+          tenant_id: string
+          waived_by: string | null
+          waived_reason: string | null
+        }
+        Insert: {
+          base_amount: number
+          billed_at?: string | null
+          billing_cycle?: string | null
+          created_at?: string | null
+          fee_amount: number
+          fee_type?: string | null
+          id?: string
+          invoice_id?: string | null
+          metadata?: Json | null
+          paid_at?: string | null
+          payer?: string | null
+          rate?: number | null
+          reference_id: string
+          reference_type: string
+          status?: string | null
+          tenant_id: string
+          waived_by?: string | null
+          waived_reason?: string | null
+        }
+        Update: {
+          base_amount?: number
+          billed_at?: string | null
+          billing_cycle?: string | null
+          created_at?: string | null
+          fee_amount?: number
+          fee_type?: string | null
+          id?: string
+          invoice_id?: string | null
+          metadata?: Json | null
+          paid_at?: string | null
+          payer?: string | null
+          rate?: number | null
+          reference_id?: string
+          reference_type?: string
+          status?: string | null
+          tenant_id?: string
+          waived_by?: string | null
+          waived_reason?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "platform_fee_ledger_invoice_id_fkey"
+            columns: ["invoice_id"]
+            isOneToOne: false
+            referencedRelation: "platform_invoices"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "platform_fee_ledger_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       platform_impersonation_sessions: {
         Row: {
           actions_performed: Json | null
