@@ -35,8 +35,9 @@ export function QRRequestDrawer({ open, onOpenChange }: QRRequestDrawerProps) {
     selectedRequest?.metadata?.guest_name || null
   );
 
-  const pendingRequests = requests.filter(r => r.status === 'pending');
-  const inProgressRequests = requests.filter(r => r.status === 'in_progress');
+  // PHASE 7 FIX 3: Ensure proper filtering for drawer tabs
+  const pendingRequests = requests.filter(r => r.qr_token && r.status === 'pending');
+  const inProgressRequests = requests.filter(r => r.qr_token && (r.status === 'in_progress' || r.status === 'assigned'));
 
   useEffect(() => {
     if (open && !selectedRequest && pendingRequests.length > 0) {

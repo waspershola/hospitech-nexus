@@ -10,12 +10,24 @@ export function RequestPaymentInfo({ request }: RequestPaymentInfoProps) {
   
   if (!paymentInfo || !paymentInfo.billable) return null;
   
+  // PHASE 7 FIX 4: Display amount from metadata
+  const amount = paymentInfo.amount;
+  const currency = paymentInfo.currency || 'NGN';
+  
   return (
     <Card className="mb-4">
       <CardHeader>
         <CardTitle className="text-sm">Payment Information</CardTitle>
       </CardHeader>
       <CardContent className="space-y-2">
+        {amount && (
+          <div className="flex justify-between text-sm">
+            <span className="text-muted-foreground">Amount:</span>
+            <span className="font-semibold text-lg">
+              {currency === 'NGN' ? '₦' : currency} {amount.toFixed(2)}
+            </span>
+          </div>
+        )}
         <div className="flex justify-between text-sm">
           <span className="text-muted-foreground">Status:</span>
           <Badge variant={paymentInfo.status === 'paid' ? 'default' : 'secondary'}>

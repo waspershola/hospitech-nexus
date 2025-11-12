@@ -92,11 +92,42 @@ export function QRMenuBrowser() {
 
       const subtotal = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
 
+      // PHASE 7 FIX 1: Create request FIRST, then order with request_id
+      const { data: request, error: requestError } = await supabase
+        .from('requests')
+        .insert({
+          tenant_id: qrData?.tenant_id,
+          qr_token: token,
+          type: 'room_service',
+          service_category: 'menu_order',
+          assigned_department: 'restaurant',
+          note: `Menu order: ${cart.length} items - Total: ₦${subtotal.toFixed(2)}`,
+          priority: 'normal',
+          status: 'pending',
+          metadata: {
+            qr_token: token,
+            room_number: qrData?.assigned_to || 'Guest',
+            payment_info: {
+              billable: true,
+              amount: subtotal,
+              currency: 'NGN',
+              location: 'restaurant',
+              status: 'pending'
+            }
+          }
+        })
+        .select()
+        .single();
+
+      if (requestError) throw requestError;
+
+      // Now create order WITH request_id already populated
       const { data: order, error: orderError } = await supabase
         .from('guest_orders')
         .insert({
           tenant_id: qrData?.tenant_id,
           qr_token: token,
+          request_id: request.id, // Already linked!
           guest_name: 'Guest',
           items,
           special_instructions: specialInstructions,
@@ -109,30 +140,6 @@ export function QRMenuBrowser() {
 
       if (orderError) throw orderError;
 
-      // Create a request entry for tracking
-        const { data: request, error: requestError } = await supabase
-          .from('requests')
-          .insert({
-            tenant_id: qrData?.tenant_id,
-            qr_token: token,
-            type: 'room_service',
-            service_category: 'menu_order',
-            assigned_department: 'restaurant',
-            note: `Order #${order.id.slice(0, 8)}: ${cart.length} items`,
-            priority: 'normal',
-            status: 'pending',
-          })
-        .select()
-        .single();
-
-      if (requestError) throw requestError;
-
-      // Link order to request
-      await supabase
-        .from('guest_orders')
-        .update({ request_id: request.id })
-        .eq('id', order.id);
-
       return { order, request };
     },
     onSuccess: (data) => {
@@ -140,8 +147,9 @@ export function QRMenuBrowser() {
       setCart([]);
       setSpecialInstructions('');
       setIsCartOpen(false);
-      if (data?.request) {
-        navigate(`/qr/${token}/chat/${data.request.id}`);
+      if (data?.order) {
+        // Navigate to order status page instead of chat
+        navigate(`/qr/${token}/order/${data.order.id}`);
       }
     },
     onError: () => {
