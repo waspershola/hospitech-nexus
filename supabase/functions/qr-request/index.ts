@@ -24,6 +24,115 @@ interface ChatMessage {
   guest_name?: string;
 }
 
+/**
+ * Phase 2: Platform Fee Application for QR Payments
+ */
+async function applyQRPlatformFee(
+  supabase: any,
+  tenant_id: string,
+  request_id: string,
+  service_category: string,
+  amount: number | null
+): Promise<{applied: boolean; fee_amount: number}> {
+  try {
+    // Only apply fees to billable services with known amounts
+    const billableServices = ['digital_menu', 'room_service', 'menu_order', 'laundry', 'spa'];
+    if (!billableServices.includes(service_category.toLowerCase()) || !amount) {
+      console.log('[platform-fee] Service not billable or no amount:', service_category);
+      return { applied: false, fee_amount: 0 };
+    }
+    
+    console.log('[platform-fee] Checking QR fee config for tenant:', tenant_id);
+    
+    // Get fee configuration
+    const { data: feeConfig, error: configError } = await supabase
+      .from('platform_fee_configurations')
+      .select('*')
+      .eq('tenant_id', tenant_id)
+      .eq('active', true)
+      .single();
+    
+    if (configError || !feeConfig) {
+      console.log('[platform-fee] No active QR fee config');
+      return { applied: false, fee_amount: 0 };
+    }
+    
+    if (!feeConfig.applies_to.includes('qr_payments')) {
+      console.log('[platform-fee] QR payments not in applies_to array');
+      return { applied: false, fee_amount: 0 };
+    }
+    
+    // Check trial exemption
+    if (feeConfig.trial_exemption_enabled) {
+      const { data: tenant, error: tenantError } = await supabase
+        .from('platform_tenants')
+        .select('trial_end_date, created_at')
+        .eq('id', tenant_id)
+        .single();
+      
+      if (!tenantError && tenant) {
+        const trialEndDate = tenant.trial_end_date 
+          ? new Date(tenant.trial_end_date)
+          : new Date(new Date(tenant.created_at).getTime() + feeConfig.trial_days * 86400000);
+        
+        if (trialEndDate > new Date()) {
+          console.log('[platform-fee] Tenant in trial period, skipping QR fee');
+          return { applied: false, fee_amount: 0 };
+        }
+      }
+    }
+    
+    // Calculate fee
+    const feeAmount = feeConfig.fee_type === 'percentage'
+      ? amount * (feeConfig.qr_fee / 100)
+      : feeConfig.qr_fee;
+    
+    // Record in ledger
+    const ledgerStatus = feeConfig.billing_cycle === 'realtime' ? 'billed' : 'pending';
+    
+    const { error: ledgerError } = await supabase
+      .from('platform_fee_ledger')
+      .insert({
+        tenant_id,
+        reference_type: 'qr_payment',
+        reference_id: request_id,
+        base_amount: amount,
+        fee_amount: feeAmount,
+        rate: feeConfig.qr_fee,
+        fee_type: feeConfig.fee_type,
+        billing_cycle: feeConfig.billing_cycle,
+        payer: feeConfig.payer,
+        status: ledgerStatus,
+        billed_at: feeConfig.billing_cycle === 'realtime' ? new Date().toISOString() : null,
+        metadata: {
+          service_category,
+          payment_amount: amount,
+          fee_config_id: feeConfig.id
+        }
+      });
+    
+    if (ledgerError) {
+      console.error('[platform-fee] Error recording QR fee in ledger:', ledgerError);
+      throw ledgerError;
+    }
+    
+    console.log('[platform-fee] Applied QR payment fee:', {
+      tenant_id,
+      request_id,
+      service_category,
+      amount,
+      fee_amount: feeAmount,
+      billing_cycle: feeConfig.billing_cycle
+    });
+    
+    return { applied: true, fee_amount: feeAmount };
+    
+  } catch (error) {
+    console.error('[platform-fee] Error applying QR fee:', error);
+    return { applied: false, fee_amount: 0 };
+  }
+}
+
 serve(async (req) => {
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
@@ -156,12 +265,17 @@ serve(async (req) => {
       };
 
       const billableServices = ['restaurant', 'room_service', 'digital_menu', 'menu_order', 'laundry', 'spa'];
-      const paymentInfo = {
+      const paymentInfo: any = {
         location: PAYMENT_LOCATION_MAP[requestData.service_category.toLowerCase()] || 'Front Desk',
         status: 'pending',
         currency: 'NGN',
         billable: billableServices.includes(requestData.service_category.toLowerCase()),
       };
+      
+      // Add amount if available in request metadata (will be used for fee calculation)
+      if (requestData.metadata?.payment_info?.amount) {
+        paymentInfo.amount = requestData.metadata.payment_info.amount;
+      }
 
       // Phase 1: Log request payload before insert
       const requestPayload = {
@@ -219,6 +333,21 @@ serve(async (req) => {
       }
 
       console.log('[qr-request] Request created successfully:', newRequest.id);
+
+      // Phase 2: Apply Platform Fee for QR payments if billable
+      if (paymentInfo.billable && paymentInfo.amount) {
+        try {
+          await applyQRPlatformFee(
+            supabase,
+            qr.tenant_id,
+            newRequest.id,
+            requestData.service_category,
+            paymentInfo.amount
+          );
+        } catch (feeError) {
+          console.error('[platform-fee] Error applying QR fee (non-blocking):', feeError);
+        }
+      }
 
       // Phase 6: Send Supabase Realtime broadcast notification
       try {

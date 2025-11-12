@@ -19,6 +19,113 @@ const AVAILABLE_ADDONS = [
 ];
 
 /**
+ * Phase 2: Platform Fee Application for Bookings
+ */
+async function applyPlatformFee(
+  supabase: any,
+  tenant_id: string,
+  booking_id: string,
+  amount: number
+): Promise<{applied: boolean; fee_amount: number; net_amount: number}> {
+  try {
+    console.log('[platform-fee] Checking fee config for tenant:', tenant_id);
+    
+    // Get fee configuration
+    const { data: feeConfig, error: configError } = await supabase
+      .from('platform_fee_configurations')
+      .select('*')
+      .eq('tenant_id', tenant_id)
+      .eq('active', true)
+      .single();
+    
+    if (configError || !feeConfig) {
+      console.log('[platform-fee] No active booking fee config for tenant:', tenant_id);
+      return { applied: false, fee_amount: 0, net_amount: amount };
+    }
+    
+    if (!feeConfig.applies_to.includes('bookings')) {
+      console.log('[platform-fee] Bookings not in applies_to array');
+      return { applied: false, fee_amount: 0, net_amount: amount };
+    }
+    
+    // Check trial exemption
+    if (feeConfig.trial_exemption_enabled) {
+      const { data: tenant, error: tenantError } = await supabase
+        .from('platform_tenants')
+        .select('trial_end_date, created_at')
+        .eq('id', tenant_id)
+        .single();
+      
+      if (!tenantError && tenant) {
+        const trialEndDate = tenant.trial_end_date 
+          ? new Date(tenant.trial_end_date)
+          : new Date(new Date(tenant.created_at).getTime() + feeConfig.trial_days * 86400000);
+        
+        if (trialEndDate > new Date()) {
+          console.log('[platform-fee] Tenant in trial period, skipping fee. Trial ends:', trialEndDate);
+          return { applied: false, fee_amount: 0, net_amount: amount };
+        }
+      }
+    }
+    
+    // Calculate fee
+    const feeAmount = feeConfig.fee_type === 'percentage'
+      ? amount * (feeConfig.booking_fee / 100)
+      : feeConfig.booking_fee;
+    
+    const netAmount = feeConfig.payer === 'property'
+      ? amount - feeAmount  // Property pays: deduct from amount
+      : amount;             // Guest pays: amount stays same
+    
+    // Record in ledger
+    const ledgerStatus = feeConfig.billing_cycle === 'realtime' ? 'billed' : 'pending';
+    
+    const { error: ledgerError } = await supabase
+      .from('platform_fee_ledger')
+      .insert({
+        tenant_id,
+        reference_type: 'booking',
+        reference_id: booking_id,
+        base_amount: amount,
+        fee_amount: feeAmount,
+        rate: feeConfig.booking_fee,
+        fee_type: feeConfig.fee_type,
+        billing_cycle: feeConfig.billing_cycle,
+        payer: feeConfig.payer,
+        status: ledgerStatus,
+        billed_at: feeConfig.billing_cycle === 'realtime' ? new Date().toISOString() : null,
+        metadata: {
+          booking_total: amount,
+          fee_config_id: feeConfig.id,
+          mode: feeConfig.mode
+        }
+      });
+    
+    if (ledgerError) {
+      console.error('[platform-fee] Error recording in ledger:', ledgerError);
+      throw ledgerError;
+    }
+    
+    console.log('[platform-fee] Applied booking fee:', {
+      tenant_id,
+      booking_id,
+      amount,
+      fee_amount: feeAmount,
+      net_amount: netAmount,
+      payer: feeConfig.payer,
+      billing_cycle: feeConfig.billing_cycle
+    });
+    
+    return { applied: true, fee_amount: feeAmount, net_amount: netAmount };
+    
+  } catch (error) {
+    console.error('[platform-fee] Error applying fee:', error);
+    // Don't block booking creation if fee application fails
+    return { applied: false, fee_amount: 0, net_amount: amount };
+  }
+}
+
+/**
  * Tax Calculation - Duplicated from src/lib/finance/tax.ts
  * Edge functions cannot import from src, so this logic is duplicated here
  */
@@ -328,6 +435,14 @@ serve(async (req) => {
       .eq('id', room_id);
 
     console.log('Booking created successfully:', newBooking.id);
+
+    // Phase 2: Apply Platform Fee
+    try {
+      await applyPlatformFee(supabaseClient, tenant_id, newBooking.id, finalTotalAmount);
+    } catch (feeError) {
+      console.error('[platform-fee] Error applying fee (non-blocking):', feeError);
+      // Don't block booking creation if fee application fails
+    }
 
     // If organization booking, create payment and debit wallet
     let payment = null;
