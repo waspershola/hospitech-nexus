@@ -43,14 +43,14 @@ export function QRChatInterface() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-background to-muted flex flex-col">
-      {/* Header */}
+      {/* Action Header */}
       <div className="bg-card border-b p-4">
         <div className="max-w-4xl mx-auto flex items-center gap-4">
-          {orderDetails ? (
+          {orderDetails && orderDetails.type === 'order' ? (
             <Button
               variant="ghost"
               size="icon"
-              onClick={() => navigate(`/qr/${token}/order/${orderDetails.id}`)}
+              onClick={() => navigate(`/qr/${token}/order/${orderDetails.data.id}`)}
             >
               <ArrowLeft className="h-5 w-5" />
             </Button>
@@ -69,11 +69,11 @@ export function QRChatInterface() {
               Request ID: {requestId?.substring(0, 8)}...
             </p>
           </div>
-          {orderDetails && (
+          {orderDetails && orderDetails.type === 'order' && (
             <Button
               variant="outline"
               size="sm"
-              onClick={() => navigate(`/qr/${token}/order/${orderDetails.id}`)}
+              onClick={() => navigate(`/qr/${token}/order/${orderDetails.data.id}`)}
             >
               <Package className="h-4 w-4 mr-2" />
               View Order

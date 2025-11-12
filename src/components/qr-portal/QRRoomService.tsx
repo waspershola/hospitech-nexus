@@ -76,12 +76,38 @@ export function QRRoomService() {
 
       const subtotal = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
 
+      // PHASE 9 FIX: Create request FIRST (Phase 7 pattern)
+      const { data: request, error: requestError } = await supabase
+        .from('requests')
+        .insert({
+          tenant_id: qrData?.tenant_id,
+          qr_token: token,
+          type: 'room_service',
+          service_category: 'room_service',
+          assigned_department: 'restaurant',
+          note: `Room Service Order: ${cart.length} items - ${items.map(i => `${i.quantity}x ${i.name}`).join(', ')}`,
+          priority: 'normal',
+          status: 'pending',
+          metadata: {
+            qr_token: token,
+            room_number: qrData?.room?.number || 'N/A',
+            guest_label: 'Guest',
+            service_type: 'room_service',
+          },
+        })
+        .select()
+        .single();
+
+      if (requestError) throw requestError;
+
+      // Create guest_order WITH request_id already set
       const { data: order, error: orderError } = await supabase
         .from('guest_orders')
         .insert({
           tenant_id: qrData?.tenant_id,
           qr_token: token,
           guest_name: 'Guest',
+          request_id: request.id, // ← Set on INSERT, not UPDATE
           items,
           special_instructions: specialInstructions,
           subtotal,
@@ -93,30 +119,6 @@ export function QRRoomService() {
 
       if (orderError) throw orderError;
 
-      // Create a request entry for tracking
-      const { data: request, error: requestError } = await supabase
-        .from('requests')
-        .insert({
-          tenant_id: qrData?.tenant_id,
-          qr_token: token,
-          type: 'room_service',
-          service_category: 'room_service',
-          assigned_department: 'restaurant',
-          note: `Room Service Order #${order.id.slice(0, 8)}: ${cart.length} items - ${items.map(i => `${i.quantity}x ${i.name}`).join(', ')}`,
-          priority: 'normal',
-          status: 'pending',
-        })
-        .select()
-        .single();
-
-      if (requestError) throw requestError;
-
-      // Link order to request
-      await supabase
-        .from('guest_orders')
-        .update({ request_id: request.id })
-        .eq('id', order.id);
-
       return { order, request };
     },
     onSuccess: (data) => {
@@ -124,8 +126,8 @@ export function QRRoomService() {
       setCart([]);
       setSpecialInstructions('');
       setIsCartOpen(false);
-      if (data?.request) {
-        navigate(`/qr/${token}/chat/${data.request.id}`);
+      if (data?.order) {
+        navigate(`/qr/${token}/order/${data.order.id}`);
       }
     },
     onError: () => {

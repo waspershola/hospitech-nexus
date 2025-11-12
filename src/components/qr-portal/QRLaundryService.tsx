@@ -126,8 +126,8 @@ export function QRLaundryService() {
       setCart([]);
       setSpecialInstructions('');
       if (data) {
-        console.log('[QRLaundryService] Navigating to chat:', data.id);
-        navigate(`/qr/${token}/chat/${data.id}`);
+        console.log('[QRLaundryService] Navigating to request status:', data.id);
+        navigate(`/qr/${token}/request/${data.id}`);
       }
     },
     onError: (error: any) => {

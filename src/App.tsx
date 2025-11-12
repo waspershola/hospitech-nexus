@@ -70,6 +70,7 @@ const QRSpaBooking = lazy(() => import("./components/qr-portal/QRSpaBooking").th
 const QRDiningReservation = lazy(() => import("./components/qr-portal/QRDiningReservation").then(m => ({ default: m.QRDiningReservation })));
 const QRRoomService = lazy(() => import("./components/qr-portal/QRRoomService").then(m => ({ default: m.QRRoomService })));
 const QROrderStatus = lazy(() => import("./components/qr-portal/QROrderStatus").then(m => ({ default: m.QROrderStatus })));
+const QRRequestStatus = lazy(() => import("./components/qr-portal/QRRequestStatus").then(m => ({ default: m.QRRequestStatus })));
 const QRRedirect = lazy(() => import("./components/qr-portal/QRRedirect").then(m => ({ default: m.QRRedirect })));
 
 // Shared loading component for QR portal
@@ -257,6 +258,16 @@ const App = () => (
             <Route path="/qr/:token/order/:orderId" element={
               <Suspense fallback={<QRLoadingFallback />}>
                 <QROrderStatus />
+              </Suspense>
+            } />
+            <Route path="/qr/:token/request/:requestId" element={
+              <Suspense fallback={<QRLoadingFallback />}>
+                <QRRequestStatus />
+              </Suspense>
+            } />
+            <Route path="/qr/:token/qrredirect/:tenantId" element={
+              <Suspense fallback={<QRLoadingFallback />}>
+                <QRRedirect />
               </Suspense>
             } />
             <Route path="/g/:token" element={

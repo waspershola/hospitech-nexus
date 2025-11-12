@@ -112,8 +112,8 @@ export function QRSpaBooking() {
       setPreferredDateTime('');
       setSpecialRequests('');
       if (data) {
-        console.log('[QRSpaBooking] Navigating to chat:', data.id);
-        navigate(`/qr/${token}/chat/${data.id}`);
+        console.log('[QRSpaBooking] Navigating to request status:', data.id);
+        navigate(`/qr/${token}/request/${data.id}`);
       }
     },
     onError: (error: any) => {

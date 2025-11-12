@@ -277,7 +277,7 @@ export function QRRequestDrawer({ open, onOpenChange }: QRRequestDrawerProps) {
                                   <rect x="1" y="4" width="22" height="16" rx="2" ry="2"/>
                                   <line x1="1" y1="10" x2="23" y2="10"/>
                                 </svg>
-                                Collect Payment (₦{orderDetails.total?.toLocaleString()})
+                                Collect Payment (₦{(orderDetails && orderDetails.type === 'order') ? orderDetails.data.total?.toLocaleString() : '0'})
                               </Button>
                             </>
                           )}
@@ -505,8 +505,8 @@ function RequestCard({ request, isSelected, onClick }: any) {
 
   // Parse order summary from note if available
   const parseOrderSummary = () => {
-    if (orderDetails?.items) {
-      const items = orderDetails.items as any[];
+    if (orderDetails && orderDetails.type === 'order' && orderDetails.data.items) {
+      const items = orderDetails.data.items as any[];
       return {
         itemCount: items.reduce((sum: number, item: any) => sum + item.quantity, 0),
         items: items.map((item: any) => ({
@@ -514,7 +514,7 @@ function RequestCard({ request, isSelected, onClick }: any) {
           quantity: item.quantity,
           price: item.price * item.quantity
         })),
-        total: orderDetails.total
+        total: orderDetails.data.total
       };
     }
     return null;

@@ -120,8 +120,8 @@ export function QRDiningReservation() {
       setSpecialRequests('');
       
       if (data?.request) {
-        console.log('[QRDiningReservation] Navigating to chat:', data.request.id);
-        navigate(`/qr/${token}/chat/${data.request.id}`);
+        console.log('[QRDiningReservation] Navigating to request status:', data.request.id);
+        navigate(`/qr/${token}/request/${data.request.id}`);
       }
     },
     onError: (error: any) => {
