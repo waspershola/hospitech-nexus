@@ -12,9 +12,12 @@ import { useRequestHistory } from '@/hooks/useRequestHistory';
 import { useOrderDetails } from '@/hooks/useOrderDetails';
 import { RequestPaymentInfo } from './RequestPaymentInfo';
 import { format } from 'date-fns';
+import { useQueries } from '@tanstack/react-query';
+import { supabase } from '@/integrations/supabase/client';
 import { 
   MessageSquare, Clock, CheckCircle2, XCircle, AlertCircle, Send,
-  User, MapPin, Zap, Loader2, History, TrendingUp, BarChart3, UtensilsCrossed
+  User, MapPin, Zap, Loader2, History, TrendingUp, BarChart3, UtensilsCrossed,
+  Calendar, Users, Sparkles, Shirt
 } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -46,6 +49,45 @@ export function QRRequestDrawer({ open, onOpenChange }: QRRequestDrawerProps) {
   // PHASE 7 FIX 3: Ensure proper filtering for drawer tabs
   const pendingRequests = requests.filter(r => r.qr_token && r.status === 'pending');
   const inProgressRequests = requests.filter(r => r.qr_token && (r.status === 'in_progress' || r.status === 'assigned'));
+
+  // PHASE 9: Batch pre-fetch all order/request details using useQueries
+  const allRequestIds = [...pendingRequests, ...inProgressRequests].map(r => r.id);
+  
+  const orderDetailsQueries = useQueries({
+    queries: allRequestIds.map(requestId => ({
+      queryKey: ['inline-order-details', requestId],
+      queryFn: async () => {
+        // Try to fetch guest_order by request_id
+        const { data: order } = await supabase
+          .from('guest_orders')
+          .select('*')
+          .eq('request_id', requestId)
+          .maybeSingle();
+        
+        if (order) {
+          return { requestId, type: 'order', data: order };
+        }
+        
+        // Fallback: fetch request metadata
+        const { data: request } = await supabase
+          .from('requests')
+          .select('*')
+          .eq('id', requestId)
+          .single();
+        
+        return { requestId, type: 'request', data: request };
+      },
+      enabled: !!requestId,
+      staleTime: 30000, // Cache for 30 seconds
+    })),
+  });
+
+  // Create lookup map for quick access
+  const orderDetailsMap = Object.fromEntries(
+    orderDetailsQueries
+      .filter(q => q.data)
+      .map(q => [q.data.requestId, q.data])
+  );
 
   useEffect(() => {
     if (open && !selectedRequest && pendingRequests.length > 0) {
@@ -161,6 +203,7 @@ export function QRRequestDrawer({ open, onOpenChange }: QRRequestDrawerProps) {
                       request={req}
                       isSelected={selectedRequest?.id === req.id}
                       onClick={() => setSelectedRequest(req)}
+                      orderDetails={orderDetailsMap[req.id]}
                     />
                   ))}
                   {pendingRequests.length === 0 && (
@@ -177,6 +220,7 @@ export function QRRequestDrawer({ open, onOpenChange }: QRRequestDrawerProps) {
                       request={req}
                       isSelected={selectedRequest?.id === req.id}
                       onClick={() => setSelectedRequest(req)}
+                      orderDetails={orderDetailsMap[req.id]}
                     />
                   ))}
                   {inProgressRequests.length === 0 && (
@@ -490,7 +534,7 @@ export function QRRequestDrawer({ open, onOpenChange }: QRRequestDrawerProps) {
   );
 }
 
-function RequestCard({ request, isSelected, onClick }: any) {
+function RequestCard({ request, isSelected, onClick, orderDetails }: any) {
   const config = {
     pending: { icon: Clock, color: 'text-yellow-500' },
     in_progress: { icon: AlertCircle, color: 'text-blue-500' },
@@ -498,35 +542,151 @@ function RequestCard({ request, isSelected, onClick }: any) {
   }[request.status] || { icon: Clock, color: 'text-muted-foreground' };
 
   const Icon = config.icon;
-  
-  // Fetch order details for menu orders to show in card
-  const { data: orderDetails } = useOrderDetails(
-    (request.service_category === 'digital_menu' || request.service_category === 'room_service') 
-      ? request.id 
-      : undefined
-  );
 
-  // Parse order summary from note if available
-  const parseOrderSummary = () => {
-    if (orderDetails && orderDetails.type === 'order') {
+  // Render service-specific context preview
+  const renderContextPreview = () => {
+    if (!orderDetails) {
+      return (
+        <p className="text-xs text-muted-foreground truncate mt-2">
+          {request.note || 'No details provided'}
+        </p>
+      );
+    }
+
+    // Menu/Room Service Orders - show items
+    if (orderDetails.type === 'order') {
       const orderData = orderDetails.data as any;
       const items = orderData.items as any[];
-      if (items) {
-        return {
-          itemCount: items.reduce((sum: number, item: any) => sum + item.quantity, 0),
-          items: items.map((item: any) => ({
-            name: item.name,
-            quantity: item.quantity,
-            price: item.price * item.quantity
-          })),
-          total: orderData.total
-        };
+      
+      if (!items || items.length === 0) {
+        return <p className="text-xs text-muted-foreground truncate mt-2">Order details loading...</p>;
+      }
+
+      const totalItems = items.reduce((sum: number, item: any) => sum + item.quantity, 0);
+      
+      return (
+        <div className="space-y-1 mt-2 p-2 bg-background/50 rounded border border-primary/10">
+          <div className="flex items-center gap-2 mb-1">
+            <UtensilsCrossed className="h-3 w-3 text-primary" />
+            <p className="text-xs font-medium">
+              {totalItems} {totalItems === 1 ? 'item' : 'items'}
+            </p>
+          </div>
+          {items.slice(0, 2).map((item: any, idx: number) => (
+            <div key={idx} className="flex justify-between items-center text-xs">
+              <span className="text-muted-foreground truncate flex-1">
+                {item.quantity}× {item.name}
+              </span>
+              <span className="font-medium ml-2">₦{(item.price * item.quantity).toLocaleString()}</span>
+            </div>
+          ))}
+          {items.length > 2 && (
+            <p className="text-xs text-muted-foreground">
+              +{items.length - 2} more item{items.length - 2 > 1 ? 's' : ''}...
+            </p>
+          )}
+          <div className="flex justify-between items-center text-xs font-bold pt-1 border-t border-primary/10">
+            <span>Total:</span>
+            <span className="text-primary">₦{orderData.total?.toLocaleString()}</span>
+          </div>
+        </div>
+      );
+    }
+
+    // Request-based services - show metadata
+    if (orderDetails.type === 'request') {
+      const reqData = orderDetails.data;
+      const meta = reqData.metadata || {};
+
+      switch (reqData.service_category) {
+        case 'spa':
+          return (
+            <div className="space-y-1 mt-2 p-2 bg-purple-500/5 rounded border border-purple-500/20">
+              <div className="flex items-center gap-2 mb-1">
+                <Sparkles className="h-3 w-3 text-purple-600" />
+                <p className="text-xs font-medium">{meta.service_name || 'Spa Service'}</p>
+              </div>
+              <div className="flex justify-between text-xs">
+                <span className="text-muted-foreground flex items-center gap-1">
+                  <Clock className="h-3 w-3" />
+                  {meta.duration || 'N/A'}
+                </span>
+                <span className="font-bold text-primary">
+                  {meta.currency || 'NGN'} {meta.price?.toLocaleString() || 0}
+                </span>
+              </div>
+              {meta.preferred_datetime && (
+                <div className="flex items-center gap-1 text-xs text-muted-foreground pt-1 border-t border-purple-500/10">
+                  <Calendar className="h-3 w-3" />
+                  <span>{format(new Date(meta.preferred_datetime as string), 'MMM d, h:mm a')}</span>
+                </div>
+              )}
+            </div>
+          );
+
+        case 'laundry':
+          const laundryItems = meta.items || [];
+          const totalLaundryItems = laundryItems.reduce((sum: number, item: any) => sum + (item.quantity || 0), 0);
+          
+          return (
+            <div className="space-y-1 mt-2 p-2 bg-blue-500/5 rounded border border-blue-500/20">
+              <div className="flex items-center gap-2 mb-1">
+                <Shirt className="h-3 w-3 text-blue-600" />
+                <p className="text-xs font-medium">{totalLaundryItems} laundry items</p>
+              </div>
+              {laundryItems.slice(0, 2).map((item: any, idx: number) => (
+                <div key={idx} className="flex justify-between text-xs">
+                  <span className="text-muted-foreground truncate flex-1">
+                    {item.quantity}× {item.item_name}
+                  </span>
+                  <span className="text-xs text-muted-foreground">({item.service_type.replace('_', ' ')})</span>
+                </div>
+              ))}
+              {laundryItems.length > 2 && (
+                <p className="text-xs text-muted-foreground">+{laundryItems.length - 2} more...</p>
+              )}
+              <div className="flex justify-between text-xs font-bold pt-1 border-t border-blue-500/10">
+                <span>Total:</span>
+                <span className="text-primary">{meta.currency || 'NGN'} {meta.total?.toLocaleString() || 0}</span>
+              </div>
+            </div>
+          );
+
+        case 'dining_reservation':
+          return (
+            <div className="space-y-1 mt-2 p-2 bg-orange-500/5 rounded border border-orange-500/20">
+              <div className="flex items-center gap-2 mb-1">
+                <UtensilsCrossed className="h-3 w-3 text-orange-600" />
+                <p className="text-xs font-medium">Table Reservation</p>
+              </div>
+              <div className="grid grid-cols-2 gap-2 text-xs">
+                <div className="flex items-center gap-1">
+                  <Calendar className="h-3 w-3 text-muted-foreground" />
+                  <span className="text-muted-foreground truncate">{meta.reservation_date}</span>
+                </div>
+                <div className="flex items-center gap-1">
+                  <Clock className="h-3 w-3 text-muted-foreground" />
+                  <span className="text-muted-foreground">{meta.reservation_time}</span>
+                </div>
+              </div>
+              <div className="flex items-center gap-1 text-xs pt-1 border-t border-orange-500/10">
+                <Users className="h-3 w-3 text-muted-foreground" />
+                <span className="font-medium">{meta.number_of_guests} guests</span>
+              </div>
+            </div>
+          );
+
+        default:
+          return (
+            <p className="text-xs text-muted-foreground truncate mt-2">
+              {reqData.note || 'No details provided'}
+            </p>
+          );
       }
     }
+
     return null;
   };
-
-  const orderSummary = parseOrderSummary();
 
   return (
     <button
@@ -554,35 +714,8 @@ function RequestCard({ request, isSelected, onClick }: any) {
         )}
       </div>
 
-      {/* Order Items Preview */}
-      {orderSummary ? (
-        <div className="space-y-1 mt-2 p-2 bg-background/50 rounded">
-          <p className="text-xs font-medium">
-            {orderSummary.itemCount} {orderSummary.itemCount === 1 ? 'item' : 'items'}
-          </p>
-          {orderSummary.items.slice(0, 2).map((item: any, idx: number) => (
-            <div key={idx} className="flex justify-between items-center text-xs">
-              <span className="text-muted-foreground truncate flex-1">
-                {item.quantity}× {item.name}
-              </span>
-              <span className="font-medium ml-2">₦{item.price.toLocaleString()}</span>
-            </div>
-          ))}
-          {orderSummary.items.length > 2 && (
-            <p className="text-xs text-muted-foreground">
-              +{orderSummary.items.length - 2} more...
-            </p>
-          )}
-          <div className="flex justify-between items-center text-xs font-bold pt-1 border-t">
-            <span>Total:</span>
-            <span className="text-primary">₦{orderSummary.total?.toLocaleString()}</span>
-          </div>
-        </div>
-      ) : (
-        <p className="text-xs text-muted-foreground truncate mt-2">
-          {request.note || 'No details provided'}
-        </p>
-      )}
+      {/* Service-Specific Context Preview */}
+      {renderContextPreview()}
     </button>
   );
 }
