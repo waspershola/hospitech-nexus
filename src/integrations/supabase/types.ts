@@ -3163,6 +3163,8 @@ export type Database = {
           settings: Json | null
           status: string
           suspension_reason: string | null
+          trial_end_date: string | null
+          trial_started_at: string | null
           updated_at: string
         }
         Insert: {
@@ -3176,6 +3178,8 @@ export type Database = {
           settings?: Json | null
           status?: string
           suspension_reason?: string | null
+          trial_end_date?: string | null
+          trial_started_at?: string | null
           updated_at?: string
         }
         Update: {
@@ -3189,6 +3193,8 @@ export type Database = {
           settings?: Json | null
           status?: string
           suspension_reason?: string | null
+          trial_end_date?: string | null
+          trial_started_at?: string | null
           updated_at?: string
         }
         Relationships: [

@@ -314,7 +314,21 @@ serve(async (req) => {
         console.error('⚠️ User creation failed, continuing:', err);
       }
 
-      // Create platform tenant entry
+      // Fetch plan details to get trial_days
+      const { data: planData } = await supabase
+        .from('platform_plans')
+        .select('trial_days')
+        .eq('id', plan_id)
+        .single();
+
+      const trialDays = planData?.trial_days || 14; // Default 14 days
+      const trialStartDate = new Date();
+      const trialEndDate = new Date(trialStartDate);
+      trialEndDate.setDate(trialEndDate.getDate() + trialDays);
+
+      console.log(`📅 Trial period: ${trialDays} days (${trialStartDate.toISOString()} to ${trialEndDate.toISOString()})`);
+
+      // Create platform tenant entry with trial dates
       const { error: platformTenantError } = await supabase
         .from('platform_tenants')
         .insert({
@@ -323,6 +337,8 @@ serve(async (req) => {
           status: 'trial',
           plan_id,
           owner_email,
+          trial_started_at: trialStartDate.toISOString(),
+          trial_end_date: trialEndDate.toISOString(),
           settings: {
             admin_user_id: adminUser?.id,
           },
@@ -333,7 +349,7 @@ serve(async (req) => {
         throw platformTenantError;
       }
 
-      console.log('✅ Platform tenant entry created');
+      console.log('✅ Platform tenant entry created with trial dates');
 
       // Initialize SMS credit pool with trial credits + additional
       try {
