@@ -210,7 +210,7 @@ const App = () => (
                 <QRLandingPage />
               </Suspense>
             } />
-            <Route path="/qr/:token/request/:service" element={
+            <Route path="/qr/:token/service/:service" element={
               <Suspense fallback={<QRLoadingFallback />}>
                 <QRServiceRequestForm />
               </Suspense>

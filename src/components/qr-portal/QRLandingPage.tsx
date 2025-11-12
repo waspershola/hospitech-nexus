@@ -208,7 +208,7 @@ export function QRLandingPage() {
               if (service === 'feedback' && !showFeedback) return null;
 
               // Determine route based on service type
-              let route = `/qr/${token}/request/${service}`;
+              let route = `/qr/${token}/service/${service}`;
               if (service === 'digital_menu') route = `/qr/${token}/menu`;
               if (service === 'wifi') route = `/qr/${token}/wifi`;
               if (service === 'feedback') route = `/qr/${token}/feedback`;

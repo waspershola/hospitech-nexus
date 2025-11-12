@@ -158,7 +158,7 @@ export default function RequestsTable({
               </TableCell>
               <TableCell className="text-right">
                 <div className="flex gap-2 justify-end">
-                  {['digital_menu', 'room_service', 'laundry', 'spa'].includes(request.service_category) && onViewOrder && (
+                  {['digital_menu', 'room_service', 'laundry', 'spa', 'dining', 'housekeeping', 'maintenance', 'concierge'].includes(request.service_category) && onViewOrder && (
                     <Button
                       variant="outline"
                       size="sm"

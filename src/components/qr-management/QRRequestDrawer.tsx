@@ -6,6 +6,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Textarea } from '@/components/ui/textarea';
 import { Separator } from '@/components/ui/separator';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { useStaffRequests } from '@/hooks/useStaffRequests';
 import { useStaffChat } from '@/hooks/useStaffChat';
 import { useRequestHistory } from '@/hooks/useRequestHistory';
@@ -34,6 +35,10 @@ export function QRRequestDrawer({ open, onOpenChange }: QRRequestDrawerProps) {
   const [customMessage, setCustomMessage] = useState('');
   const [activeTab, setActiveTab] = useState('pending');
   const [isCollectingPayment, setIsCollectingPayment] = useState(false);
+  const [quickRepliesOpen, setQuickRepliesOpen] = useState(() => {
+    const saved = localStorage.getItem('qr-quick-replies-open');
+    return saved !== null ? JSON.parse(saved) : false;
+  });
   
   const { messages, requestContext, sendMessage, isSending } = useStaffChat(selectedRequest?.id);
   
@@ -102,6 +107,10 @@ export function QRRequestDrawer({ open, onOpenChange }: QRRequestDrawerProps) {
       setSelectedRequest(pendingRequests[0]);
     }
   }, [open, pendingRequests.length]);
+
+  useEffect(() => {
+    localStorage.setItem('qr-quick-replies-open', JSON.stringify(quickRepliesOpen));
+  }, [quickRepliesOpen]);
 
   const handleQuickReply = async (template: string) => {
     if (!selectedRequest) return;
@@ -321,10 +330,11 @@ export function QRRequestDrawer({ open, onOpenChange }: QRRequestDrawerProps) {
             </Tabs>
           </div>
 
-          <div className="flex-1 flex flex-col">
+          <div className="flex-1 flex flex-col overflow-hidden">
             {selectedRequest ? (
               <>
-                <div className="p-4 border-b space-y-3">
+                {/* FIXED HEADER - Service category and status */}
+                <div className="p-4 border-b shrink-0">
                   <div className="flex items-start justify-between">
                     <div>
                       <h3 className="font-semibold text-lg capitalize">
@@ -338,242 +348,275 @@ export function QRRequestDrawer({ open, onOpenChange }: QRRequestDrawerProps) {
                       {getStatusConfig(selectedRequest.status).label}
                     </Badge>
                   </div>
+                </div>
 
-                  {selectedRequest.note && (
-                    <div className="bg-muted p-3 rounded-lg text-sm">
-                      <p className="font-medium mb-1">Guest Note:</p>
-                      <p>{selectedRequest.note}</p>
-                    </div>
-                  )}
+                {/* SCROLLABLE CONTENT AREA - Everything else goes here */}
+                <ScrollArea className="flex-1">
+                  <div className="p-4 space-y-4">
+                    {/* Guest Note */}
+                    {selectedRequest.note && (
+                      <div className="bg-muted p-3 rounded-lg text-sm">
+                        <p className="font-medium mb-1">Guest Note:</p>
+                        <p>{selectedRequest.note}</p>
+                      </div>
+                    )}
 
-                  {/* Order Details Section */}
-                  {(selectedRequest.service_category === 'digital_menu' || selectedRequest.service_category === 'room_service') && (
-                    <div className="mt-3">
-                      {orderLoading ? (
-                        <div className="flex items-center justify-center py-4">
-                          <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
-                        </div>
-                      ) : orderDetails && orderDetails.type === 'order' ? (() => {
-                        const orderData = orderDetails.data as any;
-                        return (
-                          <div className="border border-border rounded-lg p-3 space-y-3">
-                            <div className="flex items-center gap-2">
-                              <UtensilsCrossed className="h-4 w-4 text-muted-foreground" />
-                              <span className="font-semibold text-sm">Order Details</span>
-                              <Badge variant="outline" className="ml-auto">
-                                Order #{orderData.id.slice(0, 8)}
-                              </Badge>
-                            </div>
-                            <Separator />
-                            <div className="space-y-2">
-                              {(orderData.items as any[])?.map((item: any, idx: number) => (
-                                <div key={idx} className="flex justify-between items-start text-sm">
-                                  <div className="flex-1">
-                                    <p className="font-medium">{item.name}</p>
-                                    <p className="text-xs text-muted-foreground">Qty: {item.quantity}</p>
-                                  </div>
-                                  <p className="font-semibold">
-                                    ₦{(item.price * item.quantity).toFixed(2)}
-                                  </p>
-                                </div>
-                              ))}
-                            </div>
-                            <Separator />
-                            <div className="flex justify-between items-center">
-                              <span className="font-bold">Total:</span>
-                              <span className="font-bold text-lg text-primary">
-                                ₦{orderData.total?.toFixed(2)}
-                              </span>
-                            </div>
-                            {orderData.special_instructions && (
-                              <>
-                                <Separator />
-                                <div>
-                                  <p className="text-xs font-medium text-muted-foreground mb-1">Special Instructions:</p>
-                                  <p className="text-sm">{orderData.special_instructions}</p>
-                                </div>
-                              </>
-                            )}
-                            
-                            {/* Payment Collection Button */}
-                            {selectedRequest.metadata?.payment_info?.billable && 
-                             selectedRequest.metadata?.payment_info?.status !== 'paid' && (
-                              <>
-                                <Separator />
-                                <Button 
-                                  className="w-full gap-2" 
-                                  variant="default"
-                                  onClick={handleCollectPayment}
-                                  disabled={isCollectingPayment}
-                                >
-                                  {isCollectingPayment ? (
-                                    <Loader2 className="h-4 w-4 animate-spin" />
-                                  ) : (
-                                    <svg className="h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                      <rect x="1" y="4" width="22" height="16" rx="2" ry="2"/>
-                                      <line x1="1" y1="10" x2="23" y2="10"/>
-                                    </svg>
-                                  )}
-                                  {isCollectingPayment ? 'Processing...' : `Collect Payment (₦${orderData.total?.toLocaleString()})`}
-                                </Button>
-                              </>
-                            )}
-                            {selectedRequest.metadata?.payment_info?.status === 'paid' && (
-                              <div className="flex items-center gap-2 p-3 bg-green-500/10 rounded-lg border border-green-500/20">
-                                <CheckCircle2 className="h-4 w-4 text-green-600" />
-                                <span className="text-sm font-medium text-green-600">Payment Collected</span>
+                    {/* Guest & Room Info */}
+                    {(selectedRequest.metadata?.guest_name || selectedRequest.room?.number) && (
+                      <div className="flex items-center gap-4 text-sm">
+                        {selectedRequest.metadata?.guest_name && (
+                          <div className="flex items-center gap-1">
+                            <User className="h-3 w-3 text-muted-foreground" />
+                            <span>{selectedRequest.metadata.guest_name}</span>
+                          </div>
+                        )}
+                        {selectedRequest.room?.number && (
+                          <div className="flex items-center gap-1">
+                            <MapPin className="h-3 w-3 text-muted-foreground" />
+                            <span>Room {selectedRequest.room.number}</span>
+                          </div>
+                        )}
+                      </div>
+                    )}
+
+                    {/* Order Details Section */}
+                    {(selectedRequest.service_category === 'digital_menu' || selectedRequest.service_category === 'room_service') && (
+                      <div>
+                        {orderLoading ? (
+                          <div className="flex items-center justify-center py-4">
+                            <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+                          </div>
+                        ) : orderDetails && orderDetails.type === 'order' ? (() => {
+                          const orderData = orderDetails.data as any;
+                          return (
+                            <div className="border border-border rounded-lg p-3 space-y-3">
+                              <div className="flex items-center gap-2">
+                                <UtensilsCrossed className="h-4 w-4 text-muted-foreground" />
+                                <span className="font-semibold text-sm">Order Details</span>
+                                <Badge variant="outline" className="ml-auto">
+                                  Order #{orderData.id.slice(0, 8)}
+                                </Badge>
                               </div>
+                              <Separator />
+                              <div className="space-y-2">
+                                {(orderData.items as any[])?.map((item: any, idx: number) => (
+                                  <div key={idx} className="flex justify-between items-start text-sm">
+                                    <div className="flex-1">
+                                      <p className="font-medium">{item.name}</p>
+                                      <p className="text-xs text-muted-foreground">Qty: {item.quantity}</p>
+                                    </div>
+                                    <p className="font-semibold">
+                                      ₦{(item.price * item.quantity).toFixed(2)}
+                                    </p>
+                                  </div>
+                                ))}
+                              </div>
+                              <Separator />
+                              <div className="flex justify-between items-center">
+                                <span className="font-bold">Total:</span>
+                                <span className="font-bold text-lg text-primary">
+                                  ₦{orderData.total?.toFixed(2)}
+                                </span>
+                              </div>
+                              {orderData.special_instructions && (
+                                <>
+                                  <Separator />
+                                  <div>
+                                    <p className="text-xs font-medium text-muted-foreground mb-1">Special Instructions:</p>
+                                    <p className="text-sm">{orderData.special_instructions}</p>
+                                  </div>
+                                </>
+                              )}
+                              
+                              {/* Payment Collection Button */}
+                              {selectedRequest.metadata?.payment_info?.billable && 
+                               selectedRequest.metadata?.payment_info?.status !== 'paid' && (
+                                <>
+                                  <Separator />
+                                  <Button 
+                                    className="w-full gap-2" 
+                                    variant="default"
+                                    onClick={handleCollectPayment}
+                                    disabled={isCollectingPayment}
+                                  >
+                                    {isCollectingPayment ? (
+                                      <Loader2 className="h-4 w-4 animate-spin" />
+                                    ) : (
+                                      <svg className="h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                        <rect x="1" y="4" width="22" height="16" rx="2" ry="2"/>
+                                        <line x1="1" y1="10" x2="23" y2="10"/>
+                                      </svg>
+                                    )}
+                                    {isCollectingPayment ? 'Processing...' : `Collect Payment (₦${orderData.total?.toLocaleString()})`}
+                                  </Button>
+                                </>
+                              )}
+                              {selectedRequest.metadata?.payment_info?.status === 'paid' && (
+                                <div className="flex items-center gap-2 p-3 bg-green-500/10 rounded-lg border border-green-500/20">
+                                  <CheckCircle2 className="h-4 w-4 text-green-600" />
+                                  <span className="text-sm font-medium text-green-600">Payment Collected</span>
+                                </div>
+                              )}
+                            </div>
+                          );
+                        })() : (
+                          <div className="text-xs text-muted-foreground text-center py-2">
+                            No order details found
+                          </div>
+                        )}
+                      </div>
+                    )}
+
+                    {/* Payment Info */}
+                    <RequestPaymentInfo request={selectedRequest} />
+                    
+                    {/* Payment History Timeline */}
+                    {selectedRequest.metadata?.payment_info && (
+                      <PaymentHistoryTimeline 
+                        request={selectedRequest}
+                        paymentInfo={selectedRequest.metadata.payment_info}
+                      />
+                    )}
+
+                    {/* Request History Stats */}
+                    {historyStats && historyStats.totalRequests > 1 && (
+                      <div className="p-4 bg-muted/30 rounded-lg">
+                        <div className="flex items-center gap-2 mb-3">
+                          <History className="h-4 w-4 text-muted-foreground" />
+                          <p className="text-xs font-medium text-muted-foreground">
+                            Request History {selectedRequest.room?.number ? `(Room ${selectedRequest.room.number})` : ''}
+                          </p>
+                        </div>
+                        
+                        <div className="grid grid-cols-3 gap-3 mb-3">
+                          <div className="bg-background rounded-lg p-2 text-center">
+                            <p className="text-lg font-bold">{historyStats.totalRequests}</p>
+                            <p className="text-xs text-muted-foreground">Total</p>
+                          </div>
+                          <div className="bg-background rounded-lg p-2 text-center">
+                            <p className="text-lg font-bold text-green-600">{historyStats.completedRequests}</p>
+                            <p className="text-xs text-muted-foreground">Completed</p>
+                          </div>
+                          <div className="bg-background rounded-lg p-2 text-center">
+                            <p className="text-lg font-bold text-blue-600">{historyStats.averageResponseTime}m</p>
+                            <p className="text-xs text-muted-foreground">Avg Time</p>
+                          </div>
+                        </div>
+
+                        {historyStats.commonCategories.length > 0 && (
+                          <div className="space-y-1">
+                            <div className="flex items-center gap-1 mb-1">
+                              <BarChart3 className="h-3 w-3 text-muted-foreground" />
+                              <p className="text-xs text-muted-foreground">Common Requests:</p>
+                            </div>
+                            {historyStats.commonCategories.map((cat) => (
+                              <div key={cat.category} className="flex items-center justify-between text-xs">
+                                <span className="capitalize">{cat.category.replace('_', ' ')}</span>
+                                <Badge variant="secondary" className="h-5">{cat.count}</Badge>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    )}
+
+                    {/* COLLAPSIBLE Quick Replies - Moved inside scrollable area */}
+                    {selectedRequest.status !== 'completed' && (
+                      <Collapsible open={quickRepliesOpen} onOpenChange={setQuickRepliesOpen}>
+                        <CollapsibleTrigger asChild>
+                          <Button variant="outline" size="sm" className="w-full justify-between">
+                            <div className="flex items-center gap-2">
+                              <Zap className="h-3 w-3" />
+                              <span className="text-xs font-medium">Quick Replies</span>
+                            </div>
+                            <svg
+                              className={`h-4 w-4 transition-transform ${quickRepliesOpen ? 'rotate-180' : ''}`}
+                              xmlns="http://www.w3.org/2000/svg"
+                              viewBox="0 0 24 24"
+                              fill="none"
+                              stroke="currentColor"
+                              strokeWidth="2"
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                            >
+                              <polyline points="6 9 12 15 18 9" />
+                            </svg>
+                          </Button>
+                        </CollapsibleTrigger>
+                        <CollapsibleContent className="mt-2">
+                          <div className="grid grid-cols-2 gap-2">
+                            {getQuickReplyTemplates(selectedRequest.service_category).map((template, idx) => (
+                              <Button
+                                key={idx}
+                                size="sm"
+                                variant="outline"
+                                onClick={() => handleQuickReply(template)}
+                                disabled={isSending}
+                                className="justify-start text-left h-auto py-2"
+                              >
+                                <Zap className="h-3 w-3 mr-1 shrink-0" />
+                                <span className="text-xs truncate">{template.substring(0, 20)}...</span>
+                              </Button>
+                            ))}
+                          </div>
+                        </CollapsibleContent>
+                      </Collapsible>
+                    )}
+
+                    {/* Request Context */}
+                    {requestContext && (
+                      <div className="p-3 bg-muted/50 border rounded-lg">
+                        <div className="flex items-center justify-between mb-2">
+                          <div>
+                            <p className="text-sm font-medium capitalize">
+                              {requestContext.service_category.replace('_', ' ')}
+                            </p>
+                            {requestContext.room && (
+                              <p className="text-xs text-muted-foreground">
+                                Room {requestContext.room.number}
+                              </p>
                             )}
                           </div>
-                        );
-                      })() : (
-                        <div className="text-xs text-muted-foreground text-center py-2">
-                          No order details found
+                          <Badge variant="outline" className="capitalize">
+                            {requestContext.status}
+                          </Badge>
                         </div>
-                      )}
-                    </div>
-                  )}
-
-                  <div className="flex items-center gap-4 text-sm mt-3">
-                    {selectedRequest.metadata?.guest_name && (
-                      <div className="flex items-center gap-1">
-                        <User className="h-3 w-3 text-muted-foreground" />
-                        <span>{selectedRequest.metadata.guest_name}</span>
+                        {requestContext.priority && (
+                          <Badge variant="secondary" className="text-xs">
+                            {requestContext.priority} priority
+                          </Badge>
+                        )}
                       </div>
                     )}
-                    {selectedRequest.room?.number && (
-                      <div className="flex items-center gap-1">
-                        <MapPin className="h-3 w-3 text-muted-foreground" />
-                        <span>Room {selectedRequest.room.number}</span>
-                      </div>
-                    )}
-                  </div>
-                </div>
-
-                {historyStats && historyStats.totalRequests > 1 && (
-                  <div className="p-4 border-b bg-muted/30">
-                    <div className="flex items-center gap-2 mb-3">
-                      <History className="h-4 w-4 text-muted-foreground" />
-                      <p className="text-xs font-medium text-muted-foreground">
-                        Request History {selectedRequest.room?.number ? `(Room ${selectedRequest.room.number})` : ''}
-                      </p>
-                    </div>
                     
-                    <div className="grid grid-cols-3 gap-3 mb-3">
-                      <div className="bg-background rounded-lg p-2 text-center">
-                        <p className="text-lg font-bold">{historyStats.totalRequests}</p>
-                        <p className="text-xs text-muted-foreground">Total</p>
-                      </div>
-                      <div className="bg-background rounded-lg p-2 text-center">
-                        <p className="text-lg font-bold text-green-600">{historyStats.completedRequests}</p>
-                        <p className="text-xs text-muted-foreground">Completed</p>
-                      </div>
-                      <div className="bg-background rounded-lg p-2 text-center">
-                        <p className="text-lg font-bold text-blue-600">{historyStats.averageResponseTime}m</p>
-                        <p className="text-xs text-muted-foreground">Avg Time</p>
-                      </div>
-                    </div>
-
-                    {historyStats.commonCategories.length > 0 && (
-                      <div className="space-y-1">
-                        <div className="flex items-center gap-1 mb-1">
-                          <BarChart3 className="h-3 w-3 text-muted-foreground" />
-                          <p className="text-xs text-muted-foreground">Common Requests:</p>
-                        </div>
-                        {historyStats.commonCategories.map((cat) => (
-                          <div key={cat.category} className="flex items-center justify-between text-xs">
-                            <span className="capitalize">{cat.category.replace('_', ' ')}</span>
-                            <Badge variant="secondary" className="h-5">{cat.count}</Badge>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                )}
-
-                <div className="p-4 space-y-4">
-                  <RequestPaymentInfo request={selectedRequest} />
-                  
-                  {/* Payment History Timeline */}
-                  {selectedRequest.metadata?.payment_info && (
-                    <PaymentHistoryTimeline 
-                      request={selectedRequest}
-                      paymentInfo={selectedRequest.metadata.payment_info}
-                    />
-                  )}
-                </div>
-
-                {selectedRequest.status !== 'completed' && (
-                  <div className="p-4 border-b">
-                    <p className="text-xs font-medium text-muted-foreground mb-2">Quick Replies</p>
-                    <div className="flex flex-wrap gap-2">
-                      {getQuickReplyTemplates(selectedRequest.service_category).map((template, idx) => (
-                        <Button
-                          key={idx}
-                          size="sm"
-                          variant="outline"
-                          onClick={() => handleQuickReply(template)}
-                          disabled={isSending}
+                    {/* Chat Messages */}
+                    <div className="space-y-4">
+                      {messages.map((msg) => (
+                        <div
+                          key={msg.id}
+                          className={`flex ${msg.direction === 'outbound' ? 'justify-end' : 'justify-start'}`}
                         >
-                          <Zap className="h-3 w-3 mr-1" />
-                          {template.substring(0, 30)}{template.length > 30 ? '...' : ''}
-                        </Button>
+                          <div
+                            className={`max-w-[80%] rounded-lg px-3 py-2 ${
+                              msg.direction === 'outbound'
+                                ? 'bg-primary text-primary-foreground'
+                                : 'bg-muted'
+                            }`}
+                          >
+                            <p className="text-sm">{msg.message}</p>
+                            <p className="text-xs opacity-70 mt-1">
+                              {format(new Date(msg.created_at), 'h:mm a')}
+                            </p>
+                          </div>
+                        </div>
                       ))}
                     </div>
                   </div>
-                )}
-
-                <ScrollArea className="flex-1 p-4">
-                  {requestContext && (
-                    <div className="mb-4 p-3 bg-muted/50 border rounded-lg">
-                      <div className="flex items-center justify-between mb-2">
-                        <div>
-                          <p className="text-sm font-medium capitalize">
-                            {requestContext.service_category.replace('_', ' ')}
-                          </p>
-                          {requestContext.room && (
-                            <p className="text-xs text-muted-foreground">
-                              Room {requestContext.room.number}
-                            </p>
-                          )}
-                        </div>
-                        <Badge variant="outline" className="capitalize">
-                          {requestContext.status}
-                        </Badge>
-                      </div>
-                      {requestContext.priority && (
-                        <Badge variant="secondary" className="text-xs">
-                          {requestContext.priority} priority
-                        </Badge>
-                      )}
-                    </div>
-                  )}
-                  
-                  <div className="space-y-4">
-                    {messages.map((msg) => (
-                      <div
-                        key={msg.id}
-                        className={`flex ${msg.direction === 'outbound' ? 'justify-end' : 'justify-start'}`}
-                      >
-                        <div
-                          className={`max-w-[80%] rounded-lg px-3 py-2 ${
-                            msg.direction === 'outbound'
-                              ? 'bg-primary text-primary-foreground'
-                              : 'bg-muted'
-                          }`}
-                        >
-                          <p className="text-sm">{msg.message}</p>
-                          <p className="text-xs opacity-70 mt-1">
-                            {format(new Date(msg.created_at), 'h:mm a')}
-                          </p>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
                 </ScrollArea>
 
+                {/* FIXED FOOTER - Message Input */}
                 {selectedRequest.status !== 'completed' && (
-                  <div className="p-4 border-t">
+                  <div className="p-4 border-t shrink-0">
                     <div className="flex gap-2">
                       <Textarea
                         placeholder="Type a custom message..."
@@ -599,8 +642,9 @@ export function QRRequestDrawer({ open, onOpenChange }: QRRequestDrawerProps) {
                   </div>
                 )}
 
+                {/* FIXED FOOTER - Action Buttons */}
                 {selectedRequest.status !== 'completed' && (
-                  <div className="p-4 border-t flex gap-2">
+                  <div className="p-4 border-t flex gap-2 shrink-0">
                     {selectedRequest.status === 'pending' && (
                       <Button
                         onClick={() => updateRequestStatus(selectedRequest.id, 'in_progress')}
