@@ -50,7 +50,10 @@ export function QRChatInterface() {
             <Button
               variant="ghost"
               size="icon"
-              onClick={() => navigate(`/qr/${token}/order/${orderDetails.data.id}`)}
+              onClick={() => {
+                const orderId = (orderDetails.data as any).id;
+                navigate(`/qr/${token}/order/${orderId}`);
+              }}
             >
               <ArrowLeft className="h-5 w-5" />
             </Button>
@@ -73,7 +76,10 @@ export function QRChatInterface() {
             <Button
               variant="outline"
               size="sm"
-              onClick={() => navigate(`/qr/${token}/order/${orderDetails.data.id}`)}
+              onClick={() => {
+                const orderId = (orderDetails.data as any).id;
+                navigate(`/qr/${token}/order/${orderId}`);
+              }}
             >
               <Package className="h-4 w-4 mr-2" />
               View Order

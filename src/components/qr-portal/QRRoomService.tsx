@@ -90,7 +90,7 @@ export function QRRoomService() {
           status: 'pending',
           metadata: {
             qr_token: token,
-            room_number: qrData?.room?.number || 'N/A',
+            room_number: (qrData as any)?.room?.number || 'N/A',
             guest_label: 'Guest',
             service_type: 'room_service',
           },

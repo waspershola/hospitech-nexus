@@ -221,68 +221,71 @@ export function QRRequestDrawer({ open, onOpenChange }: QRRequestDrawerProps) {
                         <div className="flex items-center justify-center py-4">
                           <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
                         </div>
-                      ) : orderDetails ? (
-                        <div className="border border-border rounded-lg p-3 space-y-3">
-                          <div className="flex items-center gap-2">
-                            <UtensilsCrossed className="h-4 w-4 text-muted-foreground" />
-                            <span className="font-semibold text-sm">Order Details</span>
-                            <Badge variant="outline" className="ml-auto">
-                              Order #{orderDetails.id.slice(0, 8)}
-                            </Badge>
-                          </div>
-                          <Separator />
-                          <div className="space-y-2">
-                            {(orderDetails.items as any[])?.map((item: any, idx: number) => (
-                              <div key={idx} className="flex justify-between items-start text-sm">
-                                <div className="flex-1">
-                                  <p className="font-medium">{item.name}</p>
-                                  <p className="text-xs text-muted-foreground">Qty: {item.quantity}</p>
+                      ) : orderDetails && orderDetails.type === 'order' ? (() => {
+                        const orderData = orderDetails.data as any;
+                        return (
+                          <div className="border border-border rounded-lg p-3 space-y-3">
+                            <div className="flex items-center gap-2">
+                              <UtensilsCrossed className="h-4 w-4 text-muted-foreground" />
+                              <span className="font-semibold text-sm">Order Details</span>
+                              <Badge variant="outline" className="ml-auto">
+                                Order #{orderData.id.slice(0, 8)}
+                              </Badge>
+                            </div>
+                            <Separator />
+                            <div className="space-y-2">
+                              {(orderData.items as any[])?.map((item: any, idx: number) => (
+                                <div key={idx} className="flex justify-between items-start text-sm">
+                                  <div className="flex-1">
+                                    <p className="font-medium">{item.name}</p>
+                                    <p className="text-xs text-muted-foreground">Qty: {item.quantity}</p>
+                                  </div>
+                                  <p className="font-semibold">
+                                    ₦{(item.price * item.quantity).toFixed(2)}
+                                  </p>
                                 </div>
-                                <p className="font-semibold">
-                                  ₦{(item.price * item.quantity).toFixed(2)}
-                                </p>
-                              </div>
-                            ))}
+                              ))}
+                            </div>
+                            <Separator />
+                            <div className="flex justify-between items-center">
+                              <span className="font-bold">Total:</span>
+                              <span className="font-bold text-lg text-primary">
+                                ₦{orderData.total?.toFixed(2)}
+                              </span>
+                            </div>
+                            {orderData.special_instructions && (
+                              <>
+                                <Separator />
+                                <div>
+                                  <p className="text-xs font-medium text-muted-foreground mb-1">Special Instructions:</p>
+                                  <p className="text-sm">{orderData.special_instructions}</p>
+                                </div>
+                              </>
+                            )}
+                            
+                            {/* Payment Collection Button */}
+                            {selectedRequest.metadata?.payment_info?.billable && (
+                              <>
+                                <Separator />
+                                <Button 
+                                  className="w-full gap-2" 
+                                  variant="default"
+                                  onClick={() => {
+                                    toast.success('Payment collection interface would open here');
+                                    // TODO: Integrate with actual payment system
+                                  }}
+                                >
+                                  <svg className="h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                    <rect x="1" y="4" width="22" height="16" rx="2" ry="2"/>
+                                    <line x1="1" y1="10" x2="23" y2="10"/>
+                                  </svg>
+                                  Collect Payment (₦{orderData.total?.toLocaleString()})
+                                </Button>
+                              </>
+                            )}
                           </div>
-                          <Separator />
-                          <div className="flex justify-between items-center">
-                            <span className="font-bold">Total:</span>
-                            <span className="font-bold text-lg text-primary">
-                              ₦{orderDetails.total?.toFixed(2)}
-                            </span>
-                          </div>
-                          {orderDetails.special_instructions && (
-                            <>
-                              <Separator />
-                              <div>
-                                <p className="text-xs font-medium text-muted-foreground mb-1">Special Instructions:</p>
-                                <p className="text-sm">{orderDetails.special_instructions}</p>
-                              </div>
-                            </>
-                          )}
-                          
-                          {/* Payment Collection Button */}
-                          {selectedRequest.metadata?.payment_info?.billable && (
-                            <>
-                              <Separator />
-                              <Button 
-                                className="w-full gap-2" 
-                                variant="default"
-                                onClick={() => {
-                                  toast.success('Payment collection interface would open here');
-                                  // TODO: Integrate with actual payment system
-                                }}
-                              >
-                                <svg className="h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                  <rect x="1" y="4" width="22" height="16" rx="2" ry="2"/>
-                                  <line x1="1" y1="10" x2="23" y2="10"/>
-                                </svg>
-                                Collect Payment (₦{(orderDetails && orderDetails.type === 'order') ? orderDetails.data.total?.toLocaleString() : '0'})
-                              </Button>
-                            </>
-                          )}
-                        </div>
-                      ) : (
+                        );
+                      })() : (
                         <div className="text-xs text-muted-foreground text-center py-2">
                           No order details found
                         </div>
@@ -505,17 +508,20 @@ function RequestCard({ request, isSelected, onClick }: any) {
 
   // Parse order summary from note if available
   const parseOrderSummary = () => {
-    if (orderDetails && orderDetails.type === 'order' && orderDetails.data.items) {
-      const items = orderDetails.data.items as any[];
-      return {
-        itemCount: items.reduce((sum: number, item: any) => sum + item.quantity, 0),
-        items: items.map((item: any) => ({
-          name: item.name,
-          quantity: item.quantity,
-          price: item.price * item.quantity
-        })),
-        total: orderDetails.data.total
-      };
+    if (orderDetails && orderDetails.type === 'order') {
+      const orderData = orderDetails.data as any;
+      const items = orderData.items as any[];
+      if (items) {
+        return {
+          itemCount: items.reduce((sum: number, item: any) => sum + item.quantity, 0),
+          items: items.map((item: any) => ({
+            name: item.name,
+            quantity: item.quantity,
+            price: item.price * item.quantity
+          })),
+          total: orderData.total
+        };
+      }
     }
     return null;
   };
