@@ -99,7 +99,7 @@ export default function GuestRequestsManagement() {
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">All Requests</SelectItem>
-              <SelectItem value="menu_order">Menu Orders</SelectItem>
+              <SelectItem value="digital_menu">Digital Menu</SelectItem>
               <SelectItem value="housekeeping">Housekeeping</SelectItem>
               <SelectItem value="maintenance">Maintenance</SelectItem>
               <SelectItem value="room_service">Room Service</SelectItem>
