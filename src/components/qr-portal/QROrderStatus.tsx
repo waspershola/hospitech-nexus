@@ -1,7 +1,8 @@
 import { useParams, useNavigate } from 'react-router-dom';
 import { useQRToken } from '@/hooks/useQRToken';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
+import { useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -14,6 +15,8 @@ export function QROrderStatus() {
   const { token, orderId } = useParams();
   const navigate = useNavigate();
   const { qrData } = useQRToken(token);
+
+  const queryClient = useQueryClient();
 
   const { data: order, isLoading } = useQuery({
     queryKey: ['guest-order', orderId, token],
@@ -30,6 +33,39 @@ export function QROrderStatus() {
     },
     enabled: !!orderId && !!token,
   });
+
+  // Real-time subscription for order status updates
+  useEffect(() => {
+    if (!orderId) return;
+
+    console.log('[QROrderStatus] Setting up real-time subscription for order:', orderId);
+
+    const channel = supabase
+      .channel(`order-${orderId}`)
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'guest_orders',
+          filter: `id=eq.${orderId}`,
+        },
+        (payload) => {
+          console.log('[QROrderStatus] Order updated:', payload.new);
+          // Update the query cache with new data
+          queryClient.setQueryData(['guest-order', orderId, token], (old: any) => {
+            if (!old) return old;
+            return { ...old, ...payload.new };
+          });
+        }
+      )
+      .subscribe();
+
+    return () => {
+      console.log('[QROrderStatus] Cleaning up real-time subscription');
+      supabase.removeChannel(channel);
+    };
+  }, [orderId, token, queryClient]);
 
   if (isLoading || !qrData) {
     return (
