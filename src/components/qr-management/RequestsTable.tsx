@@ -1,5 +1,5 @@
 import { format } from 'date-fns';
-import { MessageSquare, Clock, CheckCircle2, XCircle, UtensilsCrossed } from 'lucide-react';
+import { MessageSquare, Clock, CheckCircle2, XCircle, UtensilsCrossed, MapPin } from 'lucide-react';
 import {
   Table,
   TableBody,
@@ -132,9 +132,16 @@ export default function RequestsTable({
                 </div>
               </TableCell>
               <TableCell>
-                {request.room?.number || (
-                  <span className="text-muted-foreground">Common Area</span>
-                )}
+                <div className="flex items-center gap-1">
+                  {request.metadata?.room_number || request.room?.number ? (
+                    <>
+                      <MapPin className="h-3 w-3 text-muted-foreground" />
+                      <span>{request.metadata?.room_number || request.room?.number}</span>
+                    </>
+                  ) : (
+                    <span className="text-muted-foreground">Common Area</span>
+                  )}
+                </div>
               </TableCell>
               <TableCell>{getPriorityBadge(request.priority)}</TableCell>
               <TableCell>

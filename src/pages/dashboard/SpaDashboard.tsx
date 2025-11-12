@@ -1,13 +1,13 @@
 import { DepartmentRequestsWidget } from '@/components/department-dashboards/DepartmentRequestsWidget';
-import { Wine } from 'lucide-react';
+import { Sparkles } from 'lucide-react';
 import { useRole } from '@/hooks/useRole';
 import { Navigate } from 'react-router-dom';
 
-export default function BarDashboard() {
+export default function SpaDashboard() {
   const { role, staffInfo } = useRole();
   
   // Supervisors can only access their own department
-  if (role === 'supervisor' && staffInfo?.department !== 'food_beverage') {
+  if (role === 'supervisor' && staffInfo?.department !== 'spa') {
     return <Navigate to="/dashboard" replace />;
   }
   
@@ -15,15 +15,15 @@ export default function BarDashboard() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-display text-foreground">Bar Dashboard</h1>
-          <p className="text-muted-foreground">Manage bar orders and service</p>
+          <h1 className="text-3xl font-display text-foreground">Spa Dashboard</h1>
+          <p className="text-muted-foreground">Manage spa bookings and treatments</p>
         </div>
-        <Wine className="h-8 w-8 text-primary" />
+        <Sparkles className="h-8 w-8 text-primary" />
       </div>
       
       <DepartmentRequestsWidget 
-        department="restaurant" 
-        departmentLabel="Bar"
+        department="spa" 
+        departmentLabel="Spa"
       />
     </div>
   );

@@ -3,7 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { useQRToken } from '@/hooks/useQRToken';
 import { useQRTheme } from '@/hooks/useQRTheme';
 import { useMyRequests } from '@/hooks/useMyRequests';
-import { UtensilsCrossed, Wifi, Wrench, Bell, MessageCircle, Phone, Clock, Sparkles, Crown, Utensils, Shirt as ShirtIcon, Headphones, LucideIcon } from 'lucide-react';
+import { UtensilsCrossed, Wifi, Wrench, Bell, MessageCircle, Phone, Clock, Sparkles, Crown, Utensils, Shirt as ShirtIcon, Headphones, Receipt, LucideIcon } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { LuxuryHeader } from '@/components/qr-portal/LuxuryHeader';
@@ -262,6 +262,14 @@ export function QRLandingPage() {
               <span className="text-sm">Available 24/7</span>
             </div>
             <p className="text-muted-foreground text-xs">Powered by luxuryhotelpro.com</p>
+            <Button
+              variant="outline"
+              onClick={() => window.location.href = `/qr/${token}/payments`}
+              className="gap-2"
+            >
+              <Receipt className="h-4 w-4" />
+              Payment History
+            </Button>
           </div>
         </div>
       </div>

@@ -560,7 +560,7 @@ export function QRRequestDrawer({ open, onOpenChange }: QRRequestDrawerProps) {
                     )}
 
                     {/* Guest & Room Info */}
-                    {(selectedRequest.metadata?.guest_name || selectedRequest.room?.number) && (
+                    {(selectedRequest.metadata?.guest_name || selectedRequest.metadata?.room_number || selectedRequest.room?.number) && (
                       <div className="flex items-center gap-4 text-sm">
                         {selectedRequest.metadata?.guest_name && (
                           <div className="flex items-center gap-1">
@@ -568,10 +568,10 @@ export function QRRequestDrawer({ open, onOpenChange }: QRRequestDrawerProps) {
                             <span>{selectedRequest.metadata.guest_name}</span>
                           </div>
                         )}
-                        {selectedRequest.room?.number && (
-                          <div className="flex items-center gap-1">
-                            <MapPin className="h-3 w-3 text-muted-foreground" />
-                            <span>Room {selectedRequest.room.number}</span>
+                        {(selectedRequest.metadata?.room_number || selectedRequest.room?.number) && (
+                          <div className="flex items-center gap-1 bg-primary/10 px-2 py-1 rounded">
+                            <MapPin className="h-3 w-3 text-primary" />
+                            <span className="font-medium">{selectedRequest.metadata?.room_number || selectedRequest.room?.number}</span>
                           </div>
                         )}
                       </div>
@@ -1434,9 +1434,10 @@ function RequestCard({ request, isSelected, onClick, orderDetails, isLoading }: 
             {format(new Date(request.created_at), 'MMM d, h:mm a')}
           </p>
         </div>
-        {request.room?.number && (
-          <Badge variant="outline" className="text-xs">
-            Room {request.room.number}
+        {(request.metadata?.room_number || request.room?.number) && (
+          <Badge variant="outline" className="text-xs gap-1">
+            <MapPin className="h-3 w-3" />
+            {request.metadata?.room_number || request.room?.number}
           </Badge>
         )}
       </div>

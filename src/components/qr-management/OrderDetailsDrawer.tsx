@@ -119,6 +119,46 @@ export function OrderDetailsDrawer({
             </>
           )}
 
+          {/* Payment Collection (if linked request has payment info) */}
+          {order.request_id && order.metadata?.payment_info?.billable && order.metadata?.payment_info?.status !== 'paid' && (
+            <>
+              <Separator />
+              <div className="space-y-3 p-4 bg-muted/30 rounded-lg">
+                <h3 className="font-semibold">Payment Collection</h3>
+                <div className="flex justify-between items-center">
+                  <span className="text-sm text-muted-foreground">Amount Due:</span>
+                  <span className="text-lg font-bold text-primary">
+                    {order.currency || 'NGN'} {order.total?.toFixed(2)}
+                  </span>
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Collect payment using the QR Request Drawer for complete payment tracking and receipt generation.
+                </p>
+              </div>
+            </>
+          )}
+
+          {order.metadata?.payment_info?.status === 'paid' && (
+            <>
+              <Separator />
+              <div className="space-y-2 p-3 bg-green-500/10 rounded-lg border border-green-500/20">
+                <div className="flex items-center gap-2">
+                  <CheckCircle2 className="h-4 w-4 text-green-600" />
+                  <span className="text-sm font-medium text-green-600">Payment Collected</span>
+                </div>
+                <div className="text-xs text-muted-foreground space-y-1">
+                  <div>Amount: {order.currency || 'NGN'} {order.metadata.payment_info.amount?.toFixed(2)}</div>
+                  {order.metadata.payment_info.location_name && (
+                    <div>Location: {order.metadata.payment_info.location_name}</div>
+                  )}
+                  {order.metadata.payment_info.collected_at && (
+                    <div>Collected: {format(new Date(order.metadata.payment_info.collected_at), 'MMM d, h:mm a')}</div>
+                  )}
+                </div>
+              </div>
+            </>
+          )}
+
           {/* Actions */}
           <div className="space-y-2 pt-4">
             {statusConfig.next && order.status !== 'delivered' && order.status !== 'cancelled' && (

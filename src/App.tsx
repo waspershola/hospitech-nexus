@@ -34,6 +34,8 @@ import HousekeepingDashboard from './pages/dashboard/HousekeepingDashboard';
 import MaintenanceDashboard from './pages/dashboard/MaintenanceDashboard';
 import KitchenDashboard from './pages/dashboard/KitchenDashboard';
 import BarDashboard from './pages/dashboard/BarDashboard';
+import SpaDashboard from './pages/dashboard/SpaDashboard';
+import LaundryDashboard from './pages/dashboard/LaundryDashboard';
 import Payments from './pages/dashboard/Payments';
 import Wallets from './pages/dashboard/Wallets';
 import Debtors from './pages/dashboard/Debtors';
@@ -72,6 +74,7 @@ const QRRoomService = lazy(() => import("./components/qr-portal/QRRoomService").
 const QRHousekeepingService = lazy(() => import("./components/qr-portal/QRHousekeepingService").then(m => ({ default: m.QRHousekeepingService })));
 const QROrderStatus = lazy(() => import("./components/qr-portal/QROrderStatus").then(m => ({ default: m.QROrderStatus })));
 const QRRequestStatus = lazy(() => import("./components/qr-portal/QRRequestStatus").then(m => ({ default: m.QRRequestStatus })));
+const QRPaymentHistory = lazy(() => import("./components/qr-portal/QRPaymentHistory"));
 const QRRedirect = lazy(() => import("./components/qr-portal/QRRedirect").then(m => ({ default: m.QRRedirect })));
 
 // Shared loading component for QR portal
@@ -152,6 +155,8 @@ const App = () => (
               <Route path="maintenance-dashboard" element={<RoleGuard allowedRoles={['owner', 'manager', 'maintenance', 'supervisor']}><MaintenanceDashboard /></RoleGuard>} />
               <Route path="kitchen-dashboard" element={<RoleGuard allowedRoles={['owner', 'manager', 'restaurant', 'kitchen', 'supervisor']}><KitchenDashboard /></RoleGuard>} />
               <Route path="bar-dashboard" element={<RoleGuard allowedRoles={['owner', 'manager', 'bar', 'supervisor']}><BarDashboard /></RoleGuard>} />
+              <Route path="spa-dashboard" element={<RoleGuard allowedRoles={['owner', 'manager', 'spa', 'supervisor']}><SpaDashboard /></RoleGuard>} />
+              <Route path="laundry-dashboard" element={<RoleGuard allowedRoles={['owner', 'manager', 'housekeeping', 'laundry', 'supervisor']}><LaundryDashboard /></RoleGuard>} />
               <Route path="qr-management" element={<RoleGuard allowedRoles={['owner', 'manager']}><QRManagement /></RoleGuard>} />
               <Route path="guest-requests" element={<GuestRequestsManagement />} />
               <Route path="department-requests" element={<DepartmentRequestsDashboard />} />
@@ -269,6 +274,11 @@ const App = () => (
             <Route path="/qr/:token/request/:requestId" element={
               <Suspense fallback={<QRLoadingFallback />}>
                 <QRRequestStatus />
+              </Suspense>
+            } />
+            <Route path="/qr/:token/payments" element={
+              <Suspense fallback={<QRLoadingFallback />}>
+                <QRPaymentHistory />
               </Suspense>
             } />
             <Route path="/qr/:token/qrredirect/:tenantId" element={
