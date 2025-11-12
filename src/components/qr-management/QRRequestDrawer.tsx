@@ -136,8 +136,10 @@ export function QRRequestDrawer({ open, onOpenChange }: QRRequestDrawerProps) {
     setIsCollectingPayment(true);
     try {
       const orderData = orderDetails.data as any;
+      const { data: { user } } = await supabase.auth.getUser();
       
-      const { error } = await supabase
+      // Update payment metadata
+      const { error: updateError } = await supabase
         .from('requests')
         .update({
           metadata: {
@@ -146,7 +148,7 @@ export function QRRequestDrawer({ open, onOpenChange }: QRRequestDrawerProps) {
               ...selectedRequest.metadata?.payment_info,
               status: 'paid',
               collected_at: new Date().toISOString(),
-              collected_by: (await supabase.auth.getUser()).data.user?.id,
+              collected_by: user?.id,
               amount: orderData.total,
               currency: orderData.currency || 'NGN',
             }
@@ -154,10 +156,50 @@ export function QRRequestDrawer({ open, onOpenChange }: QRRequestDrawerProps) {
         })
         .eq('id', selectedRequest.id);
 
-      if (error) throw error;
+      if (updateError) throw updateError;
+
+      // Send payment confirmation message to guest
+      const items = orderData.items || [];
+      const itemsList = items
+        .map((item: any) => `• ${item.quantity}× ${item.name} - ₦${(item.price * item.quantity).toLocaleString()}`)
+        .join('\n');
+      
+      const receiptMessage = `✅ Payment Received\n\n${itemsList}\n\n━━━━━━━━━━━━━━━\nTotal Paid: ₦${orderData.total?.toLocaleString()}\nPayment Method: ${selectedRequest.metadata?.payment_info?.location || 'Cash'}\nDate: ${new Date().toLocaleString()}\n\nThank you for your payment! Your receipt has been recorded.`;
+
+      const { error: messageError } = await supabase
+        .from('guest_communications')
+        .insert({
+          tenant_id: selectedRequest.tenant_id,
+          guest_id: null,
+          request_id: selectedRequest.id,
+          type: 'message',
+          direction: 'outbound',
+          message: receiptMessage,
+          status: 'sent',
+          metadata: {
+            qr_token: selectedRequest.qr_token,
+            is_payment_confirmation: true,
+            payment_amount: orderData.total,
+            payment_currency: orderData.currency || 'NGN',
+          },
+        });
+
+      if (messageError) {
+        console.error('Failed to send payment confirmation:', messageError);
+        // Don't throw - payment was successful even if message failed
+      }
 
       toast.success(`Payment of ₦${orderData.total?.toLocaleString()} collected successfully!`);
-      setSelectedRequest({ ...selectedRequest, metadata: { ...selectedRequest.metadata, payment_info: { status: 'paid' } } });
+      setSelectedRequest({ 
+        ...selectedRequest, 
+        metadata: { 
+          ...selectedRequest.metadata, 
+          payment_info: { 
+            ...selectedRequest.metadata?.payment_info,
+            status: 'paid' 
+          } 
+        } 
+      });
     } catch (error) {
       console.error('Payment collection error:', error);
       toast.error('Failed to collect payment');
