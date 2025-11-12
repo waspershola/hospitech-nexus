@@ -76,7 +76,9 @@ export function QRRequestDrawer({ open, onOpenChange }: QRRequestDrawerProps) {
 
   // Fetch order details if this is a menu/room service request
   const { data: orderDetails, isLoading: orderLoading } = useOrderDetails(
-    (selectedRequest?.service_category === 'digital_menu' || selectedRequest?.service_category === 'room_service') 
+    (selectedRequest?.service_category === 'digital_menu' || 
+     selectedRequest?.service_category === 'menu_order' || 
+     selectedRequest?.service_category === 'room_service') 
       ? selectedRequest?.id 
       : undefined
   );
@@ -519,7 +521,9 @@ export function QRRequestDrawer({ open, onOpenChange }: QRRequestDrawerProps) {
                     )}
 
                     {/* Order Details Section */}
-                    {(selectedRequest.service_category === 'digital_menu' || selectedRequest.service_category === 'room_service') && (
+                    {(selectedRequest.service_category === 'digital_menu' || 
+                      selectedRequest.service_category === 'menu_order' || 
+                      selectedRequest.service_category === 'room_service') && (
                       <div>
                         {orderLoading ? (
                           <div className="flex items-center justify-center py-4">
