@@ -99,7 +99,7 @@ export function QRMenuBrowser() {
           tenant_id: qrData?.tenant_id,
           qr_token: token,
           type: 'room_service',
-          service_category: 'menu_order',
+          service_category: 'digital_menu',
           assigned_department: 'restaurant',
           note: `Menu order: ${cart.length} items - Total: ₦${subtotal.toFixed(2)}`,
           priority: 'normal',

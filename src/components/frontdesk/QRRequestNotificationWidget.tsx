@@ -23,7 +23,7 @@ export function QRRequestNotificationWidget() {
         .select('*', { count: 'exact', head: true })
         .eq('tenant_id', tenantId)
         .not('qr_token', 'is', null)
-        .in('status', ['pending', 'in_progress']);
+        .eq('status', 'pending');
 
       setQrRequestCount(count || 0);
     };

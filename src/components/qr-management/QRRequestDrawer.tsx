@@ -133,7 +133,11 @@ export function QRRequestDrawer({ open, onOpenChange }: QRRequestDrawerProps) {
     if (open && !selectedRequest && pendingRequests.length > 0) {
       setSelectedRequest(pendingRequests[0]);
     }
-  }, [open, pendingRequests.length]);
+    // Clear selection if selected request is completed or cancelled
+    if (selectedRequest && ['completed', 'cancelled'].includes(selectedRequest.status)) {
+      setSelectedRequest(null);
+    }
+  }, [open, pendingRequests.length, selectedRequest?.status]);
 
   useEffect(() => {
     localStorage.setItem('qr-quick-replies-open', JSON.stringify(quickRepliesOpen));
@@ -244,8 +248,9 @@ export function QRRequestDrawer({ open, onOpenChange }: QRRequestDrawerProps) {
     }
   };
 
-  const handleCollectPayment = async () => {
-    if (!selectedRequest || !orderDetails || orderDetails.type !== 'order') return;
+  // Universal payment handler for all service types
+  const handleCollectPaymentForService = async () => {
+    if (!selectedRequest) return;
     
     if (!selectedLocationId || !selectedProviderId) {
       toast.error('Please select payment location and method');
@@ -254,12 +259,14 @@ export function QRRequestDrawer({ open, onOpenChange }: QRRequestDrawerProps) {
     
     setIsCollectingPayment(true);
     try {
-      const orderData = orderDetails.data as any;
       const { data: { user } } = await supabase.auth.getUser();
       
       // Fetch location and provider details for display
       const selectedLocation = locations.find(l => l.id === selectedLocationId);
       const selectedProvider = providers.find(p => p.id === selectedProviderId);
+      
+      const amount = selectedRequest.metadata?.payment_info?.amount;
+      const currency = selectedRequest.metadata?.payment_info?.currency || 'NGN';
       
       // Update payment metadata with location and provider info
       const { error: updateError } = await supabase
@@ -272,8 +279,8 @@ export function QRRequestDrawer({ open, onOpenChange }: QRRequestDrawerProps) {
               status: 'paid',
               collected_at: new Date().toISOString(),
               collected_by: user?.id,
-              amount: orderData.total,
-              currency: orderData.currency || 'NGN',
+              amount,
+              currency,
               location_id: selectedLocationId,
               location_name: selectedLocation?.name,
               provider_id: selectedProviderId,
@@ -287,12 +294,21 @@ export function QRRequestDrawer({ open, onOpenChange }: QRRequestDrawerProps) {
       if (updateError) throw updateError;
 
       // Send payment confirmation message to guest
-      const items = orderData.items || [];
-      const itemsList = items
-        .map((item: any) => `• ${item.quantity}× ${item.name} - ₦${(item.price * item.quantity).toLocaleString()}`)
-        .join('\n');
+      const serviceName = selectedRequest.service_category?.replace('_', ' ').toUpperCase();
       
-      const receiptMessage = `✅ Payment Received\n\n${itemsList}\n\n━━━━━━━━━━━━━━━\nTotal Paid: ₦${orderData.total?.toLocaleString()}\nPayment Location: ${selectedLocation?.name}\nPayment Method: ${selectedProvider?.name} (${selectedProvider?.type?.toUpperCase()})\nDate: ${new Date().toLocaleString()}\n\nThank you for your payment! Your receipt has been recorded.`;
+      // For menu/room service orders, include item details
+      let receiptMessage = `✅ Payment Received\n\n${serviceName} Payment`;
+      
+      if (orderDetails && orderDetails.type === 'order') {
+        const orderData = orderDetails.data as any;
+        const items = orderData.items || [];
+        const itemsList = items
+          .map((item: any) => `• ${item.quantity}× ${item.name} - ₦${(item.price * item.quantity).toLocaleString()}`)
+          .join('\n');
+        receiptMessage = `✅ Payment Received\n\n${itemsList}\n\n━━━━━━━━━━━━━━━`;
+      }
+      
+      receiptMessage += `\nTotal Paid: ${currency === 'NGN' ? '₦' : currency}${amount?.toLocaleString()}\nPayment Location: ${selectedLocation?.name}\nPayment Method: ${selectedProvider?.name} (${selectedProvider?.type?.toUpperCase()})\nDate: ${new Date().toLocaleString()}\n\nThank you for your payment! Your receipt has been recorded.`;
 
       const { error: messageError } = await supabase
         .from('guest_communications')
@@ -307,19 +323,18 @@ export function QRRequestDrawer({ open, onOpenChange }: QRRequestDrawerProps) {
           metadata: {
             qr_token: selectedRequest.qr_token,
             is_payment_confirmation: true,
-            payment_amount: orderData.total,
-            payment_currency: orderData.currency || 'NGN',
+            payment_amount: amount,
+            payment_currency: currency,
           },
         });
 
       if (messageError) {
         console.error('Failed to send payment confirmation:', messageError);
-        // Don't throw - payment was successful even if message failed
       }
 
-      toast.success(`Payment of ₦${orderData.total?.toLocaleString()} collected successfully!`);
+      toast.success(`Payment of ${currency === 'NGN' ? '₦' : currency}${amount?.toLocaleString()} collected successfully!`);
       
-      // Update local state with payment info
+      // Update local state
       setSelectedRequest({ 
         ...selectedRequest, 
         metadata: { 
@@ -475,7 +490,7 @@ export function QRRequestDrawer({ open, onOpenChange }: QRRequestDrawerProps) {
                 </div>
 
                 {/* SCROLLABLE CONTENT AREA - Everything else goes here */}
-                <ScrollArea className="flex-1">
+                <ScrollArea className="flex-1 max-h-[calc(100vh-300px)]">
                   <div className="p-4 space-y-4">
                     {/* Guest Note */}
                     {selectedRequest.note && (
@@ -605,7 +620,7 @@ export function QRRequestDrawer({ open, onOpenChange }: QRRequestDrawerProps) {
                                   <Button 
                                     className="w-full gap-2" 
                                     variant="default"
-                                    onClick={handleCollectPayment}
+                                    onClick={handleCollectPaymentForService}
                                     disabled={isCollectingPayment || !selectedLocationId || !selectedProviderId}
                                   >
                                     {isCollectingPayment ? (
@@ -775,7 +790,7 @@ export function QRRequestDrawer({ open, onOpenChange }: QRRequestDrawerProps) {
                         <Button 
                           className="w-full gap-2" 
                           variant="default"
-                          onClick={handleCollectPayment}
+                          onClick={handleCollectPaymentForService}
                           disabled={isCollectingPayment || !selectedLocationId || !selectedProviderId}
                         >
                           {isCollectingPayment ? (
@@ -785,6 +800,142 @@ export function QRRequestDrawer({ open, onOpenChange }: QRRequestDrawerProps) {
                               <rect x="1" y="4" width="22" height="16" rx="2" ry="2"/>
                               <line x1="1" y1="10" x2="23" y2="10"/>
                             </svg>
+                          )}
+                          {isCollectingPayment ? 'Processing...' : `Collect Payment (₦${selectedRequest.metadata.payment_info.amount?.toLocaleString()})`}
+                        </Button>
+                      </div>
+                    )}
+
+                    {/* Payment Collection for Spa Services */}
+                    {selectedRequest.service_category === 'spa' &&
+                     selectedRequest.metadata?.payment_info?.billable &&
+                     selectedRequest.metadata?.payment_info?.status !== 'paid' && (
+                      <div className="border border-border rounded-lg p-4 space-y-3">
+                        <div className="flex items-center gap-2">
+                          <Sparkles className="h-4 w-4 text-purple-600" />
+                          <span className="font-semibold text-sm">Spa Service Payment</span>
+                        </div>
+                        <Separator />
+                        
+                        <div className="flex justify-between items-center p-3 bg-muted/30 rounded-lg">
+                          <span className="font-medium">Service Total:</span>
+                          <span className="font-bold text-lg text-primary">
+                            ₦{selectedRequest.metadata.payment_info.amount?.toLocaleString()}
+                          </span>
+                        </div>
+
+                        <div className="space-y-3 p-3 bg-muted/30 rounded-lg">
+                          <div className="space-y-2">
+                            <Label className="text-sm font-medium">Payment Location</Label>
+                            <Select value={selectedLocationId || ''} onValueChange={setSelectedLocationId}>
+                              <SelectTrigger>
+                                <SelectValue placeholder="Select payment location" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {locations.filter(l => l.status === 'active').map(location => (
+                                  <SelectItem key={location.id} value={location.id}>
+                                    {location.name} {location.department && `(${location.department.toUpperCase()})`}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          </div>
+
+                          <div className="space-y-2">
+                            <Label className="text-sm font-medium">Payment Method</Label>
+                            <Select value={selectedProviderId || ''} onValueChange={setSelectedProviderId}>
+                              <SelectTrigger>
+                                <SelectValue placeholder="Select payment method" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {providers.filter(p => p.status === 'active').map(provider => (
+                                  <SelectItem key={provider.id} value={provider.id}>
+                                    {provider.name} ({provider.type.toUpperCase()})
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          </div>
+                        </div>
+                        
+                        <Button 
+                          className="w-full gap-2" 
+                          variant="default"
+                          onClick={handleCollectPaymentForService}
+                          disabled={isCollectingPayment || !selectedLocationId || !selectedProviderId}
+                        >
+                          {isCollectingPayment ? (
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                          ) : (
+                            <DollarSign className="h-4 w-4" />
+                          )}
+                          {isCollectingPayment ? 'Processing...' : `Collect Payment (₦${selectedRequest.metadata.payment_info.amount?.toLocaleString()})`}
+                        </Button>
+                      </div>
+                    )}
+
+                    {/* Payment Collection for Laundry Services */}
+                    {selectedRequest.service_category === 'laundry' &&
+                     selectedRequest.metadata?.payment_info?.billable &&
+                     selectedRequest.metadata?.payment_info?.status !== 'paid' && (
+                      <div className="border border-border rounded-lg p-4 space-y-3">
+                        <div className="flex items-center gap-2">
+                          <Shirt className="h-4 w-4 text-blue-600" />
+                          <span className="font-semibold text-sm">Laundry Service Payment</span>
+                        </div>
+                        <Separator />
+                        
+                        <div className="flex justify-between items-center p-3 bg-muted/30 rounded-lg">
+                          <span className="font-medium">Service Total:</span>
+                          <span className="font-bold text-lg text-primary">
+                            ₦{selectedRequest.metadata.payment_info.amount?.toLocaleString()}
+                          </span>
+                        </div>
+
+                        <div className="space-y-3 p-3 bg-muted/30 rounded-lg">
+                          <div className="space-y-2">
+                            <Label className="text-sm font-medium">Payment Location</Label>
+                            <Select value={selectedLocationId || ''} onValueChange={setSelectedLocationId}>
+                              <SelectTrigger>
+                                <SelectValue placeholder="Select payment location" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {locations.filter(l => l.status === 'active').map(location => (
+                                  <SelectItem key={location.id} value={location.id}>
+                                    {location.name} {location.department && `(${location.department.toUpperCase()})`}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          </div>
+
+                          <div className="space-y-2">
+                            <Label className="text-sm font-medium">Payment Method</Label>
+                            <Select value={selectedProviderId || ''} onValueChange={setSelectedProviderId}>
+                              <SelectTrigger>
+                                <SelectValue placeholder="Select payment method" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {providers.filter(p => p.status === 'active').map(provider => (
+                                  <SelectItem key={provider.id} value={provider.id}>
+                                    {provider.name} ({provider.type.toUpperCase()})
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          </div>
+                        </div>
+                        
+                        <Button 
+                          className="w-full gap-2" 
+                          variant="default"
+                          onClick={handleCollectPaymentForService}
+                          disabled={isCollectingPayment || !selectedLocationId || !selectedProviderId}
+                        >
+                          {isCollectingPayment ? (
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                          ) : (
+                            <DollarSign className="h-4 w-4" />
                           )}
                           {isCollectingPayment ? 'Processing...' : `Collect Payment (₦${selectedRequest.metadata.payment_info.amount?.toLocaleString()})`}
                         </Button>
