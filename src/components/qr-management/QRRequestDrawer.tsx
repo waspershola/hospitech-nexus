@@ -28,7 +28,7 @@ export function QRRequestDrawer({ open, onOpenChange }: QRRequestDrawerProps) {
   const [customMessage, setCustomMessage] = useState('');
   const [activeTab, setActiveTab] = useState('pending');
   
-  const { messages, sendMessage, isSending } = useStaffChat(selectedRequest?.id);
+  const { messages, requestContext, sendMessage, isSending } = useStaffChat(selectedRequest?.id);
   
   const { stats: historyStats, isLoading: historyLoading } = useRequestHistory(
     selectedRequest?.room_id || null,
@@ -287,27 +287,26 @@ export function QRRequestDrawer({ open, onOpenChange }: QRRequestDrawerProps) {
                 )}
 
                 <ScrollArea className="flex-1 p-4">
-                  {messages.length > 0 && messages[0].request && (
+                  {requestContext && (
                     <div className="mb-4 p-3 bg-muted/50 border rounded-lg">
                       <div className="flex items-center justify-between mb-2">
                         <div>
                           <p className="text-sm font-medium capitalize">
-                            {messages[0].request.service_category.replace('_', ' ')}
+                            {requestContext.service_category.replace('_', ' ')}
                           </p>
-                          {messages[0].request.room && (
+                          {requestContext.room && (
                             <p className="text-xs text-muted-foreground">
-                              Room {messages[0].request.room.number}
-                              {messages[0].request.room.name && ` - ${messages[0].request.room.name}`}
+                              Room {requestContext.room.number}
                             </p>
                           )}
                         </div>
                         <Badge variant="outline" className="capitalize">
-                          {messages[0].request.status}
+                          {requestContext.status}
                         </Badge>
                       </div>
-                      {messages[0].request.priority && (
+                      {requestContext.priority && (
                         <Badge variant="secondary" className="text-xs">
-                          {messages[0].request.priority} priority
+                          {requestContext.priority} priority
                         </Badge>
                       )}
                     </div>

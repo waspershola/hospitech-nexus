@@ -10,22 +10,38 @@ interface ChatMessage {
   sent_by: string | null;
   sender_name: string;
   created_at: string;
-  request?: {
-    id: string;
-    service_category: string;
-    status: string;
-    room_id: string | null;
-    priority: string;
-    metadata: any;
-    room?: { number: string; name: string };
-  };
+}
+
+interface RequestContext {
+  service_category: string;
+  status: string;
+  room?: { number: string };
+  priority: string;
 }
 
 export function useStaffChat(requestId: string | null) {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const [requestContext, setRequestContext] = useState<RequestContext | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [isSending, setIsSending] = useState(false);
   const { user } = useAuth();
+
+  const fetchRequestContext = useCallback(async () => {
+    if (!requestId) return;
+
+    try {
+      const { data, error } = await supabase
+        .from('requests')
+        .select('service_category, status, priority, room:rooms(number)')
+        .eq('id', requestId)
+        .single();
+
+      if (error) throw error;
+      setRequestContext(data);
+    } catch (err) {
+      console.error('[useStaffChat] Error fetching request context:', err);
+    }
+  }, [requestId]);
 
   const fetchMessages = useCallback(async () => {
     if (!requestId) return;
@@ -34,23 +50,7 @@ export function useStaffChat(requestId: string | null) {
     try {
       const { data, error } = await supabase
         .from('guest_communications')
-        .select(`
-          id,
-          message,
-          direction,
-          sent_by,
-          created_at,
-          metadata,
-          request:requests!inner(
-            id,
-            service_category,
-            status,
-            room_id,
-            priority,
-            metadata,
-            room:rooms(number, name)
-          )
-        `)
+        .select('id, message, direction, sent_by, created_at, metadata')
         .eq('metadata->>request_id', requestId)
         .order('created_at', { ascending: true });
 
@@ -65,7 +65,6 @@ export function useStaffChat(requestId: string | null) {
           ? (msg.metadata?.guest_name || 'Guest')
           : 'Staff',
         created_at: msg.created_at,
-        request: msg.request,
       }));
 
       setMessages(formattedMessages);
@@ -176,8 +175,9 @@ export function useStaffChat(requestId: string | null) {
   useEffect(() => {
     if (requestId) {
       fetchMessages();
+      fetchRequestContext();
     }
-  }, [requestId, fetchMessages]);
+  }, [requestId, fetchMessages, fetchRequestContext]);
 
   // Real-time subscription
   useEffect(() => {
@@ -226,6 +226,7 @@ export function useStaffChat(requestId: string | null) {
 
   return {
     messages,
+    requestContext,
     isLoading,
     isSending,
     sendMessage,
