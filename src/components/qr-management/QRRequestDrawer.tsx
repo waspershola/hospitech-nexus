@@ -5,6 +5,7 @@ import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Textarea } from '@/components/ui/textarea';
+import { Input } from '@/components/ui/input';
 import { Separator } from '@/components/ui/separator';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -25,7 +26,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { 
   MessageSquare, Clock, CheckCircle2, XCircle, AlertCircle, Send,
   User, MapPin, Zap, Loader2, History, TrendingUp, BarChart3, UtensilsCrossed,
-  Calendar, Users, Sparkles, Shirt
+  Calendar, Users, Sparkles, Shirt, DollarSign
 } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -54,6 +55,8 @@ export function QRRequestDrawer({ open, onOpenChange }: QRRequestDrawerProps) {
   const [isCollectingPayment, setIsCollectingPayment] = useState(false);
   const [selectedLocationId, setSelectedLocationId] = useState<string | null>(null);
   const [selectedProviderId, setSelectedProviderId] = useState<string | null>(null);
+  const [adjustmentAmount, setAdjustmentAmount] = useState('');
+  const [isAdjustingAmount, setIsAdjustingAmount] = useState(false);
   const [quickRepliesOpen, setQuickRepliesOpen] = useState(() => {
     const saved = localStorage.getItem('qr-quick-replies-open');
     return saved !== null ? JSON.parse(saved) : false;
@@ -184,6 +187,60 @@ export function QRRequestDrawer({ open, onOpenChange }: QRRequestDrawerProps) {
       }
     } catch (error) {
       toast.error('Failed to send message');
+    }
+  };
+
+  const handleAdjustAmount = async () => {
+    if (!selectedRequest || !adjustmentAmount) {
+      toast.error('Please enter a valid amount');
+      return;
+    }
+
+    const amount = parseFloat(adjustmentAmount);
+    if (isNaN(amount) || amount <= 0) {
+      toast.error('Please enter a valid positive amount');
+      return;
+    }
+
+    setIsAdjustingAmount(true);
+    try {
+      const { error } = await supabase
+        .from('requests')
+        .update({
+          metadata: {
+            ...selectedRequest.metadata,
+            payment_info: {
+              ...selectedRequest.metadata?.payment_info,
+              amount,
+              adjusted_at: new Date().toISOString(),
+            },
+          },
+        })
+        .eq('id', selectedRequest.id);
+
+      if (error) throw error;
+
+      toast.success(`Amount set to ₦${amount.toLocaleString()}`);
+      
+      // Update local state
+      setSelectedRequest({
+        ...selectedRequest,
+        metadata: {
+          ...selectedRequest.metadata,
+          payment_info: {
+            ...selectedRequest.metadata?.payment_info,
+            amount,
+            adjusted_at: new Date().toISOString(),
+          },
+        },
+      });
+      
+      setAdjustmentAmount('');
+    } catch (error) {
+      console.error('Amount adjustment error:', error);
+      toast.error('Failed to adjust amount');
+    } finally {
+      setIsAdjustingAmount(false);
     }
   };
 
@@ -594,12 +651,166 @@ export function QRRequestDrawer({ open, onOpenChange }: QRRequestDrawerProps) {
                     {/* Payment Info */}
                     <RequestPaymentInfo request={selectedRequest} />
                     
+                    {/* Amount Adjustment for Dining Reservations */}
+                    {selectedRequest.service_category === 'dining_reservation' &&
+                     selectedRequest.metadata?.payment_info?.billable &&
+                     selectedRequest.metadata?.payment_info?.amount === null &&
+                     selectedRequest.metadata?.payment_info?.status !== 'paid' && (
+                      <div className="border border-border rounded-lg p-4 space-y-3 bg-amber-500/5">
+                        <div className="flex items-center gap-2">
+                          <DollarSign className="h-4 w-4 text-amber-600" />
+                          <span className="font-semibold text-sm">Set Final Bill Amount</span>
+                          <Badge variant="outline" className="ml-auto text-xs">
+                            Required before payment
+                          </Badge>
+                        </div>
+                        <Separator />
+                        <div className="space-y-2">
+                          <Label htmlFor="amount-adjustment" className="text-sm">
+                            Final Bill Amount (₦)
+                          </Label>
+                          <div className="flex gap-2">
+                            <input
+                              id="amount-adjustment"
+                              type="number"
+                              min="0"
+                              step="0.01"
+                              placeholder="Enter amount"
+                              value={adjustmentAmount}
+                              onChange={(e) => setAdjustmentAmount(e.target.value)}
+                              className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
+                            />
+                            <Button
+                              onClick={handleAdjustAmount}
+                              disabled={isAdjustingAmount || !adjustmentAmount}
+                              className="gap-2"
+                            >
+                              {isAdjustingAmount ? (
+                                <Loader2 className="h-4 w-4 animate-spin" />
+                              ) : (
+                                <DollarSign className="h-4 w-4" />
+                              )}
+                              {isAdjustingAmount ? 'Setting...' : 'Set Amount'}
+                            </Button>
+                          </div>
+                          <p className="text-xs text-muted-foreground">
+                            Enter the final bill amount after the meal is completed to enable payment collection.
+                          </p>
+                        </div>
+                      </div>
+                    )}
+                    
                     {/* Payment History Timeline */}
                     {selectedRequest.metadata?.payment_info && (
                       <PaymentHistoryTimeline 
                         request={selectedRequest}
                         paymentInfo={selectedRequest.metadata.payment_info}
                       />
+                    )}
+
+                    {/* Payment Collection for Dining Reservations (after amount is set) */}
+                    {selectedRequest.service_category === 'dining_reservation' &&
+                     selectedRequest.metadata?.payment_info?.billable &&
+                     selectedRequest.metadata?.payment_info?.amount !== null &&
+                     selectedRequest.metadata?.payment_info?.status !== 'paid' && (
+                      <div className="border border-border rounded-lg p-4 space-y-3">
+                        <div className="flex items-center gap-2">
+                          <DollarSign className="h-4 w-4 text-primary" />
+                          <span className="font-semibold text-sm">Payment Collection</span>
+                        </div>
+                        <Separator />
+                        
+                        <div className="flex justify-between items-center p-3 bg-muted/30 rounded-lg">
+                          <span className="font-medium">Total Bill:</span>
+                          <span className="font-bold text-lg text-primary">
+                            ₦{selectedRequest.metadata.payment_info.amount?.toLocaleString()}
+                          </span>
+                        </div>
+
+                        <div className="space-y-3 p-3 bg-muted/30 rounded-lg">
+                          <div className="space-y-2">
+                            <Label className="text-sm font-medium">Payment Location</Label>
+                            <Select 
+                              value={selectedLocationId || ''} 
+                              onValueChange={setSelectedLocationId}
+                            >
+                              <SelectTrigger>
+                                <SelectValue placeholder="Select payment location" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {locations
+                                  .filter(l => l.status === 'active')
+                                  .map(location => (
+                                    <SelectItem key={location.id} value={location.id}>
+                                      {location.name}
+                                      {location.department && ` (${location.department.toUpperCase()})`}
+                                    </SelectItem>
+                                  ))}
+                              </SelectContent>
+                            </Select>
+                          </div>
+
+                          <div className="space-y-2">
+                            <Label className="text-sm font-medium">Payment Method</Label>
+                            <Select 
+                              value={selectedProviderId || ''} 
+                              onValueChange={setSelectedProviderId}
+                            >
+                              <SelectTrigger>
+                                <SelectValue placeholder="Select payment method" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {providers
+                                  .filter(p => p.status === 'active')
+                                  .map(provider => (
+                                    <SelectItem key={provider.id} value={provider.id}>
+                                      {provider.name} ({provider.type.toUpperCase()})
+                                    </SelectItem>
+                                  ))}
+                              </SelectContent>
+                            </Select>
+                          </div>
+                        </div>
+                        
+                        <Button 
+                          className="w-full gap-2" 
+                          variant="default"
+                          onClick={handleCollectPayment}
+                          disabled={isCollectingPayment || !selectedLocationId || !selectedProviderId}
+                        >
+                          {isCollectingPayment ? (
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                          ) : (
+                            <svg className="h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                              <rect x="1" y="4" width="22" height="16" rx="2" ry="2"/>
+                              <line x1="1" y1="10" x2="23" y2="10"/>
+                            </svg>
+                          )}
+                          {isCollectingPayment ? 'Processing...' : `Collect Payment (₦${selectedRequest.metadata.payment_info.amount?.toLocaleString()})`}
+                        </Button>
+                      </div>
+                    )}
+
+                    {/* Payment Collected Confirmation (for all services) */}
+                    {selectedRequest.metadata?.payment_info?.status === 'paid' &&
+                     selectedRequest.service_category !== 'digital_menu' &&
+                     selectedRequest.service_category !== 'room_service' && (
+                      <div className="space-y-2 p-3 bg-green-500/10 rounded-lg border border-green-500/20">
+                        <div className="flex items-center gap-2">
+                          <CheckCircle2 className="h-4 w-4 text-green-600" />
+                          <span className="text-sm font-medium text-green-600">Payment Collected</span>
+                        </div>
+                        {selectedRequest.metadata.payment_info.location_name && (
+                          <div className="text-xs text-muted-foreground space-y-1">
+                            <div>Location: {selectedRequest.metadata.payment_info.location_name}</div>
+                            <div>Method: {selectedRequest.metadata.payment_info.provider_name} ({selectedRequest.metadata.payment_info.provider_type?.toUpperCase()})</div>
+                            <div>Amount: ₦{selectedRequest.metadata.payment_info.amount?.toLocaleString()}</div>
+                            {selectedRequest.metadata.payment_info.collected_at && (
+                              <div>Collected: {new Date(selectedRequest.metadata.payment_info.collected_at).toLocaleString()}</div>
+                            )}
+                          </div>
+                        )}
+                      </div>
                     )}
 
                     {/* Request History Stats */}
