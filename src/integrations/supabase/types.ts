@@ -3719,6 +3719,7 @@ export type Database = {
           status: string | null
           tenant_id: string
           type: string
+          updated_at: string | null
         }
         Insert: {
           assigned_department?: string | null
@@ -3736,6 +3737,7 @@ export type Database = {
           status?: string | null
           tenant_id: string
           type: string
+          updated_at?: string | null
         }
         Update: {
           assigned_department?: string | null
@@ -3753,6 +3755,7 @@ export type Database = {
           status?: string | null
           tenant_id?: string
           type?: string
+          updated_at?: string | null
         }
         Relationships: [
           {
