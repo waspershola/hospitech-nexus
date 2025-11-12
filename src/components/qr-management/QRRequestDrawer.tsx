@@ -31,6 +31,7 @@ export function QRRequestDrawer({ open, onOpenChange }: QRRequestDrawerProps) {
   const [selectedRequest, setSelectedRequest] = useState<any>(null);
   const [customMessage, setCustomMessage] = useState('');
   const [activeTab, setActiveTab] = useState('pending');
+  const [isCollectingPayment, setIsCollectingPayment] = useState(false);
   
   const { messages, requestContext, sendMessage, isSending } = useStaffChat(selectedRequest?.id);
   
@@ -126,6 +127,42 @@ export function QRRequestDrawer({ open, onOpenChange }: QRRequestDrawerProps) {
       }
     } catch (error) {
       toast.error('Failed to send message');
+    }
+  };
+
+  const handleCollectPayment = async () => {
+    if (!selectedRequest || !orderDetails || orderDetails.type !== 'order') return;
+    
+    setIsCollectingPayment(true);
+    try {
+      const orderData = orderDetails.data as any;
+      
+      const { error } = await supabase
+        .from('requests')
+        .update({
+          metadata: {
+            ...selectedRequest.metadata,
+            payment_info: {
+              ...selectedRequest.metadata?.payment_info,
+              status: 'paid',
+              collected_at: new Date().toISOString(),
+              collected_by: (await supabase.auth.getUser()).data.user?.id,
+              amount: orderData.total,
+              currency: orderData.currency || 'NGN',
+            }
+          }
+        })
+        .eq('id', selectedRequest.id);
+
+      if (error) throw error;
+
+      toast.success(`Payment of ₦${orderData.total?.toLocaleString()} collected successfully!`);
+      setSelectedRequest({ ...selectedRequest, metadata: { ...selectedRequest.metadata, payment_info: { status: 'paid' } } });
+    } catch (error) {
+      console.error('Payment collection error:', error);
+      toast.error('Failed to collect payment');
+    } finally {
+      setIsCollectingPayment(false);
     }
   };
 
@@ -315,24 +352,33 @@ export function QRRequestDrawer({ open, onOpenChange }: QRRequestDrawerProps) {
                             )}
                             
                             {/* Payment Collection Button */}
-                            {selectedRequest.metadata?.payment_info?.billable && (
+                            {selectedRequest.metadata?.payment_info?.billable && 
+                             selectedRequest.metadata?.payment_info?.status !== 'paid' && (
                               <>
                                 <Separator />
                                 <Button 
                                   className="w-full gap-2" 
                                   variant="default"
-                                  onClick={() => {
-                                    toast.success('Payment collection interface would open here');
-                                    // TODO: Integrate with actual payment system
-                                  }}
+                                  onClick={handleCollectPayment}
+                                  disabled={isCollectingPayment}
                                 >
-                                  <svg className="h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                    <rect x="1" y="4" width="22" height="16" rx="2" ry="2"/>
-                                    <line x1="1" y1="10" x2="23" y2="10"/>
-                                  </svg>
-                                  Collect Payment (₦{orderData.total?.toLocaleString()})
+                                  {isCollectingPayment ? (
+                                    <Loader2 className="h-4 w-4 animate-spin" />
+                                  ) : (
+                                    <svg className="h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                      <rect x="1" y="4" width="22" height="16" rx="2" ry="2"/>
+                                      <line x1="1" y1="10" x2="23" y2="10"/>
+                                    </svg>
+                                  )}
+                                  {isCollectingPayment ? 'Processing...' : `Collect Payment (₦${orderData.total?.toLocaleString()})`}
                                 </Button>
                               </>
+                            )}
+                            {selectedRequest.metadata?.payment_info?.status === 'paid' && (
+                              <div className="flex items-center gap-2 p-3 bg-green-500/10 rounded-lg border border-green-500/20">
+                                <CheckCircle2 className="h-4 w-4 text-green-600" />
+                                <span className="text-sm font-medium text-green-600">Payment Collected</span>
+                              </div>
                             )}
                           </div>
                         );
