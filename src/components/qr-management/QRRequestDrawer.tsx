@@ -11,6 +11,8 @@ import { useStaffChat } from '@/hooks/useStaffChat';
 import { useRequestHistory } from '@/hooks/useRequestHistory';
 import { useOrderDetails } from '@/hooks/useOrderDetails';
 import { RequestPaymentInfo } from './RequestPaymentInfo';
+import { RequestCardSkeleton } from './RequestCardSkeleton';
+import { PaymentHistoryTimeline } from './PaymentHistoryTimeline';
 import { format } from 'date-fns';
 import { useQueries } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
@@ -489,8 +491,16 @@ export function QRRequestDrawer({ open, onOpenChange }: QRRequestDrawerProps) {
                   </div>
                 )}
 
-                <div className="p-4">
+                <div className="p-4 space-y-4">
                   <RequestPaymentInfo request={selectedRequest} />
+                  
+                  {/* Payment History Timeline */}
+                  {selectedRequest.metadata?.payment_info && (
+                    <PaymentHistoryTimeline 
+                      request={selectedRequest}
+                      paymentInfo={selectedRequest.metadata.payment_info}
+                    />
+                  )}
                 </div>
 
                 {selectedRequest.status !== 'completed' && (
