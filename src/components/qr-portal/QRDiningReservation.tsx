@@ -86,7 +86,6 @@ export function QRDiningReservation() {
           assigned_department: 'restaurant',
           note: `Dining Reservation: ${guestName} - ${numberOfGuests} guests on ${reservationDate} at ${reservationTime}${specialRequests ? ` | Requests: ${specialRequests}` : ''}`,
           priority: 'normal',
-          guest_name: guestName,
           status: 'pending',
           metadata: {
             reservation_id: reservation.id,

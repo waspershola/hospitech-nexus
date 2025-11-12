@@ -120,7 +120,6 @@ export function QRMenuBrowser() {
             assigned_department: 'restaurant',
             note: `Order #${order.id.slice(0, 8)}: ${cart.length} items`,
             priority: 'normal',
-            guest_name: 'Guest',
             status: 'pending',
           })
         .select()

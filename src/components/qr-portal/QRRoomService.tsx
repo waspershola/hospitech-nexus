@@ -104,7 +104,6 @@ export function QRRoomService() {
           assigned_department: 'restaurant',
           note: `Room Service Order #${order.id.slice(0, 8)}: ${cart.length} items - ${items.map(i => `${i.quantity}x ${i.name}`).join(', ')}`,
           priority: 'normal',
-          guest_name: 'Guest',
           status: 'pending',
         })
         .select()

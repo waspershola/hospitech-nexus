@@ -80,7 +80,6 @@ export function QRSpaBooking() {
           assigned_department: 'spa',
           note: `Spa Booking: ${selectedService.service_name} (${selectedService.duration})${preferredDateTime ? ` | Preferred: ${preferredDateTime}` : ''}${specialRequests ? ` | Requests: ${specialRequests}` : ''}`,
           priority: 'normal',
-          guest_name: 'Guest',
           status: 'pending',
           metadata: {
             service_id: selectedService.id,
