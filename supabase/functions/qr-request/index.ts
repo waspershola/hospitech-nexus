@@ -273,8 +273,8 @@ serve(async (req) => {
       };
       
       // Add amount if available in request metadata (will be used for fee calculation)
-      if (requestData.metadata?.payment_info?.amount) {
-        paymentInfo.amount = requestData.metadata.payment_info.amount;
+      if ((requestData as any).metadata?.payment_info?.amount) {
+        paymentInfo.amount = (requestData as any).metadata.payment_info.amount;
       }
 
       // Phase 1: Log request payload before insert

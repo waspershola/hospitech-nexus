@@ -128,3 +128,6 @@ verify_jwt = true
 
 [functions.qr-request]
 verify_jwt = false
+
+[functions.platform-fee-billing]
+verify_jwt = false
