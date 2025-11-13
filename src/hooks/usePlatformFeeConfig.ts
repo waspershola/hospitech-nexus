@@ -24,8 +24,11 @@ export interface FeeSummary {
   total_fees: number;
   billed_amount: number;
   pending_amount: number;
-  paid_amount: number;
+  paid_amount: number; // Deprecated - kept for backward compatibility
+  settled_amount: number; // New: Successfully paid fees
+  failed_amount: number; // New: Failed payment attempts
   waived_amount: number;
+  outstanding_amount: number; // New: pending + billed (fees that need payment)
 }
 
 export function usePlatformFeeConfig(tenantId?: string) {
@@ -77,22 +80,33 @@ export function usePlatformFeeConfig(tenantId?: string) {
         total_fees: 0,
         billed_amount: 0,
         pending_amount: 0,
-        paid_amount: 0,
+        paid_amount: 0, // Deprecated
+        settled_amount: 0,
+        failed_amount: 0,
         waived_amount: 0,
+        outstanding_amount: 0,
       };
 
       data.forEach(entry => {
-        summary.total_fees += entry.fee_amount;
+        const amount = Number(entry.fee_amount);
+        summary.total_fees += amount;
+        
         if (entry.status === 'billed') {
-          summary.billed_amount += entry.fee_amount;
+          summary.billed_amount += amount;
         } else if (entry.status === 'pending') {
-          summary.pending_amount += entry.fee_amount;
-        } else if (entry.status === 'paid') {
-          summary.paid_amount += entry.fee_amount;
+          summary.pending_amount += amount;
+        } else if (entry.status === 'settled') {
+          summary.settled_amount += amount;
+          summary.paid_amount += amount; // For backward compatibility
+        } else if (entry.status === 'failed') {
+          summary.failed_amount += amount;
         } else if (entry.status === 'waived') {
-          summary.waived_amount += entry.fee_amount;
+          summary.waived_amount += amount;
         }
       });
+
+      // Calculate outstanding fees (fees that need payment)
+      summary.outstanding_amount = summary.pending_amount + summary.billed_amount;
 
       return summary;
     },
