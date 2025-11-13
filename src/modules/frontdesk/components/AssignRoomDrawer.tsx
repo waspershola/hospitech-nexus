@@ -5,7 +5,10 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useFinancials } from '@/hooks/useFinancials';
 import { useOrganizations } from '@/hooks/useOrganizations';
 import { useOrgLimitValidation } from '@/hooks/useOrgLimitValidation';
+import { usePlatformFee } from '@/hooks/usePlatformFee';
 import { calculateBookingTotal } from '@/lib/finance/tax';
+import { calculatePlatformFee } from '@/lib/finance/platformFee';
+import type { PlatformFeeBreakdown } from '@/lib/finance/platformFee';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from '@/components/ui/sheet';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
@@ -54,6 +57,7 @@ export function AssignRoomDrawer({ open, onClose, roomId, roomNumber }: AssignRo
   const queryClient = useQueryClient();
   const { data: financials } = useFinancials();
   const { organizations = [] } = useOrganizations();
+  const { data: platformFeeConfig } = usePlatformFee(tenantId);
 
   // Form state
   const [guestId, setGuestId] = useState('');
@@ -132,6 +136,25 @@ export function AssignRoomDrawer({ open, onClose, roomId, roomNumber }: AssignRo
   // Calculate pricing
   const pricing = financials ? calculateBookingTotal(baseAmount, financials) : null;
 
+  // Calculate platform fee
+  const platformFeeBreakdown: PlatformFeeBreakdown = platformFeeConfig && pricing
+    ? calculatePlatformFee(pricing.totalAmount, platformFeeConfig, {
+        trialEndDate: null,
+        trialExemptionEnabled: false,
+      })
+    : { baseAmount: pricing?.totalAmount || 0, platformFee: 0, totalAmount: pricing?.totalAmount || 0 };
+
+  const finalTotal = platformFeeBreakdown.totalAmount;
+
+  // Debug platform fee calculation
+  console.log('[AssignRoomDrawer] Platform fee calculation:', {
+    platformFeeConfig,
+    baseAmount: pricing?.totalAmount,
+    platformFeeBreakdown,
+    finalTotal,
+    willDisplay: platformFeeBreakdown.platformFee > 0,
+  });
+
   const assignMutation = useMutation({
     mutationFn: async () => {
       if (!tenantId || !guestId) throw new Error('Missing required data');
@@ -148,13 +171,17 @@ export function AssignRoomDrawer({ open, onClose, roomId, roomNumber }: AssignRo
         room_id: roomId,
         check_in: checkIn,
         check_out: checkOut,
-        total_amount: pricing?.totalAmount || baseAmount,
+        total_amount: finalTotal,
         status: actionType === 'reserve' ? 'reserved' : 'confirmed',
         metadata: {
           tax_breakdown: pricing ? {
             base_amount: pricing.baseAmount,
             vat_amount: pricing.vatAmount,
             service_charge_amount: pricing.serviceAmount,
+          } : null,
+          platform_fee: platformFeeBreakdown.platformFee > 0 ? {
+            fee_amount: platformFeeBreakdown.platformFee,
+            base_amount: platformFeeBreakdown.baseAmount,
           } : null,
         },
       };
@@ -503,10 +530,26 @@ export function AssignRoomDrawer({ open, onClose, roomId, roomNumber }: AssignRo
                       <span>₦{pricing.serviceAmount.toLocaleString()}</span>
                     </div>
                   )}
+                  {platformFeeBreakdown.platformFee > 0 && (
+                    <>
+                      <Separator />
+                      <div className="flex justify-between pt-1 border-t">
+                        <div>
+                          <span className="text-muted-foreground">
+                            Platform Fee {platformFeeConfig?.fee_type === 'percentage' ? `(${platformFeeConfig.booking_fee}%)` : '(Flat)'}
+                          </span>
+                          {platformFeeConfig?.payer === 'guest' && (
+                            <p className="text-xs text-muted-foreground">(charged to guest)</p>
+                          )}
+                        </div>
+                        <span className="text-amber-600 font-medium">+₦{platformFeeBreakdown.platformFee.toLocaleString()}</span>
+                      </div>
+                    </>
+                  )}
                   <Separator />
                   <div className="flex justify-between text-base font-semibold">
                     <span>Total Amount</span>
-                    <span>₦{pricing.totalAmount.toLocaleString()}</span>
+                    <span>₦{finalTotal.toLocaleString()}</span>
                   </div>
                 </div>
               </div>
