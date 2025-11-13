@@ -3,7 +3,17 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sh
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
-import { MessageSquare, Clock, CheckCircle2, XCircle, ChefHat, UtensilsCrossed } from 'lucide-react';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Label } from '@/components/ui/label';
+import { MessageSquare, Clock, CheckCircle2, XCircle, ChefHat, UtensilsCrossed, Loader2 } from 'lucide-react';
+import { useFinanceLocations } from '@/hooks/useFinanceLocations';
+import { useFinanceProviders } from '@/hooks/useFinanceProviders';
+import { usePlatformFee } from '@/hooks/usePlatformFee';
+import { calculateQRPlatformFee } from '@/lib/finance/platformFee';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { supabase } from '@/integrations/supabase/client';
+import { toast } from 'sonner';
+import { useState, useEffect } from 'react';
 
 interface OrderDetailsDrawerProps {
   order: any;
@@ -20,7 +30,83 @@ export function OrderDetailsDrawer({
   onUpdateStatus,
   onOpenChat,
 }: OrderDetailsDrawerProps) {
+  const queryClient = useQueryClient();
+  const { locations } = useFinanceLocations();
+  const { providers } = useFinanceProviders();
+  const { data: platformFeeConfig } = usePlatformFee(order?.tenant_id);
+  const [selectedLocationId, setSelectedLocationId] = useState<string | null>(null);
+  const [selectedProviderId, setSelectedProviderId] = useState<string | null>(null);
+  const [isCollectingPayment, setIsCollectingPayment] = useState(false);
+
+  // Auto-select default location
+  useEffect(() => {
+    if (locations.length > 0 && !selectedLocationId) {
+      const restaurantLocation = locations.find(l => 
+        l.department?.toLowerCase().includes('restaurant') || 
+        l.name.toLowerCase().includes('restaurant')
+      );
+      setSelectedLocationId(restaurantLocation?.id || locations[0].id);
+    }
+  }, [locations, selectedLocationId]);
+
+  // Auto-select default provider
+  useEffect(() => {
+    if (providers.length > 0 && !selectedProviderId) {
+      const defaultProvider = providers.find(p => p.status === 'active');
+      setSelectedProviderId(defaultProvider?.id || providers[0].id);
+    }
+  }, [providers, selectedProviderId]);
+
   if (!order) return null;
+
+  // Calculate platform fee from order total
+  const platformFeeBreakdown = calculateQRPlatformFee(
+    order.subtotal || 0,
+    platformFeeConfig || null
+  );
+
+  const handleCollectPayment = async () => {
+    if (!selectedLocationId || !selectedProviderId) {
+      toast.error('Please select payment location and method');
+      return;
+    }
+
+    setIsCollectingPayment(true);
+    try {
+      const selectedLocation = locations.find(l => l.id === selectedLocationId);
+      const selectedProvider = providers.find(p => p.id === selectedProviderId);
+
+      const { error: requestError } = await supabase
+        .from('requests')
+        .update({
+          metadata: {
+            ...order.metadata,
+            payment_info: {
+              ...order.metadata?.payment_info,
+              status: 'paid',
+              location_id: selectedLocationId,
+              location_name: selectedLocation?.name,
+              provider_id: selectedProviderId,
+              provider_name: selectedProvider?.name,
+              collected_at: new Date().toISOString(),
+            },
+          },
+        })
+        .eq('id', order.request_id);
+
+      if (requestError) throw requestError;
+
+      toast.success('Payment collected successfully');
+      queryClient.invalidateQueries({ queryKey: ['order-details'] });
+      queryClient.invalidateQueries({ queryKey: ['staff-requests'] });
+      onOpenChange(false);
+    } catch (error) {
+      console.error('Payment collection error:', error);
+      toast.error('Failed to collect payment');
+    } finally {
+      setIsCollectingPayment(false);
+    }
+  };
 
   const getStatusConfig = (status: string) => {
     const config: Record<string, { label: string; icon: any; variant: any; next?: string }> = {
@@ -98,6 +184,19 @@ export function OrderDetailsDrawer({
               <span className="text-muted-foreground">Subtotal:</span>
               <span>{order.currency || 'NGN'} {order.subtotal?.toFixed(2)}</span>
             </div>
+            
+            {platformFeeBreakdown.platformFee > 0 && platformFeeConfig?.payer === 'guest' && (
+              <div className="flex justify-between text-sm">
+                <span className="text-muted-foreground">
+                  Platform Fee {platformFeeConfig.fee_type === 'flat' ? '(Flat)' : `(${platformFeeConfig.qr_fee}%)`}
+                  {' (charged to guest)'}
+                </span>
+                <span className="text-muted-foreground">
+                  +{order.currency || 'NGN'} {platformFeeBreakdown.platformFee.toFixed(2)}
+                </span>
+              </div>
+            )}
+            
             <div className="flex justify-between font-bold text-lg">
               <span>Total:</span>
               <span className="text-accent">
@@ -123,17 +222,64 @@ export function OrderDetailsDrawer({
           {order.request_id && order.metadata?.payment_info?.billable && order.metadata?.payment_info?.status !== 'paid' && (
             <>
               <Separator />
-              <div className="space-y-3 p-4 bg-muted/30 rounded-lg">
+              <div className="space-y-4 p-4 bg-muted/30 rounded-lg">
                 <h3 className="font-semibold">Payment Collection</h3>
-                <div className="flex justify-between items-center">
+                <div className="flex justify-between items-center mb-3">
                   <span className="text-sm text-muted-foreground">Amount Due:</span>
                   <span className="text-lg font-bold text-primary">
                     {order.currency || 'NGN'} {order.total?.toFixed(2)}
                   </span>
                 </div>
-                <p className="text-xs text-muted-foreground">
-                  Collect payment using the QR Request Drawer for complete payment tracking and receipt generation.
-                </p>
+
+                <div className="space-y-3">
+                  <div className="space-y-2">
+                    <Label htmlFor="payment-location">Payment Location</Label>
+                    <Select value={selectedLocationId || ''} onValueChange={setSelectedLocationId}>
+                      <SelectTrigger id="payment-location">
+                        <SelectValue placeholder="Select location" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {locations.map(location => (
+                          <SelectItem key={location.id} value={location.id}>
+                            {location.name}
+                            {location.department && ` (${location.department})`}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="payment-method">Payment Method</Label>
+                    <Select value={selectedProviderId || ''} onValueChange={setSelectedProviderId}>
+                      <SelectTrigger id="payment-method">
+                        <SelectValue placeholder="Select method" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {providers.filter(p => p.status === 'active').map(provider => (
+                          <SelectItem key={provider.id} value={provider.id}>
+                            {provider.name} ({provider.type})
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <Button
+                    className="w-full"
+                    onClick={handleCollectPayment}
+                    disabled={isCollectingPayment || !selectedLocationId || !selectedProviderId}
+                  >
+                    {isCollectingPayment ? (
+                      <>
+                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                        Processing...
+                      </>
+                    ) : (
+                      `Collect Payment (${order.currency || 'NGN'} ${order.total?.toFixed(2)})`
+                    )}
+                  </Button>
+                </div>
               </div>
             </>
           )}

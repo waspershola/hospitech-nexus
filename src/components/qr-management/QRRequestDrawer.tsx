@@ -17,6 +17,9 @@ import { useOrderDetails } from '@/hooks/useOrderDetails';
 import { useDashboardDefaults } from '@/hooks/useDashboardDefaults';
 import { useFinanceLocations } from '@/hooks/useFinanceLocations';
 import { useFinanceProviders } from '@/hooks/useFinanceProviders';
+import { usePlatformFee } from '@/hooks/usePlatformFee';
+import { calculateQRPlatformFee } from '@/lib/finance/platformFee';
+import { useAuth } from '@/contexts/AuthContext';
 import { RequestPaymentInfo } from './RequestPaymentInfo';
 import { RequestCardSkeleton } from './RequestCardSkeleton';
 import { PaymentHistoryTimeline } from './PaymentHistoryTimeline';
@@ -48,6 +51,7 @@ const SERVICE_TO_DASHBOARD_MAP: Record<string, string> = {
 };
 
 export function QRRequestDrawer({ open, onOpenChange }: QRRequestDrawerProps) {
+  const { tenantId } = useAuth();
   const { requests, isLoading, updateRequestStatus } = useStaffRequests();
   const [selectedRequest, setSelectedRequest] = useState<any>(null);
   const [customMessage, setCustomMessage] = useState('');
@@ -73,6 +77,7 @@ export function QRRequestDrawer({ open, onOpenChange }: QRRequestDrawerProps) {
   const { getDefaultLocation } = useDashboardDefaults();
   const { locations } = useFinanceLocations();
   const { providers } = useFinanceProviders();
+  const { data: platformFeeConfig } = usePlatformFee(tenantId);
 
   // Fetch order details if this is a menu/room service request
   const { data: orderDetails, isLoading: orderLoading } = useOrderDetails(
@@ -612,11 +617,37 @@ export function QRRequestDrawer({ open, onOpenChange }: QRRequestDrawerProps) {
                                 ))}
                               </div>
                               <Separator />
-                              <div className="flex justify-between items-center">
-                                <span className="font-bold">Total:</span>
-                                <span className="font-bold text-lg text-primary">
-                                  ₦{orderData.total?.toFixed(2)}
-                                </span>
+                              <div className="space-y-2">
+                                <div className="flex justify-between items-center text-sm">
+                                  <span className="text-muted-foreground">Subtotal:</span>
+                                  <span>₦{orderData.subtotal?.toFixed(2)}</span>
+                                </div>
+                                
+                                {(() => {
+                                  const platformFeeBreakdown = calculateQRPlatformFee(
+                                    orderData.subtotal || 0,
+                                    platformFeeConfig || null
+                                  );
+                                  
+                                  return platformFeeBreakdown.platformFee > 0 && platformFeeConfig?.payer === 'guest' ? (
+                                    <div className="flex justify-between items-center text-sm">
+                                      <span className="text-muted-foreground">
+                                        Platform Fee {platformFeeConfig.fee_type === 'flat' ? '(Flat)' : `(${platformFeeConfig.qr_fee}%)`}
+                                        {' (charged to guest)'}
+                                      </span>
+                                      <span className="text-muted-foreground">
+                                        +₦{platformFeeBreakdown.platformFee.toFixed(2)}
+                                      </span>
+                                    </div>
+                                  ) : null;
+                                })()}
+                                
+                                <div className="flex justify-between items-center font-bold text-base pt-2 border-t">
+                                  <span>Total:</span>
+                                  <span className="text-lg text-primary">
+                                    ₦{orderData.total?.toFixed(2)}
+                                  </span>
+                                </div>
                               </div>
                               {orderData.special_instructions && (
                                 <>
