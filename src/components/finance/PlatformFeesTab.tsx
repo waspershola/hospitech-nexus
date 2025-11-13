@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { usePlatformFeeConfig } from '@/hooks/usePlatformFeeConfig';
 import { useAuth } from '@/contexts/AuthContext';
-import { Loader2, TrendingUp, CreditCard, Clock, CheckCircle2, AlertTriangle, XCircle, DollarSign, Receipt } from 'lucide-react';
+import { Loader2, TrendingUp, CreditCard, Clock, CheckCircle2, AlertTriangle, XCircle, DollarSign, Receipt, RefreshCw } from 'lucide-react';
 import { format } from 'date-fns';
 import { DisputeFeeDialog } from './DisputeFeeDialog';
 import { PayPlatformFeesDialog } from './PayPlatformFeesDialog';
@@ -140,7 +140,7 @@ export function PlatformFeesTab() {
             </CardContent>
           </Card>
 
-          <Card>
+          <Card className="border-destructive/20">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">Failed Payments</CardTitle>
               <XCircle className="h-4 w-4 text-destructive" />
@@ -150,6 +150,24 @@ export function PlatformFeesTab() {
                 ₦{summary.failed_amount.toLocaleString()}
               </div>
               <p className="text-xs text-muted-foreground">Payment failures</p>
+              {summary.failed_amount > 0 && (
+                <Button 
+                  size="sm" 
+                  variant="outline"
+                  className="mt-3 w-full border-destructive/20 hover:bg-destructive/10"
+                  onClick={() => {
+                    // Switch to Payment History tab to show failed payments
+                    const tabsList = document.querySelector('[role="tablist"]');
+                    const paymentHistoryTab = Array.from(tabsList?.children || []).find(
+                      el => el.textContent?.includes('Payment History')
+                    ) as HTMLElement;
+                    paymentHistoryTab?.click();
+                  }}
+                >
+                  <RefreshCw className="h-3 w-3 mr-2" />
+                  View & Retry
+                </Button>
+              )}
             </CardContent>
           </Card>
         </div>
