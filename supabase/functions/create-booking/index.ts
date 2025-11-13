@@ -492,7 +492,7 @@ serve(async (req) => {
 
     // If organization booking, create payment and debit wallet
     let payment = null;
-    if (organization_id && finalTotalAmount > 0) {
+    if (organization_id && bookingTotalWithFee > 0) {
       console.log('Creating organization payment for booking:', newBooking.id);
       
       // Get organization wallet - NOW REQUIRED
@@ -538,7 +538,7 @@ serve(async (req) => {
         ? availableCredit - currentBalance  // Can go negative
         : Math.max(0, availableCredit - Math.abs(currentBalance)); // Cannot go negative
       
-      if (finalTotalAmount > effectiveLimit) {
+      if (bookingTotalWithFee > effectiveLimit) {
         // Delete the booking
         await supabaseClient
           .from('bookings')
@@ -549,9 +549,9 @@ serve(async (req) => {
           JSON.stringify({ 
             success: false, 
             error: 'INSUFFICIENT_CREDIT',
-            message: `Organization has insufficient credit. Available: ₦${effectiveLimit.toLocaleString()}, Required: ₦${finalTotalAmount.toLocaleString()}`,
+            message: `Organization has insufficient credit. Available: ₦${effectiveLimit.toLocaleString()}, Required: ₦${bookingTotalWithFee.toLocaleString()}`,
             available_credit: effectiveLimit,
-            required_amount: finalTotalAmount
+            required_amount: bookingTotalWithFee
           }),
           { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 400 }
         );
@@ -566,8 +566,8 @@ serve(async (req) => {
           guest_id,
           organization_id,
           wallet_id: wallet.id,
-          amount: finalTotalAmount,
-          expected_amount: finalTotalAmount,
+          amount: bookingTotalWithFee,
+          expected_amount: bookingTotalWithFee,
           payment_type: 'full',
           method: 'organization_wallet',
           status: 'completed',
@@ -611,7 +611,7 @@ serve(async (req) => {
           tenant_id,
           wallet_id: wallet.id,
           type: 'debit',
-          amount: finalTotalAmount,
+          amount: bookingTotalWithFee,
           payment_id: newPayment.id,
           description: `Booking charge - Room ${room?.number || room_id}`,
           created_by: created_by || guest_id,
@@ -641,7 +641,7 @@ serve(async (req) => {
       
       console.log('Organization wallet debited successfully:', {
         wallet_id: wallet.id,
-        amount: finalTotalAmount,
+        amount: bookingTotalWithFee,
         payment_id: newPayment.id
       });
     }
