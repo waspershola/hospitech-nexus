@@ -690,7 +690,8 @@ export function BookingConfirmation({ bookingData, onComplete }: BookingConfirma
                 </div>
               )}
               
-              {platformFeeBreakdown.platformFee > 0 && platformFeeConfig && (
+              {platformFeeBreakdown.platformFee > 0 && platformFeeConfig && 
+               platformFeeConfig.payer === 'guest' && platformFeeConfig.mode === 'inclusive' && (
                 <div className="flex items-center justify-between text-sm pt-2 border-t border-border">
                   <span className="text-muted-foreground">
                     Platform Fee

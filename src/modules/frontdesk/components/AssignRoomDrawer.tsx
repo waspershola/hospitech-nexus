@@ -530,7 +530,8 @@ export function AssignRoomDrawer({ open, onClose, roomId, roomNumber }: AssignRo
                       <span>₦{pricing.serviceAmount.toLocaleString()}</span>
                     </div>
                   )}
-                  {platformFeeBreakdown.platformFee > 0 && (
+                  {platformFeeBreakdown.platformFee > 0 && 
+                   platformFeeConfig?.payer === 'guest' && platformFeeConfig?.mode === 'inclusive' && (
                     <>
                       <Separator />
                       <div className="flex justify-between pt-1 border-t">
