@@ -54,11 +54,10 @@ export function useInitiatePlatformPayment() {
       // Redirect to payment URL
       console.log('[useInitiatePlatformPayment] Redirecting to:', data.payment_url);
       
-      // Note: In production, this will redirect to actual payment gateway
-      // For now, we just log the URL
-      toast.info('Payment gateway integration pending', {
-        description: 'Phase 5 will integrate actual payment providers',
-      });
+      // Redirect to actual payment gateway
+      if (data.payment_url) {
+        window.location.href = data.payment_url;
+      }
 
       // Invalidate relevant queries
       queryClient.invalidateQueries({ queryKey: ['platform-fee-configs'] });

@@ -5,6 +5,138 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
+// Payment gateway integration functions
+async function initiateFlutterwavePayment(
+  apiKey: string,
+  amount: number,
+  reference: string,
+  tenantEmail: string,
+  tenantName: string
+): Promise<{ payment_url: string; provider: string }> {
+  const response = await fetch('https://api.flutterwave.com/v3/payments', {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${apiKey}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      tx_ref: reference,
+      amount: amount.toString(),
+      currency: 'NGN',
+      redirect_url: `${Deno.env.get('SUPABASE_URL')}/functions/v1/verify-platform-fee-payment`,
+      payment_options: 'card,banktransfer,ussd',
+      customer: {
+        email: tenantEmail,
+        name: tenantName,
+      },
+      customizations: {
+        title: 'Platform Fee Payment',
+        description: `Payment for platform fees - ${reference}`,
+        logo: '',
+      },
+    }),
+  });
+
+  if (!response.ok) {
+    const error = await response.text();
+    console.error('[Flutterwave] Payment initiation failed:', error);
+    throw new Error(`Flutterwave payment initiation failed: ${error}`);
+  }
+
+  const data = await response.json();
+  console.log('[Flutterwave] Payment initiated:', data);
+
+  return {
+    payment_url: data.data.link,
+    provider: 'flutterwave',
+  };
+}
+
+async function initiatePaystackPayment(
+  apiKey: string,
+  amount: number,
+  reference: string,
+  tenantEmail: string
+): Promise<{ payment_url: string; provider: string }> {
+  const response = await fetch('https://api.paystack.co/transaction/initialize', {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${apiKey}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      reference,
+      amount: amount * 100, // Paystack expects amount in kobo
+      email: tenantEmail,
+      currency: 'NGN',
+      callback_url: `${Deno.env.get('SUPABASE_URL')}/functions/v1/verify-platform-fee-payment`,
+      metadata: {
+        payment_type: 'platform_fee',
+        reference,
+      },
+    }),
+  });
+
+  if (!response.ok) {
+    const error = await response.text();
+    console.error('[Paystack] Payment initiation failed:', error);
+    throw new Error(`Paystack payment initiation failed: ${error}`);
+  }
+
+  const data = await response.json();
+  console.log('[Paystack] Payment initiated:', data);
+
+  return {
+    payment_url: data.data.authorization_url,
+    provider: 'paystack',
+  };
+}
+
+async function initiateStripePayment(
+  apiKey: string,
+  amount: number,
+  reference: string,
+  tenantEmail: string,
+  tenantName: string
+): Promise<{ payment_url: string; provider: string }> {
+  const response = await fetch('https://api.stripe.com/v1/checkout/sessions', {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${apiKey}`,
+      'Content-Type': 'application/x-www-form-urlencoded',
+    },
+    body: new URLSearchParams({
+      'payment_method_types[]': 'card',
+      'line_items[0][price_data][currency]': 'ngn',
+      'line_items[0][price_data][unit_amount]': (amount * 100).toString(), // Stripe expects amount in kobo
+      'line_items[0][price_data][product_data][name]': 'Platform Fee Payment',
+      'line_items[0][price_data][product_data][description]': `Payment for platform fees - ${reference}`,
+      'line_items[0][quantity]': '1',
+      'mode': 'payment',
+      'success_url': `${Deno.env.get('SUPABASE_URL')}/functions/v1/verify-platform-fee-payment?session_id={CHECKOUT_SESSION_ID}&reference=${reference}`,
+      'cancel_url': `${Deno.env.get('SUPABASE_URL')}/functions/v1/verify-platform-fee-payment?reference=${reference}&status=cancelled`,
+      'customer_email': tenantEmail,
+      'client_reference_id': reference,
+      'metadata[payment_type]': 'platform_fee',
+      'metadata[reference]': reference,
+    }).toString(),
+  });
+
+  if (!response.ok) {
+    const error = await response.text();
+    console.error('[Stripe] Payment initiation failed:', error);
+    throw new Error(`Stripe payment initiation failed: ${error}`);
+  }
+
+  const data = await response.json();
+  console.log('[Stripe] Payment initiated:', data);
+
+  return {
+    payment_url: data.url,
+    provider: 'stripe',
+  };
+}
+
 interface PaymentInitiationRequest {
   tenant_id: string;
   payment_method_id: string;
@@ -63,17 +195,22 @@ Deno.serve(async (req) => {
     const totalAmount = fees.reduce((sum, fee) => sum + Number(fee.fee_amount), 0);
     console.log('[initiate-platform-fee-payment] Total outstanding:', totalAmount, 'from', fees.length, 'fees');
 
-    // 3. Fetch payment provider details
+     // 3. Fetch payment provider details including API keys
     const { data: provider, error: providerError } = await supabase
       .from('platform_payment_providers')
-      .select('*')
+      .select('id, provider_name, provider_type, api_key_encrypted, api_secret_encrypted')
       .eq('id', payment_method_id)
-      .eq('active', true)
+      .eq('is_active', true)
       .single();
 
     if (providerError || !provider) {
       console.error('[initiate-platform-fee-payment] Error fetching provider:', providerError);
       throw new Error('Payment provider not found or inactive');
+    }
+
+    if (!provider.api_key_encrypted) {
+      console.error('[initiate-platform-fee-payment] Provider missing API key');
+      throw new Error('Payment provider not configured with API key');
     }
 
     console.log('[initiate-platform-fee-payment] Using provider:', provider.provider_type);
@@ -110,20 +247,91 @@ Deno.serve(async (req) => {
     console.log('[initiate-platform-fee-payment] Payment record created:', payment.id);
 
     // 6. Get tenant details for payment metadata
-    const { data: tenant } = await supabase
+    const { data: tenant, error: tenantError } = await supabase
       .from('tenants')
-      .select('name')
+      .select('name, email')
       .eq('id', tenant_id)
       .single();
 
-    // 7. Initiate payment with provider (placeholder - will be implemented in Phase 5)
-    // For now, return mock payment URL
-    const callbackUrl = `${supabaseUrl}/functions/v1/verify-platform-fee-payment`;
-    
-    // TODO: Phase 5 - Integrate actual payment providers
-    const paymentUrl = `https://payment-gateway.example.com/checkout?ref=${paymentReference}&amount=${totalAmount}&callback=${encodeURIComponent(callbackUrl)}`;
+    if (tenantError || !tenant) {
+      console.error('[initiate-platform-fee-payment] Error fetching tenant:', tenantError);
+      throw new Error('Tenant not found');
+    }
 
-    console.log('[initiate-platform-fee-payment] Payment URL generated:', paymentUrl);
+    // 7. Initiate payment with actual payment gateway
+    let paymentUrl: string;
+    let providerType: string;
+
+    try {
+      const tenantEmail = tenant.email || 'noreply@hotel.com';
+      const tenantName = tenant.name;
+
+      switch (provider.provider_type) {
+        case 'flutterwave': {
+          const result = await initiateFlutterwavePayment(
+            provider.api_key_encrypted,
+            totalAmount,
+            paymentReference,
+            tenantEmail,
+            tenantName
+          );
+          paymentUrl = result.payment_url;
+          providerType = result.provider;
+          break;
+        }
+
+        case 'paystack': {
+          const result = await initiatePaystackPayment(
+            provider.api_key_encrypted,
+            totalAmount,
+            paymentReference,
+            tenantEmail
+          );
+          paymentUrl = result.payment_url;
+          providerType = result.provider;
+          break;
+        }
+
+        case 'stripe': {
+          const result = await initiateStripePayment(
+            provider.api_key_encrypted,
+            totalAmount,
+            paymentReference,
+            tenantEmail,
+            tenantName
+          );
+          paymentUrl = result.payment_url;
+          providerType = result.provider;
+          break;
+        }
+
+        default:
+          throw new Error(`Unsupported payment provider: ${provider.provider_type}`);
+      }
+
+      console.log('[initiate-platform-fee-payment] Payment URL generated:', paymentUrl);
+
+      // Update payment record with payment URL
+      const { error: updateError } = await supabase
+        .from('platform_fee_payments')
+        .update({
+          metadata: {
+            fee_count: fees.length,
+            initiated_at: new Date().toISOString(),
+            payment_url: paymentUrl,
+          }
+        })
+        .eq('id', payment.id);
+
+      if (updateError) {
+        console.error('[initiate-platform-fee-payment] Error updating payment record:', updateError);
+      }
+
+    } catch (error) {
+      console.error('[initiate-platform-fee-payment] Payment gateway error:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Payment gateway initialization failed';
+      throw new Error(`Payment gateway error: ${errorMessage}`);
+    }
 
     return new Response(
       JSON.stringify({
@@ -132,7 +340,7 @@ Deno.serve(async (req) => {
         payment_reference: paymentReference,
         payment_url: paymentUrl,
         total_amount: totalAmount,
-        provider: provider.provider_type,
+        provider: providerType,
         fee_count: fees.length
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
