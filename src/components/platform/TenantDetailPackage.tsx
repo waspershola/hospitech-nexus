@@ -2,8 +2,10 @@ import { useState } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { usePlatformPlans } from '@/hooks/usePlatformPlans';
+import { usePlatformTenants } from '@/hooks/usePlatformTenants';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Package } from 'lucide-react';
@@ -16,6 +18,7 @@ interface TenantDetailPackageProps {
 export default function TenantDetailPackage({ tenant }: TenantDetailPackageProps) {
   const queryClient = useQueryClient();
   const { plans, isLoading: plansLoading } = usePlatformPlans();
+  const { endTrial } = usePlatformTenants();
   const [selectedPlanId, setSelectedPlanId] = useState<string>('');
   const [dialogOpen, setDialogOpen] = useState(false);
 
@@ -73,6 +76,11 @@ export default function TenantDetailPackage({ tenant }: TenantDetailPackageProps
           <div>
             <p className="text-sm text-muted-foreground">Plan Name</p>
             <p className="text-2xl font-bold">{tenant.plan?.name || 'No plan assigned'}</p>
+            {tenant.status === 'trial' && tenant.trial_end_date && (
+              <Badge variant="secondary" className="mt-2">
+                Trial ends: {new Date(tenant.trial_end_date).toLocaleDateString()}
+              </Badge>
+            )}
           </div>
 
           {tenant.plan && (
@@ -136,6 +144,17 @@ export default function TenantDetailPackage({ tenant }: TenantDetailPackageProps
               </div>
             </DialogContent>
           </Dialog>
+
+          {tenant.status === 'trial' && (
+            <Button 
+              onClick={() => endTrial.mutate(tenant.id)}
+              disabled={endTrial.isPending}
+              variant="default"
+              className="w-full mt-2"
+            >
+              {endTrial.isPending ? 'Activating...' : 'End Trial & Activate Plan'}
+            </Button>
+          )}
         </CardContent>
       </Card>
 

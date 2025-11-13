@@ -173,6 +173,31 @@ export function usePlatformTenants() {
     },
   });
 
+  const endTrial = useMutation({
+    mutationFn: async (tenantId: string) => {
+      const { data, error } = await supabase
+        .from('platform_tenants')
+        .update({ 
+          status: 'active',
+          trial_end_date: new Date().toISOString()
+        })
+        .eq('id', tenantId)
+        .select()
+        .single();
+
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['platform-tenants'] });
+      queryClient.invalidateQueries({ queryKey: ['platform-tenant'] });
+      toast.success('Trial ended - Plan activated');
+    },
+    onError: (error: any) => {
+      toast.error(error.message || 'Failed to end trial');
+    },
+  });
+
   const deleteTenant = useMutation({
     mutationFn: async (tenantId: string) => {
       const { data, error } = await supabase.functions.invoke('tenant-management', {
@@ -279,6 +304,7 @@ export function usePlatformTenants() {
     updateTenantPlan,
     suspendTenant,
     activateTenant,
+    endTrial,
     deleteTenant,
     assignProvider,
     addCredits,
