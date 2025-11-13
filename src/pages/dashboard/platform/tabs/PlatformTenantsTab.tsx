@@ -392,7 +392,7 @@ export function PlatformTenantsTab() {
                 <div className="flex justify-between items-start">
                   <div className="flex-1">
                     <div className="flex items-center gap-2 mb-1">
-                      <CardTitle>{tenant.domain || 'Unnamed Tenant'}</CardTitle>
+                      <CardTitle>{tenant.tenant?.name || tenant.domain || 'Unnamed Tenant'}</CardTitle>
                       <TooltipProvider>
                         <Tooltip>
                           <TooltipTrigger asChild>
@@ -464,7 +464,7 @@ export function PlatformTenantsTab() {
                       <DropdownMenuContent align="end">
                         <DropdownMenuLabel>Quick Actions</DropdownMenuLabel>
                         <DropdownMenuItem onClick={() => {
-                          setFeeConfigTenant({ id: tenant.id, name: tenant.domain || 'Unnamed Tenant' });
+                          setFeeConfigTenant({ id: tenant.id, name: tenant.tenant?.name || tenant.domain || 'Unnamed Tenant' });
                           setIsFeeConfigOpen(true);
                         }}>
                           <DollarSign className="h-4 w-4 mr-2" />
