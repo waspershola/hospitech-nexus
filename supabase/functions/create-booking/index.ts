@@ -70,26 +70,37 @@ async function applyPlatformFee(
       }
     }
     
-    // Only extract fee if guest pays (inclusive mode)
-    // Property-pays fees are not included in total_amount_from_frontend
-    if (feeConfig.payer !== 'guest' || feeConfig.mode !== 'inclusive') {
-      console.log('[platform-fee] Property pays or exclusive mode - no extraction needed');
-      return { applied: false, fee_amount: 0, base_amount: total_amount_from_frontend };
-    }
-    
-    // Reverse-calculate the fee from the total
-    // For percentage: base = total / (1 + rate/100), fee = total - base
-    // For flat: base = total - fee_rate, fee = fee_rate
+    // Calculate fee based on payer mode
     let baseAmount: number;
     let feeAmount: number;
     
-    if (feeConfig.fee_type === 'percentage') {
-      baseAmount = total_amount_from_frontend / (1 + feeConfig.booking_fee / 100);
-      feeAmount = total_amount_from_frontend - baseAmount;
+    if (feeConfig.payer === 'guest' && feeConfig.mode === 'inclusive') {
+      // Guest pays, fee was added to total by frontend - extract it
+      console.log('[platform-fee] Guest-pays inclusive mode - extracting fee from total');
+      if (feeConfig.fee_type === 'percentage') {
+        // total = base * (1 + rate/100)
+        // base = total / (1 + rate/100)
+        baseAmount = total_amount_from_frontend / (1 + feeConfig.booking_fee / 100);
+        feeAmount = total_amount_from_frontend - baseAmount;
+      } else {
+        // Flat fee
+        feeAmount = feeConfig.booking_fee;
+        baseAmount = total_amount_from_frontend - feeAmount;
+      }
+    } else if (feeConfig.payer === 'property' && feeConfig.mode === 'exclusive') {
+      // Property pays, fee deducted from their revenue
+      // Guest pays original amount (no fee added by frontend)
+      console.log('[platform-fee] Property-pays exclusive mode - calculating fee from base');
+      baseAmount = total_amount_from_frontend;
+      if (feeConfig.fee_type === 'percentage') {
+        feeAmount = total_amount_from_frontend * (feeConfig.booking_fee / 100);
+      } else {
+        feeAmount = feeConfig.booking_fee;
+      }
     } else {
-      // Flat fee
-      feeAmount = feeConfig.booking_fee;
-      baseAmount = total_amount_from_frontend - feeAmount;
+      // No valid payer configuration
+      console.log('[platform-fee] Invalid payer/mode configuration');
+      return { applied: false, fee_amount: 0, base_amount: total_amount_from_frontend };
     }
     
     // Record in ledger with extracted amounts
