@@ -1,9 +1,140 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.3';
+import * as crypto from 'https://deno.land/std@0.177.0/crypto/mod.ts';
+import { Resend } from 'https://esm.sh/resend@2.0.0';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
+
+const resend = new Resend(Deno.env.get('RESEND_API_KEY'));
+
+// Helper function to send payment notifications
+async function sendPaymentNotification({
+  tenant_id,
+  payment_reference,
+  amount,
+  status,
+  receipt_url,
+  provider,
+  retry_available = false,
+}: {
+  tenant_id: string;
+  payment_reference: string;
+  amount: number;
+  status: 'successful' | 'failed';
+  receipt_url?: string;
+  provider: string;
+  retry_available?: boolean;
+}) {
+  const supabase = createClient(
+    Deno.env.get('SUPABASE_URL') ?? '',
+    Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
+  );
+
+  // Fetch tenant details
+  const { data: tenant, error: tenantError } = await supabase
+    .from('tenants')
+    .select('name, contact_email, contact_phone')
+    .eq('id', tenant_id)
+    .single();
+
+  if (tenantError || !tenant) {
+    console.error('Failed to fetch tenant details:', tenantError);
+    return;
+  }
+
+  const formattedAmount = `₦${amount.toLocaleString()}`;
+  
+  // Send email notification
+  if (tenant.contact_email) {
+    try {
+      const emailContent = status === 'successful'
+        ? {
+            subject: `✅ Platform Fee Payment Successful - ${payment_reference}`,
+            html: `
+              <h2>Payment Successful</h2>
+              <p>Dear ${tenant.name},</p>
+              <p>Your platform fee payment has been successfully processed.</p>
+              <ul>
+                <li><strong>Payment Reference:</strong> ${payment_reference}</li>
+                <li><strong>Amount Paid:</strong> ${formattedAmount}</li>
+                <li><strong>Payment Provider:</strong> ${provider}</li>
+                <li><strong>Status:</strong> Settled</li>
+              </ul>
+              ${receipt_url ? `<p><a href="${receipt_url}" style="background: #10b981; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; display: inline-block;">Download Receipt</a></p>` : ''}
+              <p>Your fees have been settled and recorded in your Finance Center.</p>
+              <p>Thank you for your payment!</p>
+              <hr>
+              <p style="color: #666; font-size: 12px;">This is an automated notification from your platform fee management system.</p>
+            `,
+          }
+        : {
+            subject: `❌ Platform Fee Payment Failed - ${payment_reference}`,
+            html: `
+              <h2>Payment Failed</h2>
+              <p>Dear ${tenant.name},</p>
+              <p>Unfortunately, your platform fee payment could not be completed.</p>
+              <ul>
+                <li><strong>Payment Reference:</strong> ${payment_reference}</li>
+                <li><strong>Amount:</strong> ${formattedAmount}</li>
+                <li><strong>Payment Provider:</strong> ${provider}</li>
+                <li><strong>Status:</strong> Failed</li>
+              </ul>
+              ${retry_available ? `<p><strong>What to do next:</strong> Please visit your Finance Center to retry the payment with a different method or contact support if you need assistance.</p>` : ''}
+              <p><a href="${Deno.env.get('SUPABASE_URL')?.replace('.supabase.co', '')}/dashboard/finance-center" style="background: #3b82f6; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; display: inline-block;">Go to Finance Center</a></p>
+              <hr>
+              <p style="color: #666; font-size: 12px;">This is an automated notification from your platform fee management system.</p>
+            `,
+          };
+
+      await resend.emails.send({
+        from: 'Platform Fees <noreply@notifications.lovable.app>',
+        to: [tenant.contact_email],
+        ...emailContent,
+      });
+
+      console.log(`Email notification sent to ${tenant.contact_email}`);
+    } catch (emailError) {
+      console.error('Failed to send email notification:', emailError);
+    }
+  }
+
+  // Send SMS notification if phone number available
+  if (tenant.contact_phone) {
+    try {
+      const smsMessage = status === 'successful'
+        ? `Platform Fee Payment SUCCESS: ${formattedAmount} paid via ${provider}. Ref: ${payment_reference}. Receipt available in Finance Center.`
+        : `Platform Fee Payment FAILED: ${formattedAmount} via ${provider}. Ref: ${payment_reference}. Please retry payment in Finance Center.`;
+
+      // Use existing SMS infrastructure if available
+      const { data: smsSettings } = await supabase
+        .from('tenant_sms_settings')
+        .select('*')
+        .eq('tenant_id', tenant_id)
+        .single();
+
+      if (smsSettings?.enabled && smsSettings?.provider) {
+        await supabase.functions.invoke('send-sms', {
+          body: {
+            tenant_id,
+            to: tenant.contact_phone,
+            message: smsMessage,
+            metadata: {
+              type: 'platform_fee_payment',
+              payment_reference,
+              status,
+            },
+          },
+        });
+
+        console.log(`SMS notification sent to ${tenant.contact_phone}`);
+      }
+    } catch (smsError) {
+      console.error('Failed to send SMS notification:', smsError);
+    }
+  }
+}
 
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
@@ -251,10 +382,24 @@ Deno.serve(async (req) => {
 
       // Generate payment receipt
       try {
-        await supabaseAdmin.functions.invoke('generate-payment-receipt', {
+        const { data: receiptData, error: receiptError } = await supabaseAdmin.functions.invoke('generate-payment-receipt', {
           body: { payment_id: payment.id },
         });
-        console.log('[verify-platform-fee-payment] Receipt generation initiated');
+        
+        if (receiptError) throw receiptError;
+        
+        console.log('[verify-platform-fee-payment] Receipt generated for payment:', payment.id);
+        
+        // Send success notification with receipt
+        await sendPaymentNotification({
+          tenant_id: payment.tenant_id,
+          payment_reference: paymentReference,
+          amount: payment.total_amount,
+          status: 'successful',
+          receipt_url: receiptData?.receipt_url,
+          provider: payment.provider,
+        });
+        
       } catch (receiptError) {
         console.error('[verify-platform-fee-payment] Receipt error (non-critical):', receiptError);
       }
@@ -288,6 +433,20 @@ Deno.serve(async (req) => {
             ledger_count: payment.ledger_ids.length,
           },
         });
+      
+      // Send failure notification with retry instructions
+      try {
+        await sendPaymentNotification({
+          tenant_id: payment.tenant_id,
+          payment_reference: paymentReference,
+          amount: payment.total_amount,
+          status: 'failed',
+          provider: payment.provider,
+          retry_available: true,
+        });
+      } catch (notificationError) {
+        console.error('[verify-platform-fee-payment] Failed to send failure notification:', notificationError);
+      }
     }
 
     // For webhook responses, return 200 OK
