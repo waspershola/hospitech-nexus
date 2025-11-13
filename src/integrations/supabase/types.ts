@@ -2603,6 +2603,65 @@ export type Database = {
           },
         ]
       }
+      platform_fee_disputes: {
+        Row: {
+          admin_notes: string | null
+          created_at: string
+          dispute_reason: string
+          id: string
+          ledger_ids: string[]
+          requested_action: string
+          requested_amount: number | null
+          resolution_notes: string | null
+          reviewed_at: string | null
+          reviewed_by: string | null
+          status: string
+          supporting_docs: Json | null
+          tenant_id: string
+          updated_at: string
+        }
+        Insert: {
+          admin_notes?: string | null
+          created_at?: string
+          dispute_reason: string
+          id?: string
+          ledger_ids: string[]
+          requested_action: string
+          requested_amount?: number | null
+          resolution_notes?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          status?: string
+          supporting_docs?: Json | null
+          tenant_id: string
+          updated_at?: string
+        }
+        Update: {
+          admin_notes?: string | null
+          created_at?: string
+          dispute_reason?: string
+          id?: string
+          ledger_ids?: string[]
+          requested_action?: string
+          requested_amount?: number | null
+          resolution_notes?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          status?: string
+          supporting_docs?: Json | null
+          tenant_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "platform_fee_disputes_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       platform_fee_ledger: {
         Row: {
           base_amount: number
