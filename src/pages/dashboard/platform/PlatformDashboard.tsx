@@ -15,7 +15,8 @@ import { PlatformDatabaseCleanupTab } from './tabs/PlatformDatabaseCleanupTab';
 import DeletedTenantsView from '@/components/platform/DeletedTenantsView';
 import { PlatformSMSManagementTab } from './tabs/PlatformSMSManagementTab';
 import { PlatformFeeDisputesTab } from '@/components/platform/PlatformFeeDisputesTab';
-import { Server, Users, ShoppingCart, CreditCard, Shield, MessageSquare, Mail, Flag, Receipt, Trash2, Database, Activity, AlertTriangle } from 'lucide-react';
+import { PlatformFeeRevenueReport } from '@/components/platform/PlatformFeeRevenueReport';
+import { Server, Users, ShoppingCart, CreditCard, Shield, MessageSquare, Mail, Flag, Receipt, Trash2, Database, Activity, AlertTriangle, DollarSign } from 'lucide-react';
 
 export default function PlatformDashboard() {
   const [searchParams] = useSearchParams();
@@ -76,6 +77,10 @@ export default function PlatformDashboard() {
             <Receipt className="h-4 w-4" />
             Billing
           </TabsTrigger>
+          <TabsTrigger value="fee-revenue" className="gap-2">
+            <DollarSign className="h-4 w-4" />
+            Fee Revenue
+          </TabsTrigger>
           <TabsTrigger value="disputes" className="gap-2">
             <AlertTriangle className="h-4 w-4" />
             Fee Disputes
@@ -132,6 +137,10 @@ export default function PlatformDashboard() {
 
         <TabsContent value="billing">
           <PlatformBillingTab />
+        </TabsContent>
+
+        <TabsContent value="fee-revenue">
+          <PlatformFeeRevenueReport />
         </TabsContent>
 
         <TabsContent value="disputes">
