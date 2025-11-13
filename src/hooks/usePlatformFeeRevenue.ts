@@ -47,7 +47,7 @@ export function usePlatformFeeRevenue(startDate?: Date, endDate?: Date) {
         .from('platform_fee_ledger')
         .select(`
           *,
-          tenant:tenants!platform_fee_ledger_tenant_id_fkey(id, name)
+          tenants!inner(id, name)
         `)
         .in('status', ['billed', 'paid', 'settled']);
 
@@ -90,7 +90,7 @@ export function usePlatformFeeRevenue(startDate?: Date, endDate?: Date) {
       const tenantMap = new Map<string, RevenueByTenant>();
       ledgerEntries.forEach(entry => {
         const tenantId = entry.tenant_id;
-        const tenantName = (entry.tenant as any)?.name || 'Unknown';
+        const tenantName = (entry.tenants as any)?.name || 'Unknown Tenant';
         const feeAmount = Number(entry.fee_amount);
         
         if (!tenantMap.has(tenantId)) {
