@@ -275,7 +275,7 @@ serve(async (req) => {
       };
 
       const billableServices = ['restaurant', 'room_service', 'digital_menu', 'menu_order', 'laundry', 'spa'];
-      const paymentInfo: any = {
+      let paymentInfo: any = {
         location: PAYMENT_LOCATION_MAP[requestData.service_category.toLowerCase()] || 'Front Desk',
         status: 'pending',
         currency: 'NGN',
@@ -284,7 +284,40 @@ serve(async (req) => {
       
       // Add amount if available in request metadata (will be used for fee calculation)
       if ((requestData as any).metadata?.payment_info?.amount) {
-        paymentInfo.amount = (requestData as any).metadata.payment_info.amount;
+        paymentInfo.amount = (requestData as any).metadata.payment_info?.amount;
+      }
+
+      // Apply Platform Fee BEFORE creating request if billable
+      let tempRequestId = `temp-qr-${Date.now()}`;
+      if (paymentInfo.billable && paymentInfo.amount) {
+        try {
+          const feeResult = await applyQRPlatformFee(
+            supabase,
+            qr.tenant_id,
+            tempRequestId,
+            requestData.service_category,
+            paymentInfo.amount
+          );
+          
+          // Update payment_info with adjusted amount if fee was applied
+          if (feeResult.applied) {
+            paymentInfo = {
+              ...paymentInfo,
+              base_amount: paymentInfo.amount,
+              amount: feeResult.net_amount,
+              platform_fee: feeResult.fee_amount,
+              fee_applied: true
+            };
+            
+            console.log('[platform-fee] QR payment adjustment BEFORE request creation:', {
+              original: (requestData as any).metadata?.payment_info?.amount,
+              adjusted: feeResult.net_amount,
+              fee: feeResult.fee_amount
+            });
+          }
+        } catch (feeError) {
+          console.error('[platform-fee] Error applying QR fee (non-blocking):', feeError);
+        }
       }
 
       // Phase 1: Log request payload before insert
@@ -316,6 +349,7 @@ serve(async (req) => {
         service_category: requestPayload.service_category,
         priority: requestPayload.priority,
         assigned_department: requestPayload.assigned_department,
+        payment_amount: paymentInfo.amount,
       });
 
       // Create the request
@@ -344,38 +378,18 @@ serve(async (req) => {
 
       console.log('[qr-request] Request created successfully:', newRequest.id);
 
-      // Phase 2: Apply Platform Fee for QR payments if billable
-      if (paymentInfo.billable && paymentInfo.amount) {
+      // Update platform fee ledger with actual request ID
+      if (paymentInfo.fee_applied) {
         try {
-          const feeResult = await applyQRPlatformFee(
-            supabase,
-            qr.tenant_id,
-            newRequest.id,
-            requestData.service_category,
-            paymentInfo.amount
-          );
+          await supabase
+            .from('platform_fee_ledger')
+            .update({ reference_id: newRequest.id })
+            .eq('reference_id', tempRequestId)
+            .eq('tenant_id', qr.tenant_id);
           
-          // Update request metadata with adjusted amount and fee info if guest pays
-          if (feeResult.applied && feeResult.payer === 'guest' && feeResult.mode === 'inclusive') {
-            await supabase
-              .from('requests')
-              .update({
-                metadata: {
-                  ...requestPayload.metadata,
-                  payment_info: {
-                    ...paymentInfo,
-                    amount: feeResult.net_amount,
-                    platform_fee: feeResult.fee_amount,
-                    base_amount: paymentInfo.amount
-                  }
-                }
-              })
-              .eq('id', newRequest.id);
-            
-            console.log('[platform-fee] Updated request with adjusted amount:', feeResult.net_amount);
-          }
-        } catch (feeError) {
-          console.error('[platform-fee] Error applying QR fee (non-blocking):', feeError);
+          console.log('[platform-fee] Updated ledger with request ID:', newRequest.id);
+        } catch (updateError) {
+          console.error('[platform-fee] Error updating ledger with request ID:', updateError);
         }
       }
 

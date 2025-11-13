@@ -405,35 +405,43 @@ serve(async (req) => {
         organization_id: organization_id || null,
         status: 'reserved',
         action_id,
-        metadata: {
-          created_via: 'edge_function',
-          created_at: new Date().toISOString(),
-          nights,
-          base_rate: effectiveRate,
-          tax_breakdown: {
-            base_amount: taxBreakdown.baseAmount,
-            vat_amount: taxBreakdown.vatAmount,
-            service_charge_amount: taxBreakdown.serviceAmount,
-            total_amount: taxBreakdown.totalAmount,
-            vat_rate: financials?.vat_rate || 0,
-            service_charge_rate: financials?.service_charge || 0,
-            vat_inclusive: financials?.vat_inclusive || false,
-            service_charge_inclusive: financials?.service_charge_inclusive || false,
-            vat_applied_on: financials?.vat_applied_on || 'subtotal',
-            rounding: financials?.rounding || 'round',
-          },
-          ...(group_booking ? {
-            group_booking: true,
-            group_id,
-            group_name,
-            group_size,
-            group_leader,
-          } : {}),
-          ...(rate_override ? { rate_override } : {}),
-          ...(addons && addons.length > 0 ? { addons, addons_total: addonsTotal } : {}),
-          ...(special_requests ? { special_requests } : {}),
-          ...(approval_status ? { approval_status } : {}),
-        }
+      metadata: {
+        created_via: 'edge_function',
+        created_at: new Date().toISOString(),
+        nights,
+        base_rate: effectiveRate,
+        tax_breakdown: {
+          base_amount: taxBreakdown.baseAmount,
+          vat_amount: taxBreakdown.vatAmount,
+          service_charge_amount: taxBreakdown.serviceAmount,
+          total_amount: taxBreakdown.totalAmount,
+          vat_rate: financials?.vat_rate || 0,
+          service_charge_rate: financials?.service_charge || 0,
+          vat_inclusive: financials?.vat_inclusive || false,
+          service_charge_inclusive: financials?.service_charge_inclusive || false,
+          vat_applied_on: financials?.vat_applied_on || 'subtotal',
+          rounding: financials?.rounding || 'round',
+        },
+        ...(platformFeeResult.applied && {
+          platform_fee: {
+            base_amount: finalTotalAmount,
+            fee_amount: platformFeeResult.fee_amount,
+            net_amount: platformFeeResult.net_amount,
+            applied: true
+          }
+        }),
+        ...(group_booking ? {
+          group_booking: true,
+          group_id,
+          group_name,
+          group_size,
+          group_leader,
+        } : {}),
+        ...(rate_override ? { rate_override } : {}),
+        ...(addons && addons.length > 0 ? { addons, addons_total: addonsTotal } : {}),
+        ...(special_requests ? { special_requests } : {}),
+        ...(approval_status ? { approval_status } : {}),
+      }
       }])
       .select()
       .single();
