@@ -49,7 +49,7 @@ export function usePlatformFeeRevenue(startDate?: Date, endDate?: Date) {
           *,
           tenant:tenants!platform_fee_ledger_tenant_id_fkey(id, name)
         `)
-        .in('status', ['billed', 'paid']);
+        .in('status', ['billed', 'paid', 'settled']);
 
       if (startDate) {
         query = query.gte('created_at', start.toISOString());
