@@ -4,7 +4,7 @@ import { useQuery, useMutation } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useQRToken } from '@/hooks/useQRToken';
 import { usePlatformFee } from '@/hooks/usePlatformFee';
-import { calculatePlatformFee } from '@/lib/finance/platformFee';
+import { calculateQRPlatformFee } from '@/lib/finance/platformFee';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -192,7 +192,7 @@ export function QRLaundryService() {
   const cartCount = cart.reduce((sum, item) => sum + item.quantity, 0);
 
   // Calculate platform fee
-  const platformFeeBreakdown = calculatePlatformFee(cartTotal, platformFeeConfig || null);
+  const platformFeeBreakdown = calculateQRPlatformFee(cartTotal, platformFeeConfig || null);
   const finalTotal = platformFeeBreakdown.totalAmount;
 
   if (isLoading || !qrData || !qrData.tenant_id) {
