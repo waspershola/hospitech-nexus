@@ -315,7 +315,7 @@ Deno.serve(async (req) => {
 
         case 'paystack': {
           const result = await initiatePaystackPayment(
-            provider.api_key_encrypted,
+            provider.api_secret_encrypted, // Use secret key (sk_live_...) not public key
             totalAmount,
             paymentReference,
             tenantEmail
