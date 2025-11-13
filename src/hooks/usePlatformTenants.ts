@@ -10,7 +10,7 @@ export function usePlatformTenants() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('platform_tenants')
-        .select('*')
+        .select('*, tenant:tenants!platform_tenants_id_fkey(name)')
         .is('deleted_at', null)
         .order('created_at', { ascending: false });
 
