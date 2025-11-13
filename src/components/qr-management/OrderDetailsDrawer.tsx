@@ -96,9 +96,28 @@ export function OrderDetailsDrawer({
 
       if (requestError) throw requestError;
 
+      // Record platform fee in ledger (non-blocking)
+      try {
+        await supabase.functions.invoke('record-platform-fee', {
+          body: {
+            request_id: order.request_id,
+            tenant_id: order.tenant_id,
+            service_category: 'digital_menu',
+            amount: order.total || 0,
+            payment_location: selectedLocation?.name,
+            payment_method: selectedProvider?.name,
+          },
+        });
+      } catch (feeError) {
+        console.error('Platform fee recording error (non-blocking):', feeError);
+        // Don't fail payment collection if fee recording fails
+      }
+
       toast.success('Payment collected successfully');
       queryClient.invalidateQueries({ queryKey: ['order-details'] });
       queryClient.invalidateQueries({ queryKey: ['staff-requests'] });
+      queryClient.invalidateQueries({ queryKey: ['platform-fee-config'] });
+      queryClient.invalidateQueries({ queryKey: ['platform-fee-ledger'] });
       onOpenChange(false);
     } catch (error) {
       console.error('Payment collection error:', error);

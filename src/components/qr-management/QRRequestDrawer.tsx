@@ -24,7 +24,7 @@ import { RequestPaymentInfo } from './RequestPaymentInfo';
 import { RequestCardSkeleton } from './RequestCardSkeleton';
 import { PaymentHistoryTimeline } from './PaymentHistoryTimeline';
 import { format } from 'date-fns';
-import { useQueries } from '@tanstack/react-query';
+import { useQueries, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { 
   MessageSquare, Clock, CheckCircle2, XCircle, AlertCircle, Send,
@@ -52,6 +52,7 @@ const SERVICE_TO_DASHBOARD_MAP: Record<string, string> = {
 
 export function QRRequestDrawer({ open, onOpenChange }: QRRequestDrawerProps) {
   const { tenantId } = useAuth();
+  const queryClient = useQueryClient();
   const { requests, isLoading, updateRequestStatus } = useStaffRequests();
   const [selectedRequest, setSelectedRequest] = useState<any>(null);
   const [customMessage, setCustomMessage] = useState('');
@@ -396,6 +397,25 @@ export function QRRequestDrawer({ open, onOpenChange }: QRRequestDrawerProps) {
       }
 
       console.log('[Payment Collection] Payment collection completed successfully');
+
+      // Record platform fee in ledger (non-blocking)
+      try {
+        await supabase.functions.invoke('record-platform-fee', {
+          body: {
+            request_id: selectedRequest.id,
+            tenant_id: selectedRequest.tenant_id,
+            service_category: selectedRequest.service_category,
+            amount: amount,
+            payment_location: selectedLocation?.name,
+            payment_method: selectedProvider?.name,
+          },
+        });
+        console.log('[Payment Collection] Platform fee recorded successfully');
+      } catch (feeError) {
+        console.error('[Payment Collection] Platform fee recording error (non-blocking):', feeError);
+        // Don't fail payment collection if fee recording fails
+      }
+      
       toast.success(`Payment of ${currency === 'NGN' ? '₦' : currency}${amount?.toLocaleString()} collected successfully!`);
       
       // Update local state
@@ -414,6 +434,10 @@ export function QRRequestDrawer({ open, onOpenChange }: QRRequestDrawerProps) {
           } 
         } 
       });
+      
+      // Invalidate platform fee queries to refresh ledger
+      queryClient.invalidateQueries({ queryKey: ['platform-fee-config'] });
+      queryClient.invalidateQueries({ queryKey: ['platform-fee-ledger'] });
     } catch (error) {
       console.error('Payment collection error:', error);
       toast.error('Failed to collect payment');
