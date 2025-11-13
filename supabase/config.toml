@@ -131,3 +131,9 @@ verify_jwt = false
 
 [functions.platform-fee-billing]
 verify_jwt = false
+
+[functions.process-platform-fee-dispute]
+verify_jwt = true
+
+[functions.waive-platform-fee]
+verify_jwt = true
