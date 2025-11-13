@@ -274,24 +274,30 @@ Deno.serve(async (req) => {
     console.log('[initiate-platform-fee-payment] Payment record created:', payment.id);
 
     // 6. Get tenant details for payment metadata
-    const { data: tenant, error: tenantError } = await supabase
-      .from('tenants')
-      .select('name, email')
+    const { data: platformTenant, error: platformTenantError } = await supabase
+      .from('platform_tenants')
+      .select('owner_email')
       .eq('id', tenant_id)
       .single();
 
-    if (tenantError || !tenant) {
-      console.error('[initiate-platform-fee-payment] Error fetching tenant:', tenantError);
+    if (platformTenantError || !platformTenant) {
+      console.error('[initiate-platform-fee-payment] Error fetching platform tenant:', platformTenantError);
       throw new Error('Tenant not found');
     }
+
+    const { data: tenantInfo } = await supabase
+      .from('tenants')
+      .select('name')
+      .eq('id', tenant_id)
+      .single();
 
     // 7. Initiate payment with actual payment gateway
     let paymentUrl: string;
     let providerType: string;
 
     try {
-      const tenantEmail = tenant.email || 'noreply@hotel.com';
-      const tenantName = tenant.name;
+      const tenantEmail = platformTenant.owner_email || 'noreply@hotel.com';
+      const tenantName = tenantInfo?.name || 'Hotel';
 
       switch (provider.provider_type) {
         case 'flutterwave': {
