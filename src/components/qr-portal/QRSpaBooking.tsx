@@ -4,7 +4,7 @@ import { useQuery, useMutation } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useQRToken } from '@/hooks/useQRToken';
 import { usePlatformFee } from '@/hooks/usePlatformFee';
-import { calculatePlatformFee } from '@/lib/finance/platformFee';
+import { calculateQRPlatformFee } from '@/lib/finance/platformFee';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -145,7 +145,7 @@ export function QRSpaBooking() {
 
   // Calculate platform fee for selected service
   const platformFeeBreakdown = selectedService 
-    ? calculatePlatformFee(selectedService.price, platformFeeConfig || null)
+    ? calculateQRPlatformFee(selectedService.price, platformFeeConfig || null)
     : { baseAmount: 0, platformFee: 0, totalAmount: 0 };
   const finalTotal = platformFeeBreakdown.totalAmount;
 

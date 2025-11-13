@@ -3,6 +3,8 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { useMutation } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useQRToken } from '@/hooks/useQRToken';
+import { usePlatformFee } from '@/hooks/usePlatformFee';
+import { calculateQRPlatformFee } from '@/lib/finance/platformFee';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -15,6 +17,7 @@ export function QRDiningReservation() {
   const { token } = useParams<{ token: string }>();
   const navigate = useNavigate();
   const { qrData } = useQRToken(token);
+  const { data: platformFeeConfig } = usePlatformFee(qrData?.tenant_id);
   const [guestName, setGuestName] = useState('');
   const [guestContact, setGuestContact] = useState('');
   const [guestEmail, setGuestEmail] = useState('');
@@ -22,6 +25,7 @@ export function QRDiningReservation() {
   const [reservationTime, setReservationTime] = useState('');
   const [numberOfGuests, setNumberOfGuests] = useState('2');
   const [specialRequests, setSpecialRequests] = useState('');
+  const [estimatedAmount, setEstimatedAmount] = useState<number | null>(null);
 
   const createReservation = useMutation({
     mutationFn: async () => {
@@ -75,6 +79,13 @@ export function QRDiningReservation() {
 
       console.log('[QRDiningReservation] Reservation created:', reservation.id);
 
+      // Calculate final amount with platform fee if estimated amount provided
+      let finalAmount = estimatedAmount;
+      if (estimatedAmount && estimatedAmount > 0) {
+        const platformFeeBreakdown = calculateQRPlatformFee(estimatedAmount, platformFeeConfig || null);
+        finalAmount = platformFeeBreakdown.totalAmount;
+      }
+
       // Create a request entry for tracking and notifications
       const { data: request, error: requestError } = await supabase
         .from('requests')
@@ -96,10 +107,10 @@ export function QRDiningReservation() {
             number_of_guests: parseInt(numberOfGuests),
             payment_info: {
               billable: true,
-              amount: null,
+              amount: finalAmount, // Staff will adjust after service if not provided
               currency: 'NGN',
               status: 'pending',
-              location: 'Restaurant POS',
+              location: 'Restaurant',
             },
           },
         })
@@ -309,6 +320,70 @@ export function QRDiningReservation() {
                   onChange={(e) => setSpecialRequests(e.target.value)}
                   rows={4}
                 />
+              </div>
+
+              {/* Optional Estimated Amount */}
+              <div className="space-y-3">
+                <Label htmlFor="estimated-amount">Estimated Bill Amount (optional)</Label>
+                <div className="flex gap-2">
+                  <span className="flex items-center px-3 py-2 bg-muted rounded-md">₦</span>
+                  <Input
+                    id="estimated-amount"
+                    type="number"
+                    min="0"
+                    step="100"
+                    placeholder="e.g., 50000"
+                    value={estimatedAmount || ''}
+                    onChange={(e) => setEstimatedAmount(e.target.value ? parseFloat(e.target.value) : null)}
+                  />
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  If you have an estimated bill amount, enter it here. Otherwise, staff will set the amount after your meal.
+                </p>
+
+                {/* Platform Fee Display */}
+                {estimatedAmount && estimatedAmount > 0 && (() => {
+                  const platformFeeBreakdown = calculateQRPlatformFee(estimatedAmount, platformFeeConfig || null);
+                  
+                  return (
+                    <div className="p-3 bg-muted/50 rounded-lg space-y-2 mt-3">
+                      <div className="flex justify-between text-sm">
+                        <span className="text-muted-foreground">Base Amount:</span>
+                        <span>₦{estimatedAmount.toLocaleString()}</span>
+                      </div>
+                      
+                      {platformFeeBreakdown.platformFee > 0 && platformFeeConfig?.payer === 'guest' && (
+                        <>
+                          <div className="flex justify-between text-sm">
+                            <span className="text-muted-foreground">
+                              Platform Fee {platformFeeConfig.fee_type === 'flat' ? '(Flat)' : `(${platformFeeConfig.qr_fee}%)`}
+                              {' (charged to guest)'}
+                            </span>
+                            <span className="text-muted-foreground">
+                              +₦{platformFeeBreakdown.platformFee.toFixed(2)}
+                            </span>
+                          </div>
+                          
+                          <div className="flex justify-between items-center pt-2 border-t font-semibold">
+                            <span>Estimated Total:</span>
+                            <span className="text-lg text-primary">
+                              ₦{platformFeeBreakdown.totalAmount.toLocaleString()}
+                            </span>
+                          </div>
+                        </>
+                      )}
+                      
+                      {(!platformFeeBreakdown.platformFee || platformFeeConfig?.payer !== 'guest') && (
+                        <div className="flex justify-between items-center pt-2 border-t font-semibold">
+                          <span>Estimated Total:</span>
+                          <span className="text-lg text-primary">
+                            ₦{estimatedAmount.toLocaleString()}
+                          </span>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })()}
               </div>
 
               {/* Important Note */}
