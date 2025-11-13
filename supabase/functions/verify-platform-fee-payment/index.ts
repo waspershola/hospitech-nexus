@@ -9,6 +9,27 @@ const corsHeaders = {
 
 const resend = new Resend(Deno.env.get('RESEND_API_KEY'));
 
+// Helper function to verify Paystack transaction via API
+async function verifyPaystackTransaction(secretKey: string, reference: string) {
+  const response = await fetch(`https://api.paystack.co/transaction/verify/${reference}`, {
+    headers: {
+      'Authorization': `Bearer ${secretKey}`,
+    },
+  });
+  
+  const result = await response.json();
+  
+  if (!result.status) {
+    throw new Error(result.message || 'Verification failed');
+  }
+  
+  return {
+    status: result.data.status, // 'success', 'failed', 'abandoned'
+    amount: result.data.amount,
+    reference: result.data.reference,
+  };
+}
+
 // Helper function to send payment notifications
 async function sendPaymentNotification({
   tenant_id,
@@ -217,20 +238,69 @@ Deno.serve(async (req) => {
     } else {
       // Fallback for manual verification or redirect callbacks
       paymentReference = url.searchParams.get('reference') || 
+                        url.searchParams.get('trxref') ||
                         url.searchParams.get('tx_ref') ||
                         payload.payment_reference;
       
-      const statusParam = url.searchParams.get('status') || payload.status;
-      paymentStatus = statusParam === 'successful' || 
-                     statusParam === 'success' || 
-                     statusParam === 'completed'
-        ? 'successful' 
-        : 'failed';
-      
-      console.log('[verify-platform-fee-payment] Manual verification:', { 
-        reference: paymentReference, 
-        status: paymentStatus 
-      });
+      if (!paymentReference) {
+        console.error('[verify-platform-fee-payment] No payment reference in fallback');
+        paymentStatus = 'failed';
+      } else {
+        // Fetch payment record to get provider details for verification
+        const { data: paymentRecord } = await supabaseAdmin
+          .from('platform_fee_payments')
+          .select('payment_method_id, provider')
+          .eq('payment_reference', paymentReference)
+          .single();
+          
+        if (paymentRecord?.provider === 'paystack' && paymentRecord.payment_method_id) {
+          // Get Paystack secret key
+          const { data: provider } = await supabaseAdmin
+            .from('platform_payment_providers')
+            .select('api_secret_encrypted')
+            .eq('id', paymentRecord.payment_method_id)
+            .single();
+            
+          if (provider?.api_secret_encrypted) {
+            try {
+              // Verify with Paystack API
+              const verification = await verifyPaystackTransaction(
+                provider.api_secret_encrypted,
+                paymentReference
+              );
+              
+              paymentStatus = verification.status === 'success' ? 'successful' : 'failed';
+              providerType = 'paystack';
+              
+              console.log('[verify-platform-fee-payment] Paystack API verification:', {
+                reference: paymentReference,
+                status: paymentStatus,
+                apiResponse: verification.status,
+              });
+            } catch (verifyError) {
+              console.error('[verify-platform-fee-payment] Paystack verification failed:', verifyError);
+              paymentStatus = 'failed';
+            }
+          } else {
+            console.error('[verify-platform-fee-payment] Missing Paystack secret key');
+            paymentStatus = 'failed';
+          }
+        } else {
+          // Fallback to URL parameter checking for other providers
+          const statusParam = url.searchParams.get('status') || payload.status;
+          paymentStatus = statusParam === 'successful' || 
+                         statusParam === 'success' || 
+                         statusParam === 'completed'
+            ? 'successful' 
+            : 'failed';
+          
+          console.log('[verify-platform-fee-payment] Manual verification:', { 
+            reference: paymentReference, 
+            status: paymentStatus,
+            provider: paymentRecord?.provider || 'unknown'
+          });
+        }
+      }
     }
 
     if (!paymentReference) {
