@@ -321,9 +321,6 @@ export function FeeConfigModal({ open, onClose, tenantId, tenantName }: FeeConfi
                                     <AlertCircle className="h-4 w-4 text-muted-foreground mt-0.5" />
                                     <div className="text-xs text-muted-foreground">
                                       <div className="font-medium">{entry.waived_reason}</div>
-                                      {entry.waived_at && (
-                                        <div>Waived on {format(new Date(entry.waived_at), 'MMM dd, yyyy')}</div>
-                                      )}
                                     </div>
                                   </div>
                                 )}
