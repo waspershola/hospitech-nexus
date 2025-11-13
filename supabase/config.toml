@@ -146,3 +146,10 @@ verify_jwt = false
 
 [functions.generate-payment-receipt]
 verify_jwt = true
+
+[functions.record-platform-fee]
+verify_jwt = true
+
+[functions.backfill-platform-fees]
+verify_jwt = true
+
