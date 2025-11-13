@@ -12,33 +12,58 @@ export interface PlatformFeeBreakdown {
   platformFee: number;
   totalAmount: number;
   feeConfig?: PlatformFeeConfig | null;
+  exemptReason?: string;
 }
 
 /**
  * Calculate platform fee for bookings
  * @param amount - The amount to calculate fee on (after VAT and service charge)
  * @param feeConfig - Platform fee configuration
+ * @param options - Optional trial exemption parameters
  * @returns Breakdown with base, fee, and total amounts
  */
 export function calculatePlatformFee(
   amount: number,
-  feeConfig: PlatformFeeConfig | null
+  feeConfig: PlatformFeeConfig | null,
+  options?: {
+    trialEndDate?: string | null;
+    trialExemptionEnabled?: boolean;
+  }
 ): PlatformFeeBreakdown {
   // No fee if config is null or inactive
   if (!feeConfig || !feeConfig.active) {
+    console.log('[platform-fee] Config inactive or missing:', { feeConfig });
     return {
       baseAmount: amount,
       platformFee: 0,
       totalAmount: amount,
+      exemptReason: 'Config inactive or missing',
     };
+  }
+
+  // Check trial exemption
+  if (options?.trialExemptionEnabled && options?.trialEndDate) {
+    const trialEnd = new Date(options.trialEndDate);
+    const now = new Date();
+    if (trialEnd > now) {
+      console.log('[platform-fee] Tenant in trial period, fee exempt until:', trialEnd);
+      return {
+        baseAmount: amount,
+        platformFee: 0,
+        totalAmount: amount,
+        exemptReason: `Trial active until ${trialEnd.toLocaleDateString()}`,
+      };
+    }
   }
 
   // Check if applies to bookings
   if (!feeConfig.applies_to?.includes('bookings')) {
+    console.log('[platform-fee] Bookings not in applies_to:', feeConfig.applies_to);
     return {
       baseAmount: amount,
       platformFee: 0,
       totalAmount: amount,
+      exemptReason: 'Bookings not in applies_to',
     };
   }
 
@@ -47,12 +72,26 @@ export function calculatePlatformFee(
     ? amount * (feeConfig.booking_fee / 100)
     : feeConfig.booking_fee;
 
+  console.log('[platform-fee] Calculating:', {
+    amount,
+    fee,
+    payer: feeConfig.payer,
+    mode: feeConfig.mode,
+    fee_type: feeConfig.fee_type,
+    booking_fee: feeConfig.booking_fee,
+  });
+
   // Determine total based on payer mode
   // Guest pays (inclusive): add fee to amount
   // Property pays (exclusive): no change to guest total
   const totalAmount = feeConfig.payer === 'guest' && feeConfig.mode === 'inclusive'
     ? amount + fee
     : amount;
+
+  console.log('[platform-fee] Result:', {
+    totalAmount,
+    willAddToGuest: feeConfig.payer === 'guest' && feeConfig.mode === 'inclusive',
+  });
 
   return {
     baseAmount: amount,

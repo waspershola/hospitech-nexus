@@ -22,6 +22,6 @@ export function usePlatformFee(tenantId: string | null | undefined) {
       return data;
     },
     enabled: !!tenantId,
-    staleTime: 5 * 60 * 1000, // Cache for 5 minutes
+    staleTime: 0, // Force fresh data for testing platform fee display
   });
 }

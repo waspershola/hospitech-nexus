@@ -38,6 +38,12 @@ export function BookingConfirmation({ bookingData, onComplete }: BookingConfirma
   const isGroupBooking = bookingData.isGroupBooking && (bookingData.selectedRoomIds?.length || 0) > 1;
   const [showPayment, setShowPayment] = useState(false);
   const [createdBookings, setCreatedBookings] = useState<Array<{ id: string; guestId: string; amount: number }>>([]);
+
+  // Platform tenant trial status (temporary: no trial exemption since we ended the trial manually)
+  const platformTenant = {
+    trial_end_date: null, // Trial already ended
+    trial_exemption_enabled: false, // Not using trial exemption for now
+  };
   
   // Get the default receipt settings
   const defaultSettings = receiptSettings?.[0];
@@ -338,14 +344,27 @@ export function BookingConfirmation({ bookingData, onComplete }: BookingConfirma
     ? calculateBookingTotal(baseAmount, financials)
     : { baseAmount, vatAmount: 0, serviceAmount: 0, totalAmount: baseAmount };
 
-  // Calculate platform fee on top of tax total
+  // Calculate platform fee on top of tax total with trial exemption check
   const platformFeeBreakdown = calculatePlatformFee(
     taxBreakdown.totalAmount, 
-    platformFeeConfig
+    platformFeeConfig,
+    {
+      trialEndDate: platformTenant?.trial_end_date,
+      trialExemptionEnabled: platformTenant?.trial_exemption_enabled,
+    }
   );
 
   // Final total includes platform fee
   const finalTotal = platformFeeBreakdown.totalAmount;
+
+  console.log('[BookingConfirmation] Platform fee calculation:', {
+    platformFeeConfig,
+    platformTenant,
+    taxTotalAmount: taxBreakdown.totalAmount,
+    platformFeeBreakdown,
+    willDisplay: platformFeeBreakdown.platformFee > 0 && platformFeeConfig && platformFeeConfig.payer === 'guest',
+    exemptReason: platformFeeBreakdown.exemptReason,
+  });
 
   // Fetch selected rooms for group booking display calculation
   const { data: selectedRoomsData } = useQuery({
@@ -380,10 +399,14 @@ export function BookingConfirmation({ bookingData, onComplete }: BookingConfirma
           rateOverride: bookingData.rateOverride,
         });
         
-        // Apply platform fee to group total
+        // Apply platform fee to group total with trial exemption check
         const platformFeeBreakdown = calculatePlatformFee(
           calculation.totalAmount,
-          platformFeeConfig
+          platformFeeConfig,
+          {
+            trialEndDate: platformTenant?.trial_end_date,
+            trialExemptionEnabled: platformTenant?.trial_exemption_enabled,
+          }
         );
         
         return {
