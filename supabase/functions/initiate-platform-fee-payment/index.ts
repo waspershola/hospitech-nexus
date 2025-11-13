@@ -161,12 +161,14 @@ Deno.serve(async (req) => {
       throw new Error('Missing authorization header');
     }
 
-    const { data: requestData, error: parseError } = await req.json().catch(() => ({ data: null, error: 'Invalid JSON' }));
-    if (parseError) {
+    // Parse request body
+    const requestData = await req.json() as PaymentInitiationRequest;
+    
+    if (!requestData) {
       throw new Error('Invalid request body');
     }
 
-    const { tenant_id, payment_method_id, ledger_ids } = requestData as PaymentInitiationRequest;
+    const { tenant_id, payment_method_id, ledger_ids } = requestData;
 
     console.log('[initiate-platform-fee-payment] Starting payment initiation for tenant:', tenant_id);
     if (ledger_ids && ledger_ids.length > 0) {
