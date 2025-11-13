@@ -2799,6 +2799,7 @@ export type Database = {
           billed_at: string | null
           billing_cycle: string | null
           created_at: string | null
+          failed_at: string | null
           fee_amount: number
           fee_type: string | null
           id: string
@@ -2806,9 +2807,11 @@ export type Database = {
           metadata: Json | null
           paid_at: string | null
           payer: string | null
+          payment_id: string | null
           rate: number | null
           reference_id: string
           reference_type: string
+          settled_at: string | null
           status: string | null
           tenant_id: string
           waived_by: string | null
@@ -2819,6 +2822,7 @@ export type Database = {
           billed_at?: string | null
           billing_cycle?: string | null
           created_at?: string | null
+          failed_at?: string | null
           fee_amount: number
           fee_type?: string | null
           id?: string
@@ -2826,9 +2830,11 @@ export type Database = {
           metadata?: Json | null
           paid_at?: string | null
           payer?: string | null
+          payment_id?: string | null
           rate?: number | null
           reference_id: string
           reference_type: string
+          settled_at?: string | null
           status?: string | null
           tenant_id: string
           waived_by?: string | null
@@ -2839,6 +2845,7 @@ export type Database = {
           billed_at?: string | null
           billing_cycle?: string | null
           created_at?: string | null
+          failed_at?: string | null
           fee_amount?: number
           fee_type?: string | null
           id?: string
@@ -2846,9 +2853,11 @@ export type Database = {
           metadata?: Json | null
           paid_at?: string | null
           payer?: string | null
+          payment_id?: string | null
           rate?: number | null
           reference_id?: string
           reference_type?: string
+          settled_at?: string | null
           status?: string | null
           tenant_id?: string
           waived_by?: string | null
@@ -2863,7 +2872,80 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "platform_fee_ledger_payment_id_fkey"
+            columns: ["payment_id"]
+            isOneToOne: false
+            referencedRelation: "platform_fee_payments"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "platform_fee_ledger_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      platform_fee_payments: {
+        Row: {
+          created_at: string | null
+          failed_at: string | null
+          id: string
+          ledger_ids: string[]
+          metadata: Json | null
+          payment_method_id: string | null
+          payment_reference: string
+          provider: string | null
+          provider_response: Json | null
+          settled_at: string | null
+          status: string | null
+          tenant_id: string
+          total_amount: number
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          failed_at?: string | null
+          id?: string
+          ledger_ids: string[]
+          metadata?: Json | null
+          payment_method_id?: string | null
+          payment_reference: string
+          provider?: string | null
+          provider_response?: Json | null
+          settled_at?: string | null
+          status?: string | null
+          tenant_id: string
+          total_amount: number
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          failed_at?: string | null
+          id?: string
+          ledger_ids?: string[]
+          metadata?: Json | null
+          payment_method_id?: string | null
+          payment_reference?: string
+          provider?: string | null
+          provider_response?: Json | null
+          settled_at?: string | null
+          status?: string | null
+          tenant_id?: string
+          total_amount?: number
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "platform_fee_payments_payment_method_id_fkey"
+            columns: ["payment_method_id"]
+            isOneToOne: false
+            referencedRelation: "platform_payment_providers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "platform_fee_payments_tenant_id_fkey"
             columns: ["tenant_id"]
             isOneToOne: false
             referencedRelation: "tenants"
