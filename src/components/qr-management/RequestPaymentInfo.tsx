@@ -33,10 +33,15 @@ export function RequestPaymentInfo({ request }: RequestPaymentInfoProps) {
                 {currency === 'NGN' ? '₦' : currency}{baseAmount.toLocaleString('en-NG', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
               </span>
             </div>
-            <div className="flex justify-between text-sm">
-              <span className="text-muted-foreground">Platform Fee:</span>
+            <div className="flex justify-between text-sm pt-2 border-t border-border">
+              <span className="text-muted-foreground">
+                Platform Fee
+                {paymentInfo.fee_type === 'percentage' 
+                  ? ` (${paymentInfo.rate}%)` 
+                  : ` (Flat)`}
+              </span>
               <span className="text-amber-600">
-                + {currency === 'NGN' ? '₦' : currency}{platformFee.toLocaleString('en-NG', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                +{currency === 'NGN' ? '₦' : currency}{platformFee.toLocaleString('en-NG', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
               </span>
             </div>
             <div className="flex justify-between text-sm pt-2 border-t border-border">

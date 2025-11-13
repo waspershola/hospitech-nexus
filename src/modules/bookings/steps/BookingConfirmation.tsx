@@ -6,8 +6,10 @@ import { useFinancials } from '@/hooks/useFinancials';
 import { usePrintReceipt } from '@/hooks/usePrintReceipt';
 import { useReceiptData } from '@/hooks/useReceiptData';
 import { useReceiptSettings } from '@/hooks/useReceiptSettings';
+import { usePlatformFee } from '@/hooks/usePlatformFee';
 import { calculateBookingTotal } from '@/lib/finance/tax';
 import { calculateGroupBookingTotal } from '@/lib/finance/groupBookingCalculator';
+import { calculatePlatformFee } from '@/lib/finance/platformFee';
 import { differenceInDays } from 'date-fns';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -30,6 +32,7 @@ export function BookingConfirmation({ bookingData, onComplete }: BookingConfirma
   const { tenantId, user } = useAuth();
   const queryClient = useQueryClient();
   const { data: financials } = useFinancials();
+  const { data: platformFeeConfig } = usePlatformFee(tenantId);
   const { print, isPrinting } = usePrintReceipt();
   const { settings: receiptSettings } = useReceiptSettings();
   const isGroupBooking = bookingData.isGroupBooking && (bookingData.selectedRoomIds?.length || 0) > 1;
@@ -143,8 +146,8 @@ export function BookingConfirmation({ bookingData, onComplete }: BookingConfirma
           rateOverride: bookingData.rateOverride,
         });
 
-        finalTotalAmount = calculation.totalAmount;
-        console.log('Group booking final total:', finalTotalAmount, 'with add-ons:', bookingData.selectedAddons);
+        finalTotalAmount = groupDisplayTotal?.totalAmount || calculation.totalAmount;
+        console.log('Group booking final total:', finalTotalAmount, 'with add-ons:', bookingData.selectedAddons, 'platform fee:', groupDisplayTotal?.platformFee);
 
         const numRooms = bookingData.selectedRoomIds.length;
 
@@ -159,7 +162,7 @@ export function BookingConfirmation({ bookingData, onComplete }: BookingConfirma
                 organization_id: bookingData.organizationId,
                 check_in: bookingData.checkIn!.toISOString(),
                 check_out: bookingData.checkOut!.toISOString(),
-                total_amount: finalTotalAmount / numRooms, // Distribute total evenly
+                total_amount: groupDisplayTotal?.totalAmount ? (groupDisplayTotal.totalAmount / numRooms) : (finalTotalAmount / numRooms), // Use platform fee adjusted total
                 action_id: `${actionId}-${roomId}`,
                 department: 'front_desk',
                 created_by: user?.id,
@@ -255,7 +258,7 @@ export function BookingConfirmation({ bookingData, onComplete }: BookingConfirma
           organization_id: bookingData.organizationId,
           check_in: bookingData.checkIn.toISOString(),
           check_out: bookingData.checkOut.toISOString(),
-          total_amount: finalTotalAmount, // Use calculated total
+          total_amount: finalTotal, // Use final total including platform fee
           action_id: actionId,
           department: 'front_desk',
           created_by: user?.id,
@@ -335,6 +338,15 @@ export function BookingConfirmation({ bookingData, onComplete }: BookingConfirma
     ? calculateBookingTotal(baseAmount, financials)
     : { baseAmount, vatAmount: 0, serviceAmount: 0, totalAmount: baseAmount };
 
+  // Calculate platform fee on top of tax total
+  const platformFeeBreakdown = calculatePlatformFee(
+    taxBreakdown.totalAmount, 
+    platformFeeConfig
+  );
+
+  // Final total includes platform fee
+  const finalTotal = platformFeeBreakdown.totalAmount;
+
   // Fetch selected rooms for group booking display calculation
   const { data: selectedRoomsData } = useQuery({
     queryKey: ['selected-rooms', bookingData.selectedRoomIds],
@@ -368,7 +380,17 @@ export function BookingConfirmation({ bookingData, onComplete }: BookingConfirma
           rateOverride: bookingData.rateOverride,
         });
         
-        return calculation;
+        // Apply platform fee to group total
+        const platformFeeBreakdown = calculatePlatformFee(
+          calculation.totalAmount,
+          platformFeeConfig
+        );
+        
+        return {
+          ...calculation,
+          platformFee: platformFeeBreakdown.platformFee,
+          totalAmount: platformFeeBreakdown.totalAmount,
+        };
       })()
     : null;
 
@@ -644,6 +666,23 @@ export function BookingConfirmation({ bookingData, onComplete }: BookingConfirma
                   <span className="font-medium">₦{taxBreakdown.serviceAmount.toFixed(2)}</span>
                 </div>
               )}
+              
+              {platformFeeBreakdown.platformFee > 0 && platformFeeConfig && (
+                <div className="flex items-center justify-between text-sm pt-2 border-t border-border">
+                  <span className="text-muted-foreground">
+                    Platform Fee
+                    {platformFeeConfig.fee_type === 'percentage' 
+                      ? ` (${platformFeeConfig.booking_fee}%)` 
+                      : ` (Flat)`}
+                    {platformFeeConfig.payer === 'guest' && (
+                      <span className="text-xs ml-1 text-amber-600">(charged to guest)</span>
+                    )}
+                  </span>
+                  <span className="font-medium text-amber-600">
+                    +₦{platformFeeBreakdown.platformFee.toFixed(2)}
+                  </span>
+                </div>
+              )}
             </div>
           )}
         </div>
@@ -653,7 +692,7 @@ export function BookingConfirmation({ bookingData, onComplete }: BookingConfirma
         <div className="flex items-center justify-between">
           <span className="text-lg font-semibold">Total Amount:</span>
           <span className="text-2xl font-bold text-primary">
-            ₦{displayTotal.toFixed(2)}
+            ₦{(isGroupBooking ? groupDisplayTotal?.totalAmount || displayTotal : finalTotal).toFixed(2)}
           </span>
         </div>
       </Card>
