@@ -4,19 +4,21 @@ import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { usePlatformFeeRevenue } from '@/hooks/usePlatformFeeRevenue';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend } from 'recharts';
-import { DollarSign, TrendingUp, Receipt, Users } from 'lucide-react';
+import { DollarSign, TrendingUp, Receipt, Users, Database } from 'lucide-react';
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { format } from 'date-fns';
 import { CalendarIcon } from 'lucide-react';
+import { PlatformFeeBackfillDialog } from './PlatformFeeBackfillDialog';
 
 const COLORS = ['hsl(var(--primary))', 'hsl(var(--secondary))'];
 
 export function PlatformFeeRevenueReport() {
   const [startDate, setStartDate] = useState<Date | undefined>();
   const [endDate, setEndDate] = useState<Date | undefined>();
+  const [backfillDialogOpen, setBackfillDialogOpen] = useState(false);
   
   const { data: revenue, isLoading } = usePlatformFeeRevenue(startDate, endDate);
 
@@ -50,8 +52,20 @@ export function PlatformFeeRevenueReport() {
       {/* Date Range Filter */}
       <Card>
         <CardHeader>
-          <CardTitle>Time Period Filter</CardTitle>
-          <CardDescription>Select date range to filter revenue data</CardDescription>
+          <div className="flex items-center justify-between">
+            <div>
+              <CardTitle>Time Period Filter</CardTitle>
+              <CardDescription>Select date range to filter revenue data</CardDescription>
+            </div>
+            <Button
+              variant="outline"
+              onClick={() => setBackfillDialogOpen(true)}
+              className="gap-2"
+            >
+              <Database className="h-4 w-4" />
+              Backfill Fees
+            </Button>
+          </div>
         </CardHeader>
         <CardContent className="flex gap-4">
           <Popover>
@@ -303,6 +317,11 @@ export function PlatformFeeRevenueReport() {
           </Table>
         </CardContent>
       </Card>
+
+      <PlatformFeeBackfillDialog
+        open={backfillDialogOpen}
+        onOpenChange={setBackfillDialogOpen}
+      />
     </div>
   );
 }
