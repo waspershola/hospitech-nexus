@@ -424,7 +424,6 @@ Deno.serve(async (req) => {
           status: 'settled',
           payment_id: payment.id,
           settled_at: now,
-          updated_at: now,
         })
         .in('id', payment.ledger_ids);
 
@@ -481,7 +480,6 @@ Deno.serve(async (req) => {
           status: 'failed',
           payment_id: payment.id,
           failed_at: now,
-          updated_at: now,
         })
         .in('id', payment.ledger_ids);
 
