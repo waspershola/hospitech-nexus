@@ -16,7 +16,8 @@ import DeletedTenantsView from '@/components/platform/DeletedTenantsView';
 import { PlatformSMSManagementTab } from './tabs/PlatformSMSManagementTab';
 import { PlatformFeeDisputesTab } from '@/components/platform/PlatformFeeDisputesTab';
 import { PlatformFeeRevenueReport } from '@/components/platform/PlatformFeeRevenueReport';
-import { Server, Users, ShoppingCart, CreditCard, Shield, MessageSquare, Mail, Flag, Receipt, Trash2, Database, Activity, AlertTriangle, DollarSign } from 'lucide-react';
+import { PlatformFeeAlertsTab } from '@/components/platform/PlatformFeeAlertsTab';
+import { Server, Users, ShoppingCart, CreditCard, Shield, MessageSquare, Mail, Flag, Receipt, Trash2, Database, Activity, AlertTriangle, DollarSign, Bell } from 'lucide-react';
 
 export default function PlatformDashboard() {
   const [searchParams] = useSearchParams();
@@ -81,6 +82,10 @@ export default function PlatformDashboard() {
             <DollarSign className="h-4 w-4" />
             Fee Revenue
           </TabsTrigger>
+          <TabsTrigger value="alerts" className="gap-2">
+            <Bell className="h-4 w-4" />
+            Revenue Alerts
+          </TabsTrigger>
           <TabsTrigger value="disputes" className="gap-2">
             <AlertTriangle className="h-4 w-4" />
             Fee Disputes
@@ -141,6 +146,10 @@ export default function PlatformDashboard() {
 
         <TabsContent value="fee-revenue">
           <PlatformFeeRevenueReport />
+        </TabsContent>
+
+        <TabsContent value="alerts">
+          <PlatformFeeAlertsTab />
         </TabsContent>
 
         <TabsContent value="disputes">

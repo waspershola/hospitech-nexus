@@ -2538,6 +2538,137 @@ export type Database = {
         }
         Relationships: []
       }
+      platform_fee_alert_rules: {
+        Row: {
+          active: boolean
+          comparison_period: string | null
+          created_at: string
+          description: string | null
+          id: string
+          last_checked_at: string | null
+          metric: string
+          name: string
+          period: string
+          tenant_id: string | null
+          threshold_type: string
+          threshold_value: number
+          updated_at: string
+        }
+        Insert: {
+          active?: boolean
+          comparison_period?: string | null
+          created_at?: string
+          description?: string | null
+          id?: string
+          last_checked_at?: string | null
+          metric: string
+          name: string
+          period: string
+          tenant_id?: string | null
+          threshold_type: string
+          threshold_value: number
+          updated_at?: string
+        }
+        Update: {
+          active?: boolean
+          comparison_period?: string | null
+          created_at?: string
+          description?: string | null
+          id?: string
+          last_checked_at?: string | null
+          metric?: string
+          name?: string
+          period?: string
+          tenant_id?: string | null
+          threshold_type?: string
+          threshold_value?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "platform_fee_alert_rules_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      platform_fee_alerts: {
+        Row: {
+          acknowledged: boolean
+          acknowledged_at: string | null
+          acknowledged_by: string | null
+          alert_type: string
+          created_at: string
+          current_value: number
+          expected_value: number | null
+          id: string
+          message: string
+          metadata: Json | null
+          period_end: string
+          period_start: string
+          rule_id: string | null
+          severity: string
+          tenant_id: string | null
+          threshold_value: number | null
+          title: string
+        }
+        Insert: {
+          acknowledged?: boolean
+          acknowledged_at?: string | null
+          acknowledged_by?: string | null
+          alert_type: string
+          created_at?: string
+          current_value: number
+          expected_value?: number | null
+          id?: string
+          message: string
+          metadata?: Json | null
+          period_end: string
+          period_start: string
+          rule_id?: string | null
+          severity: string
+          tenant_id?: string | null
+          threshold_value?: number | null
+          title: string
+        }
+        Update: {
+          acknowledged?: boolean
+          acknowledged_at?: string | null
+          acknowledged_by?: string | null
+          alert_type?: string
+          created_at?: string
+          current_value?: number
+          expected_value?: number | null
+          id?: string
+          message?: string
+          metadata?: Json | null
+          period_end?: string
+          period_start?: string
+          rule_id?: string | null
+          severity?: string
+          tenant_id?: string | null
+          threshold_value?: number | null
+          title?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "platform_fee_alerts_rule_id_fkey"
+            columns: ["rule_id"]
+            isOneToOne: false
+            referencedRelation: "platform_fee_alert_rules"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "platform_fee_alerts_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       platform_fee_configurations: {
         Row: {
           active: boolean | null
