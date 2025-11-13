@@ -48,6 +48,7 @@ export function FeeConfigModal({ open, onClose, tenantId, tenantName }: FeeConfi
         qr_fee: parseFloat(qrFee),
         billing_cycle: billingCycle,
         payer: payer,
+        mode: payer === 'guest' ? 'inclusive' : 'exclusive',
         active: active,
       },
     });
