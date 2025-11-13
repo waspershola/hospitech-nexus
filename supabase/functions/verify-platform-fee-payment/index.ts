@@ -533,8 +533,12 @@ Deno.serve(async (req) => {
       );
     } else {
       // Redirect to tenant dashboard with status
-      const baseUrl = Deno.env.get('SUPABASE_URL')?.replace('https://', 'https://app.') || '';
+      // Use FRONTEND_URL from env, fallback to origin header from request
+      const origin = req.headers.get('origin') || req.headers.get('referer')?.split('/').slice(0, 3).join('/');
+      const baseUrl = Deno.env.get('FRONTEND_URL') || origin || 'https://d308d999-c677-479a-ad94-f22a684dc3e9.lovableproject.com';
       const redirectUrl = `${baseUrl}/dashboard/finance-center?payment=${paymentStatus}&ref=${paymentReference}`;
+      
+      console.log('[verify-platform-fee-payment] Redirecting to:', redirectUrl);
       
       return new Response(null, {
         status: 302,
