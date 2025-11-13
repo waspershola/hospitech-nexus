@@ -33,13 +33,13 @@ async function applyQRPlatformFee(
   request_id: string,
   service_category: string,
   amount: number | null
-): Promise<{applied: boolean; fee_amount: number}> {
+): Promise<{applied: boolean; fee_amount: number; net_amount: number; payer?: string; mode?: string}> {
   try {
     // Only apply fees to billable services with known amounts
     const billableServices = ['digital_menu', 'room_service', 'menu_order', 'laundry', 'spa'];
     if (!billableServices.includes(service_category.toLowerCase()) || !amount) {
       console.log('[platform-fee] Service not billable or no amount:', service_category);
-      return { applied: false, fee_amount: 0 };
+      return { applied: false, fee_amount: 0, net_amount: amount || 0 };
     }
     
     console.log('[platform-fee] Checking QR fee config for tenant:', tenant_id);
@@ -54,12 +54,12 @@ async function applyQRPlatformFee(
     
     if (configError || !feeConfig) {
       console.log('[platform-fee] No active QR fee config');
-      return { applied: false, fee_amount: 0 };
+      return { applied: false, fee_amount: 0, net_amount: amount };
     }
     
     if (!feeConfig.applies_to.includes('qr_payments')) {
       console.log('[platform-fee] QR payments not in applies_to array');
-      return { applied: false, fee_amount: 0 };
+      return { applied: false, fee_amount: 0, net_amount: amount };
     }
     
     // Check trial exemption
@@ -77,7 +77,7 @@ async function applyQRPlatformFee(
         
         if (trialEndDate > new Date()) {
           console.log('[platform-fee] Tenant in trial period, skipping QR fee');
-          return { applied: false, fee_amount: 0 };
+          return { applied: false, fee_amount: 0, net_amount: amount };
         }
       }
     }
@@ -86,6 +86,13 @@ async function applyQRPlatformFee(
     const feeAmount = feeConfig.fee_type === 'percentage'
       ? amount * (feeConfig.qr_fee / 100)
       : feeConfig.qr_fee;
+    
+    // Calculate net amount based on payer and mode
+    const netAmount = feeConfig.payer === 'guest' && feeConfig.mode === 'inclusive'
+      ? amount + feeAmount  // Guest pays: ADD fee to order total
+      : feeConfig.payer === 'property' && feeConfig.mode === 'exclusive'
+        ? amount - feeAmount  // Property pays: DEDUCT from revenue
+        : amount;
     
     // Record in ledger
     const ledgerStatus = feeConfig.billing_cycle === 'realtime' ? 'billed' : 'pending';
@@ -122,14 +129,17 @@ async function applyQRPlatformFee(
       service_category,
       amount,
       fee_amount: feeAmount,
+      net_amount: netAmount,
+      payer: feeConfig.payer,
+      mode: feeConfig.mode,
       billing_cycle: feeConfig.billing_cycle
     });
     
-    return { applied: true, fee_amount: feeAmount };
+    return { applied: true, fee_amount: feeAmount, net_amount: netAmount, payer: feeConfig.payer, mode: feeConfig.mode };
     
   } catch (error) {
     console.error('[platform-fee] Error applying QR fee:', error);
-    return { applied: false, fee_amount: 0 };
+    return { applied: false, fee_amount: 0, net_amount: amount || 0 };
   }
 }
 
@@ -337,13 +347,33 @@ serve(async (req) => {
       // Phase 2: Apply Platform Fee for QR payments if billable
       if (paymentInfo.billable && paymentInfo.amount) {
         try {
-          await applyQRPlatformFee(
+          const feeResult = await applyQRPlatformFee(
             supabase,
             qr.tenant_id,
             newRequest.id,
             requestData.service_category,
             paymentInfo.amount
           );
+          
+          // Update request metadata with adjusted amount and fee info if guest pays
+          if (feeResult.applied && feeResult.payer === 'guest' && feeResult.mode === 'inclusive') {
+            await supabase
+              .from('requests')
+              .update({
+                metadata: {
+                  ...requestPayload.metadata,
+                  payment_info: {
+                    ...paymentInfo,
+                    amount: feeResult.net_amount,
+                    platform_fee: feeResult.fee_amount,
+                    base_amount: paymentInfo.amount
+                  }
+                }
+              })
+              .eq('id', newRequest.id);
+            
+            console.log('[platform-fee] Updated request with adjusted amount:', feeResult.net_amount);
+          }
         } catch (feeError) {
           console.error('[platform-fee] Error applying QR fee (non-blocking):', feeError);
         }

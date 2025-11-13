@@ -73,9 +73,12 @@ async function applyPlatformFee(
       ? amount * (feeConfig.booking_fee / 100)
       : feeConfig.booking_fee;
     
-    const netAmount = feeConfig.payer === 'property'
-      ? amount - feeAmount  // Property pays: deduct from amount
-      : amount;             // Guest pays: amount stays same
+    // Calculate net amount based on payer and mode
+    const netAmount = feeConfig.payer === 'guest' && feeConfig.mode === 'inclusive'
+      ? amount + feeAmount  // Guest pays: ADD fee to their total
+      : feeConfig.payer === 'property' && feeConfig.mode === 'exclusive'
+        ? amount - feeAmount  // Property pays: DEDUCT fee from revenue
+        : amount;  // Fallback
     
     // Record in ledger
     const ledgerStatus = feeConfig.billing_cycle === 'realtime' ? 'billed' : 'pending';
@@ -377,6 +380,18 @@ serve(async (req) => {
       );
     }
 
+    // Phase 2: Apply Platform Fee BEFORE creating booking to get adjusted total
+    let platformFeeResult = { applied: false, fee_amount: 0, net_amount: finalTotalAmount };
+    try {
+      platformFeeResult = await applyPlatformFee(supabaseClient, tenant_id, 'temp-booking-id', finalTotalAmount);
+      console.log('[platform-fee] Fee calculation result:', platformFeeResult);
+    } catch (feeError) {
+      console.error('[platform-fee] Error calculating fee (non-blocking):', feeError);
+    }
+
+    // Use net_amount if fee was applied, otherwise use finalTotalAmount
+    const bookingTotalWithFee = platformFeeResult.applied ? platformFeeResult.net_amount : finalTotalAmount;
+
     // Create booking with tax breakdown in metadata
     const { data: newBooking, error: createError } = await supabaseClient
       .from('bookings')
@@ -386,7 +401,7 @@ serve(async (req) => {
         room_id,
         check_in: checkInDate.toISOString(),
         check_out: checkOutDate.toISOString(),
-        total_amount: finalTotalAmount,
+        total_amount: bookingTotalWithFee,
         organization_id: organization_id || null,
         status: 'reserved',
         action_id,
@@ -436,12 +451,19 @@ serve(async (req) => {
 
     console.log('Booking created successfully:', newBooking.id);
 
-    // Phase 2: Apply Platform Fee
-    try {
-      await applyPlatformFee(supabaseClient, tenant_id, newBooking.id, finalTotalAmount);
-    } catch (feeError) {
-      console.error('[platform-fee] Error applying fee (non-blocking):', feeError);
-      // Don't block booking creation if fee application fails
+    // Phase 2: Update ledger with actual booking ID
+    if (platformFeeResult.applied) {
+      try {
+        await supabaseClient
+          .from('platform_fee_ledger')
+          .update({ reference_id: newBooking.id })
+          .eq('reference_id', 'temp-booking-id')
+          .eq('tenant_id', tenant_id);
+        
+        console.log('[platform-fee] Updated ledger with booking ID:', newBooking.id);
+      } catch (updateError) {
+        console.error('[platform-fee] Error updating ledger with booking ID:', updateError);
+      }
     }
 
     // If organization booking, create payment and debit wallet
