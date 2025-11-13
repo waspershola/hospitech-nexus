@@ -19,16 +19,18 @@ const AVAILABLE_ADDONS = [
 ];
 
 /**
- * Phase 2: Platform Fee Application for Bookings
+ * Phase C: Platform Fee Extraction for Ledger Recording
+ * The frontend has already calculated and included the fee in total_amount.
+ * This function extracts the fee from the total for accurate ledger recording.
  */
 async function applyPlatformFee(
   supabase: any,
   tenant_id: string,
   booking_id: string,
-  amount: number
-): Promise<{applied: boolean; fee_amount: number; net_amount: number}> {
+  total_amount_from_frontend: number
+): Promise<{applied: boolean; fee_amount: number; base_amount: number}> {
   try {
-    console.log('[platform-fee] Checking fee config for tenant:', tenant_id);
+    console.log('[platform-fee] Extracting fee from total:', total_amount_from_frontend);
     
     // Get fee configuration
     const { data: feeConfig, error: configError } = await supabase
@@ -40,12 +42,12 @@ async function applyPlatformFee(
     
     if (configError || !feeConfig) {
       console.log('[platform-fee] No active booking fee config for tenant:', tenant_id);
-      return { applied: false, fee_amount: 0, net_amount: amount };
+      return { applied: false, fee_amount: 0, base_amount: total_amount_from_frontend };
     }
     
     if (!feeConfig.applies_to.includes('bookings')) {
       console.log('[platform-fee] Bookings not in applies_to array');
-      return { applied: false, fee_amount: 0, net_amount: amount };
+      return { applied: false, fee_amount: 0, base_amount: total_amount_from_frontend };
     }
     
     // Check trial exemption
@@ -63,24 +65,34 @@ async function applyPlatformFee(
         
         if (trialEndDate > new Date()) {
           console.log('[platform-fee] Tenant in trial period, skipping fee. Trial ends:', trialEndDate);
-          return { applied: false, fee_amount: 0, net_amount: amount };
+          return { applied: false, fee_amount: 0, base_amount: total_amount_from_frontend };
         }
       }
     }
     
-    // Calculate fee
-    const feeAmount = feeConfig.fee_type === 'percentage'
-      ? amount * (feeConfig.booking_fee / 100)
-      : feeConfig.booking_fee;
+    // Only extract fee if guest pays (inclusive mode)
+    // Property-pays fees are not included in total_amount_from_frontend
+    if (feeConfig.payer !== 'guest' || feeConfig.mode !== 'inclusive') {
+      console.log('[platform-fee] Property pays or exclusive mode - no extraction needed');
+      return { applied: false, fee_amount: 0, base_amount: total_amount_from_frontend };
+    }
     
-    // Calculate net amount based on payer and mode
-    const netAmount = feeConfig.payer === 'guest' && feeConfig.mode === 'inclusive'
-      ? amount + feeAmount  // Guest pays: ADD fee to their total
-      : feeConfig.payer === 'property' && feeConfig.mode === 'exclusive'
-        ? amount - feeAmount  // Property pays: DEDUCT fee from revenue
-        : amount;  // Fallback
+    // Reverse-calculate the fee from the total
+    // For percentage: base = total / (1 + rate/100), fee = total - base
+    // For flat: base = total - fee_rate, fee = fee_rate
+    let baseAmount: number;
+    let feeAmount: number;
     
-    // Record in ledger
+    if (feeConfig.fee_type === 'percentage') {
+      baseAmount = total_amount_from_frontend / (1 + feeConfig.booking_fee / 100);
+      feeAmount = total_amount_from_frontend - baseAmount;
+    } else {
+      // Flat fee
+      feeAmount = feeConfig.booking_fee;
+      baseAmount = total_amount_from_frontend - feeAmount;
+    }
+    
+    // Record in ledger with extracted amounts
     const ledgerStatus = feeConfig.billing_cycle === 'realtime' ? 'billed' : 'pending';
     
     const { error: ledgerError } = await supabase
@@ -89,7 +101,7 @@ async function applyPlatformFee(
         tenant_id,
         reference_type: 'booking',
         reference_id: booking_id,
-        base_amount: amount,
+        base_amount: baseAmount,
         fee_amount: feeAmount,
         rate: feeConfig.booking_fee,
         fee_type: feeConfig.fee_type,
@@ -98,7 +110,9 @@ async function applyPlatformFee(
         status: ledgerStatus,
         billed_at: feeConfig.billing_cycle === 'realtime' ? new Date().toISOString() : null,
         metadata: {
-          booking_total: amount,
+          total_from_frontend: total_amount_from_frontend,
+          extracted_base: baseAmount,
+          extracted_fee: feeAmount,
           fee_config_id: feeConfig.id,
           mode: feeConfig.mode
         }
@@ -109,22 +123,23 @@ async function applyPlatformFee(
       throw ledgerError;
     }
     
-    console.log('[platform-fee] Applied booking fee:', {
+    console.log('[platform-fee] Extracted and recorded fee:', {
       tenant_id,
       booking_id,
-      amount,
+      total_from_frontend: total_amount_from_frontend,
+      base_amount: baseAmount,
       fee_amount: feeAmount,
-      net_amount: netAmount,
       payer: feeConfig.payer,
+      mode: feeConfig.mode,
       billing_cycle: feeConfig.billing_cycle
     });
     
-    return { applied: true, fee_amount: feeAmount, net_amount: netAmount };
+    return { applied: true, fee_amount: feeAmount, base_amount: baseAmount };
     
   } catch (error) {
-    console.error('[platform-fee] Error applying fee:', error);
-    // Don't block booking creation if fee application fails
-    return { applied: false, fee_amount: 0, net_amount: amount };
+    console.error('[platform-fee] Error extracting fee:', error);
+    // Don't block booking creation if fee extraction fails
+    return { applied: false, fee_amount: 0, base_amount: total_amount_from_frontend };
   }
 }
 
@@ -380,17 +395,16 @@ serve(async (req) => {
       );
     }
 
-    // Phase 2: Apply Platform Fee BEFORE creating booking to get adjusted total
-    let platformFeeResult = { applied: false, fee_amount: 0, net_amount: finalTotalAmount };
-    try {
-      platformFeeResult = await applyPlatformFee(supabaseClient, tenant_id, 'temp-booking-id', finalTotalAmount);
-      console.log('[platform-fee] Fee calculation result:', platformFeeResult);
-    } catch (feeError) {
-      console.error('[platform-fee] Error calculating fee (non-blocking):', feeError);
-    }
-
-    // Use net_amount if fee was applied, otherwise use finalTotalAmount
-    const bookingTotalWithFee = platformFeeResult.applied ? platformFeeResult.net_amount : finalTotalAmount;
+    // Phase C: Use total_amount from frontend (already includes platform fee)
+    // The frontend has calculated the fee and included it in total_amount
+    // We'll use this value directly for the booking, and extract the fee for ledger later
+    const bookingTotalWithFee = total_amount || finalTotalAmount;
+    
+    console.log('[platform-fee] Using total from frontend:', {
+      received_total: total_amount,
+      calculated_total: finalTotalAmount,
+      using: bookingTotalWithFee
+    });
 
     // Create booking with tax breakdown in metadata
     const { data: newBooking, error: createError } = await supabaseClient
@@ -422,14 +436,6 @@ serve(async (req) => {
           vat_applied_on: financials?.vat_applied_on || 'subtotal',
           rounding: financials?.rounding || 'round',
         },
-        ...(platformFeeResult.applied && {
-          platform_fee: {
-            base_amount: finalTotalAmount,
-            fee_amount: platformFeeResult.fee_amount,
-            net_amount: platformFeeResult.net_amount,
-            applied: true
-          }
-        }),
         ...(group_booking ? {
           group_booking: true,
           group_id,
@@ -449,6 +455,20 @@ serve(async (req) => {
     if (createError) {
       console.error('Error creating booking:', createError);
       throw createError;
+    }
+
+    // Phase C: Extract platform fee from the booking total for ledger recording
+    // This happens AFTER booking creation so we have the real booking_id
+    try {
+      const platformFeeResult = await applyPlatformFee(
+        supabaseClient, 
+        tenant_id, 
+        newBooking.id, 
+        bookingTotalWithFee
+      );
+      console.log('[platform-fee] Fee extraction result:', platformFeeResult);
+    } catch (feeError) {
+      console.error('[platform-fee] Error extracting fee (non-blocking):', feeError);
     }
 
     // Update room status to reserved
