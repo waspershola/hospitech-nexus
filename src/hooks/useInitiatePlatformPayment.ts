@@ -5,6 +5,7 @@ import { toast } from 'sonner';
 interface InitiatePaymentParams {
   tenant_id: string;
   payment_method_id: string;
+  ledger_ids?: string[]; // Optional: for retry attempts with specific fee entries
 }
 
 interface InitiatePaymentResponse {
@@ -22,8 +23,11 @@ export function useInitiatePlatformPayment() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async ({ tenant_id, payment_method_id }: InitiatePaymentParams) => {
+    mutationFn: async ({ tenant_id, payment_method_id, ledger_ids }: InitiatePaymentParams) => {
       console.log('[useInitiatePlatformPayment] Initiating payment for tenant:', tenant_id);
+      if (ledger_ids) {
+        console.log('[useInitiatePlatformPayment] Retrying specific ledger entries:', ledger_ids);
+      }
 
       const { data, error } = await supabase.functions.invoke<InitiatePaymentResponse>(
         'initiate-platform-fee-payment',
@@ -31,6 +35,7 @@ export function useInitiatePlatformPayment() {
           body: {
             tenant_id,
             payment_method_id,
+            ledger_ids, // Include ledger_ids for retry attempts
           },
         }
       );
@@ -46,8 +51,9 @@ export function useInitiatePlatformPayment() {
 
       return data;
     },
-    onSuccess: (data) => {
-      toast.success('Payment initiated successfully', {
+    onSuccess: (data, variables) => {
+      const isRetry = variables.ledger_ids && variables.ledger_ids.length > 0;
+      toast.success(isRetry ? 'Retry payment initiated' : 'Payment initiated successfully', {
         description: `Redirecting to payment gateway...`,
       });
 

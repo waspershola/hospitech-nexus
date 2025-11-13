@@ -140,6 +140,7 @@ async function initiateStripePayment(
 interface PaymentInitiationRequest {
   tenant_id: string;
   payment_method_id: string;
+  ledger_ids?: string[]; // Optional: for retry attempts with specific fee entries
 }
 
 Deno.serve(async (req) => {
@@ -165,16 +166,30 @@ Deno.serve(async (req) => {
       throw new Error('Invalid request body');
     }
 
-    const { tenant_id, payment_method_id } = requestData as PaymentInitiationRequest;
+    const { tenant_id, payment_method_id, ledger_ids } = requestData as PaymentInitiationRequest;
 
     console.log('[initiate-platform-fee-payment] Starting payment initiation for tenant:', tenant_id);
+    if (ledger_ids && ledger_ids.length > 0) {
+      console.log('[initiate-platform-fee-payment] Retry mode: processing specific ledger entries:', ledger_ids);
+    }
 
     // 1. Fetch outstanding fees (pending + billed status)
-    const { data: fees, error: feesError } = await supabase
+    // If ledger_ids provided (retry mode), fetch only those specific entries
+    // Otherwise, fetch all outstanding fees for the tenant
+    let feesQuery = supabase
       .from('platform_fee_ledger')
       .select('*')
-      .eq('tenant_id', tenant_id)
-      .in('status', ['pending', 'billed']);
+      .eq('tenant_id', tenant_id);
+
+    if (ledger_ids && ledger_ids.length > 0) {
+      // Retry mode: fetch specific failed fee entries
+      feesQuery = feesQuery.in('id', ledger_ids);
+    } else {
+      // Normal mode: fetch all outstanding fees
+      feesQuery = feesQuery.in('status', ['pending', 'billed']);
+    }
+
+    const { data: fees, error: feesError } = await feesQuery;
 
     if (feesError) {
       console.error('[initiate-platform-fee-payment] Error fetching fees:', feesError);
@@ -182,10 +197,14 @@ Deno.serve(async (req) => {
     }
 
     if (!fees || fees.length === 0) {
+      const errorMessage = ledger_ids && ledger_ids.length > 0 
+        ? 'No fees found for retry (fees may have already been paid)'
+        : 'No outstanding fees to pay';
+      
       return new Response(
         JSON.stringify({ 
           success: false, 
-          error: 'No outstanding fees to pay' 
+          error: errorMessage
         }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 400 }
       );
@@ -193,7 +212,12 @@ Deno.serve(async (req) => {
 
     // 2. Calculate total amount
     const totalAmount = fees.reduce((sum, fee) => sum + Number(fee.fee_amount), 0);
-    console.log('[initiate-platform-fee-payment] Total outstanding:', totalAmount, 'from', fees.length, 'fees');
+    const isRetry = ledger_ids && ledger_ids.length > 0;
+    console.log(
+      isRetry 
+        ? `[initiate-platform-fee-payment] Retry payment: ${totalAmount} from ${fees.length} fees`
+        : `[initiate-platform-fee-payment] New payment: ${totalAmount} from ${fees.length} fees`
+    );
 
      // 3. Fetch payment provider details including API keys
     const { data: provider, error: providerError } = await supabase
@@ -234,6 +258,7 @@ Deno.serve(async (req) => {
         metadata: {
           fee_count: fees.length,
           initiated_at: new Date().toISOString(),
+          is_retry: isRetry,
         }
       })
       .select()
