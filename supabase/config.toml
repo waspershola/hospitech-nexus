@@ -137,3 +137,12 @@ verify_jwt = true
 
 [functions.waive-platform-fee]
 verify_jwt = true
+
+[functions.initiate-platform-fee-payment]
+verify_jwt = true
+
+[functions.verify-platform-fee-payment]
+verify_jwt = false
+
+[functions.generate-payment-receipt]
+verify_jwt = true

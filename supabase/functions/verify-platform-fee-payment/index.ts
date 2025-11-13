@@ -36,10 +36,17 @@ Deno.serve(async (req) => {
     let paymentReference: string | null = null;
     let paymentStatus: 'successful' | 'failed' = 'failed';
     let providerResponse: any = payload;
+    let providerType: string = 'unknown';
 
-    // Handle different provider webhook formats
+    // Get webhook signature headers
+    const flutterwaveSignature = req.headers.get('verif-hash');
+    const paystackSignature = req.headers.get('x-paystack-signature');
+    const stripeSignature = req.headers.get('stripe-signature');
+
+    // Determine provider and extract payment details
     if (payload.event === 'charge.completed' || payload.status === 'successful') {
       // Flutterwave webhook
+      providerType = 'flutterwave';
       paymentReference = payload.data?.tx_ref || payload.txRef;
       paymentStatus = payload.data?.status === 'successful' || payload.status === 'successful' 
         ? 'successful' 
@@ -47,28 +54,33 @@ Deno.serve(async (req) => {
       
       console.log('[verify-platform-fee-payment] Flutterwave webhook:', { 
         txRef: paymentReference, 
-        status: paymentStatus 
+        status: paymentStatus,
+        hasSignature: !!flutterwaveSignature
       });
 
     } else if (payload.event === 'charge.success' || payload.data?.status === 'success') {
       // Paystack webhook
+      providerType = 'paystack';
       paymentReference = payload.data?.reference;
       paymentStatus = payload.data?.status === 'success' ? 'successful' : 'failed';
       
       console.log('[verify-platform-fee-payment] Paystack webhook:', { 
         reference: paymentReference, 
-        status: paymentStatus 
+        status: paymentStatus,
+        hasSignature: !!paystackSignature
       });
 
     } else if (payload.type?.startsWith('checkout.session')) {
       // Stripe webhook
+      providerType = 'stripe';
       paymentReference = payload.data?.object?.client_reference_id || 
                         payload.data?.object?.metadata?.reference;
       paymentStatus = payload.data?.object?.payment_status === 'paid' ? 'successful' : 'failed';
       
       console.log('[verify-platform-fee-payment] Stripe webhook:', { 
         reference: paymentReference, 
-        status: paymentStatus 
+        status: paymentStatus,
+        hasSignature: !!stripeSignature
       });
 
     } else {
@@ -98,10 +110,15 @@ Deno.serve(async (req) => {
       );
     }
 
-    // Fetch payment record
+    // Fetch payment record to get provider details
     const { data: payment, error: paymentError } = await supabaseAdmin
       .from('platform_fee_payments')
-      .select('*')
+      .select(`
+        *,
+        payment_method:platform_payment_providers!platform_fee_payments_payment_method_id_fkey(
+          webhook_secret
+        )
+      `)
       .eq('payment_reference', paymentReference)
       .single();
 
@@ -114,6 +131,67 @@ Deno.serve(async (req) => {
     }
 
     console.log('[verify-platform-fee-payment] Processing payment:', payment.id);
+
+    // Verify webhook signature if webhook secret is configured
+    const webhookSecret = payment.payment_method?.webhook_secret;
+    
+    if (webhookSecret && (flutterwaveSignature || paystackSignature || stripeSignature)) {
+      let isValid = false;
+
+      try {
+        if (providerType === 'flutterwave' && flutterwaveSignature) {
+          // Verify Flutterwave signature
+          const expectedHash = flutterwaveSignature;
+          const actualHash = webhookSecret;
+          isValid = expectedHash === actualHash;
+          
+          console.log('[verify-platform-fee-payment] Flutterwave signature verification:', isValid);
+        } else if (providerType === 'paystack' && paystackSignature) {
+          // Verify Paystack signature using HMAC
+          const crypto = await import('https://deno.land/std@0.177.0/node/crypto.ts');
+          const hash = crypto.createHmac('sha512', webhookSecret)
+            .update(payloadText)
+            .digest('hex');
+          
+          isValid = hash === paystackSignature;
+          console.log('[verify-platform-fee-payment] Paystack signature verification:', isValid);
+        } else if (providerType === 'stripe' && stripeSignature) {
+          // Verify Stripe signature
+          const crypto = await import('https://deno.land/std@0.177.0/node/crypto.ts');
+          const elements = stripeSignature.split(',');
+          const timestamp = elements.find(e => e.startsWith('t='))?.split('=')[1];
+          const v1 = elements.find(e => e.startsWith('v1='))?.split('=')[1];
+
+          if (timestamp && v1) {
+            const signedPayload = `${timestamp}.${payloadText}`;
+            const expectedSignature = crypto.createHmac('sha256', webhookSecret)
+              .update(signedPayload)
+              .digest('hex');
+            
+            isValid = expectedSignature === v1;
+            console.log('[verify-platform-fee-payment] Stripe signature verification:', isValid);
+          }
+        }
+
+        if (!isValid) {
+          console.error('[verify-platform-fee-payment] Invalid webhook signature');
+          return new Response(
+            JSON.stringify({ error: 'Invalid webhook signature' }),
+            { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 401 }
+          );
+        }
+
+        console.log('[verify-platform-fee-payment] Webhook signature verified successfully');
+      } catch (error) {
+        console.error('[verify-platform-fee-payment] Signature verification error:', error);
+        // Continue processing but log the error
+        console.warn('[verify-platform-fee-payment] Proceeding without signature verification due to error');
+      }
+    } else if (webhookSecret && !flutterwaveSignature && !paystackSignature && !stripeSignature) {
+      console.warn('[verify-platform-fee-payment] Webhook secret configured but no signature provided');
+    } else {
+      console.warn('[verify-platform-fee-payment] No webhook secret configured, skipping signature verification');
+    }
 
     // Update payment record
     const now = new Date().toISOString();
