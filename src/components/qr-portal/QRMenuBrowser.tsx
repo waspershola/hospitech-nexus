@@ -3,6 +3,8 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useQRToken } from '@/hooks/useQRToken';
+import { usePlatformFee } from '@/hooks/usePlatformFee';
+import { calculatePlatformFee } from '@/lib/finance/platformFee';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -57,6 +59,8 @@ export function QRMenuBrowser() {
   const [isCartOpen, setIsCartOpen] = useState(false);
   const [activeCategory, setActiveCategory] = useState('all');
 
+  const { data: platformFeeConfig } = usePlatformFee(qrData?.tenant_id);
+
   const { data: menuItems = [], isLoading } = useQuery({
     queryKey: ['menu-items', qrData?.tenant_id],
     queryFn: async () => {
@@ -109,7 +113,7 @@ export function QRMenuBrowser() {
             room_number: qrData?.assigned_to || 'Guest',
             payment_info: {
               billable: true,
-              amount: subtotal,
+              amount: finalTotal, // Use adjusted total with platform fee
               currency: 'NGN',
               location: 'restaurant',
               status: 'pending'
@@ -143,7 +147,7 @@ export function QRMenuBrowser() {
           items,
           special_instructions: specialInstructions,
           subtotal,
-          total: subtotal,
+          total: finalTotal, // Use adjusted total with platform fee
           status: 'pending',
         })
         .select()
@@ -206,6 +210,10 @@ export function QRMenuBrowser() {
 
   const cartTotal = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
   const cartCount = cart.reduce((sum, item) => sum + item.quantity, 0);
+
+  // Calculate platform fee
+  const platformFeeBreakdown = calculatePlatformFee(cartTotal, platformFeeConfig || null);
+  const finalTotal = platformFeeBreakdown.totalAmount;
 
   if (isLoading || !qrData || !qrData.tenant_id) {
     return (
@@ -306,10 +314,27 @@ export function QRMenuBrowser() {
                   </div>
 
                   <div className="pt-4 border-t border-border space-y-2">
-                    <div className="flex justify-between text-lg font-semibold">
+                    <div className="flex justify-between">
+                      <span>Subtotal:</span>
+                      <span>{cart[0]?.currency || 'NGN'} {cartTotal.toFixed(2)}</span>
+                    </div>
+                    
+                    {platformFeeBreakdown.platformFee > 0 && platformFeeConfig && (
+                      <div className="flex justify-between text-sm">
+                        <span className="text-muted-foreground">
+                          Platform Fee {platformFeeConfig.fee_type === 'flat' ? '(Flat)' : `(${platformFeeConfig.qr_fee}%)`}
+                          {platformFeeConfig.payer === 'guest' && ' (charged to guest)'}
+                        </span>
+                        <span className="text-muted-foreground">
+                          +{cart[0]?.currency || 'NGN'} {platformFeeBreakdown.platformFee.toFixed(2)}
+                        </span>
+                      </div>
+                    )}
+                    
+                    <div className="flex justify-between text-lg font-semibold pt-2 border-t">
                       <span>Total:</span>
                       <span className="text-accent">
-                        {cart[0]?.currency || 'NGN'} {cartTotal.toFixed(2)}
+                        {cart[0]?.currency || 'NGN'} {finalTotal.toFixed(2)}
                       </span>
                     </div>
                     <Button

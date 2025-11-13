@@ -479,21 +479,6 @@ serve(async (req) => {
 
     console.log('Booking created successfully:', newBooking.id);
 
-    // Phase 2: Update ledger with actual booking ID
-    if (platformFeeResult.applied) {
-      try {
-        await supabaseClient
-          .from('platform_fee_ledger')
-          .update({ reference_id: newBooking.id })
-          .eq('reference_id', 'temp-booking-id')
-          .eq('tenant_id', tenant_id);
-        
-        console.log('[platform-fee] Updated ledger with booking ID:', newBooking.id);
-      } catch (updateError) {
-        console.error('[platform-fee] Error updating ledger with booking ID:', updateError);
-      }
-    }
-
     // If organization booking, create payment and debit wallet
     let payment = null;
     if (organization_id && finalTotalAmount > 0) {

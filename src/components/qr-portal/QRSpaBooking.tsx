@@ -3,6 +3,8 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { useQuery, useMutation } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useQRToken } from '@/hooks/useQRToken';
+import { usePlatformFee } from '@/hooks/usePlatformFee';
+import { calculatePlatformFee } from '@/lib/finance/platformFee';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -31,6 +33,8 @@ export function QRSpaBooking() {
   const [preferredDateTime, setPreferredDateTime] = useState('');
   const [specialRequests, setSpecialRequests] = useState('');
   const [activeCategory, setActiveCategory] = useState('all');
+
+  const { data: platformFeeConfig } = usePlatformFee(qrData?.tenant_id);
 
   const { data: spaServices = [], isLoading } = useQuery({
     queryKey: ['spa-services', qrData?.tenant_id],
@@ -90,7 +94,7 @@ export function QRSpaBooking() {
             preferred_datetime: preferredDateTime,
             payment_info: {
               billable: true,
-              amount: selectedService.price,
+              amount: finalTotal, // Use adjusted total with platform fee
               currency: selectedService.currency,
               status: 'pending',
               location: 'Spa Center',
@@ -138,6 +142,12 @@ export function QRSpaBooking() {
   const filteredServices = activeCategory === 'all' 
     ? spaServices 
     : spaServices.filter(item => item.category === activeCategory);
+
+  // Calculate platform fee for selected service
+  const platformFeeBreakdown = selectedService 
+    ? calculatePlatformFee(selectedService.price, platformFeeConfig || null)
+    : { baseAmount: 0, platformFee: 0, totalAmount: 0 };
+  const finalTotal = platformFeeBreakdown.totalAmount;
 
   if (isLoading || !qrData || !qrData.tenant_id) {
     return (
@@ -216,7 +226,7 @@ export function QRSpaBooking() {
               <CardDescription>Complete your booking for {selectedService.service_name}</CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
-              <div className="p-4 bg-muted/50 rounded-lg space-y-2">
+                <div className="p-4 bg-muted/50 rounded-lg space-y-2">
                 <h4 className="font-semibold text-lg">{selectedService.service_name}</h4>
                 <p className="text-sm text-muted-foreground">{selectedService.description}</p>
                 <div className="flex items-center justify-between pt-2">
@@ -227,10 +237,34 @@ export function QRSpaBooking() {
                     </span>
                     <Badge className="capitalize">{selectedService.category}</Badge>
                   </div>
-                  <span className="text-xl font-bold text-accent">
-                    {selectedService.currency} {selectedService.price.toFixed(2)}
-                  </span>
+                  <div className="text-right">
+                    <div className="text-sm text-muted-foreground">Base Price:</div>
+                    <div className="text-xl font-bold text-accent">
+                      {selectedService.currency} {selectedService.price.toFixed(2)}
+                    </div>
+                  </div>
                 </div>
+                
+                {platformFeeBreakdown.platformFee > 0 && platformFeeConfig && (
+                  <div className="flex justify-between items-center pt-2 border-t text-sm">
+                    <span className="text-muted-foreground">
+                      Platform Fee {platformFeeConfig.fee_type === 'flat' ? '(Flat)' : `(${platformFeeConfig.qr_fee}%)`}
+                      {platformFeeConfig.payer === 'guest' && ' (charged to guest)'}
+                    </span>
+                    <span className="text-muted-foreground">
+                      +{selectedService.currency} {platformFeeBreakdown.platformFee.toFixed(2)}
+                    </span>
+                  </div>
+                )}
+                
+                {platformFeeBreakdown.platformFee > 0 && (
+                  <div className="flex justify-between items-center pt-2 border-t font-semibold">
+                    <span>Total Amount:</span>
+                    <span className="text-lg text-accent">
+                      {selectedService.currency} {finalTotal.toFixed(2)}
+                    </span>
+                  </div>
+                )}
               </div>
 
               <div className="space-y-3">
