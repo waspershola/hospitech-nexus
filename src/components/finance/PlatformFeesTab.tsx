@@ -1,14 +1,46 @@
+import { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Checkbox } from '@/components/ui/checkbox';
 import { usePlatformFeeConfig } from '@/hooks/usePlatformFeeConfig';
 import { useAuth } from '@/contexts/AuthContext';
-import { Loader2, TrendingUp, CreditCard, Clock, CheckCircle2 } from 'lucide-react';
+import { Loader2, TrendingUp, CreditCard, Clock, CheckCircle2, AlertTriangle } from 'lucide-react';
 import { format } from 'date-fns';
+import { DisputeFeeDialog } from './DisputeFeeDialog';
 
 export function PlatformFeesTab() {
   const { tenantId } = useAuth();
   const { config, summary, ledger, isLoading } = usePlatformFeeConfig(tenantId || undefined);
+  const [selectedLedgerIds, setSelectedLedgerIds] = useState<string[]>([]);
+  const [disputeDialogOpen, setDisputeDialogOpen] = useState(false);
+
+  // Calculate total disputed amount
+  const totalDisputedAmount = ledger
+    ?.filter(entry => selectedLedgerIds.includes(entry.id))
+    .reduce((sum, entry) => sum + entry.fee_amount, 0) || 0;
+
+  // Only allow disputing pending or billed fees
+  const disputableFees = ledger?.filter(entry => 
+    entry.status === 'pending' || entry.status === 'billed'
+  ) || [];
+
+  const handleSelectAll = (checked: boolean) => {
+    if (checked) {
+      setSelectedLedgerIds(disputableFees.map(entry => entry.id));
+    } else {
+      setSelectedLedgerIds([]);
+    }
+  };
+
+  const handleSelectEntry = (entryId: string, checked: boolean) => {
+    if (checked) {
+      setSelectedLedgerIds(prev => [...prev, entryId]);
+    } else {
+      setSelectedLedgerIds(prev => prev.filter(id => id !== entryId));
+    }
+  };
 
   if (isLoading) {
     return (
@@ -147,14 +179,37 @@ export function PlatformFeesTab() {
       {/* Fee Ledger */}
       <Card>
         <CardHeader>
-          <CardTitle>Fee Ledger</CardTitle>
-          <CardDescription>Detailed transaction history</CardDescription>
+          <div className="flex items-center justify-between">
+            <div>
+              <CardTitle>Fee Ledger</CardTitle>
+              <CardDescription>Detailed transaction history</CardDescription>
+            </div>
+            {disputableFees.length > 0 && (
+              <Button
+                variant="outline"
+                onClick={() => setDisputeDialogOpen(true)}
+                disabled={selectedLedgerIds.length === 0}
+              >
+                <AlertTriangle className="h-4 w-4 mr-2" />
+                Dispute Selected ({selectedLedgerIds.length})
+              </Button>
+            )}
+          </div>
         </CardHeader>
         <CardContent>
           {ledger && ledger.length > 0 ? (
             <Table>
               <TableHeader>
                 <TableRow>
+                  {disputableFees.length > 0 && (
+                    <TableHead className="w-12">
+                      <Checkbox
+                        checked={selectedLedgerIds.length === disputableFees.length && disputableFees.length > 0}
+                        onCheckedChange={handleSelectAll}
+                        aria-label="Select all disputable fees"
+                      />
+                    </TableHead>
+                  )}
                   <TableHead>Date</TableHead>
                   <TableHead>Type</TableHead>
                   <TableHead>Base Amount</TableHead>
@@ -165,19 +220,33 @@ export function PlatformFeesTab() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {ledger.map((entry) => (
-                  <TableRow key={entry.id}>
-                    <TableCell>{format(new Date(entry.created_at), 'MMM dd, yyyy')}</TableCell>
-                    <TableCell className="capitalize">{entry.reference_type}</TableCell>
-                    <TableCell>₦{entry.base_amount.toLocaleString()}</TableCell>
-                    <TableCell>₦{entry.fee_amount.toLocaleString()}</TableCell>
-                    <TableCell>
-                      {entry.fee_type === 'percentage' ? `${entry.rate}%` : `₦${entry.rate}`}
-                    </TableCell>
-                    <TableCell className="capitalize">{entry.billing_cycle}</TableCell>
-                    <TableCell>{getStatusBadge(entry.status)}</TableCell>
-                  </TableRow>
-                ))}
+                {ledger.map((entry) => {
+                  const isDisputable = entry.status === 'pending' || entry.status === 'billed';
+                  return (
+                    <TableRow key={entry.id}>
+                      {disputableFees.length > 0 && (
+                        <TableCell>
+                          {isDisputable ? (
+                            <Checkbox
+                              checked={selectedLedgerIds.includes(entry.id)}
+                              onCheckedChange={(checked) => handleSelectEntry(entry.id, checked as boolean)}
+                              aria-label={`Select fee ${entry.id}`}
+                            />
+                          ) : null}
+                        </TableCell>
+                      )}
+                      <TableCell>{format(new Date(entry.created_at), 'MMM dd, yyyy')}</TableCell>
+                      <TableCell className="capitalize">{entry.reference_type}</TableCell>
+                      <TableCell>₦{entry.base_amount.toLocaleString()}</TableCell>
+                      <TableCell>₦{entry.fee_amount.toLocaleString()}</TableCell>
+                      <TableCell>
+                        {entry.fee_type === 'percentage' ? `${entry.rate}%` : `₦${entry.rate}`}
+                      </TableCell>
+                      <TableCell className="capitalize">{entry.billing_cycle}</TableCell>
+                      <TableCell>{getStatusBadge(entry.status)}</TableCell>
+                    </TableRow>
+                  );
+                })}
               </TableBody>
             </Table>
           ) : (
@@ -185,6 +254,13 @@ export function PlatformFeesTab() {
           )}
         </CardContent>
       </Card>
+
+      <DisputeFeeDialog
+        open={disputeDialogOpen}
+        onOpenChange={setDisputeDialogOpen}
+        selectedLedgerIds={selectedLedgerIds}
+        totalDisputedAmount={totalDisputedAmount}
+      />
     </div>
   );
 }
