@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { ArrowLeft, Building2, Users, Package, Settings, Activity, CreditCard, HeadphonesIcon, PauseCircle, PlayCircle } from 'lucide-react';
+import { ArrowLeft, Building2, Users, Package, Settings, Activity, CreditCard, HeadphonesIcon, PauseCircle, PlayCircle, DollarSign, Receipt } from 'lucide-react';
 import TenantDetailOverview from '@/components/platform/TenantDetailOverview';
 import TenantDetailUsers from '@/components/platform/TenantDetailUsers';
 import TenantDetailPackage from '@/components/platform/TenantDetailPackage';
@@ -15,6 +15,8 @@ import TenantDetailActivity from '@/components/platform/TenantDetailActivity';
 import TenantDetailBilling from '@/components/platform/TenantDetailBilling';
 import TenantDetailAddons from '@/components/platform/TenantDetailAddons';
 import TenantDetailSupport from '@/components/platform/TenantDetailSupport';
+import TenantDetailFeeConfig from '@/components/platform/TenantDetailFeeConfig';
+import TenantDetailFeeLedger from '@/components/platform/TenantDetailFeeLedger';
 import SuspendTenantDialog from '@/components/platform/SuspendTenantDialog';
 import { usePlatformTenants } from '@/hooks/usePlatformTenants';
 
@@ -39,10 +41,10 @@ export default function TenantDetail() {
     queryFn: async () => {
       console.log('[TenantDetail] Fetching tenant:', tenantId);
       
-      // Fetch tenant data without relationship syntax
+      // Fetch tenant data with relationship syntax
       const { data, error } = await supabase
         .from('platform_tenants')
-        .select('*')
+        .select('*, tenant:tenants!platform_tenants_id_fkey(name)')
         .eq('id', tenantId)
         .maybeSingle();
 
@@ -110,8 +112,25 @@ export default function TenantDetail() {
         }
       }
 
+      // Fetch tenant name separately
+      let tenantData = null;
+      if (data.id) {
+        const { data: tenantInfo, error: tenantError } = await supabase
+          .from('tenants')
+          .select('name')
+          .eq('id', data.id)
+          .maybeSingle();
+
+        if (tenantError) {
+          console.error('[TenantDetail] Error fetching tenant name:', tenantError);
+        } else {
+          tenantData = tenantInfo;
+        }
+      }
+
       return {
         ...data,
+        tenant: tenantData,
         plan: planData,
         owner_email: ownerEmail,
         owner_name: ownerName
@@ -284,6 +303,14 @@ export default function TenantDetail() {
             <Settings className="h-4 w-4 mr-2" />
             Settings
           </TabsTrigger>
+          <TabsTrigger value="configuration">
+            <DollarSign className="h-4 w-4 mr-2" />
+            Configuration
+          </TabsTrigger>
+          <TabsTrigger value="fee-ledger">
+            <Receipt className="h-4 w-4 mr-2" />
+            Fee Ledger
+          </TabsTrigger>
           <TabsTrigger value="billing">
             <CreditCard className="h-4 w-4 mr-2" />
             Billing
@@ -317,8 +344,25 @@ export default function TenantDetail() {
           <TenantDetailSettings tenant={tenant} />
         </TabsContent>
 
+        <TabsContent value="configuration">
+          <TenantDetailFeeConfig 
+            tenantId={tenantId!} 
+            tenantName={tenant.tenant?.name || tenant.domain || 'Unnamed Tenant'} 
+          />
+        </TabsContent>
+
+        <TabsContent value="fee-ledger">
+          <TenantDetailFeeLedger 
+            tenantId={tenantId!} 
+            tenantName={tenant.tenant?.name || tenant.domain || 'Unnamed Tenant'} 
+          />
+        </TabsContent>
+
         <TabsContent value="billing">
-          <TenantDetailBilling tenantId={tenantId!} />
+          <TenantDetailBilling 
+            tenantId={tenantId!} 
+            tenantName={tenant.tenant?.name || tenant.domain || 'Unnamed Tenant'} 
+          />
         </TabsContent>
 
         <TabsContent value="activity">

@@ -31,9 +31,15 @@ export interface FeeSummary {
   outstanding_amount: number; // New: pending + billed (fees that need payment)
 }
 
-export function usePlatformFeeConfig(tenantId?: string) {
+export interface PlatformFeeConfigOptions {
+  startDate?: Date;
+  endDate?: Date;
+}
+
+export function usePlatformFeeConfig(tenantId?: string, options?: PlatformFeeConfigOptions) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const { startDate, endDate } = options || {};
 
   // Fetch fee configuration(s)
   const { data: configs, isLoading: isLoadingConfigs } = useQuery({
@@ -115,14 +121,23 @@ export function usePlatformFeeConfig(tenantId?: string) {
 
   // Fetch fee ledger entries
   const { data: ledger, isLoading: isLoadingLedger } = useQuery({
-    queryKey: ['platform-fee-ledger', tenantId],
+    queryKey: ['platform-fee-ledger', tenantId, startDate?.toISOString(), endDate?.toISOString()],
     queryFn: async () => {
       if (!tenantId) return [];
 
-      const { data, error } = await supabase
+      let query = supabase
         .from('platform_fee_ledger')
         .select('*')
-        .eq('tenant_id', tenantId)
+        .eq('tenant_id', tenantId);
+      
+      if (startDate) {
+        query = query.gte('created_at', startDate.toISOString());
+      }
+      if (endDate) {
+        query = query.lte('created_at', endDate.toISOString());
+      }
+
+      const { data, error } = await query
         .order('created_at', { ascending: false });
 
       if (error) throw error;
