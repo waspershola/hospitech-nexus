@@ -27,6 +27,22 @@ interface CancelBookingModalProps {
 
 type CancellationPolicy = 'full_refund' | 'partial_refund' | 'no_refund' | 'custom';
 
+type BookingWithRelations = {
+  id: string;
+  guest_id: string;
+  room_id: string;
+  organization_id: string | null;
+  check_in: string;
+  check_out: string;
+  status: string;
+  total_amount: number;
+  booking_reference: string;
+  metadata?: any;
+  guest?: { name: string; email: string; phone: string } | null;
+  room?: { number: string; type: string } | null;
+  organization?: any;
+};
+
 export function CancelBookingModal({ open, onClose, bookingId }: CancelBookingModalProps) {
   const { user, tenantId } = useAuth();
   const queryClient = useQueryClient();
@@ -36,22 +52,51 @@ export function CancelBookingModal({ open, onClose, bookingId }: CancelBookingMo
   const [customRefundPercent, setCustomRefundPercent] = useState(100);
 
   // Fetch booking details
-  const { data: booking, isLoading } = useQuery({
+  const { data: booking, isLoading } = useQuery<BookingWithRelations>({
     queryKey: ['booking', bookingId],
     queryFn: async () => {
       const { data, error } = await supabase
         .from('bookings')
-        .select(`
-          *,
-          guest:guests(*),
-          room:rooms(*),
-          organization:organizations(*)
-        `)
+        .select('*')
         .eq('id', bookingId)
         .single();
 
       if (error) throw error;
-      return data;
+      
+      const result: BookingWithRelations = data as BookingWithRelations;
+      
+      // Fetch guest and room separately to bypass RLS join issues
+      if (data.guest_id) {
+        const { data: guestData } = await supabase
+          .from('guests')
+          .select('name, email, phone')
+          .eq('id', data.guest_id)
+          .single();
+        
+        result.guest = guestData;
+      }
+      
+      if (data.room_id) {
+        const { data: roomData } = await supabase
+          .from('rooms')
+          .select('number, type')
+          .eq('id', data.room_id)
+          .single();
+        
+        result.room = roomData;
+      }
+      
+      if (data.organization_id) {
+        const { data: orgData } = await supabase
+          .from('organizations')
+          .select('*')
+          .eq('id', data.organization_id)
+          .single();
+        
+        result.organization = orgData;
+      }
+
+      return result;
     },
     enabled: open && !!bookingId,
   });
