@@ -138,7 +138,38 @@ export function FolioSettlementDialog({ folioId, open, onClose }: FolioSettlemen
 
   const settleMutation = useMutation({
     mutationFn: async () => {
-      if (!folioId || !folio) throw new Error('No folio selected');
+      // DEFENSIVE TYPE CHECKING - Capture folioId immediately to avoid closure issues
+      const currentFolioId = folioId;
+      
+      console.log('[Settlement Debug] Start mutation', {
+        folioIdType: typeof currentFolioId,
+        folioIdValue: currentFolioId,
+        folioIdLength: currentFolioId?.length,
+        folioObjectKeys: folio ? Object.keys(folio) : null,
+        folioObjectId: folio?.id,
+        amountValue: amount,
+        paymentMethodValue: paymentMethod,
+      });
+
+      if (!currentFolioId || !folio) {
+        console.error('[Settlement] Missing required data:', { currentFolioId, folio });
+        throw new Error('No folio selected');
+      }
+
+      // Validate that folioId is actually a string UUID
+      if (typeof currentFolioId !== 'string') {
+        console.error('[Settlement] Invalid folioId type:', typeof currentFolioId, currentFolioId);
+        throw new Error(`Invalid folio ID type: expected string, got ${typeof currentFolioId}`);
+      }
+
+      // Additional UUID format validation
+      const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+      if (!uuidRegex.test(currentFolioId)) {
+        console.error('[Settlement] Invalid folioId format:', currentFolioId);
+        throw new Error(`Invalid folio ID format: ${currentFolioId}`);
+      }
+
+      console.log('[Settlement] Validation passed, proceeding with payment amount:', parseFloat(amount) || folio.balance);
 
       const paymentAmount = parseFloat(amount) || folio.balance;
 
@@ -157,22 +188,38 @@ export function FolioSettlementDialog({ folioId, open, onClose }: FolioSettlemen
           transaction_ref: `SETTLE-${Date.now()}`,
           metadata: {
             settlement_type: 'folio_settlement',
-            folio_id: folioId,
+            folio_id: currentFolioId,
           }
         })
         .select()
         .single();
 
-      if (paymentError) throw paymentError;
+      if (paymentError) {
+        console.error('[Settlement] Payment creation failed:', paymentError);
+        throw paymentError;
+      }
 
-      // Post payment to folio
-      const { error: folioError } = await supabase.rpc('folio_post_payment', {
-        p_folio_id: folioId,
+      console.log('[Settlement] Payment created successfully:', payment.id, 'Now posting to folio...');
+      console.log('[Settlement] RPC parameters:', {
+        p_folio_id: currentFolioId,
+        p_folio_id_type: typeof currentFolioId,
         p_payment_id: payment.id,
         p_amount: paymentAmount
       });
 
-      if (folioError) throw folioError;
+      // Post payment to folio using the captured folioId variable
+      const { error: folioError } = await supabase.rpc('folio_post_payment', {
+        p_folio_id: currentFolioId,
+        p_payment_id: payment.id,
+        p_amount: paymentAmount
+      });
+
+      if (folioError) {
+        console.error('[Settlement] Folio post payment failed:', folioError);
+        throw folioError;
+      }
+
+      console.log('[Settlement] Folio updated successfully');
 
       return payment;
     },

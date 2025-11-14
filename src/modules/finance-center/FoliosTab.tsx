@@ -36,6 +36,13 @@ export function FoliosTab() {
   const folioCount = folios?.length || 0;
 
   const handleSettle = (folioId: string) => {
+    // Defensive type checking
+    if (typeof folioId !== 'string') {
+      console.error('[FoliosTab] Invalid folio ID type:', typeof folioId, folioId);
+      return;
+    }
+    
+    console.log('[FoliosTab] Opening settlement for folio:', folioId);
     setSelectedFolioId(folioId);
     setSettlementOpen(true);
   };
