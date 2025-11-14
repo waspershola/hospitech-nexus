@@ -85,15 +85,24 @@ async function calculateQRPlatformFee(
     
     // Calculate the fee from subtotal
     let feeAmount: number;
-    let totalAmount: number;
     
     if (feeConfig.fee_type === 'percentage') {
       feeAmount = subtotal * (feeConfig.qr_fee / 100);
     } else {
       // Flat fee
       feeAmount = feeConfig.qr_fee;
-      baseAmount = total_amount_from_frontend - feeAmount;
     }
+    
+    // Calculate total based on payer mode
+    const totalAmount = feeConfig.payer === 'guest' ? subtotal + feeAmount : subtotal;
+    
+    console.log('[platform-fee] Fee calculated:', {
+      subtotal,
+      feeAmount,
+      totalAmount,
+      payer: feeConfig.payer,
+      addedToGuest: feeConfig.payer === 'guest'
+    });
     
     // Record in ledger with extracted amounts
     const ledgerStatus = feeConfig.billing_cycle === 'realtime' ? 'billed' : 'pending';
@@ -104,7 +113,7 @@ async function calculateQRPlatformFee(
         tenant_id,
         reference_type: 'qr_payment',
         reference_id: request_id,
-        base_amount: baseAmount,
+        base_amount: subtotal,
         fee_amount: feeAmount,
         rate: feeConfig.qr_fee,
         fee_type: feeConfig.fee_type,
@@ -114,11 +123,12 @@ async function calculateQRPlatformFee(
         billed_at: feeConfig.billing_cycle === 'realtime' ? new Date().toISOString() : null,
         metadata: {
           service_category,
-          total_from_frontend: total_amount_from_frontend,
-          extracted_base: baseAmount,
-          extracted_fee: feeAmount,
+          subtotal: subtotal,
+          total_amount: totalAmount,
+          fee_amount: feeAmount,
           fee_config_id: feeConfig.id,
-          mode: feeConfig.mode
+          mode: feeConfig.mode,
+          payer: feeConfig.payer
         }
       });
     
@@ -127,23 +137,33 @@ async function calculateQRPlatformFee(
       throw ledgerError;
     }
     
-    console.log('[platform-fee] Extracted and recorded QR fee:', {
+    console.log('[platform-fee] Recorded QR fee in ledger:', {
       tenant_id,
       request_id,
       service_category,
-      total_from_frontend: total_amount_from_frontend,
-      base_amount: baseAmount,
+      subtotal: subtotal,
       fee_amount: feeAmount,
+      total_amount: totalAmount,
       payer: feeConfig.payer,
       mode: feeConfig.mode,
       billing_cycle: feeConfig.billing_cycle
     });
     
-    return { applied: true, fee_amount: feeAmount, base_amount: baseAmount };
+    return { 
+      applied: true, 
+      fee_amount: feeAmount, 
+      base_amount: subtotal,
+      total_amount: totalAmount
+    };
     
   } catch (error) {
     console.error('[platform-fee] Error extracting QR fee:', error);
-    return { applied: false, fee_amount: 0, base_amount: total_amount_from_frontend || 0 };
+    return { 
+      applied: false, 
+      fee_amount: 0, 
+      base_amount: subtotal || 0,
+      total_amount: subtotal || 0
+    };
   }
 }
 
