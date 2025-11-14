@@ -59,11 +59,11 @@ export function OrderDetailsDrawer({
 
   if (!order) return null;
 
-  // Calculate platform fee from order total
-  const platformFeeBreakdown = calculateQRPlatformFee(
-    order.subtotal || 0,
-    platformFeeConfig || null
-  );
+  // Use server-calculated platform fee from request metadata
+  const paymentInfo = order.metadata?.payment_info || {};
+  const subtotal = paymentInfo.subtotal || order.subtotal || 0;
+  const platformFee = paymentInfo.platform_fee || 0;
+  const totalAmount = paymentInfo.amount || order.total || subtotal;
 
   const handleCollectPayment = async () => {
     if (!selectedLocationId || !selectedProviderId) {
@@ -102,8 +102,8 @@ export function OrderDetailsDrawer({
           body: {
             request_id: order.request_id,
             tenant_id: order.tenant_id,
-            service_category: 'digital_menu',
-            amount: order.total || 0,
+            service_category: order.metadata?.service_type || 'digital_menu',
+            amount: totalAmount,
             payment_location: selectedLocation?.name,
             payment_method: selectedProvider?.name,
           },
@@ -204,14 +204,14 @@ export function OrderDetailsDrawer({
               <span>{order.currency || 'NGN'} {order.subtotal?.toFixed(2)}</span>
             </div>
             
-            {platformFeeBreakdown.platformFee > 0 && platformFeeConfig?.payer === 'guest' && (
+            {platformFee > 0 && (
               <div className="flex justify-between text-sm">
                 <span className="text-muted-foreground">
-                  Platform Fee {platformFeeConfig.fee_type === 'flat' ? '(Flat)' : `(${platformFeeConfig.qr_fee}%)`}
-                  {' (charged to guest)'}
+                  Platform Fee {platformFeeConfig?.fee_type === 'flat' ? '(Flat)' : `(${platformFeeConfig?.qr_fee || 0}%)`}
+                  {platformFeeConfig?.payer === 'guest' ? ' (charged to guest)' : ' (charged to property)'}
                 </span>
                 <span className="text-muted-foreground">
-                  +{order.currency || 'NGN'} {platformFeeBreakdown.platformFee.toFixed(2)}
+                  +{order.currency || 'NGN'} {platformFee.toFixed(2)}
                 </span>
               </div>
             )}

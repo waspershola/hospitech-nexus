@@ -80,7 +80,7 @@ export function QRRoomService() {
 
       const subtotal = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
 
-      // PHASE 9 FIX: Create request FIRST (Phase 7 pattern)
+      // Send only subtotal - server will calculate platform fee
       const { data: request, error: requestError } = await supabase
         .from('requests')
         .insert({
@@ -99,7 +99,7 @@ export function QRRoomService() {
             service_type: 'room_service',
             payment_info: {
               billable: true,
-              amount: finalTotal, // Use adjusted total with platform fee
+              subtotal: subtotal, // Send subtotal - server calculates fee
               currency: 'NGN',
               location: 'Restaurant POS',
               status: 'pending'

@@ -25,26 +25,25 @@ interface ChatMessage {
 }
 
 /**
- * Phase C: Platform Fee Extraction for QR Payments
- * The frontend has already calculated and included the fee in payment_info.amount.
- * This function extracts the fee from the amount for accurate ledger recording.
+ * Server-Side Platform Fee Calculation for QR Payments
+ * Calculates fees from subtotal to ensure 100% consistency
  */
-async function applyQRPlatformFee(
+async function calculateQRPlatformFee(
   supabase: any,
   tenant_id: string,
   request_id: string,
   service_category: string,
-  total_amount_from_frontend: number | null
-): Promise<{applied: boolean; fee_amount: number; base_amount: number}> {
+  subtotal: number | null
+): Promise<{applied: boolean; fee_amount: number; base_amount: number; total_amount: number}> {
   try {
     // Only apply fees to billable services with known amounts
     const billableServices = ['digital_menu', 'room_service', 'menu_order', 'laundry', 'spa'];
-    if (!billableServices.includes(service_category.toLowerCase()) || !total_amount_from_frontend) {
-      console.log('[platform-fee] Service not billable or no amount:', service_category);
-      return { applied: false, fee_amount: 0, base_amount: total_amount_from_frontend || 0 };
+    if (!billableServices.includes(service_category.toLowerCase()) || !subtotal) {
+      console.log('[platform-fee] Service not billable or no subtotal:', service_category);
+      return { applied: false, fee_amount: 0, base_amount: subtotal || 0, total_amount: subtotal || 0 };
     }
     
-    console.log('[platform-fee] Extracting QR fee from total:', total_amount_from_frontend);
+    console.log('[platform-fee] Calculating QR fee for subtotal:', subtotal);
     
     // Get fee configuration
     const { data: feeConfig, error: configError } = await supabase
@@ -56,12 +55,12 @@ async function applyQRPlatformFee(
     
     if (configError || !feeConfig) {
       console.log('[platform-fee] No active QR fee config');
-      return { applied: false, fee_amount: 0, base_amount: total_amount_from_frontend };
+      return { applied: false, fee_amount: 0, base_amount: subtotal, total_amount: subtotal };
     }
     
     if (!feeConfig.applies_to.includes('qr_payments')) {
       console.log('[platform-fee] QR payments not in applies_to array');
-      return { applied: false, fee_amount: 0, base_amount: total_amount_from_frontend };
+      return { applied: false, fee_amount: 0, base_amount: subtotal, total_amount: subtotal };
     }
     
     // Check trial exemption
@@ -79,27 +78,17 @@ async function applyQRPlatformFee(
         
         if (trialEndDate > new Date()) {
           console.log('[platform-fee] Tenant in trial period, skipping QR fee');
-          return { applied: false, fee_amount: 0, base_amount: total_amount_from_frontend };
+          return { applied: false, fee_amount: 0, base_amount: subtotal, total_amount: subtotal };
         }
       }
     }
     
-    // Only extract fee if guest pays (inclusive mode)
-    // Property-pays fees are not included in total_amount_from_frontend
-    if (feeConfig.payer !== 'guest' || feeConfig.mode !== 'inclusive') {
-      console.log('[platform-fee] Property pays or exclusive mode - no extraction needed');
-      return { applied: false, fee_amount: 0, base_amount: total_amount_from_frontend };
-    }
-    
-    // Reverse-calculate the fee from the total
-    // For percentage: base = total / (1 + rate/100), fee = total - base
-    // For flat: base = total - fee_rate, fee = fee_rate
-    let baseAmount: number;
+    // Calculate the fee from subtotal
     let feeAmount: number;
+    let totalAmount: number;
     
     if (feeConfig.fee_type === 'percentage') {
-      baseAmount = total_amount_from_frontend / (1 + feeConfig.qr_fee / 100);
-      feeAmount = total_amount_from_frontend - baseAmount;
+      feeAmount = subtotal * (feeConfig.qr_fee / 100);
     } else {
       // Flat fee
       feeAmount = feeConfig.qr_fee;
@@ -297,14 +286,14 @@ serve(async (req) => {
         billable: billableServices.includes(requestData.service_category.toLowerCase()),
       };
       
-      // Add amount from frontend payment_info if available
-      if ((requestData as any).metadata?.payment_info?.amount) {
-        paymentInfo.amount = (requestData as any).metadata.payment_info?.amount;
+      // Get subtotal from frontend payment_info
+      if ((requestData as any).metadata?.payment_info?.subtotal) {
+        paymentInfo.subtotal = (requestData as any).metadata.payment_info?.subtotal;
       }
       
-      console.log('[platform-fee] Using payment amount from frontend:', {
+      console.log('[qr-request] Using payment subtotal from frontend:', {
         service_category: requestData.service_category,
-        amount: paymentInfo.amount,
+        subtotal: paymentInfo.subtotal,
         billable: paymentInfo.billable
       });
 
@@ -366,20 +355,39 @@ serve(async (req) => {
 
       console.log('[qr-request] Request created successfully:', newRequest.id);
 
-      // Phase C: Extract platform fee from the request amount for ledger recording
+      // Calculate platform fee server-side (ensures consistency)
       // This happens AFTER request creation so we have the real request_id
-      if (paymentInfo.billable && paymentInfo.amount) {
+      if (paymentInfo.billable && paymentInfo.subtotal) {
         try {
-          const feeResult = await applyQRPlatformFee(
+          const feeResult = await calculateQRPlatformFee(
             supabase,
             qr.tenant_id,
             newRequest.id,
             requestData.service_category,
-            paymentInfo.amount
+            paymentInfo.subtotal
           );
-          console.log('[platform-fee] QR fee extraction result:', feeResult);
+          console.log('[platform-fee] QR fee calculation result:', feeResult);
+          
+          // Update request with calculated totals
+          if (feeResult.applied) {
+            await supabase
+              .from('requests')
+              .update({
+                metadata: {
+                  ...requestPayload.metadata,
+                  payment_info: {
+                    ...paymentInfo,
+                    subtotal: feeResult.base_amount,
+                    amount: feeResult.total_amount,
+                    platform_fee: feeResult.fee_amount,
+                    platform_fee_applied: true,
+                  },
+                },
+              })
+              .eq('id', newRequest.id);
+          }
         } catch (feeError) {
-          console.error('[platform-fee] Error extracting QR fee (non-blocking):', feeError);
+          console.error('[platform-fee] Error calculating QR fee (non-blocking):', feeError);
         }
       }
 
