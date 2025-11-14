@@ -80,57 +80,36 @@ export function QRRoomService() {
 
       const subtotal = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
 
-      // Send only subtotal - server will calculate platform fee
-      const { data: request, error: requestError } = await supabase
-        .from('requests')
-        .insert({
-          tenant_id: qrData?.tenant_id,
+      // Call edge function to create request with platform fee calculation
+      const { data, error } = await supabase.functions.invoke('qr-request', {
+        body: {
+          action: 'create_request',
           qr_token: token,
-          type: 'room_service',
           service_category: 'room_service',
-          assigned_department: 'restaurant',
           note: `Room Service Order: ${cart.length} items - ${items.map(i => `${i.quantity}x ${i.name}`).join(', ')}`,
           priority: 'normal',
-          status: 'pending',
           metadata: {
             qr_token: token,
             room_number: (qrData as any)?.room?.number || 'N/A',
             guest_label: 'Guest',
             service_type: 'room_service',
+            guest_order_items: items,
+            special_instructions: specialInstructions,
             payment_info: {
               billable: true,
-              subtotal: subtotal, // Send subtotal - server calculates fee
+              subtotal: subtotal,
               currency: 'NGN',
               location: 'Restaurant POS',
               status: 'pending'
             }
-          },
-        })
-        .select()
-        .single();
+          }
+        }
+      });
 
-      if (requestError) throw requestError;
+      if (error) throw error;
+      if (!data?.success) throw new Error(data?.error || 'Failed to create order');
 
-      // Create guest_order WITH request_id already set
-      const { data: order, error: orderError } = await supabase
-        .from('guest_orders')
-        .insert({
-          tenant_id: qrData?.tenant_id,
-          qr_token: token,
-          guest_name: 'Guest',
-          request_id: request.id, // ← Set on INSERT, not UPDATE
-          items,
-          special_instructions: specialInstructions,
-          subtotal,
-          total: finalTotal, // Use adjusted total with platform fee
-          status: 'pending',
-        })
-        .select()
-        .single();
-
-      if (orderError) throw orderError;
-
-      return { order, request };
+      return { order: data.order, request: data.request };
     },
     onSuccess: (data) => {
       toast.success('Room service order placed successfully!');

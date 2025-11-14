@@ -377,6 +377,8 @@ serve(async (req) => {
 
       // Calculate platform fee server-side (ensures consistency)
       // This happens AFTER request creation so we have the real request_id
+      let calculatedTotalAmount = paymentInfo.subtotal || 0;
+      
       if (paymentInfo.billable && paymentInfo.subtotal) {
         try {
           const feeResult = await calculateQRPlatformFee(
@@ -387,6 +389,9 @@ serve(async (req) => {
             paymentInfo.subtotal
           );
           console.log('[platform-fee] QR fee calculation result:', feeResult);
+          
+          // Store calculated total for guest_order creation
+          calculatedTotalAmount = feeResult.total_amount || paymentInfo.subtotal;
           
           // Update request with calculated totals
           if (feeResult.applied) {
@@ -449,10 +454,43 @@ serve(async (req) => {
           });
       }
 
+      // Create guest_order if items are provided
+      let guestOrder = null;
+      if ((requestData as any).metadata?.guest_order_items) {
+        console.log('[qr-request] Creating guest_order with items');
+        const items = (requestData as any).metadata.guest_order_items;
+        const specialInstructions = (requestData as any).metadata.special_instructions || '';
+        const subtotal = paymentInfo.subtotal || 0;
+        
+        const { data: order, error: orderError } = await supabase
+          .from('guest_orders')
+          .insert({
+            tenant_id: qr.tenant_id,
+            qr_token: requestData.qr_token,
+            request_id: newRequest.id,
+            guest_name: requestData.guest_name || 'Guest',
+            items,
+            special_instructions: specialInstructions,
+            subtotal,
+            total: calculatedTotalAmount,
+            status: 'pending',
+          })
+          .select()
+          .single();
+
+        if (orderError) {
+          console.error('[qr-request] Guest order creation error:', orderError);
+        } else {
+          guestOrder = order;
+          console.log('[qr-request] Guest order created:', order.id);
+        }
+      }
+
       return new Response(
         JSON.stringify({
           success: true,
-          data: newRequest,
+          request: newRequest,
+          order: guestOrder,
         }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
