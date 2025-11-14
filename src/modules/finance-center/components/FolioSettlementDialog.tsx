@@ -187,16 +187,16 @@ export function FolioSettlementDialog({ folioId, open, onClose }: FolioSettlemen
                 <Separator className="my-2" />
                 <div className="flex justify-between text-sm">
                   <span className="text-muted-foreground">Total Charges:</span>
-                  <span>{formatCurrency(folio.total_charges, 'NGN')}</span>
+                  <span>₦{folio.total_charges?.toLocaleString() || '0.00'}</span>
                 </div>
                 <div className="flex justify-between text-sm">
                   <span className="text-muted-foreground">Total Payments:</span>
-                  <span>{formatCurrency(folio.total_payments, 'NGN')}</span>
+                  <span>₦{folio.total_payments?.toLocaleString() || '0.00'}</span>
                 </div>
                 <div className="flex justify-between pt-2 border-t">
                   <span className="font-medium">Outstanding Balance:</span>
                   <span className="font-bold text-lg text-amber-600">
-                    {formatCurrency(folio.balance, 'NGN')}
+                    ₦{folio.balance?.toLocaleString() || '0.00'}
                   </span>
                 </div>
               </div>
@@ -223,7 +223,7 @@ export function FolioSettlementDialog({ folioId, open, onClose }: FolioSettlemen
                           <span className={`font-semibold whitespace-nowrap ${
                             txn.transaction_type === 'charge' ? 'text-red-600' : 'text-green-600'
                           }`}>
-                            {txn.transaction_type === 'charge' ? '+' : '-'}{formatCurrency(txn.amount, 'NGN')}
+                            {txn.transaction_type === 'charge' ? '+' : '-'}₦{txn.amount?.toLocaleString() || '0.00'}
                           </span>
                         </div>
                       ))}
@@ -268,12 +268,11 @@ export function FolioSettlementDialog({ folioId, open, onClose }: FolioSettlemen
               {/* Balance Preview */}
               {remainingBalance !== 0 && (
               <Alert>
-                <AlertCircle className="h-4 w-4" />
                 <AlertDescription>
                   {remainingBalance > 0 ? (
-                    <>Remaining balance after payment: <strong>{formatCurrency(remainingBalance, 'NGN')}</strong></>
+                    <>Remaining balance after payment: <strong>₦{remainingBalance.toLocaleString()}</strong></>
                   ) : (
-                    <>Overpayment: <strong>{formatCurrency(Math.abs(remainingBalance), 'NGN')}</strong> will be added as credit</>
+                    <>Overpayment: <strong>₦{Math.abs(remainingBalance).toLocaleString()}</strong> will be added as credit</>
                   )}
                 </AlertDescription>
               </Alert>
@@ -281,9 +280,8 @@ export function FolioSettlementDialog({ folioId, open, onClose }: FolioSettlemen
 
             {remainingBalance === 0 && paymentAmount > 0 && (
               <Alert className="border-green-200 bg-green-50">
-                <CheckCircle2 className="h-4 w-4 text-green-600" />
                 <AlertDescription className="text-green-700">
-                  Folio will be fully settled with this payment
+                  ✓ Folio will be fully settled with this payment
                 </AlertDescription>
               </Alert>
             )}
