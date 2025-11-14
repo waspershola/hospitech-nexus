@@ -96,7 +96,7 @@ export function QRMenuBrowser() {
 
       const subtotal = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
 
-      // PHASE 7 FIX 1: Create request FIRST, then order with request_id
+      // Send only subtotal - server will calculate platform fee
       const { data: request, error: requestError } = await supabase
         .from('requests')
         .insert({
@@ -113,7 +113,7 @@ export function QRMenuBrowser() {
             room_number: qrData?.assigned_to || 'Guest',
             payment_info: {
               billable: true,
-              amount: finalTotal, // Use adjusted total with platform fee
+              subtotal: subtotal, // Send subtotal - server calculates fee
               currency: 'NGN',
               location: 'restaurant',
               status: 'pending'
