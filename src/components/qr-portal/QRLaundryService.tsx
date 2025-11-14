@@ -96,45 +96,38 @@ export function QRLaundryService() {
         tenant_id: qrData?.tenant_id,
       });
 
-      const { data: request, error } = await supabase
-        .from('requests')
-        .insert({
-          tenant_id: qrData?.tenant_id,
+      // Call edge function to create request with platform fee calculation
+      const { data: request, error } = await supabase.functions.invoke('qr-request', {
+        body: {
+          action: 'create_request',
           qr_token: token,
-          type: 'laundry',
           service_category: 'laundry',
-          assigned_department: 'laundry',
           note: `Laundry Service: ${cart.length} items - ${items.map(i => `${i.quantity}x ${i.item_name} (${SERVICE_TYPE_LABELS[i.service_type]})`).join(', ')}${specialInstructions ? ` | Instructions: ${specialInstructions}` : ''}`,
           priority: 'normal',
-          status: 'pending',
-          metadata: { 
-            items, 
-            total, 
-            currency: cart[0]?.currency || 'NGN',
+          metadata: {
+            qr_token: token,
+            room_number: (qrData as any)?.room?.number || 'N/A',
+            guest_label: 'Guest',
+            service_type: 'laundry',
+            laundry_items: items,
+            special_instructions: specialInstructions,
             payment_info: {
               billable: true,
-              amount: finalTotal, // Use adjusted total with platform fee
+              subtotal: total,
               currency: cart[0]?.currency || 'NGN',
-              status: 'pending',
               location: 'Laundry Service',
             },
           },
-        })
-        .select()
-        .single();
+        },
+      });
 
       if (error) {
-        console.error('[QRLaundryService] Request insert error:', {
-          message: error.message,
-          code: error.code,
-          details: error.details,
-          hint: error.hint,
-        });
-        throw error;
+        console.error('[QRLaundryService] Request creation error:', error);
+        throw new Error(error.message || 'Failed to create laundry request');
       }
 
-      console.log('[QRLaundryService] Request created:', request.id);
-      return request;
+      console.log('[QRLaundryService] Request created via edge function:', request);
+      return request?.request || request;
     },
     onSuccess: (data) => {
       toast.success('Laundry request submitted successfully!');
@@ -336,11 +329,10 @@ export function QRLaundryService() {
                   <span>{cart[0]?.currency || 'NGN'} {cartTotal.toFixed(2)}</span>
                 </div>
                 
-                {platformFeeBreakdown.platformFee > 0 && platformFeeConfig && (
+                {platformFeeBreakdown.platformFee > 0 && platformFeeConfig && platformFeeConfig.payer === 'guest' && (
                   <div className="flex justify-between text-sm">
                     <span className="text-muted-foreground">
                       Platform Fee {platformFeeConfig.fee_type === 'flat' ? '(Flat)' : `(${platformFeeConfig.qr_fee}%)`}
-                      {platformFeeConfig.payer === 'guest' && ' (charged to guest)'}
                     </span>
                     <span className="text-muted-foreground">
                       +{cart[0]?.currency || 'NGN'} {platformFeeBreakdown.platformFee.toFixed(2)}

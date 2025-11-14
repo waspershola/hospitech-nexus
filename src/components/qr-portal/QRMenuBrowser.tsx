@@ -284,11 +284,10 @@ export function QRMenuBrowser() {
                       <span>{cart[0]?.currency || 'NGN'} {cartTotal.toFixed(2)}</span>
                     </div>
                     
-                    {platformFeeBreakdown.platformFee > 0 && platformFeeConfig && (
+                    {platformFeeBreakdown.platformFee > 0 && platformFeeConfig && platformFeeConfig.payer === 'guest' && (
                       <div className="flex justify-between text-sm">
                         <span className="text-muted-foreground">
                           Platform Fee {platformFeeConfig.fee_type === 'flat' ? '(Flat)' : `(${platformFeeConfig.qr_fee}%)`}
-                          {platformFeeConfig.payer === 'guest' && ' (charged to guest)'}
                         </span>
                         <span className="text-muted-foreground">
                           +{cart[0]?.currency || 'NGN'} {platformFeeBreakdown.platformFee.toFixed(2)}
