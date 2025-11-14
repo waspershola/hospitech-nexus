@@ -503,6 +503,54 @@ export function QRRequestDrawer({ open, onOpenChange }: QRRequestDrawerProps) {
     }
   };
 
+  const handleCompleteRequest = async () => {
+    if (!selectedRequest) return;
+    
+    const paymentChoice = selectedRequest.metadata?.payment_choice;
+    const isBillToRoom = paymentChoice === 'bill_to_room';
+    const folioId = selectedRequest.stay_folio_id;
+    
+    // If bill-to-room and has folio, post charge before completing
+    if (isBillToRoom && folioId) {
+      const amount = selectedRequest.metadata?.payment_info?.amount;
+      
+      if (amount && amount > 0) {
+        console.log('[Complete Request] Posting charge to folio:', {
+          folio_id: folioId,
+          amount,
+          request_id: selectedRequest.id
+        });
+        
+        try {
+          const { data, error } = await supabase.rpc('folio_post_charge', {
+            p_folio_id: folioId,
+            p_amount: amount,
+            p_description: `${selectedRequest.service_category.replace('_', ' ').toUpperCase()} - ${selectedRequest.note || 'Service charge'}`,
+            p_reference_type: 'request',
+            p_reference_id: selectedRequest.id,
+            p_department: selectedRequest.assigned_department || selectedRequest.service_category
+          });
+          
+          if (error) {
+            console.error('[Complete Request] Folio charge posting failed:', error);
+            toast.error('Failed to post charge to folio');
+            return;
+          }
+          
+          console.log('[Complete Request] Charge posted to folio successfully');
+          toast.success(`Charge of ₦${amount.toLocaleString()} posted to guest folio`);
+        } catch (err) {
+          console.error('[Complete Request] Folio posting error:', err);
+          toast.error('Failed to post charge to folio');
+          return;
+        }
+      }
+    }
+    
+    // Then mark as completed
+    await updateRequestStatus(selectedRequest.id, 'completed');
+  };
+
   const getQuickReplyTemplates = (serviceCategory: string) => {
     const templates: Record<string, string[]> = {
       room_service: [
@@ -1317,7 +1365,7 @@ export function QRRequestDrawer({ open, onOpenChange }: QRRequestDrawerProps) {
                     )}
                     {selectedRequest.status === 'in_progress' && (
                       <Button
-                        onClick={() => updateRequestStatus(selectedRequest.id, 'completed')}
+                        onClick={handleCompleteRequest}
                         className="flex-1"
                       >
                         <CheckCircle2 className="h-4 w-4 mr-2" />
