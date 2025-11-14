@@ -399,6 +399,62 @@ export function QRRequestDrawer({ open, onOpenChange }: QRRequestDrawerProps) {
 
       console.log('[Payment Collection] Payment collection completed successfully');
 
+      // Post payment to folio if request is linked to a folio
+      if (selectedRequest.stay_folio_id) {
+        console.log('[Payment Collection] Posting payment to folio:', selectedRequest.stay_folio_id);
+        
+        try {
+          // First create the payment record
+          const { data: paymentRecord, error: paymentInsertError } = await supabase
+            .from('payments')
+            .insert({
+              tenant_id: selectedRequest.tenant_id,
+              booking_id: selectedRequest.metadata?.booking_id || null,
+              guest_id: selectedRequest.guest_id,
+              amount: amount,
+              expected_amount: amount,
+              currency: currency,
+              method: selectedProvider.type,
+              payment_type: 'service',
+              status: 'completed',
+              transaction_ref: `QR-${selectedRequest.id.slice(0, 8)}-${Date.now()}`,
+              recorded_by: user.id,
+              department: selectedRequest.assigned_department || selectedRequest.service_category,
+              location_id: selectedLocationId,
+              provider_id: selectedProviderId,
+              stay_folio_id: selectedRequest.stay_folio_id,
+              metadata: {
+                request_id: selectedRequest.id,
+                service_category: selectedRequest.service_category,
+                qr_payment: true
+              }
+            })
+            .select()
+            .single();
+
+          if (paymentInsertError) {
+            console.error('[Payment Collection] Failed to create payment record:', paymentInsertError);
+          } else if (paymentRecord) {
+            console.log('[Payment Collection] Payment record created:', paymentRecord.id);
+            
+            // Post payment to folio
+            const { data: folioResult, error: folioError } = await supabase.rpc('folio_post_payment', {
+              p_folio_id: selectedRequest.stay_folio_id,
+              p_payment_id: paymentRecord.id,
+              p_amount: amount
+            });
+
+            if (folioError) {
+              console.error('[Payment Collection] Failed to post to folio:', folioError);
+            } else {
+              console.log('[Payment Collection] Posted to folio successfully:', folioResult);
+            }
+          }
+        } catch (folioError) {
+          console.error('[Payment Collection] Folio posting error (non-blocking):', folioError);
+        }
+      }
+
       // Record platform fee in ledger (non-blocking)
       try {
         await supabase.functions.invoke('record-platform-fee', {

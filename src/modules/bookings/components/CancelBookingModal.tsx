@@ -50,6 +50,25 @@ export function CancelBookingModal({ open, onClose, bookingId }: CancelBookingMo
   const [cancellationReason, setCancellationReason] = useState('');
   const [refundPolicy, setRefundPolicy] = useState<CancellationPolicy>('full_refund');
   const [customRefundPercent, setCustomRefundPercent] = useState(100);
+  const [folioWarning, setFolioWarning] = useState<any>(null);
+  const [forceCancel, setForceCancel] = useState(false);
+
+  // Fetch folio for this booking
+  const { data: folio } = useQuery({
+    queryKey: ['booking-folio', bookingId],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('stay_folios')
+        .select('*')
+        .eq('booking_id', bookingId)
+        .eq('status', 'open')
+        .maybeSingle();
+
+      if (error) throw error;
+      return data;
+    },
+    enabled: open && !!bookingId,
+  });
 
   // Fetch booking details
   const { data: booking, isLoading } = useQuery<BookingWithRelations>({
@@ -142,14 +161,43 @@ export function CancelBookingModal({ open, onClose, bookingId }: CancelBookingMo
 
   const cancelMutation = useMutation({
     mutationFn: async () => {
-      // Early exit if already cancelled
       if (booking?.status === 'cancelled') {
         throw new Error('Booking is already cancelled');
       }
       
+      if (!booking || !tenantId) throw new Error('Booking data not available');
       if (!cancellationReason.trim()) {
         throw new Error('Please provide a reason for cancellation');
       }
+
+      console.log('[cancel] Calling cancel-booking edge function')
+
+      // Call edge function for folio validation and platform fee handling
+      const { data: cancelResult, error: cancelError } = await supabase.functions.invoke('cancel-booking', {
+        body: {
+          booking_id: bookingId,
+          force_cancel: forceCancel,
+          admin_approval: forceCancel,
+          cancellation_reason: cancellationReason,
+          refund_policy: refundPolicy,
+          refund_amount: refundAmount
+        }
+      });
+
+      if (cancelError) {
+        console.error('[cancel] Edge function error:', cancelError)
+        throw cancelError;
+      }
+
+      if (!cancelResult?.success) {
+        console.error('[cancel] Edge function returned error:', cancelResult)
+        if (cancelResult?.requires_force) {
+          setFolioWarning(cancelResult);
+        }
+        throw new Error(cancelResult?.message || cancelResult?.error || 'Cancellation failed');
+      }
+
+      console.log('[cancel] Edge function succeeded, processing refunds and local updates')
 
       // Update booking status to cancelled
       const { error: bookingError } = await supabase
@@ -172,7 +220,6 @@ export function CancelBookingModal({ open, onClose, bookingId }: CancelBookingMo
 
       // Process refunds if applicable
       if (refundAmount > 0 && payments && payments.length > 0) {
-        // Create refund payment records
         for (const payment of payments) {
           const paymentAmount = Number(payment.amount);
           const refundForThisPayment = (paymentAmount / totalPaid) * refundAmount;
@@ -468,6 +515,38 @@ export function CancelBookingModal({ open, onClose, bookingId }: CancelBookingMo
             )}
           </div>
 
+          {/* Folio Balance Warning */}
+          {folio && folio.balance > 0 && (
+            <Alert variant="destructive">
+              <AlertCircle className="h-4 w-4" />
+              <AlertDescription className="space-y-3">
+                <div>
+                  <strong>Outstanding Folio Balance:</strong>
+                  <p className="mt-1">
+                    This booking has an open folio with an outstanding balance of <strong>₦{folio.balance.toLocaleString()}</strong>.
+                  </p>
+                  <p className="text-sm mt-2">
+                    Charges: ₦{folio.total_charges.toLocaleString()} | 
+                    Payments: ₦{folio.total_payments.toLocaleString()}
+                  </p>
+                </div>
+                <div className="flex items-start gap-2 pt-2 border-t border-destructive/20">
+                  <input
+                    type="checkbox"
+                    id="force-cancel"
+                    checked={forceCancel}
+                    onChange={(e) => setForceCancel(e.target.checked)}
+                    className="mt-1"
+                  />
+                  <Label htmlFor="force-cancel" className="font-normal text-sm cursor-pointer">
+                    <strong>Force Cancel</strong> (Manager Override) - I acknowledge the outstanding balance 
+                    and approve cancellation. This will mark the folio as cancelled and flag it for accounting review.
+                  </Label>
+                </div>
+              </AlertDescription>
+            </Alert>
+          )}
+
           {/* Warning */}
           <Alert variant="destructive">
             <AlertCircle className="h-4 w-4" />
@@ -495,12 +574,16 @@ export function CancelBookingModal({ open, onClose, bookingId }: CancelBookingMo
                 }
               }}
               className="flex-1"
-              disabled={cancelMutation.isPending || !cancellationReason.trim()}
+              disabled={
+                cancelMutation.isPending || 
+                !cancellationReason.trim() ||
+                (folio && folio.balance > 0 && !forceCancel)
+              }
             >
               {cancelMutation.isPending && (
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
               )}
-              Cancel Booking
+              {folio && folio.balance > 0 && forceCancel ? 'Force Cancel Booking' : 'Cancel Booking'}
             </Button>
           </div>
         </div>
