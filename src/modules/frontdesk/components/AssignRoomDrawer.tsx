@@ -172,7 +172,7 @@ export function AssignRoomDrawer({ open, onClose, roomId, roomNumber }: AssignRo
         check_in: checkIn,
         check_out: checkOut,
         total_amount: finalTotal,
-        status: actionType === 'reserve' ? 'reserved' : 'confirmed',
+        status: actionType === 'reserve' ? 'reserved' : 'checked_in',
         metadata: {
           tax_breakdown: pricing ? {
             base_amount: pricing.baseAmount,
@@ -193,13 +193,6 @@ export function AssignRoomDrawer({ open, onClose, roomId, roomNumber }: AssignRo
       if (error) throw error;
       if (!data?.success) throw new Error(data?.error || 'Failed to create booking');
 
-      // If check-in now, update room status
-      if (actionType === 'checkin') {
-        await supabase
-          .from('rooms')
-          .update({ status: 'occupied' })
-          .eq('id', roomId);
-      }
 
       return data;
     },
