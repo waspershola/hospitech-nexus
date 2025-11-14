@@ -13,6 +13,7 @@ import { ReceivablesTab } from '@/modules/finance-center/ReceivablesTab';
 import { WalletCreditsTab } from '@/modules/finance-center/WalletCreditsTab';
 import { ReceiptSettingsTab } from '@/modules/finance-center/ReceiptSettingsTab';
 import { ReceiptLogsTab } from '@/modules/finance-center/ReceiptLogsTab';
+import { FoliosTab } from '@/modules/finance-center/FoliosTab';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
 import { PlatformFeesTab } from '@/components/finance/PlatformFeesTab';
 import { Wallet, Building2, TrendingUp, Building, RefreshCcw, MapPin, Shield, BarChart3, Settings, Receipt, CreditCard, Sliders, FileText, Printer, DollarSign } from 'lucide-react';
@@ -52,6 +53,10 @@ export default function FinanceCenter() {
             <TabsTrigger value="credits" className="flex items-center gap-2 whitespace-nowrap">
               <CreditCard className="w-4 h-4" />
               <span>Credits</span>
+            </TabsTrigger>
+            <TabsTrigger value="folios" className="flex items-center gap-2 whitespace-nowrap">
+              <Receipt className="w-4 h-4" />
+              <span>Folios</span>
             </TabsTrigger>
             <TabsTrigger value="organizations" className="flex items-center gap-2 whitespace-nowrap">
               <Building className="w-4 h-4" />
@@ -115,6 +120,10 @@ export default function FinanceCenter() {
 
           <TabsContent value="credits" className="mt-0">
             <WalletCreditsTab />
+          </TabsContent>
+
+          <TabsContent value="folios" className="mt-0">
+            <FoliosTab />
           </TabsContent>
 
           <TabsContent value="organizations" className="mt-0">
