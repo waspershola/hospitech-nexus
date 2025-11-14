@@ -8,6 +8,7 @@ import { SpaBookingDetails } from '@/components/qr-portal/service-details/SpaBoo
 import { LaundryOrderDetails } from '@/components/qr-portal/service-details/LaundryOrderDetails';
 import { DiningReservationDetails } from '@/components/qr-portal/service-details/DiningReservationDetails';
 import { RequestPaymentInfo } from './RequestPaymentInfo';
+import { RequestFolioLink } from '@/components/staff/RequestFolioLink';
 
 interface RequestDetailsDrawerProps {
   request: any;
@@ -128,6 +129,9 @@ export function RequestDetailsDrawer({
           {renderServiceDetails()}
 
           <Separator />
+
+          {/* Folio Link */}
+          <RequestFolioLink request={request} />
 
           {/* Actions */}
           <div className="flex gap-2">

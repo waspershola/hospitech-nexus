@@ -5,6 +5,8 @@ import { supabase } from '@/integrations/supabase/client';
 import { useQRToken } from '@/hooks/useQRToken';
 import { usePlatformFee } from '@/hooks/usePlatformFee';
 import { calculateQRPlatformFee } from '@/lib/finance/platformFee';
+import { useQRPayment } from '@/components/qr-portal/useQRPayment';
+import { QRPaymentOptions } from '@/components/qr-portal/QRPaymentOptions';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -41,6 +43,14 @@ export function QRRoomService() {
   const [specialInstructions, setSpecialInstructions] = useState('');
   const [isCartOpen, setIsCartOpen] = useState(false);
   const [activeCategory, setActiveCategory] = useState('all');
+  
+  const { 
+    guestPhone, 
+    setGuestPhone, 
+    paymentChoice, 
+    setPaymentChoice,
+    getPaymentMetadata 
+  } = useQRPayment();
 
   const { data: platformFeeConfig } = usePlatformFee(qrData?.tenant_id);
 
@@ -80,6 +90,8 @@ export function QRRoomService() {
 
       const subtotal = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
 
+      const paymentMetadata = getPaymentMetadata();
+      
       // Call edge function to create request with platform fee calculation
       const { data, error } = await supabase.functions.invoke('qr-request', {
         body: {
@@ -88,6 +100,8 @@ export function QRRoomService() {
           service_category: 'room_service',
           note: `Room Service Order: ${cart.length} items - ${items.map(i => `${i.quantity}x ${i.name}`).join(', ')}`,
           priority: 'normal',
+          guest_contact: guestPhone,
+          payment_choice: paymentChoice,
           metadata: {
             qr_token: token,
             room_number: (qrData as any)?.room?.number || 'N/A',
@@ -95,6 +109,7 @@ export function QRRoomService() {
             service_type: 'room_service',
             guest_order_items: items,
             special_instructions: specialInstructions,
+            ...paymentMetadata,
             payment_info: {
               billable: true,
               subtotal: subtotal,
@@ -263,6 +278,14 @@ export function QRRoomService() {
                       rows={3}
                     />
                   </div>
+
+                  {/* Payment Options */}
+                  <QRPaymentOptions
+                    guestPhone={guestPhone}
+                    onPhoneChange={setGuestPhone}
+                    paymentChoice={paymentChoice}
+                    onPaymentChoiceChange={setPaymentChoice}
+                  />
 
                   <div className="pt-4 border-t border-border space-y-2">
                     <div className="flex justify-between">
