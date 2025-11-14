@@ -23,6 +23,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { RequestPaymentInfo } from './RequestPaymentInfo';
 import { RequestCardSkeleton } from './RequestCardSkeleton';
 import { PaymentHistoryTimeline } from './PaymentHistoryTimeline';
+import { RequestFolioLink } from '@/components/staff/RequestFolioLink';
 import { format } from 'date-fns';
 import { useQueries, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
@@ -781,6 +782,9 @@ export function QRRequestDrawer({ open, onOpenChange }: QRRequestDrawerProps) {
 
                     {/* Payment Info */}
                     <RequestPaymentInfo request={selectedRequest} />
+                    
+                    {/* Folio Link */}
+                    <RequestFolioLink request={selectedRequest} />
                     
                     {/* Amount Adjustment for Dining Reservations */}
                     {selectedRequest.service_category === 'dining_reservation' &&

@@ -92,6 +92,21 @@ export function useRoomActions() {
         after_data: { status: 'checked_in', metadata: updatedMetadata },
       });
 
+      // Create folio via edge function
+      try {
+        const { data: folioResult, error: folioError } = await supabase.functions.invoke('checkin-guest', {
+          body: { booking_id: booking.id }
+        });
+        
+        if (folioError) {
+          console.error('[checkin] Failed to create folio:', folioError);
+        } else if (folioResult?.folio) {
+          console.log('[checkin] Folio created:', folioResult.folio.id);
+        }
+      } catch (folioErr) {
+        console.error('[checkin] Folio creation error:', folioErr);
+      }
+
       // Then update room status to occupied
       const { data, error } = await supabase
         .from('rooms')
