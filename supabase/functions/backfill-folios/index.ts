@@ -125,6 +125,42 @@ serve(async (req) => {
           console.log(`[backfill] Created folio ${newFolio.id} for booking ${booking.booking_reference}`);
           results.created_folios++;
 
+          // Post existing payments to folio using folio_post_payment RPC
+          if (payments && payments.length > 0) {
+            console.log(`[backfill] Posting ${payments.length} payments to folio`);
+            for (const payment of payments) {
+              try {
+                const { error: paymentPostError } = await supabase.rpc('folio_post_payment', {
+                  p_folio_id: newFolio.id,
+                  p_payment_id: payment.id,
+                  p_amount: Number(payment.amount)
+                });
+                
+                if (paymentPostError) {
+                  console.error(`[backfill] Failed to post payment ${payment.id}:`, paymentPostError);
+                } else {
+                  results.linked_payments++;
+                }
+              } catch (err) {
+                console.error(`[backfill] Error posting payment ${payment.id}:`, err);
+              }
+            }
+          }
+
+          // Link existing requests to folio
+          const { error: requestsLinkError } = await supabase
+            .from('requests')
+            .update({ stay_folio_id: newFolio.id })
+            .eq('room_id', booking.room_id)
+            .eq('tenant_id', tenant_id)
+            .is('stay_folio_id', null);
+          
+          if (requestsLinkError) {
+            console.error(`[backfill] Failed to link requests:`, requestsLinkError);
+          } else {
+            console.log(`[backfill] Linked requests to folio`);
+          }
+
           // Link all charges to the folio
           if (charges && charges.length > 0) {
             const { error: chargesUpdateError } = await supabase
@@ -138,22 +174,6 @@ serve(async (req) => {
             } else {
               results.linked_charges += charges.length;
               console.log(`[backfill] Linked ${charges.length} charges to folio`);
-            }
-          }
-
-          // Link all payments to the folio
-          if (payments && payments.length > 0) {
-            const { error: paymentsUpdateError } = await supabase
-              .from('payments')
-              .update({ stay_folio_id: newFolio.id })
-              .eq('booking_id', booking.id)
-              .eq('tenant_id', tenant_id);
-
-            if (paymentsUpdateError) {
-              console.error(`[backfill] Error linking payments:`, paymentsUpdateError);
-            } else {
-              results.linked_payments += payments.length;
-              console.log(`[backfill] Linked ${payments.length} payments to folio`);
             }
           }
 

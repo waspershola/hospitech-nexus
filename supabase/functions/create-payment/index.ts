@@ -412,6 +412,37 @@ serve(async (req) => {
 
     console.log('Payment created:', payment.id);
 
+    // NEW: Post payment to folio if booking is linked
+    if (booking_id) {
+      console.log('[folio] Attempting to post payment to folio for booking:', booking_id);
+      
+      const { data: openFolio } = await supabase
+        .from('stay_folios')
+        .select('id, status')
+        .eq('booking_id', booking_id)
+        .eq('status', 'open')
+        .maybeSingle();
+      
+      if (openFolio) {
+        console.log('[folio] Found open folio:', openFolio.id, '- posting payment');
+        
+        const { error: folioError } = await supabase.rpc('folio_post_payment', {
+          p_folio_id: openFolio.id,
+          p_payment_id: payment.id,
+          p_amount: amount
+        });
+        
+        if (folioError) {
+          console.error('[folio] Failed to post payment to folio:', folioError);
+          // Don't throw - payment is already created successfully
+        } else {
+          console.log('[folio] Payment posted to folio successfully');
+        }
+      } else {
+        console.log('[folio] No open folio found for booking - skipping folio posting');
+      }
+    }
+
     // Phase 1: Auto-create wallet transaction for organization or provided wallet
     const finalWalletId = payment.wallet_id;
     if (finalWalletId) {

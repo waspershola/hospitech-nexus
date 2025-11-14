@@ -1,4 +1,5 @@
-import { useQuery } from '@tanstack/react-query';
+import { useEffect } from 'react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 
@@ -40,6 +41,40 @@ export interface FolioBalance {
  */
 export function useBookingFolio(bookingId: string | null) {
   const { tenantId } = useAuth();
+  const queryClient = useQueryClient();
+
+  // Real-time folio updates
+  useEffect(() => {
+    if (!bookingId || !tenantId) return;
+    
+    console.log('[folio] Setting up real-time subscription for booking:', bookingId);
+    
+    const channel = supabase
+      .channel(`folio-updates-${bookingId}`)
+      .on('postgres_changes', {
+        event: '*',
+        schema: 'public',
+        table: 'stay_folios',
+        filter: `booking_id=eq.${bookingId}`
+      }, (payload) => {
+        console.log('[folio] Real-time update received:', payload);
+        queryClient.invalidateQueries({ queryKey: ['booking-folio', bookingId, tenantId] });
+      })
+      .on('postgres_changes', {
+        event: '*',
+        schema: 'public',
+        table: 'folio_transactions',
+      }, (payload) => {
+        console.log('[folio-txn] Transaction update received:', payload);
+        queryClient.invalidateQueries({ queryKey: ['booking-folio', bookingId, tenantId] });
+      })
+      .subscribe();
+    
+    return () => {
+      console.log('[folio] Cleaning up real-time subscription');
+      supabase.removeChannel(channel);
+    };
+  }, [bookingId, tenantId, queryClient]);
 
   return useQuery({
     queryKey: ['booking-folio', bookingId, tenantId],
