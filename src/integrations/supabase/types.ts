@@ -2814,6 +2814,7 @@ export type Database = {
           settled_at: string | null
           status: string | null
           tenant_id: string
+          waived_at: string | null
           waived_by: string | null
           waived_reason: string | null
         }
@@ -2837,6 +2838,7 @@ export type Database = {
           settled_at?: string | null
           status?: string | null
           tenant_id: string
+          waived_at?: string | null
           waived_by?: string | null
           waived_reason?: string | null
         }
@@ -2860,6 +2862,7 @@ export type Database = {
           settled_at?: string | null
           status?: string | null
           tenant_id?: string
+          waived_at?: string | null
           waived_by?: string | null
           waived_reason?: string | null
         }

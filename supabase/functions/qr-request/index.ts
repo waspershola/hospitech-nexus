@@ -336,6 +336,9 @@ serve(async (req) => {
         assigned_department: finalDepartment,
         assigned_to: null, // NULL = pool assignment
         metadata: {
+          // Preserve ALL frontend metadata first (service details, items, etc.)
+          ...(requestData.metadata || {}),
+          // Then override/add system fields
           guest_name: requestData.guest_name || 'Guest',
           guest_contact: requestData.guest_contact || '',
           qr_location: qr.assigned_to,
@@ -344,6 +347,10 @@ serve(async (req) => {
           room_number: roomNumber || qr.assigned_to,
           room_name: roomName,
           payment_info: paymentInfo,
+          // Normalize laundry fields for display components
+          items: (requestData.metadata as any)?.laundry_items || (requestData.metadata as any)?.items,
+          total: paymentInfo.subtotal,
+          currency: paymentInfo.currency || 'NGN',
         },
       };
       
