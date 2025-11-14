@@ -47,18 +47,17 @@ export function RoomTile({ room, onClick, isSelectionMode, isSelected, onSelecti
   const bookingsArray = Array.isArray(room.bookings) ? room.bookings : room.bookings ? [room.bookings] : [];
   const today = new Date().toISOString().split('T')[0];
   
-  // Priority 1: Checked-in booking active today
+  // Priority 1: Checked-in booking (INCLUDING overstays - remove date filter!)
   let activeBooking = bookingsArray.find(
-    (b: any) => b.status === 'checked_in' && 
-    b.check_in?.split('T')[0] <= today && 
-    b.check_out?.split('T')[0] > today
+    (b: any) => b.status === 'checked_in'
   );
   
-  // Priority 2: Reserved booking arriving today
+  // Priority 2: Reserved booking arriving today OR should have checked in
   if (!activeBooking) {
     activeBooking = bookingsArray.find(
       (b: any) => b.status === 'reserved' && 
-      b.check_in?.split('T')[0] === today
+      b.check_in?.split('T')[0] <= today &&
+      b.check_out?.split('T')[0] >= today
     );
   }
   
