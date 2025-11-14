@@ -257,7 +257,7 @@ serve(async (req) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
     );
 
-    const { action_id, tenant_id, guest_id, room_id, check_in, check_out, total_amount, organization_id, department, created_by, group_booking, group_id, group_name, group_size, group_leader, rate_override, addons, special_requests, is_part_of_group, approval_status, total_rooms_in_group } = await req.json();
+    const { action_id, tenant_id, guest_id, room_id, check_in, check_out, total_amount, status, organization_id, department, created_by, group_booking, group_id, group_name, group_size, group_leader, rate_override, addons, special_requests, is_part_of_group, approval_status, total_rooms_in_group } = await req.json();
 
     console.log('Creating booking with action_id:', action_id);
 
@@ -446,7 +446,7 @@ serve(async (req) => {
         check_out: checkOutDate.toISOString(),
         total_amount: bookingTotalWithFee,
         organization_id: organization_id || null,
-        status: 'reserved',
+        status: status || 'reserved',
         action_id,
       metadata: {
         created_via: 'edge_function',
@@ -500,10 +500,11 @@ serve(async (req) => {
       console.error('[platform-fee] Error extracting fee (non-blocking):', feeError);
     }
 
-    // Update room status to reserved
+    // Update room status based on booking status
+    const roomStatus = (status === 'checked_in') ? 'occupied' : 'reserved';
     await supabaseClient
       .from('rooms')
-      .update({ status: 'reserved' })
+      .update({ status: roomStatus })
       .eq('id', room_id);
 
     console.log('Booking created successfully:', newBooking.id);
