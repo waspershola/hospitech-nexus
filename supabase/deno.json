@@ -1,0 +1,12 @@
+{
+  "compilerOptions": {
+    "jsx": "react-jsx",
+    "jsxImportSource": "react"
+  },
+  "imports": {
+    "openai": "npm:openai@^4.52.5",
+    "xhr": "https://deno.land/x/xhr@0.1.0/mod.ts",
+    "server": "https://deno.land/std@0.168.0/http/server.ts"
+  },
+  "nodeModulesDir": "auto"
+}
