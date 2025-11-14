@@ -149,21 +149,27 @@ async function calculateQRPlatformFee(
       billing_cycle: feeConfig.billing_cycle
     });
     
-    return { 
-      applied: true, 
-      fee_amount: feeAmount, 
-      base_amount: subtotal,
-      total_amount: totalAmount
-    };
+  return { 
+    applied: true, 
+    fee_amount: feeAmount, 
+    base_amount: subtotal,
+    total_amount: totalAmount,
+    payer: feeConfig.payer,
+    fee_type: feeConfig.fee_type,
+    qr_fee: feeConfig.qr_fee
+  };
     
   } catch (error) {
     console.error('[platform-fee] Error extracting QR fee:', error);
-    return { 
-      applied: false, 
-      fee_amount: 0, 
-      base_amount: subtotal || 0,
-      total_amount: subtotal || 0
-    };
+  return { 
+    applied: false, 
+    fee_amount: 0, 
+    base_amount: subtotal || 0,
+    total_amount: subtotal || 0,
+    payer: null,
+    fee_type: null,
+    qr_fee: 0
+  };
   }
 }
 
@@ -394,22 +400,25 @@ serve(async (req) => {
           calculatedTotalAmount = feeResult.total_amount || paymentInfo.subtotal;
           
           // Update request with calculated totals
-          if (feeResult.applied) {
-            await supabase
-              .from('requests')
-              .update({
-                metadata: {
-                  ...requestPayload.metadata,
-                  payment_info: {
-                    ...paymentInfo,
-                    subtotal: feeResult.base_amount,
-                    amount: feeResult.total_amount,
-                    platform_fee: feeResult.fee_amount,
-                    platform_fee_applied: true,
-                  },
-                },
-              })
-              .eq('id', newRequest.id);
+    if (feeResult.applied) {
+      await supabase
+        .from('requests')
+        .update({
+          metadata: {
+            ...requestPayload.metadata,
+            payment_info: {
+              ...paymentInfo,
+              subtotal: feeResult.base_amount,
+              amount: feeResult.total_amount,
+              platform_fee: feeResult.fee_amount,
+              platform_fee_applied: true,
+              payer: feeResult.payer,
+              fee_type: feeResult.fee_type,
+              qr_fee: feeResult.qr_fee,
+            },
+          },
+        })
+        .eq('id', newRequest.id);
           }
         } catch (feeError) {
           console.error('[platform-fee] Error calculating QR fee (non-blocking):', feeError);
