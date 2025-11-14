@@ -338,6 +338,12 @@ export function CancelBookingModal({ open, onClose, bookingId }: CancelBookingMo
     <Dialog open={open} onOpenChange={onClose}>
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
+          <DialogTitle>Cancel Booking</DialogTitle>
+          <DialogDescription>
+            Review the booking details and select a cancellation policy. This action cannot be undone.
+          </DialogDescription>
+        </DialogHeader>
+        <DialogHeader>
           <div className="flex items-center gap-2">
             <XCircle className="h-5 w-5 text-destructive" />
             <DialogTitle>Cancel Booking</DialogTitle>
