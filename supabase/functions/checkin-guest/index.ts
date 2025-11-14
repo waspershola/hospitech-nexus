@@ -91,6 +91,15 @@ serve(async (req) => {
 
     console.log('[checkin] Folio created successfully:', folio.id)
 
+    // Broadcast real-time update to all subscribers
+    await supabaseServiceClient
+      .channel(`folio-${folio.id}`)
+      .send({
+        type: 'broadcast',
+        event: 'folio_created',
+        payload: folio
+      })
+
     return new Response(
       JSON.stringify({ success: true, folio }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }

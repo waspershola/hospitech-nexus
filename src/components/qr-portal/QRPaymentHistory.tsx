@@ -9,6 +9,7 @@ import { Button } from '@/components/ui/button';
 import { LuxuryHeader } from '@/components/qr-portal/LuxuryHeader';
 import { LoadingState } from '@/components/qr-portal/LoadingState';
 import { OfflineIndicator } from '@/components/qr-portal/OfflineIndicator';
+import { QRFolioBalance } from '@/components/qr-portal/QRFolioBalance';
 import { ArrowLeft, Receipt, CheckCircle2, Clock, MapPin, CreditCard } from 'lucide-react';
 import { format } from 'date-fns';
 import { Separator } from '@/components/ui/separator';
@@ -40,6 +41,25 @@ export default function QRPaymentHistory() {
       });
     },
     enabled: !!token,
+  });
+
+  // Fetch folio data if available
+  const { data: folioData } = useQuery({
+    queryKey: ['qr-folio-balance', token],
+    queryFn: async () => {
+      if (!token || !qrData?.room_id) return null;
+      
+      const { data, error } = await supabase
+        .from('stay_folios')
+        .select('*')
+        .eq('room_id', qrData.room_id)
+        .eq('status', 'open')
+        .maybeSingle();
+
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!token && !!qrData?.room_id,
   });
 
   if (isValidating || historyLoading) {
@@ -99,6 +119,14 @@ export default function QRPaymentHistory() {
               Back
             </Button>
           </div>
+
+          {folioData && (
+            <QRFolioBalance
+              folioBalance={folioData.balance}
+              totalCharges={folioData.total_charges}
+              totalPayments={folioData.total_payments}
+            />
+          )}
 
           <Card className="shadow-xl backdrop-blur-sm bg-card/80 border-2 border-primary/10">
             <CardHeader>
