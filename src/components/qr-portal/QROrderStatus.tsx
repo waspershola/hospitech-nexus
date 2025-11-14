@@ -23,7 +23,7 @@ export function QROrderStatus() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('guest_orders')
-        .select('*, request:requests(id, status, created_at)')
+        .select('*, request:requests(id, status, created_at, metadata)')
         .eq('id', orderId!)
         .eq('qr_token', token!)
         .single();
@@ -135,31 +135,55 @@ export function QROrderStatus() {
             <CardTitle className="text-2xl font-bold">Order Placed Successfully!</CardTitle>
             <p className="text-muted-foreground">Your Order</p>
           </CardHeader>
-          <CardContent className="space-y-4">
-            {/* Order Summary Box */}
-            <div className="bg-background rounded-lg p-4 space-y-3">
-              <p className="font-semibold text-lg">
-                {(order.items as any[]).length} {(order.items as any[]).length === 1 ? 'item' : 'items'} selected
-              </p>
-              <Separator />
-              <div className="space-y-2">
-                {(order.items as any[]).map((item: any, idx: number) => (
-                  <div key={idx} className="flex justify-between items-start">
-                    <div className="flex-1">
-                      <p className="font-medium">
-                        {item.quantity}× {item.name}
-                      </p>
-                    </div>
-                    <p className="font-semibold">₦{(item.price * item.quantity).toLocaleString()}</p>
+        <CardContent className="space-y-4">
+          {/* Order Summary Box */}
+          <div className="bg-background rounded-lg p-4 space-y-3">
+            <p className="font-semibold text-lg">
+              {(order.items as any[]).length} {(order.items as any[]).length === 1 ? 'item' : 'items'} selected
+            </p>
+            <Separator />
+            <div className="space-y-2">
+              {(order.items as any[]).map((item: any, idx: number) => (
+                <div key={idx} className="flex justify-between items-start">
+                  <div className="flex-1">
+                    <p className="font-medium">
+                      {item.quantity}× {item.name}
+                    </p>
                   </div>
-                ))}
-              </div>
-              <Separator />
-              <div className="flex justify-between items-center">
-                <span className="font-bold text-xl">Total</span>
-                <span className="font-bold text-2xl text-primary">₦{order.total.toLocaleString()}</span>
-              </div>
+                  <p className="font-semibold">₦{(item.price * item.quantity).toLocaleString()}</p>
+                </div>
+              ))}
             </div>
+            <Separator />
+            
+            {/* Show subtotal and platform fee breakdown when payer is guest */}
+            {(() => {
+              const paymentInfo = order.request?.metadata ? (order.request.metadata as any)?.payment_info : null;
+              return paymentInfo?.platform_fee_applied && paymentInfo?.payer === 'guest' ? (
+                <>
+                  <div className="flex justify-between">
+                    <span>Subtotal</span>
+                    <span>₦{paymentInfo.subtotal.toLocaleString()}</span>
+                  </div>
+                  <div className="flex justify-between text-sm text-muted-foreground">
+                    <span>
+                      Platform Fee {paymentInfo.fee_type === 'flat' 
+                        ? '(Flat)' 
+                        : `(${paymentInfo.qr_fee}%)`}
+                    </span>
+                    <span>
+                      +₦{paymentInfo.platform_fee.toLocaleString()}
+                    </span>
+                  </div>
+                </>
+              ) : null;
+            })()}
+            
+            <div className="flex justify-between items-center">
+              <span className="font-bold text-xl">Total</span>
+              <span className="font-bold text-2xl text-primary">₦{order.total.toLocaleString()}</span>
+            </div>
+          </div>
 
             {/* Kitchen Communication Section */}
             {order.request_id && (
