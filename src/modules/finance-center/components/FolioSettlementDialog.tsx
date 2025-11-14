@@ -91,25 +91,6 @@ export function FolioSettlementDialog({ folioId, open, onClose }: FolioSettlemen
     enabled: !!folioId && open,
   });
 
-  // Fetch folio transaction history
-  const { data: transactions } = useQuery({
-    queryKey: ['folio-transactions', folioId],
-    queryFn: async () => {
-      if (!folioId) return [];
-      
-      const { data, error } = await supabase
-        .from('folio_transactions')
-        .select('*')
-        .eq('folio_id', folioId)
-        .order('created_at', { ascending: false })
-        .limit(10);
-      
-      if (error) throw error;
-      return data || [];
-    },
-    enabled: !!folioId && open,
-  });
-
   const settleMutation = useMutation({
     mutationFn: async () => {
       if (!folioId || !folio) throw new Error('No folio selected');
@@ -305,8 +286,13 @@ export function FolioSettlementDialog({ folioId, open, onClose }: FolioSettlemen
                 </AlertDescription>
               </Alert>
             )}
+            </div>
+          </ScrollArea>
+        ) : (
+          <div className="py-8 text-center text-muted-foreground">
+            Folio not found
           </div>
-        ) : null}
+        )}
 
         <DialogFooter>
           <Button variant="outline" onClick={onClose} disabled={settleMutation.isPending}>
