@@ -74,48 +74,42 @@ export function QRSpaBooking() {
         tenant_id: qrData?.tenant_id,
       });
 
-      const { data: request, error } = await supabase
-        .from('requests')
-        .insert({
-          tenant_id: qrData?.tenant_id,
+      // Call edge function to create request with platform fee calculation
+      const { data: request, error } = await supabase.functions.invoke('qr-request', {
+        body: {
+          action: 'create_request',
           qr_token: token,
-          type: 'spa',
           service_category: 'spa',
-          assigned_department: 'spa',
           note: `Spa Booking: ${selectedService.service_name} (${selectedService.duration})${preferredDateTime ? ` | Preferred: ${preferredDateTime}` : ''}${specialRequests ? ` | Requests: ${specialRequests}` : ''}`,
           priority: 'normal',
-          status: 'pending',
           metadata: {
+            qr_token: token,
+            room_number: (qrData as any)?.room?.number || 'N/A',
+            guest_label: 'Guest',
+            service_type: 'spa',
             service_id: selectedService.id,
             service_name: selectedService.service_name,
             duration: selectedService.duration,
             price: selectedService.price,
-            currency: selectedService.currency,
             preferred_datetime: preferredDateTime,
+            special_requests: specialRequests,
             payment_info: {
               billable: true,
-              amount: finalTotal, // Use adjusted total with platform fee
+              subtotal: selectedService.price,
               currency: selectedService.currency,
-              status: 'pending',
               location: 'Spa Center',
             },
           },
-        })
-        .select()
-        .single();
+        },
+      });
 
       if (error) {
-        console.error('[QRSpaBooking] Request insert error:', {
-          message: error.message,
-          code: error.code,
-          details: error.details,
-          hint: error.hint,
-        });
-        throw error;
+        console.error('[QRSpaBooking] Request creation error:', error);
+        throw new Error(error.message || 'Failed to create spa booking');
       }
 
-      console.log('[QRSpaBooking] Request created:', request.id);
-      return request;
+      console.log('[QRSpaBooking] Request created via edge function:', request);
+      return request?.request || request;
     },
     onSuccess: (data) => {
       toast.success('Spa booking request submitted!');
@@ -245,11 +239,10 @@ export function QRSpaBooking() {
                   </div>
                 </div>
                 
-                {platformFeeBreakdown.platformFee > 0 && platformFeeConfig && (
+                {platformFeeBreakdown.platformFee > 0 && platformFeeConfig && platformFeeConfig.payer === 'guest' && (
                   <div className="flex justify-between items-center pt-2 border-t text-sm">
                     <span className="text-muted-foreground">
                       Platform Fee {platformFeeConfig.fee_type === 'flat' ? '(Flat)' : `(${platformFeeConfig.qr_fee}%)`}
-                      {platformFeeConfig.payer === 'guest' && ' (charged to guest)'}
                     </span>
                     <span className="text-muted-foreground">
                       +{selectedService.currency} {platformFeeBreakdown.platformFee.toFixed(2)}
@@ -257,7 +250,7 @@ export function QRSpaBooking() {
                   </div>
                 )}
                 
-                {platformFeeBreakdown.platformFee > 0 && (
+                {platformFeeBreakdown.platformFee > 0 && platformFeeConfig && platformFeeConfig.payer === 'guest' && (
                   <div className="flex justify-between items-center pt-2 border-t font-semibold">
                     <span>Total Amount:</span>
                     <span className="text-lg text-accent">
