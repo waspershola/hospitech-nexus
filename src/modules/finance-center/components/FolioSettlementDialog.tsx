@@ -17,10 +17,11 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
-import { formatCurrency } from '@/lib/finance/tax';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
 import { format } from 'date-fns';
 import { toast } from 'sonner';
-import { AlertCircle, CheckCircle2, Receipt } from 'lucide-react';
+import { Receipt, CreditCard, TrendingUp, TrendingDown, Wallet, Calendar, User, Home } from 'lucide-react';
 
 interface FolioSettlementDialogProps {
   folioId: string | null;
