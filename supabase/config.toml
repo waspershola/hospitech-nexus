@@ -129,6 +129,9 @@ verify_jwt = true
 [functions.qr-request]
 verify_jwt = false
 
+[functions.checkin-guest]
+verify_jwt = true
+
 [functions.platform-fee-billing]
 verify_jwt = false
 

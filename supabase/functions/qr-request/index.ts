@@ -292,7 +292,45 @@ serve(async (req) => {
         }
       }
 
-      // Phase 3: Payment integration metadata
+      // Phase 3: Folio Linkage - Find open folio for billing
+      let attachedFolioId: string | null = null;
+      let folioMatchMethod: string | null = null;
+
+      // Try to find folio by room first
+      if (resolvedRoomId) {
+        const { data: roomFolio, error: roomFolioError } = await supabaseServiceClient
+          .rpc('find_open_folio_by_room', {
+            p_tenant_id: qr.tenant_id,
+            p_room_id: resolvedRoomId
+          });
+        
+        if (roomFolio && roomFolio.length > 0) {
+          attachedFolioId = roomFolio[0].folio_id;
+          folioMatchMethod = 'room';
+          console.log('[folio] Matched to folio by room:', attachedFolioId);
+        }
+      }
+
+      // If no room match and phone provided, try phone matching
+      if (!attachedFolioId && requestData.guest_contact) {
+        const { data: phoneFolio, error: phoneFolioError } = await supabaseServiceClient
+          .rpc('find_open_folio_by_guest_phone', {
+            p_tenant_id: qr.tenant_id,
+            p_phone: requestData.guest_contact
+          });
+        
+        if (phoneFolio && phoneFolio.length > 0) {
+          attachedFolioId = phoneFolio[0].folio_id;
+          folioMatchMethod = 'phone';
+          console.log('[folio] Matched to folio by phone:', attachedFolioId);
+        }
+      }
+
+      // Determine payment choice (default: bill_to_room if folio exists)
+      const paymentChoice = requestData.payment_choice || (attachedFolioId ? 'bill_to_room' : 'pay_now');
+      console.log('[folio] Payment choice:', paymentChoice, '| Folio:', attachedFolioId);
+
+      // Phase 4: Payment integration metadata
       const PAYMENT_LOCATION_MAP: Record<string, string> = {
         'restaurant': 'Restaurant POS',
         'room_service': 'Restaurant POS',
@@ -323,7 +361,7 @@ serve(async (req) => {
         billable: paymentInfo.billable
       });
 
-      // Phase 1: Log request payload before insert
+      // Phase 5: Log request payload before insert
       const requestPayload = {
         tenant_id: qr.tenant_id,
         room_id: resolvedRoomId,
@@ -333,6 +371,7 @@ serve(async (req) => {
         status: 'pending',
         priority: requestData.priority,
         qr_token: requestData.qr_token,
+        stay_folio_id: attachedFolioId, // 🔗 Link to folio
         assigned_department: finalDepartment,
         assigned_to: null, // NULL = pool assignment
         metadata: {
@@ -346,6 +385,8 @@ serve(async (req) => {
           routed_department: finalDepartment,
           room_number: roomNumber || qr.assigned_to,
           room_name: roomName,
+          payment_choice: paymentChoice, // 💳 Store payment choice
+          folio_match_method: folioMatchMethod,
           payment_info: paymentInfo,
           // Normalize laundry fields for display components
           items: (requestData.metadata as any)?.laundry_items || (requestData.metadata as any)?.items,
@@ -387,6 +428,30 @@ serve(async (req) => {
       }
 
       console.log('[qr-request] Request created successfully:', newRequest.id);
+
+      // Post charge to folio if bill_to_room
+      if (attachedFolioId && paymentChoice === 'bill_to_room' && paymentInfo.subtotal && paymentInfo.subtotal > 0) {
+        console.log(`[folio] Posting charge of ${paymentInfo.subtotal} to folio ${attachedFolioId}`);
+        
+        try {
+          const { data: chargeResult, error: chargeError } = await supabaseServiceClient.rpc('folio_post_charge', {
+            p_folio_id: attachedFolioId,
+            p_amount: paymentInfo.subtotal,
+            p_description: `${requestData.service_category}: ${requestData.note || 'Service Request'}`,
+            p_reference_type: 'request',
+            p_reference_id: newRequest.id,
+            p_department: finalDepartment
+          });
+          
+          if (chargeError) {
+            console.error('[folio] Failed to post charge:', chargeError);
+          } else {
+            console.log('[folio] Charge posted successfully:', chargeResult);
+          }
+        } catch (chargeErr) {
+          console.error('[folio] Error posting charge:', chargeErr);
+        }
+      }
 
       // Calculate platform fee server-side (ensures consistency)
       // This happens AFTER request creation so we have the real request_id

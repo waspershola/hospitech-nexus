@@ -29,6 +29,7 @@ export type Database = {
           location_id: string | null
           metadata: Json | null
           provider_id: string | null
+          stay_folio_id: string | null
           tenant_id: string
         }
         Insert: {
@@ -45,6 +46,7 @@ export type Database = {
           location_id?: string | null
           metadata?: Json | null
           provider_id?: string | null
+          stay_folio_id?: string | null
           tenant_id: string
         }
         Update: {
@@ -61,6 +63,7 @@ export type Database = {
           location_id?: string | null
           metadata?: Json | null
           provider_id?: string | null
+          stay_folio_id?: string | null
           tenant_id?: string
         }
         Relationships: [
@@ -98,6 +101,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "v_finance_overview_summary"
             referencedColumns: ["provider_id"]
+          },
+          {
+            foreignKeyName: "booking_charges_stay_folio_id_fkey"
+            columns: ["stay_folio_id"]
+            isOneToOne: false
+            referencedRelation: "stay_folios"
+            referencedColumns: ["id"]
           },
           {
             foreignKeyName: "booking_charges_tenant_id_fkey"
@@ -828,6 +838,66 @@ export type Database = {
           },
         ]
       }
+      folio_transactions: {
+        Row: {
+          amount: number
+          created_at: string | null
+          created_by: string | null
+          department: string | null
+          description: string
+          folio_id: string
+          id: string
+          metadata: Json | null
+          reference_id: string | null
+          reference_type: string | null
+          tenant_id: string
+          transaction_type: string
+        }
+        Insert: {
+          amount: number
+          created_at?: string | null
+          created_by?: string | null
+          department?: string | null
+          description: string
+          folio_id: string
+          id?: string
+          metadata?: Json | null
+          reference_id?: string | null
+          reference_type?: string | null
+          tenant_id: string
+          transaction_type: string
+        }
+        Update: {
+          amount?: number
+          created_at?: string | null
+          created_by?: string | null
+          department?: string | null
+          description?: string
+          folio_id?: string
+          id?: string
+          metadata?: Json | null
+          reference_id?: string | null
+          reference_type?: string | null
+          tenant_id?: string
+          transaction_type?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "folio_transactions_folio_id_fkey"
+            columns: ["folio_id"]
+            isOneToOne: false
+            referencedRelation: "stay_folios"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "folio_transactions_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       guest_communications: {
         Row: {
           created_at: string | null
@@ -951,6 +1021,7 @@ export type Database = {
           room_id: string | null
           special_instructions: string | null
           status: string | null
+          stay_folio_id: string | null
           subtotal: number
           tenant_id: string
           total: number
@@ -966,6 +1037,7 @@ export type Database = {
           room_id?: string | null
           special_instructions?: string | null
           status?: string | null
+          stay_folio_id?: string | null
           subtotal: number
           tenant_id: string
           total: number
@@ -981,6 +1053,7 @@ export type Database = {
           room_id?: string | null
           special_instructions?: string | null
           status?: string | null
+          stay_folio_id?: string | null
           subtotal?: number
           tenant_id?: string
           total?: number
@@ -999,6 +1072,13 @@ export type Database = {
             columns: ["room_id"]
             isOneToOne: false
             referencedRelation: "rooms"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "guest_orders_stay_folio_id_fkey"
+            columns: ["stay_folio_id"]
+            isOneToOne: false
+            referencedRelation: "stay_folios"
             referencedColumns: ["id"]
           },
           {
@@ -2120,6 +2200,7 @@ export type Database = {
           provider_reference: string | null
           recorded_by: string | null
           status: string | null
+          stay_folio_id: string | null
           tenant_id: string
           transaction_ref: string | null
           wallet_id: string | null
@@ -2143,6 +2224,7 @@ export type Database = {
           provider_reference?: string | null
           recorded_by?: string | null
           status?: string | null
+          stay_folio_id?: string | null
           tenant_id: string
           transaction_ref?: string | null
           wallet_id?: string | null
@@ -2166,6 +2248,7 @@ export type Database = {
           provider_reference?: string | null
           recorded_by?: string | null
           status?: string | null
+          stay_folio_id?: string | null
           tenant_id?: string
           transaction_ref?: string | null
           wallet_id?: string | null
@@ -2183,6 +2266,13 @@ export type Database = {
             columns: ["organization_id"]
             isOneToOne: false
             referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "payments_stay_folio_id_fkey"
+            columns: ["stay_folio_id"]
+            isOneToOne: false
+            referencedRelation: "stay_folios"
             referencedColumns: ["id"]
           },
           {
@@ -4177,6 +4267,7 @@ export type Database = {
           room_id: string | null
           service_category: string | null
           status: string | null
+          stay_folio_id: string | null
           tenant_id: string
           type: string
           updated_at: string | null
@@ -4195,6 +4286,7 @@ export type Database = {
           room_id?: string | null
           service_category?: string | null
           status?: string | null
+          stay_folio_id?: string | null
           tenant_id: string
           type: string
           updated_at?: string | null
@@ -4213,6 +4305,7 @@ export type Database = {
           room_id?: string | null
           service_category?: string | null
           status?: string | null
+          stay_folio_id?: string | null
           tenant_id?: string
           type?: string
           updated_at?: string | null
@@ -4244,6 +4337,13 @@ export type Database = {
             columns: ["room_id"]
             isOneToOne: false
             referencedRelation: "rooms"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "requests_stay_folio_id_fkey"
+            columns: ["stay_folio_id"]
+            isOneToOne: false
+            referencedRelation: "stay_folios"
             referencedColumns: ["id"]
           },
           {
@@ -4965,6 +5065,92 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "staff_invitations_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      stay_folios: {
+        Row: {
+          balance: number | null
+          booking_id: string | null
+          closed_at: string | null
+          closed_by: string | null
+          created_at: string | null
+          created_by: string | null
+          group_id: string | null
+          guest_id: string | null
+          id: string
+          metadata: Json | null
+          room_id: string | null
+          status: string
+          tenant_id: string
+          total_charges: number | null
+          total_payments: number | null
+          updated_at: string | null
+        }
+        Insert: {
+          balance?: number | null
+          booking_id?: string | null
+          closed_at?: string | null
+          closed_by?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          group_id?: string | null
+          guest_id?: string | null
+          id?: string
+          metadata?: Json | null
+          room_id?: string | null
+          status?: string
+          tenant_id: string
+          total_charges?: number | null
+          total_payments?: number | null
+          updated_at?: string | null
+        }
+        Update: {
+          balance?: number | null
+          booking_id?: string | null
+          closed_at?: string | null
+          closed_by?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          group_id?: string | null
+          guest_id?: string | null
+          id?: string
+          metadata?: Json | null
+          room_id?: string | null
+          status?: string
+          tenant_id?: string
+          total_charges?: number | null
+          total_payments?: number | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "stay_folios_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: false
+            referencedRelation: "bookings"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "stay_folios_guest_id_fkey"
+            columns: ["guest_id"]
+            isOneToOne: false
+            referencedRelation: "guests"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "stay_folios_room_id_fkey"
+            columns: ["room_id"]
+            isOneToOne: false
+            referencedRelation: "rooms"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "stay_folios_tenant_id_fkey"
             columns: ["tenant_id"]
             isOneToOne: false
             referencedRelation: "tenants"
@@ -6168,6 +6354,41 @@ export type Database = {
     }
     Functions: {
       check_tenant_access: { Args: { _tenant_id: string }; Returns: Json }
+      find_open_folio_by_guest_phone: {
+        Args: { p_phone: string; p_tenant_id: string }
+        Returns: {
+          balance: number
+          booking_id: string
+          folio_id: string
+          guest_id: string
+          room_id: string
+        }[]
+      }
+      find_open_folio_by_room: {
+        Args: { p_room_id: string; p_tenant_id: string }
+        Returns: {
+          balance: number
+          booking_id: string
+          created_at: string
+          folio_id: string
+          guest_id: string
+        }[]
+      }
+      folio_post_charge: {
+        Args: {
+          p_amount: number
+          p_department?: string
+          p_description: string
+          p_folio_id: string
+          p_reference_id?: string
+          p_reference_type?: string
+        }
+        Returns: Json
+      }
+      folio_post_payment: {
+        Args: { p_amount: number; p_folio_id: string; p_payment_id: string }
+        Returns: Json
+      }
       generate_invoice_number: { Args: never; Returns: string }
       generate_receipt_number: {
         Args: { p_receipt_type: string; p_tenant_id: string }
