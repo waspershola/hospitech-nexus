@@ -96,71 +96,36 @@ export function QRMenuBrowser() {
 
       const subtotal = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
 
-      // Send only subtotal - server will calculate platform fee
-      const { data: request, error: requestError } = await supabase
-        .from('requests')
-        .insert({
-          tenant_id: qrData?.tenant_id,
+      // Call edge function to create request with platform fee calculation
+      const { data, error } = await supabase.functions.invoke('qr-request', {
+        body: {
+          action: 'create_request',
           qr_token: token,
-          type: 'room_service',
           service_category: 'digital_menu',
-          assigned_department: 'restaurant',
           note: `Menu order: ${cart.length} items - Total: ₦${subtotal.toFixed(2)}`,
           priority: 'normal',
-          status: 'pending',
           metadata: {
             qr_token: token,
-            room_number: qrData?.assigned_to || 'Guest',
+            room_number: (qrData as any)?.room?.number || qrData?.assigned_to || 'Guest',
+            guest_label: 'Guest',
+            service_type: 'digital_menu',
+            guest_order_items: items,
+            special_instructions: specialInstructions,
             payment_info: {
               billable: true,
-              subtotal: subtotal, // Send subtotal - server calculates fee
+              subtotal: subtotal,
               currency: 'NGN',
-              location: 'restaurant',
+              location: 'Restaurant POS',
               status: 'pending'
             }
           }
-        })
-        .select()
-        .single();
+        }
+      });
 
-      if (requestError) {
-        console.error('[QRMenuBrowser] Request creation failed:', requestError);
-        throw requestError;
-      }
-      
-      if (!request?.id) {
-        console.error('[QRMenuBrowser] Request created but no ID returned:', request);
-        throw new Error('Failed to create request - no ID returned');
-      }
-      
-      console.log('[QRMenuBrowser] Request created successfully:', request.id);
+      if (error) throw error;
+      if (!data?.success) throw new Error(data?.error || 'Failed to create order');
 
-      // Now create order WITH request_id already populated
-      console.log('[QRMenuBrowser] Creating order with request_id:', request.id);
-      const { data: order, error: orderError } = await supabase
-        .from('guest_orders')
-        .insert({
-          tenant_id: qrData?.tenant_id,
-          qr_token: token,
-          request_id: request.id, // Already linked!
-          guest_name: 'Guest',
-          items,
-          special_instructions: specialInstructions,
-          subtotal,
-          total: finalTotal, // Use adjusted total with platform fee
-          status: 'pending',
-        })
-        .select()
-        .single();
-
-      if (orderError) {
-        console.error('[QRMenuBrowser] Order creation failed:', orderError);
-        throw orderError;
-      }
-      
-      console.log('[QRMenuBrowser] Order created successfully with request_id:', order.request_id);
-
-      return { order, request };
+      return { order: data.order, request: data.request };
     },
     onSuccess: (data) => {
       toast.success('Order placed successfully!');
