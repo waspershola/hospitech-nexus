@@ -54,17 +54,44 @@ export function usePayments(bookingId?: string) {
   const createMutation = useMutation({
     mutationFn: async (payment: Omit<Payment, 'id' | 'tenant_id' | 'created_at'>) => {
       if (!tenantId) throw new Error('No tenant ID');
-      const { data, error } = await supabase
+      
+      // Create payment record
+      const { data: paymentData, error } = await supabase
         .from('payments')
         .insert([{ ...payment, tenant_id: tenantId }])
         .select()
         .single();
       
       if (error) throw error;
-      return data;
+      
+      // Post to folio if payment is linked to a booking with open folio
+      if (paymentData.booking_id) {
+        const { data: folio } = await supabase
+          .from('stay_folios')
+          .select('id')
+          .eq('booking_id', paymentData.booking_id)
+          .eq('status', 'open')
+          .maybeSingle();
+        
+        if (folio) {
+          const { error: folioError } = await supabase.rpc('folio_post_payment', {
+            p_folio_id: folio.id,
+            p_payment_id: paymentData.id,
+            p_amount: paymentData.amount
+          });
+          
+          if (folioError) {
+            console.error('[usePayments] Failed to post to folio:', folioError);
+            // Don't fail the payment, just log the error
+          }
+        }
+      }
+      
+      return paymentData;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['payments', tenantId] });
+      queryClient.invalidateQueries({ queryKey: ['folio'] });
       toast.success('Payment recorded successfully');
     },
     onError: (error: Error) => {

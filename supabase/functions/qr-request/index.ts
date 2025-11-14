@@ -447,6 +447,20 @@ serve(async (req) => {
             console.error('[folio] Failed to post charge:', chargeError);
           } else {
             console.log('[folio] Charge posted successfully:', chargeResult);
+            
+            // Broadcast real-time update to folio subscribers
+            await supabaseServiceClient
+              .channel(`folio-${attachedFolioId}`)
+              .send({
+                type: 'broadcast',
+                event: 'charge_posted',
+                payload: {
+                  folio_id: attachedFolioId,
+                  request_id: newRequest.id,
+                  amount: paymentInfo.subtotal,
+                  description: `${requestData.service_category}: ${requestData.note || 'Service Request'}`
+                }
+              });
           }
         } catch (chargeErr) {
           console.error('[folio] Error posting charge:', chargeErr);

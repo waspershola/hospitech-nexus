@@ -128,6 +128,14 @@ export function QRRoomService() {
     },
     onSuccess: (data) => {
       toast.success('Room service order placed successfully!');
+      
+      // Show folio feedback if "Bill to Room" was selected
+      if (paymentChoice === 'bill_to_room') {
+        toast.info('Charged to your room folio', {
+          description: 'This will appear on your final bill at checkout.'
+        });
+      }
+      
       setCart([]);
       setSpecialInstructions('');
       setIsCartOpen(false);
