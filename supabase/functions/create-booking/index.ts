@@ -268,6 +268,18 @@ serve(async (req) => {
       .eq('tenant_id', tenant_id)
       .single();
 
+    // Fetch configured checkout time from hotel_configurations
+    const { data: checkoutConfig } = await supabaseClient
+      .from('hotel_configurations')
+      .select('value')
+      .eq('tenant_id', tenant_id)
+      .eq('key', 'check_out_time')
+      .single();
+
+    const configuredCheckoutTime = checkoutConfig?.value 
+      ? String(checkoutConfig.value).replace(/"/g, '') 
+      : '12:00';
+
     // Fetch room details for rate calculation
     const { data: room } = await supabaseClient
       .from('rooms')
@@ -280,7 +292,13 @@ serve(async (req) => {
     const checkOutDate = new Date(check_out);
     const today = new Date();
     today.setHours(0, 0, 0, 0);
+    
+    // Set check-in to 00:00:00 of check-in date
     checkInDate.setHours(0, 0, 0, 0);
+    
+    // Set check-out to configured checkout time of check-out date
+    const [checkoutHour, checkoutMinute] = configuredCheckoutTime.split(':');
+    checkOutDate.setHours(parseInt(checkoutHour), parseInt(checkoutMinute), 0, 0);
 
     if (checkInDate < today) {
       console.error('Cannot create booking with past check-in date:', checkInDate);
