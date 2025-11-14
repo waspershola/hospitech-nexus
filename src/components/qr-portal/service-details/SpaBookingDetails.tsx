@@ -51,34 +51,6 @@ export function SpaBookingDetails({ metadata }: SpaBookingDetailsProps) {
             </div>
           </div>
 
-          {(() => {
-            const paymentInfo = metadata.payment_info;
-            const hasPlatformFee = paymentInfo?.platform_fee && paymentInfo.platform_fee > 0;
-
-            return hasPlatformFee ? (
-              <>
-                <Separator className="bg-primary/20" />
-                <div className="space-y-2 bg-background/50 backdrop-blur-sm p-4 rounded-lg">
-                  <div className="flex justify-between text-sm">
-                    <span className="text-muted-foreground">Base Price:</span>
-                    <span className="font-medium">{paymentInfo.currency} {paymentInfo.base_amount.toLocaleString()}</span>
-                  </div>
-                  <div className="flex justify-between text-sm text-amber-600 dark:text-amber-400">
-                    <span>Platform Fee {paymentInfo.fee_type === 'percentage' ? `(${paymentInfo.rate}%)` : '(Flat)'}:</span>
-                    <span className="font-medium">+{paymentInfo.currency} {paymentInfo.platform_fee.toLocaleString()}</span>
-                  </div>
-                  <Separator className="bg-primary/20" />
-                  <div className="flex justify-between items-center">
-                    <span className="font-bold">Total Amount:</span>
-                    <span className="text-xl font-bold text-primary">
-                      {paymentInfo.currency} {paymentInfo.amount.toLocaleString()}
-                    </span>
-                  </div>
-                </div>
-              </>
-            ) : null;
-          })()}
-
           {metadata.preferred_datetime && (
             <>
               <Separator className="bg-primary/20" />

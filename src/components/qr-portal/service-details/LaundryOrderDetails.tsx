@@ -77,37 +77,12 @@ export function LaundryOrderDetails({ metadata }: LaundryOrderDetailsProps) {
 
           <Separator className="bg-primary/20" />
 
-          {(() => {
-            const paymentInfo = metadata.payment_info;
-            const hasPlatformFee = paymentInfo?.platform_fee && paymentInfo.platform_fee > 0;
-
-            return hasPlatformFee ? (
-              <div className="space-y-2 bg-background/50 backdrop-blur-sm p-4 rounded-lg">
-                <div className="flex justify-between text-sm">
-                  <span className="text-muted-foreground">Subtotal:</span>
-                  <span className="font-medium">{paymentInfo.currency} {paymentInfo.base_amount.toLocaleString()}</span>
-                </div>
-                <div className="flex justify-between text-sm text-amber-600 dark:text-amber-400">
-                  <span>Platform Fee {paymentInfo.fee_type === 'percentage' ? `(${paymentInfo.rate}%)` : '(Flat)'}:</span>
-                  <span className="font-medium">+{paymentInfo.currency} {paymentInfo.platform_fee.toLocaleString()}</span>
-                </div>
-                <Separator className="bg-primary/20" />
-                <div className="flex justify-between items-center">
-                  <span className="text-lg font-bold">Total Amount:</span>
-                  <span className="text-2xl font-bold text-primary">
-                    {paymentInfo.currency} {paymentInfo.amount.toLocaleString()}
-                  </span>
-                </div>
-              </div>
-            ) : (
-              <div className="flex justify-between items-center bg-background/50 backdrop-blur-sm p-4 rounded-lg">
-                <span className="text-lg font-bold">Total Amount:</span>
-                <span className="text-2xl font-bold text-primary">
-                  {metadata.currency || 'NGN'} {metadata.total?.toLocaleString() || 0}
-                </span>
-              </div>
-            );
-          })()}
+          <div className="flex justify-between items-center bg-background/50 backdrop-blur-sm p-4 rounded-lg">
+            <span className="text-lg font-bold">Total Amount:</span>
+            <span className="text-2xl font-bold text-primary">
+              {metadata.currency || 'NGN'} {metadata.total?.toLocaleString() || 0}
+            </span>
+          </div>
 
           {metadata.turnaround_time && (
             <div className="flex items-center gap-2 bg-background/50 backdrop-blur-sm p-3 rounded-lg">
