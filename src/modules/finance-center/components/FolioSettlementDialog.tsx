@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/contexts/AuthContext';
 import {
   Dialog,
   DialogContent,
@@ -14,9 +15,12 @@ import { Label } from '@/components/ui/label';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import { Separator } from '@/components/ui/separator';
 import { formatCurrency } from '@/lib/finance/tax';
+import { format } from 'date-fns';
 import { toast } from 'sonner';
-import { AlertCircle, CheckCircle2 } from 'lucide-react';
+import { AlertCircle, CheckCircle2, Receipt } from 'lucide-react';
 
 interface FolioSettlementDialogProps {
   folioId: string | null;
@@ -26,8 +30,26 @@ interface FolioSettlementDialogProps {
 
 export function FolioSettlementDialog({ folioId, open, onClose }: FolioSettlementDialogProps) {
   const queryClient = useQueryClient();
+  const { tenantId } = useAuth();
   const [amount, setAmount] = useState('');
   const [paymentMethod, setPaymentMethod] = useState('cash');
+
+  // Fetch available payment methods
+  const { data: paymentMethods } = useQuery({
+    queryKey: ['payment-methods', tenantId],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from('hotel_configurations')
+        .select('value')
+        .eq('tenant_id', tenantId)
+        .eq('key', 'payment_methods')
+        .maybeSingle();
+      
+      const methods = data?.value as string[] | null;
+      return methods || ['cash', 'card', 'transfer', 'mobile_money', 'wallet'];
+    },
+    enabled: !!tenantId && open,
+  });
 
   const { data: folio, isLoading } = useQuery({
     queryKey: ['folio', folioId],
@@ -47,6 +69,43 @@ export function FolioSettlementDialog({ folioId, open, onClose }: FolioSettlemen
 
       if (error) throw error;
       return data;
+    },
+    enabled: !!folioId && open,
+  });
+
+  // Fetch folio transactions for history
+  const { data: transactions } = useQuery({
+    queryKey: ['folio-transactions', folioId],
+    queryFn: async () => {
+      if (!folioId) return [];
+      
+      const { data, error } = await supabase
+        .from('folio_transactions')
+        .select('*')
+        .eq('folio_id', folioId)
+        .order('created_at', { ascending: false });
+      
+      if (error) throw error;
+      return data || [];
+    },
+    enabled: !!folioId && open,
+  });
+
+  // Fetch folio transaction history
+  const { data: transactions } = useQuery({
+    queryKey: ['folio-transactions', folioId],
+    queryFn: async () => {
+      if (!folioId) return [];
+      
+      const { data, error } = await supabase
+        .from('folio_transactions')
+        .select('*')
+        .eq('folio_id', folioId)
+        .order('created_at', { ascending: false })
+        .limit(10);
+      
+      if (error) throw error;
+      return data || [];
     },
     enabled: !!folioId && open,
   });
@@ -95,6 +154,7 @@ export function FolioSettlementDialog({ folioId, open, onClose }: FolioSettlemen
       toast.success('Payment recorded and folio updated successfully');
       queryClient.invalidateQueries({ queryKey: ['outstanding-folios'] });
       queryClient.invalidateQueries({ queryKey: ['folio', folioId] });
+      queryClient.invalidateQueries({ queryKey: ['booking-folio'] });
       onClose();
       setAmount('');
       setPaymentMethod('cash');
@@ -113,41 +173,82 @@ export function FolioSettlementDialog({ folioId, open, onClose }: FolioSettlemen
 
   return (
     <Dialog open={open} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="max-w-lg">
+      <DialogContent className="max-w-2xl max-h-[90vh]">
         <DialogHeader>
           <DialogTitle>Settle Folio Balance</DialogTitle>
         </DialogHeader>
 
         {isLoading ? (
           <div className="space-y-4 py-4">
-            <Skeleton className="h-20 w-full" />
+            <Skeleton className="h-32 w-full" />
+            <Skeleton className="h-24 w-full" />
             <Skeleton className="h-10 w-full" />
             <Skeleton className="h-10 w-full" />
           </div>
         ) : folio ? (
-          <div className="space-y-4 py-4">
-            {/* Folio Summary */}
-            <div className="bg-muted rounded-lg p-4 space-y-2">
-              <div className="flex justify-between text-sm">
-                <span className="text-muted-foreground">Guest:</span>
-                <span className="font-medium">{folio.guest?.name}</span>
+          <ScrollArea className="max-h-[60vh] pr-4">
+            <div className="space-y-4 py-4">
+              {/* Folio Summary */}
+              <div className="rounded-lg border p-4 space-y-2">
+                <div className="flex justify-between text-sm">
+                  <span className="text-muted-foreground">Guest:</span>
+                  <span className="font-medium">{folio.guest?.name}</span>
+                </div>
+                <div className="flex justify-between text-sm">
+                  <span className="text-muted-foreground">Room:</span>
+                  <span className="font-medium">{folio.room?.number}</span>
+                </div>
+                <div className="flex justify-between text-sm">
+                  <span className="text-muted-foreground">Booking:</span>
+                  <span className="font-medium">{folio.booking?.booking_reference}</span>
+                </div>
+                <Separator className="my-2" />
+                <div className="flex justify-between text-sm">
+                  <span className="text-muted-foreground">Total Charges:</span>
+                  <span>{formatCurrency(folio.total_charges, 'NGN')}</span>
+                </div>
+                <div className="flex justify-between text-sm">
+                  <span className="text-muted-foreground">Total Payments:</span>
+                  <span>{formatCurrency(folio.total_payments, 'NGN')}</span>
+                </div>
+                <div className="flex justify-between pt-2 border-t">
+                  <span className="font-medium">Outstanding Balance:</span>
+                  <span className="font-bold text-lg text-amber-600">
+                    {formatCurrency(folio.balance, 'NGN')}
+                  </span>
+                </div>
               </div>
-              <div className="flex justify-between text-sm">
-                <span className="text-muted-foreground">Room:</span>
-                <span className="font-medium">{folio.room?.number}</span>
-              </div>
-              <div className="flex justify-between text-sm">
-                <span className="text-muted-foreground">Booking:</span>
-                <span className="font-medium">{folio.booking?.booking_reference}</span>
-              </div>
-              <div className="h-px bg-border my-2" />
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">Outstanding Balance:</span>
-                <span className="font-semibold text-amber-600">
-                  {formatCurrency(folio.balance, 'NGN')}
-                </span>
-              </div>
-            </div>
+
+              {/* Transaction History */}
+              {transactions && transactions.length > 0 && (
+                <div className="rounded-lg border">
+                  <div className="p-3 border-b bg-muted/50">
+                    <div className="flex items-center gap-2">
+                      <Receipt className="h-4 w-4" />
+                      <span className="text-sm font-medium">Transaction History</span>
+                    </div>
+                  </div>
+                  <ScrollArea className="max-h-[140px]">
+                    <div className="p-3 space-y-2">
+                      {transactions.map((txn) => (
+                        <div key={txn.id} className="flex justify-between text-xs py-1 border-b last:border-0">
+                          <div className="flex-1 pr-2">
+                            <p className="font-medium">{txn.description}</p>
+                            <p className="text-muted-foreground">
+                              {format(new Date(txn.created_at), 'MMM d, h:mm a')}
+                            </p>
+                          </div>
+                          <span className={`font-semibold whitespace-nowrap ${
+                            txn.transaction_type === 'charge' ? 'text-red-600' : 'text-green-600'
+                          }`}>
+                            {txn.transaction_type === 'charge' ? '+' : '-'}{formatCurrency(txn.amount, 'NGN')}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  </ScrollArea>
+                </div>
+              )}
 
             {/* Payment Amount */}
             <div className="space-y-2">
@@ -165,25 +266,25 @@ export function FolioSettlementDialog({ folioId, open, onClose }: FolioSettlemen
               </p>
             </div>
 
-            {/* Payment Method */}
-            <div className="space-y-2">
-              <Label htmlFor="method">Payment Method</Label>
-              <Select value={paymentMethod} onValueChange={setPaymentMethod}>
-                <SelectTrigger id="method">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="cash">Cash</SelectItem>
-                  <SelectItem value="card">Card</SelectItem>
-                  <SelectItem value="transfer">Bank Transfer</SelectItem>
-                  <SelectItem value="pos">POS</SelectItem>
-                  <SelectItem value="mobile_money">Mobile Money</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
+              {/* Payment Method */}
+              <div className="space-y-2">
+                <Label htmlFor="method">Payment Method</Label>
+                <Select value={paymentMethod} onValueChange={setPaymentMethod}>
+                  <SelectTrigger id="method">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {paymentMethods?.map((method) => (
+                      <SelectItem key={method} value={method}>
+                        {method.charAt(0).toUpperCase() + method.slice(1).replace('_', ' ')}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
 
-            {/* Balance Preview */}
-            {remainingBalance !== 0 && (
+              {/* Balance Preview */}
+              {remainingBalance !== 0 && (
               <Alert>
                 <AlertCircle className="h-4 w-4" />
                 <AlertDescription>
