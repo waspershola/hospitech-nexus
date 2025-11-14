@@ -1,64 +1,6 @@
 import { supabase } from '@/integrations/supabase/client';
 
 /**
- * Auto-complete bookings that are past their check-out DATE + TIME
- * Should be called on app initialization and periodically
- */
-export async function autoCompleteOverdueBookings(tenantId: string) {
-  // Get checkout time configuration
-  const { data: configData } = await supabase
-    .from('hotel_configurations')
-    .select('value')
-    .eq('tenant_id', tenantId)
-    .eq('key', 'check_out_time')
-    .single();
-
-  const checkoutTime = configData?.value ? String(configData.value).replace(/"/g, '') : '12:00';
-  const [hours, minutes] = checkoutTime.split(':').map(Number);
-  
-  const now = new Date();
-  
-  // Find bookings that might be overdue
-  const { data: potentialOverdue } = await supabase
-    .from('bookings')
-    .select('id, room_id, check_out')
-    .eq('tenant_id', tenantId)
-    .in('status', ['reserved', 'checked_in'])
-    .lt('check_out', now.toISOString()); // Get bookings with checkout date before now
-  
-  if (!potentialOverdue || potentialOverdue.length === 0) {
-    return { completed: 0 };
-  }
-  
-  const overdueBookings = potentialOverdue.filter(booking => {
-    const checkoutDateTime = new Date(booking.check_out);
-    checkoutDateTime.setHours(hours, minutes, 0, 0);
-    return now > checkoutDateTime; // Only truly overdue if past checkout time
-  });
-  
-  if (overdueBookings.length === 0) {
-    return { completed: 0 };
-  }
-  
-  console.log(`[autoCompleteOverdueBookings] Found ${overdueBookings.length} overdue bookings (past checkout time: ${checkoutTime})`);
-  
-  // Complete each booking
-  for (const booking of overdueBookings) {
-    await supabase
-      .from('bookings')
-      .update({ status: 'completed' })
-      .eq('id', booking.id);
-    
-    await supabase
-      .from('rooms')
-      .update({ status: 'cleaning' })
-      .eq('id', booking.room_id);
-  }
-  
-  return { completed: overdueBookings.length };
-}
-
-/**
  * Sync room status based on current bookings
  */
 export async function syncRoomStatusFromBookings(tenantId: string) {
