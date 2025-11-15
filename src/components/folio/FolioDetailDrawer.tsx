@@ -24,6 +24,9 @@ export function FolioDetailDrawer({ bookingId, open, onClose }: FolioDetailDrawe
   const { data: folio, isLoading } = useBookingFolio(bookingId);
   const { print, isPrinting } = usePrintReceipt();
 
+  // Debug logging
+  console.log('[FolioDetailDrawer] Props:', { bookingId, open, folio, isLoading });
+
   const { data: booking } = useQuery({
     queryKey: ['booking-detail', bookingId, tenantId],
     queryFn: async () => {
@@ -249,10 +252,26 @@ export function FolioDetailDrawer({ bookingId, open, onClose }: FolioDetailDrawe
               </Button>
             </div>
           </div>
+        ) : !folio ? (
+          <div className="text-center py-12 px-6">
+            <div className="bg-muted/30 rounded-lg p-8 max-w-md mx-auto">
+              <Receipt className="h-12 w-12 mx-auto mb-4 text-muted-foreground/50" />
+              <p className="text-lg font-semibold mb-2">Stay Folio Not Created Yet</p>
+              <p className="text-sm text-muted-foreground">
+                The stay folio will be automatically created when the guest checks in. 
+                Please ensure the booking is checked in to view folio details.
+              </p>
+            </div>
+          </div>
         ) : (
-          <div className="text-center py-12 text-muted-foreground">
-            <Receipt className="h-12 w-12 mx-auto mb-4 opacity-50" />
-            <p>No folio data available</p>
+          <div className="text-center py-12 px-6">
+            <div className="bg-muted/30 rounded-lg p-8 max-w-md mx-auto">
+              <Receipt className="h-12 w-12 mx-auto mb-4 text-muted-foreground/50" />
+              <p className="text-lg font-semibold mb-2">Booking Not Found</p>
+              <p className="text-sm text-muted-foreground">
+                Unable to load booking details. The booking may have been cancelled or removed.
+              </p>
+            </div>
           </div>
         )}
       </SheetContent>

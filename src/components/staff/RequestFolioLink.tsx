@@ -2,17 +2,29 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { useStayFolio } from '@/hooks/useStayFolio';
 import { formatCurrency } from '@/lib/finance/tax';
-import { Receipt } from 'lucide-react';
+import { Receipt, ExternalLink } from 'lucide-react';
 
 interface RequestFolioLinkProps {
   request: any;
+  onViewFolio?: () => void;
 }
 
-export function RequestFolioLink({ request }: RequestFolioLinkProps) {
+export function RequestFolioLink({ request, onViewFolio }: RequestFolioLinkProps) {
   const { data: folio, isLoading } = useStayFolio(request.stay_folio_id);
+
+  // Debug logging
+  console.log('[RequestFolioLink] Request data:', { 
+    requestId: request.id,
+    stayFolioId: request.stay_folio_id,
+    paymentChoice: request.metadata?.payment_choice,
+    folioData: folio,
+    isLoading 
+  });
 
   if (!request.stay_folio_id || isLoading) return null;
   if (!folio) return null;
+
+  const isBillToRoom = request.metadata?.payment_choice === 'bill_to_room';
 
   return (
     <Card className="mt-4 border-primary/20 bg-primary/5">
@@ -71,6 +83,21 @@ export function RequestFolioLink({ request }: RequestFolioLinkProps) {
             </div>
           )}
         </div>
+
+        {/* View Guest Folio Button - Only for bill_to_room */}
+        {isBillToRoom && onViewFolio && (
+          <div className="mt-4 pt-4 border-t">
+            <Button
+              variant="outline"
+              size="sm"
+              className="w-full"
+              onClick={onViewFolio}
+            >
+              <ExternalLink className="h-4 w-4 mr-2" />
+              View Guest Folio
+            </Button>
+          </div>
+        )}
       </CardContent>
     </Card>
   );

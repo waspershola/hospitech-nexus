@@ -24,6 +24,7 @@ import { RequestPaymentInfo } from './RequestPaymentInfo';
 import { RequestCardSkeleton } from './RequestCardSkeleton';
 import { PaymentHistoryTimeline } from './PaymentHistoryTimeline';
 import { RequestFolioLink } from '@/components/staff/RequestFolioLink';
+import { FolioDetailDrawer } from '@/components/folio/FolioDetailDrawer';
 import { format } from 'date-fns';
 import { useQueries, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
@@ -67,6 +68,8 @@ export function QRRequestDrawer({ open, onOpenChange }: QRRequestDrawerProps) {
     const saved = localStorage.getItem('qr-quick-replies-open');
     return saved !== null ? JSON.parse(saved) : false;
   });
+  const [folioDrawerOpen, setFolioDrawerOpen] = useState(false);
+  const [folioBookingId, setFolioBookingId] = useState<string | null>(null);
   
   const { messages, requestContext, sendMessage, isSending } = useStaffChat(selectedRequest?.id);
   
@@ -888,7 +891,14 @@ export function QRRequestDrawer({ open, onOpenChange }: QRRequestDrawerProps) {
                     <RequestPaymentInfo request={selectedRequest} />
                     
                     {/* Folio Link */}
-                    <RequestFolioLink request={selectedRequest} />
+                    <RequestFolioLink 
+                      request={selectedRequest}
+                      onViewFolio={() => {
+                        console.log('[QRRequestDrawer] Opening folio for booking:', selectedRequest.booking_id);
+                        setFolioBookingId(selectedRequest.booking_id);
+                        setFolioDrawerOpen(true);
+                      }}
+                    />
                     
                     {/* Amount Adjustment for Dining Reservations */}
                     {selectedRequest.service_category === 'dining_reservation' &&
@@ -1389,6 +1399,16 @@ export function QRRequestDrawer({ open, onOpenChange }: QRRequestDrawerProps) {
           </div>
         </div>
       </SheetContent>
+
+      {/* Folio Detail Drawer */}
+      <FolioDetailDrawer
+        bookingId={folioBookingId}
+        open={folioDrawerOpen}
+        onClose={() => {
+          setFolioDrawerOpen(false);
+          setFolioBookingId(null);
+        }}
+      />
     </Sheet>
   );
 }

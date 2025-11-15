@@ -21,6 +21,9 @@ interface BookingFolioCardProps {
 export function BookingFolioCard({ bookingId, currency = 'NGN' }: BookingFolioCardProps) {
   const { data: folio, isLoading } = useBookingFolio(bookingId);
 
+  // Debug logging
+  console.log('[BookingFolioCard] Rendering with:', { bookingId, folio, isLoading });
+
   if (isLoading) {
     return (
       <Card>
@@ -36,8 +39,32 @@ export function BookingFolioCard({ bookingId, currency = 'NGN' }: BookingFolioCa
     );
   }
 
+  // Fallback UI when folio doesn't exist
   if (!folio) {
-    return null;
+    console.log('[BookingFolioCard] No folio data found for booking:', bookingId);
+    return (
+      <Card className="border-dashed">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2 text-muted-foreground">
+            <Info className="h-5 w-5" />
+            Stay Folio Not Created Yet
+          </CardTitle>
+          <CardDescription>
+            The stay folio will be automatically created when the guest checks in.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="bg-muted/30 rounded-lg p-4 text-sm text-muted-foreground">
+            <p className="mb-2">Folio information will be available after check-in, including:</p>
+            <ul className="list-disc list-inside space-y-1 ml-2">
+              <li>Room charges and extras</li>
+              <li>Payment history</li>
+              <li>Outstanding balance</li>
+            </ul>
+          </div>
+        </CardContent>
+      </Card>
+    );
   }
 
   const balanceStatus = folio.balance === 0 ? 'paid' : folio.balance > 0 ? 'due' : 'credit';
