@@ -231,13 +231,36 @@ export function useRoomActions() {
 
       return data;
     },
+    onMutate: async (roomId: string) => {
+      // Cancel outgoing refetches
+      await queryClient.cancelQueries({ queryKey: ['rooms-grid'] });
+      
+      // Snapshot previous value
+      const previousRooms = queryClient.getQueryData(['rooms-grid']);
+      
+      // Optimistically update to occupied status
+      queryClient.setQueryData(['rooms-grid'], (old: any) => {
+        if (!old) return old;
+        return old.map((room: any) => 
+          room.id === roomId 
+            ? { ...room, status: 'occupied', currentStatus: 'occupied' }
+            : room
+        );
+      });
+      
+      return { previousRooms };
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['rooms-grid'] });
       queryClient.invalidateQueries({ queryKey: ['frontdesk-kpis'] });
       queryClient.invalidateQueries({ queryKey: ['room-detail'] });
       toast.success('Guest checked in successfully');
     },
-    onError: (error: Error) => {
+    onError: (error: Error, roomId, context) => {
+      // Rollback on error
+      if (context?.previousRooms) {
+        queryClient.setQueryData(['rooms-grid'], context.previousRooms);
+      }
       toast.error(`Check-in failed: ${error.message}`);
     },
   });
@@ -275,13 +298,36 @@ export function useRoomActions() {
         // SMS now handled by complete-checkout edge function
       }
     },
+    onMutate: async (roomId: string) => {
+      // Cancel outgoing refetches
+      await queryClient.cancelQueries({ queryKey: ['rooms-grid'] });
+      
+      // Snapshot previous value
+      const previousRooms = queryClient.getQueryData(['rooms-grid']);
+      
+      // Optimistically update to cleaning status
+      queryClient.setQueryData(['rooms-grid'], (old: any) => {
+        if (!old) return old;
+        return old.map((room: any) => 
+          room.id === roomId 
+            ? { ...room, status: 'cleaning', currentStatus: 'cleaning' }
+            : room
+        );
+      });
+      
+      return { previousRooms };
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['rooms-grid'] });
       queryClient.invalidateQueries({ queryKey: ['frontdesk-kpis'] });
       queryClient.invalidateQueries({ queryKey: ['room-detail'] });
       toast.success('Guest checked out successfully');
     },
-    onError: (error: Error) => {
+    onError: (error: Error, roomId, context) => {
+      // Rollback on error
+      if (context?.previousRooms) {
+        queryClient.setQueryData(['rooms-grid'], context.previousRooms);
+      }
       toast.error(`Check-out failed: ${error.message}`);
     },
   });

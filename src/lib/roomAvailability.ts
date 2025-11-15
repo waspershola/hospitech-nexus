@@ -48,44 +48,44 @@ export function getRoomStatusNow(
   const now = new Date();
   const checkInDT = parseDateTime(booking.check_in, checkInTime);
   const checkOutDT = parseDateTime(booking.check_out, checkOutTime);
+  const checkInDate = new Date(booking.check_in);
+  const checkOutDate = new Date(booking.check_out);
 
-  // OVERSTAY: Past checkout time and still checked in
-  if (booking.status === 'checked_in' && isAfter(now, checkOutDT)) {
-    return 'overstay';
-  }
-
-  // Check-in day logic
-  if (isToday(new Date(booking.check_in))) {
-    // Priority 1: If guest has checked in, show occupied immediately
-    if (booking.status === 'checked_in') {
-      return 'occupied';
-    }
-    // Priority 2: Before check-in time and not checked in
-    if (isBefore(now, checkInDT)) {
-      return 'reserved';
-    }
-    // Priority 3: Check-in time passed but not checked in yet
-    return 'checking_in';
-  }
-
-  // Check-out day logic
-  if (isToday(new Date(booking.check_out))) {
-    if (isAfter(now, checkOutDT)) {
-      // Past checkout time
-      if (booking.status === 'checked_in') {
-        return 'overstay'; // Still occupied after checkout time
-      }
-      return 'available'; // Already checked out
-    }
-    return 'checking_out'; // Still before checkout time
-  }
-
-  // Mid-stay (between check-in and check-out)
+  // CHECKED-IN status takes priority regardless of dates
   if (booking.status === 'checked_in') {
+    // OVERSTAY: Past checkout time and still checked in
+    if (isAfter(now, checkOutDT)) {
+      return 'overstay';
+    }
+    
+    // Check-out day (before checkout time)
+    if (isToday(checkOutDate)) {
+      return 'checking_out';
+    }
+    
+    // Any other checked-in state = occupied
     return 'occupied';
   }
 
-  // Future reservation
+  // RESERVED status logic (guest hasn't checked in yet)
+  
+  // Check-in is in the PAST and guest still hasn't checked in
+  if (isBefore(checkInDate, now) && !isToday(checkInDate)) {
+    // Guest should have arrived but didn't - show as checking_in (late arrival)
+    return 'checking_in';
+  }
+
+  // Check-in is TODAY
+  if (isToday(checkInDate)) {
+    // Before check-in time
+    if (isBefore(now, checkInDT)) {
+      return 'reserved';
+    }
+    // After check-in time but guest hasn't checked in yet
+    return 'checking_in';
+  }
+
+  // Future reservation (check-in is tomorrow or later)
   return 'reserved';
 }
 
