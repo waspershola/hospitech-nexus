@@ -162,3 +162,6 @@ verify_jwt = true
 [functions.cancel-booking]
 verify_jwt = true
 
+[functions.reconcile-folio-payments]
+verify_jwt = true
+
