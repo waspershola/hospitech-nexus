@@ -46,14 +46,14 @@ export function BookingFolioCard({ bookingId, currency = 'NGN' }: BookingFolioCa
     <Card>
       <CardHeader>
         <CardTitle className="flex items-center justify-between">
-          <span>Booking Folio</span>
+          <span>Stay Folio</span>
           <Badge variant={balanceStatus === 'paid' ? 'default' : balanceStatus === 'due' ? 'destructive' : 'secondary'}>
             {balanceStatus === 'paid' && 'Paid in Full'}
             {balanceStatus === 'due' && `Balance Due: ${formatCurrency(folio.balance, currency)}`}
             {balanceStatus === 'credit' && `Credit: ${formatCurrency(Math.abs(folio.balance), currency)}`}
           </Badge>
         </CardTitle>
-        <CardDescription>Complete payment breakdown for this booking</CardDescription>
+        <CardDescription>Complete payment breakdown for this stay</CardDescription>
       </CardHeader>
       <CardContent className="space-y-6">
         {/* Booking Charges with Tax Breakdown */}

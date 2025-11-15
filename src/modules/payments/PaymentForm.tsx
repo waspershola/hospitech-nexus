@@ -489,7 +489,7 @@ export function PaymentForm({
           />
           <p className="text-xs text-muted-foreground">
             {isBookingPayment 
-              ? 'Calculated from booking folio' 
+              ? 'Calculated from stay folio' 
               : 'Leave blank if no specific amount expected'}
           </p>
         </div>

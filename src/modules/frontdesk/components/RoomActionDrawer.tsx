@@ -32,7 +32,8 @@ import { PaymentHistory } from '@/modules/payments/PaymentHistory';
 import { BookingAmendmentDrawer } from '@/modules/bookings/components/BookingAmendmentDrawer';
 import { CancelBookingModal } from '@/modules/bookings/components/CancelBookingModal';
 import { BookingConfirmationDocument } from '@/modules/bookings/components/BookingConfirmationDocument';
-import { BookingPaymentManager } from '@/modules/bookings/components/BookingPaymentManager';
+import { BookingFolioCard } from '@/modules/bookings/components/BookingFolioCard';
+import { FolioDetailDrawer } from '@/components/folio/FolioDetailDrawer';
 import { toast } from '@/hooks/use-toast';
 import { Switch } from '@/components/ui/switch';
 import { 
@@ -69,6 +70,7 @@ export function RoomActionDrawer({ roomId, contextDate, open, onClose, onOpenAss
   const [realtimeDebounceTimer, setRealtimeDebounceTimer] = useState<NodeJS.Timeout | null>(null);
   const [printReceipt, setPrintReceipt] = useState(false);
   const [selectedBookingId, setSelectedBookingId] = useState<string | null>(null);
+  const [folioDrawerOpen, setFolioDrawerOpen] = useState(false);
 
   const { data: room, isLoading } = useQuery({
     queryKey: ['room-detail', roomId, contextDate ? format(contextDate, 'yyyy-MM-dd') : 'today'],
@@ -808,11 +810,11 @@ export function RoomActionDrawer({ roomId, contextDate, open, onClose, onOpenAss
                             <Button
                               variant="outline"
                               size="sm"
-                              onClick={() => setPaymentHistoryOpen(true)}
+                              onClick={() => setFolioDrawerOpen(true)}
                               className="w-full"
                             >
                               <Receipt className="w-4 h-4 mr-2" />
-                              View Payment History
+                              View Folio
                             </Button>
                             <Button
                               variant="outline"
@@ -907,7 +909,7 @@ export function RoomActionDrawer({ roomId, contextDate, open, onClose, onOpenAss
 
                 <TabsContent value="payments" className="mt-6">
                   {currentBooking ? (
-                    <BookingPaymentManager bookingId={currentBooking.id} />
+                    <BookingFolioCard bookingId={currentBooking.id} currency="NGN" />
                   ) : (
                     <div className="text-center py-8 text-muted-foreground">
                       <Receipt className="h-12 w-12 mx-auto mb-4 opacity-50" />
@@ -984,6 +986,11 @@ export function RoomActionDrawer({ roomId, contextDate, open, onClose, onOpenAss
                 open={cancelModalOpen}
                 onClose={() => setCancelModalOpen(false)}
                 bookingId={currentBooking.id}
+              />
+              <FolioDetailDrawer
+                bookingId={currentBooking.id}
+                open={folioDrawerOpen}
+                onClose={() => setFolioDrawerOpen(false)}
               />
             </>
           )}
