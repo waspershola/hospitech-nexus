@@ -15,6 +15,9 @@ verify_jwt = false
 [functions.billing-cycle]
 verify_jwt = false
 
+[functions.manual-create-folio]
+verify_jwt = false
+
 [functions.track-usage]
 verify_jwt = false
 
