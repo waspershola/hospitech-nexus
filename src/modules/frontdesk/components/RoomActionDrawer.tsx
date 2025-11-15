@@ -105,41 +105,29 @@ export function RoomActionDrawer({ roomId, contextDate, open, onClose, onOpenAss
 
       if (error) throw error;
       
-      // Filter bookings based on filterDate (contextDate or today)
+      // Get ALL active bookings (not cancelled/completed) - don't filter by date
+      // Let getRoomStatusNow() handle the date/time logic
       if (data && data.bookings) {
         const activeBookings = Array.isArray(data.bookings) 
-          ? data.bookings.filter((b: any) => {
-              if (['completed', 'cancelled'].includes(b.status)) return false;
-              
-              const checkInDate = format(new Date(b.check_in), 'yyyy-MM-dd');
-              const checkOutDate = format(new Date(b.check_out), 'yyyy-MM-dd');
-              
-              // Show booking if it overlaps with the filter date:
-              // 1. Checked in and still active on filter date
-              if (b.status === 'checked_in' && checkInDate <= filterDateStr && checkOutDate > filterDateStr) {
-                return true;
-              }
-              
-              // 2. Reserved and arriving on filter date
-              if (b.status === 'reserved' && checkInDate === filterDateStr) {
-                return true;
-              }
-              
-              // 3. For any date, also include reserved bookings that span the filter date
-              if (b.status === 'reserved' && checkInDate <= filterDateStr && checkOutDate > filterDateStr) {
-                return true;
-              }
-              
-              return false;
-            })
+          ? data.bookings.filter((b: any) => !['completed', 'cancelled'].includes(b.status))
           : [];
         
-        // Sort by check_in date (earliest first) to prioritize today's arrivals
-        activeBookings.sort((a: any, b: any) => 
-          new Date(a.check_in).getTime() - new Date(b.check_in).getTime()
-        );
+        // Find the most relevant active booking for this room
+        // Priority 1: Checked-in bookings (these are always most important, even if overstay)
+        let activeBooking = activeBookings.find((b: any) => b.status === 'checked_in');
         
-        return { ...data, bookings: activeBookings };
+        // Priority 2: If no checked-in booking, use reserved booking
+        if (!activeBooking && activeBookings.length > 0) {
+          // Sort by check-in date ascending to get the earliest reservation
+          const reservedBookings = activeBookings
+            .filter((b: any) => b.status === 'reserved')
+            .sort((a: any, b: any) => new Date(a.check_in).getTime() - new Date(b.check_in).getTime());
+          
+          activeBooking = reservedBookings[0];
+        }
+        
+        // Return the single most relevant booking in an array (or empty array if none)
+        return { ...data, bookings: activeBooking ? [activeBooking] : [] };
       }
       
       return data;
