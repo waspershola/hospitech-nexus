@@ -911,12 +911,15 @@ export function QRRequestDrawer({ open, onOpenChange }: QRRequestDrawerProps) {
                           // Fallback: Find booking by room number
                           const roomNumber = selectedRequest.metadata?.room_number || selectedRequest.metadata?.qr_location;
                           if (roomNumber) {
-                            const { data: room } = await supabase
+                            const { data: rooms } = await supabase
                               .from('rooms')
-                              .select('id')
+                              .select('id, status, current_reservation_id')
                               .eq('number', roomNumber)
                               .eq('tenant_id', tenantId)
-                              .single();
+                              .order('status', { ascending: true }) // Prefer occupied rooms
+                              .order('created_at', { ascending: false });
+                            
+                            const room = rooms?.[0]; // Get most recent occupied room
                             
                             if (room) {
                               const { data: booking } = await supabase
@@ -927,7 +930,7 @@ export function QRRequestDrawer({ open, onOpenChange }: QRRequestDrawerProps) {
                                 .eq('status', 'checked_in')
                                 .order('check_in', { ascending: false })
                                 .limit(1)
-                                .single();
+                                .maybeSingle();
                               bookingId = booking?.id;
                             }
                           }

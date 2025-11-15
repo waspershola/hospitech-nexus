@@ -79,6 +79,17 @@ export function FolioDetailDrawer({ bookingId, open, onClose }: FolioDetailDrawe
           <div className="flex items-center justify-center py-12">
             <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
           </div>
+        ) : !booking ? (
+          <div className="text-center py-12">
+            <Calendar className="h-12 w-12 text-amber-500 mx-auto mb-4" />
+            <h3 className="font-semibold text-lg">No Active Booking Found</h3>
+            <p className="text-muted-foreground text-sm mt-2">
+              This room may have been checked out or the booking may have been cancelled.
+            </p>
+            <p className="text-xs text-muted-foreground mt-2">
+              Please verify the room status at the front desk.
+            </p>
+          </div>
         ) : folio && booking ? (
           <div className="space-y-6 mt-6">
             {/* Guest & Room Info */}
