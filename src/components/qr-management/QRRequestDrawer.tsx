@@ -893,9 +893,48 @@ export function QRRequestDrawer({ open, onOpenChange }: QRRequestDrawerProps) {
                     {/* Folio Link */}
                     <RequestFolioLink 
                       request={selectedRequest}
-                      onViewFolio={() => {
-                        console.log('[QRRequestDrawer] Opening folio for booking:', selectedRequest.booking_id);
-                        setFolioBookingId(selectedRequest.booking_id);
+                      onViewFolio={async () => {
+                        console.log('[QRRequestDrawer] Opening folio for request:', selectedRequest);
+                        
+                        // Try to get booking_id from stay_folio or room lookup
+                        let bookingId = null;
+                        
+                        if (selectedRequest.stay_folio_id) {
+                          // Fetch stay_folio to get booking_id
+                          const { data: folio } = await supabase
+                            .from('stay_folios')
+                            .select('booking_id')
+                            .eq('id', selectedRequest.stay_folio_id)
+                            .single();
+                          bookingId = folio?.booking_id;
+                        } else {
+                          // Fallback: Find booking by room number
+                          const roomNumber = selectedRequest.metadata?.room_number || selectedRequest.metadata?.qr_location;
+                          if (roomNumber) {
+                            const { data: room } = await supabase
+                              .from('rooms')
+                              .select('id')
+                              .eq('number', roomNumber)
+                              .eq('tenant_id', tenantId)
+                              .single();
+                            
+                            if (room) {
+                              const { data: booking } = await supabase
+                                .from('bookings')
+                                .select('id')
+                                .eq('room_id', room.id)
+                                .eq('tenant_id', tenantId)
+                                .eq('status', 'checked_in')
+                                .order('check_in', { ascending: false })
+                                .limit(1)
+                                .single();
+                              bookingId = booking?.id;
+                            }
+                          }
+                        }
+                        
+                        console.log('[QRRequestDrawer] Opening folio for booking:', bookingId);
+                        setFolioBookingId(bookingId);
                         setFolioDrawerOpen(true);
                       }}
                     />

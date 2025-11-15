@@ -79,7 +79,11 @@ export function useBookingFolio(bookingId: string | null) {
   return useQuery({
     queryKey: ['booking-folio', bookingId, tenantId],
     queryFn: async (): Promise<FolioBalance | null> => {
-      if (!bookingId || !tenantId) return null;
+      console.log('[useBookingFolio] Fetching folio for booking:', bookingId);
+      if (!bookingId || !tenantId) {
+        console.log('[useBookingFolio] Missing bookingId or tenantId');
+        return null;
+      }
 
       // Fetch booking details to check for group_id
       const { data: booking, error: bookingError } = await supabase
@@ -89,7 +93,12 @@ export function useBookingFolio(bookingId: string | null) {
         .eq('tenant_id', tenantId)
         .single();
 
-      if (bookingError) throw bookingError;
+      if (bookingError) {
+        console.log('[useBookingFolio] Booking fetch error:', bookingError);
+        throw bookingError;
+      }
+
+      console.log('[useBookingFolio] Booking data:', booking);
 
       const bookingMeta = booking?.metadata as any;
       const groupId = bookingMeta?.group_id;
@@ -166,6 +175,13 @@ export function useBookingFolio(bookingId: string | null) {
       const totalCharges = Number(booking?.total_amount || 0);
       const totalPayments = payments?.reduce((sum, p) => sum + Number(p.amount), 0) || 0;
       const currency = payments?.[0]?.currency || 'NGN';
+
+      console.log('[useBookingFolio] Final folio data:', {
+        totalCharges,
+        totalPayments,
+        balance: totalCharges - totalPayments,
+        paymentsCount: payments?.length || 0
+      });
 
       // Extract tax breakdown from booking metadata
       const bookingTaxBreakdown = bookingMeta?.tax_breakdown as TaxBreakdown | undefined;
