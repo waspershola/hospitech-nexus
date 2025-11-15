@@ -93,9 +93,12 @@ export function useRoomActions() {
       });
 
       // Create folio via edge function (BLOCKING - MUST SUCCEED)
+      console.log('[CHECK-IN] Creating folio for booking:', booking.id);
       const { data: folioResult, error: folioError } = await supabase.functions.invoke('checkin-guest', {
         body: { booking_id: booking.id }
       });
+      
+      console.log('[CHECK-IN] Folio creation result:', { folioResult, folioError });
       
       if (folioError || !folioResult?.folio) {
         // Rollback booking status if folio creation fails
