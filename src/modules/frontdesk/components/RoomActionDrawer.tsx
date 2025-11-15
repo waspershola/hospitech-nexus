@@ -909,7 +909,11 @@ export function RoomActionDrawer({ roomId, contextDate, open, onClose, onOpenAss
 
                 <TabsContent value="payments" className="mt-6">
                   {currentBooking ? (
-                    <BookingFolioCard bookingId={currentBooking.id} currency="NGN" />
+                    <BookingFolioCard 
+                      bookingId={currentBooking.id} 
+                      currency="NGN"
+                      bookingStatus={currentBooking.status}
+                    />
                   ) : (
                     <div className="text-center py-8 text-muted-foreground">
                       <Receipt className="h-12 w-12 mx-auto mb-4 opacity-50" />
