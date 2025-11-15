@@ -2,6 +2,7 @@ import { useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
+import { RoomDropdown } from '@/components/shared/RoomDropdown';
 import {
   Dialog,
   DialogContent,
@@ -139,18 +140,63 @@ export default function QRCodeDialog({ open, onOpenChange, qrCode, onSave }: QRC
 
             <FormField
               control={form.control}
-              name="assigned_to"
+              name="scope"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Assigned To</FormLabel>
-                  <FormControl>
-                    <Input placeholder="e.g., Room 101, Pool Area, Conference Hall A" {...field} />
-                  </FormControl>
-                  <FormDescription>The location or entity this QR code is assigned to</FormDescription>
+                  <FormLabel>Scope</FormLabel>
+                  <Select onValueChange={field.onChange} value={field.value}>
+                    <FormControl>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select scope" />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      <SelectItem value="room">Room</SelectItem>
+                      <SelectItem value="common_area">Common Area</SelectItem>
+                      <SelectItem value="facility">Facility</SelectItem>
+                      <SelectItem value="event">Event</SelectItem>
+                    </SelectContent>
+                  </Select>
                   <FormMessage />
                 </FormItem>
               )}
             />
+
+            {form.watch('scope') === 'room' ? (
+              <FormField
+                control={form.control}
+                name="room_id"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Select Room</FormLabel>
+                    <FormControl>
+                      <RoomDropdown 
+                        value={field.value} 
+                        onChange={field.onChange}
+                        placeholder="Select a room"
+                      />
+                    </FormControl>
+                    <FormDescription>Select the room this QR code is assigned to</FormDescription>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            ) : (
+              <FormField
+                control={form.control}
+                name="assigned_to"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Assigned To</FormLabel>
+                    <FormControl>
+                      <Input placeholder="e.g., Pool Area, Conference Hall A" {...field} />
+                    </FormControl>
+                    <FormDescription>The location or entity this QR code is assigned to</FormDescription>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            )}
 
             <FormField
               control={form.control}

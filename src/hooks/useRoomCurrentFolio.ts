@@ -16,13 +16,16 @@ export function useRoomCurrentFolio(roomNumber: string | null) {
 
       console.log('[useRoomCurrentFolio] Fetching folio for room:', roomNumber);
 
-      // Step 1: Find room by number
+      // Step 1: Find room by number with tenant filter
       const { data: room, error: roomError } = await supabase
         .from('rooms')
-        .select('id')
+        .select('id, status')
         .eq('number', roomNumber)
         .eq('tenant_id', tenantId)
-        .single();
+        .order('status', { ascending: true }) // Prefer occupied rooms
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
 
       if (roomError || !room) {
         console.log('[useRoomCurrentFolio] Room not found:', roomError);
@@ -38,7 +41,7 @@ export function useRoomCurrentFolio(roomNumber: string | null) {
         .eq('status', 'checked_in')
         .order('check_in', { ascending: false })
         .limit(1)
-        .single();
+        .maybeSingle();
 
       if (bookingError || !booking) {
         console.log('[useRoomCurrentFolio] No active booking found:', bookingError);
