@@ -112,3 +112,40 @@ export function usePaymentRealtime() {
     };
   }, [tenantId, queryClient]);
 }
+
+/**
+ * Hook to enable real-time updates for stay folios
+ */
+export function useFolioRealtime() {
+  const queryClient = useQueryClient();
+  const { tenantId } = useAuth();
+
+  useEffect(() => {
+    if (!tenantId) return;
+
+    const channel = supabase
+      .channel('folios-realtime')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'stay_folios',
+          filter: `tenant_id=eq.${tenantId}`,
+        },
+        (payload) => {
+          console.log('Folio change detected:', payload);
+          
+          // When folio is created/updated, room status may have changed
+          queryClient.invalidateQueries({ queryKey: ['rooms-grid'] });
+          queryClient.invalidateQueries({ queryKey: ['room-detail'] });
+          queryClient.invalidateQueries({ queryKey: ['frontdesk-kpis'] });
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [tenantId, queryClient]);
+}

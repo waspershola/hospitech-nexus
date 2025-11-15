@@ -28,6 +28,34 @@ export function useCheckout() {
 
       return data;
     },
+    onMutate: async ({ bookingId }) => {
+      // Get room ID from booking
+      const { data: booking } = await supabase
+        .from('bookings')
+        .select('room_id')
+        .eq('id', bookingId)
+        .single();
+      
+      if (!booking) return;
+      
+      // Cancel outgoing refetches
+      await queryClient.cancelQueries({ queryKey: ['rooms-grid'] });
+      
+      // Snapshot previous value
+      const previousRooms = queryClient.getQueryData(['rooms-grid']);
+      
+      // Optimistically update to available status
+      queryClient.setQueryData(['rooms-grid'], (old: any) => {
+        if (!old) return old;
+        return old.map((room: any) => 
+          room.id === booking.room_id 
+            ? { ...room, status: 'available', currentStatus: 'available' }
+            : room
+        );
+      });
+      
+      return { previousRooms };
+    },
     onSuccess: () => {
       // Invalidate all relevant queries to force refresh
       queryClient.invalidateQueries({ queryKey: ['rooms-grid'] });
@@ -37,7 +65,12 @@ export function useCheckout() {
       
       toast.success('Guest checked out successfully');
     },
-    onError: (error: any) => {
+    onError: (error: any, variables, context) => {
+      // Rollback on error
+      if (context?.previousRooms) {
+        queryClient.setQueryData(['rooms-grid'], context.previousRooms);
+      }
+      
       const errorMessage = error.message || 'Unknown error';
       
       if (errorMessage.includes('BALANCE_DUE')) {

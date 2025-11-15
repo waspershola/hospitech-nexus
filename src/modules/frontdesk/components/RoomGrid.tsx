@@ -61,33 +61,20 @@ export function RoomGrid({ searchQuery, statusFilter, categoryFilter, floorFilte
       let filteredData = (data || []).map(room => {
         if (!room.bookings || room.bookings.length === 0) return room;
         
-        // Find the active booking for TODAY (not future bookings)
+        // Find ANY active booking (not cancelled/completed) for this room
+        // Let getRoomStatusNow() decide what to display based on dates/times
         const activeBookings = room.bookings.filter((b: any) => !['completed', 'cancelled'].includes(b.status));
         
-        // Priority 1: Find bookings that are ACTIVE today (checked in and still here)
-        let activeBooking = activeBookings.find((b: any) => {
-          const checkInDate = format(new Date(b.check_in), 'yyyy-MM-dd');
-          const checkOutDate = format(new Date(b.check_out), 'yyyy-MM-dd');
-          
-          // Booking is active if:
-          // - Guest checked in AND
-          // - Check-in date <= today AND
-          // - Check-out date > today
-          return b.status === 'checked_in' && 
-                 checkInDate <= today && 
-                 checkOutDate > today;
-        });
+        // Priority 1: Checked-in bookings (these are always most important)
+        let activeBooking = activeBookings.find((b: any) => b.status === 'checked_in');
         
-        // Priority 2: If no active booking, find bookings ARRIVING today
-        if (!activeBooking) {
-          activeBooking = activeBookings.find((b: any) => {
-            const checkInDate = format(new Date(b.check_in), 'yyyy-MM-dd');
-            return b.status === 'reserved' && checkInDate === today;
-          });
+        // Priority 2: If no checked-in booking, use reserved booking (any date)
+        if (!activeBooking && activeBookings.length > 0) {
+          // Sort by check-in date ascending to get the earliest reservation
+          activeBooking = activeBookings
+            .filter((b: any) => b.status === 'reserved')
+            .sort((a: any, b: any) => new Date(a.check_in).getTime() - new Date(b.check_in).getTime())[0];
         }
-        
-        // Priority 3: IGNORE future bookings (tomorrow or later)
-        // If no active or arriving-today booking, show room as available
         
         // Use centralized status logic (pass the booking with room_id added)
         const bookingWithRoomId = activeBooking ? { ...activeBooking, room_id: room.id } : null;
