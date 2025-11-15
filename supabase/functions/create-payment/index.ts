@@ -412,31 +412,57 @@ serve(async (req) => {
 
     console.log('Payment created:', payment.id);
 
-    // NEW: Post payment to folio if booking is linked
+    // PHASE 1: Post payment to folio if booking is linked
     if (booking_id) {
       console.log('[folio] Attempting to post payment to folio for booking:', booking_id);
       
-      const { data: openFolio } = await supabase
+      // Query only the ID field to avoid object serialization issues
+      const { data: folioData, error: folioQueryError } = await supabase
         .from('stay_folios')
-        .select('id, status')
+        .select('id')
         .eq('booking_id', booking_id)
         .eq('status', 'open')
         .maybeSingle();
       
-      if (openFolio) {
-        console.log('[folio] Found open folio:', openFolio.id, '- posting payment');
+      if (folioQueryError) {
+        console.error('[folio] Error querying folio:', folioQueryError);
+      } else if (folioData?.id) {
+        // Explicitly cast to string to ensure UUID type
+        const folioId = String(folioData.id);
+        console.log('[folio] Found open folio:', folioId, '- posting payment');
         
-        const { error: folioError } = await supabase.rpc('folio_post_payment', {
-          p_folio_id: openFolio.id,
-          p_payment_id: payment.id,
+        const { data: rpcResult, error: folioError } = await supabase.rpc('folio_post_payment', {
+          p_folio_id: folioId,
+          p_payment_id: String(payment.id),
           p_amount: amount
         });
         
         if (folioError) {
-          console.error('[folio] Failed to post payment to folio:', folioError);
+          console.error('[folio] Failed to post payment to folio:', {
+            error: folioError,
+            folioId,
+            paymentId: payment.id,
+            amount
+          });
           // Don't throw - payment is already created successfully
         } else {
-          console.log('[folio] Payment posted to folio successfully');
+          console.log('[folio] Payment posted to folio successfully:', rpcResult);
+          
+          // PHASE 3: Verify payment was posted correctly
+          const { data: verifyPayment } = await supabase
+            .from('payments')
+            .select('stay_folio_id')
+            .eq('id', payment.id)
+            .single();
+          
+          if (verifyPayment?.stay_folio_id) {
+            console.log('[folio] VERIFIED: Payment linked to folio:', verifyPayment.stay_folio_id);
+          } else {
+            console.error('[folio] WARNING: Payment posting succeeded but stay_folio_id not set!', {
+              paymentId: payment.id,
+              expectedFolioId: folioId
+            });
+          }
         }
       } else {
         console.log('[folio] No open folio found for booking - skipping folio posting');
