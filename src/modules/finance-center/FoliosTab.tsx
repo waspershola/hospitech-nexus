@@ -16,6 +16,7 @@ import {
 import { formatCurrency } from '@/lib/finance/tax';
 import { format } from 'date-fns';
 import { FolioSettlementDialog } from './components/FolioSettlementDialog';
+import { FolioReconciliationButton } from '@/components/finance/FolioReconciliationButton';
 
 export function FoliosTab() {
   const { data: folios, isLoading } = useOutstandingFolios();
@@ -141,6 +142,7 @@ export function FoliosTab() {
                 className="pl-10 h-12 text-base shadow-sm"
               />
             </div>
+            <FolioReconciliationButton />
           </div>
 
           {/* Folios List */}
