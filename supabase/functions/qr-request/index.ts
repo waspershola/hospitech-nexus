@@ -14,8 +14,6 @@ interface ServiceRequest {
   priority?: 'low' | 'normal' | 'high' | 'urgent';
   guest_name?: string;
   guest_contact?: string;
-  metadata?: any;
-  payment_choice?: 'pay_now' | 'bill_to_room';
 }
 
 interface ChatMessage {
@@ -155,7 +153,10 @@ async function calculateQRPlatformFee(
     applied: true, 
     fee_amount: feeAmount, 
     base_amount: subtotal,
-    total_amount: totalAmount
+    total_amount: totalAmount,
+    payer: feeConfig.payer,
+    fee_type: feeConfig.fee_type,
+    qr_fee: feeConfig.qr_fee
   };
     
   } catch (error) {
@@ -164,7 +165,10 @@ async function calculateQRPlatformFee(
     applied: false, 
     fee_amount: 0, 
     base_amount: subtotal || 0,
-    total_amount: subtotal || 0
+    total_amount: subtotal || 0,
+    payer: null,
+    fee_type: null,
+    qr_fee: 0
   };
   }
 }
@@ -294,7 +298,7 @@ serve(async (req) => {
 
       // Try to find folio by room first
       if (resolvedRoomId) {
-        const { data: roomFolio, error: roomFolioError } = await supabase
+        const { data: roomFolio, error: roomFolioError } = await supabaseServiceClient
           .rpc('find_open_folio_by_room', {
             p_tenant_id: qr.tenant_id,
             p_room_id: resolvedRoomId
@@ -309,7 +313,7 @@ serve(async (req) => {
 
       // If no room match and phone provided, try phone matching
       if (!attachedFolioId && requestData.guest_contact) {
-        const { data: phoneFolio, error: phoneFolioError } = await supabase
+        const { data: phoneFolio, error: phoneFolioError } = await supabaseServiceClient
           .rpc('find_open_folio_by_guest_phone', {
             p_tenant_id: qr.tenant_id,
             p_phone: requestData.guest_contact
@@ -430,7 +434,7 @@ serve(async (req) => {
         console.log(`[folio] Posting charge of ${paymentInfo.subtotal} to folio ${attachedFolioId}`);
         
         try {
-          const { data: chargeResult, error: chargeError } = await supabase.rpc('folio_post_charge', {
+          const { data: chargeResult, error: chargeError } = await supabaseServiceClient.rpc('folio_post_charge', {
             p_folio_id: attachedFolioId,
             p_amount: paymentInfo.subtotal,
             p_description: `${requestData.service_category}: ${requestData.note || 'Service Request'}`,
@@ -445,7 +449,7 @@ serve(async (req) => {
             console.log('[folio] Charge posted successfully:', chargeResult);
             
             // Broadcast real-time update to folio subscribers
-            await supabase
+            await supabaseServiceClient
               .channel(`folio-${attachedFolioId}`)
               .send({
                 type: 'broadcast',
@@ -493,7 +497,10 @@ serve(async (req) => {
               subtotal: feeResult.base_amount,
               amount: feeResult.total_amount,
               platform_fee: feeResult.fee_amount,
-              platform_fee_applied: true
+              platform_fee_applied: true,
+              payer: feeResult.payer,
+              fee_type: feeResult.fee_type,
+              qr_fee: feeResult.qr_fee,
             },
           },
         })

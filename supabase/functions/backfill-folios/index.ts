@@ -226,7 +226,7 @@ serve(async (req) => {
         results.errors.push({
           booking_id: booking.id,
           booking_reference: booking.booking_reference,
-          error: error instanceof Error ? error.message : String(error)
+          error: error.message
         });
       }
     }
@@ -252,7 +252,7 @@ serve(async (req) => {
     console.error('[backfill] Fatal error:', error);
     return new Response(
       JSON.stringify({ 
-        error: error instanceof Error ? error.message : String(error),
+        error: error.message,
         details: error
       }),
       { 

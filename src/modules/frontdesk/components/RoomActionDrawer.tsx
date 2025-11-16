@@ -126,19 +126,8 @@ export function RoomActionDrawer({ roomId, contextDate, open, onClose, onOpenAss
           activeBooking = reservedBookings[0];
         }
         
-        // Filter out stale folios from completed/cancelled bookings
-        const dataWithFolios = data as any;
-        if (dataWithFolios.stay_folios && Array.isArray(dataWithFolios.stay_folios)) {
-          dataWithFolios.stay_folios = dataWithFolios.stay_folios.filter((folio: any) => {
-            if (!folio.booking_id) return true;
-            const folioBooking = dataWithFolios.bookings?.find((b: any) => b.id === folio.booking_id);
-            // Only keep folios that have no booking reference OR belong to active bookings
-            return !folioBooking || !['completed', 'cancelled'].includes(folioBooking.status);
-          });
-        }
-        
         // Return the single most relevant booking in an array (or empty array if none)
-        return { ...dataWithFolios, bookings: activeBooking ? [activeBooking] : [] };
+        return { ...data, bookings: activeBooking ? [activeBooking] : [] };
       }
       
       return data;
