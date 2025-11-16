@@ -46,7 +46,12 @@ serve(async (req) => {
     };
 
     for (const payment of orphanPayments || []) {
-      const folioId = payment.bookings.stay_folios[0]?.id;
+      // Handle both array and object responses from nested query
+      const folios = payment.bookings?.stay_folios;
+      const folio = Array.isArray(folios) ? folios[0] : folios;
+      const folioId = folio?.id;
+      
+      console.log(`[reconcile] Payment ${payment.id}: folio structure:`, { folios, folio, folioId });
       
       if (!folioId) {
         results.failed.push({
