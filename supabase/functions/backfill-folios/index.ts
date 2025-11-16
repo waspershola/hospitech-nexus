@@ -127,10 +127,16 @@ serve(async (req) => {
 
           // Post existing payments to folio using folio_post_payment RPC
           if (payments && payments.length > 0) {
-            console.log(`[backfill] Posting ${payments.length} payments to folio`);
+            console.log(`[backfill] Posting ${payments.length} payments to folio ${newFolio.id}`);
             for (const payment of payments) {
               try {
-                const { error: paymentPostError } = await supabase.rpc('folio_post_payment', {
+                console.log(`[backfill] Calling folio_post_payment with:`, {
+                  p_folio_id: newFolio.id,
+                  p_payment_id: payment.id,
+                  p_amount: Number(payment.amount)
+                });
+                
+                const { data: postResult, error: paymentPostError } = await supabaseServiceClient.rpc('folio_post_payment', {
                   p_folio_id: newFolio.id,
                   p_payment_id: payment.id,
                   p_amount: Number(payment.amount)
@@ -139,6 +145,7 @@ serve(async (req) => {
                 if (paymentPostError) {
                   console.error(`[backfill] Failed to post payment ${payment.id}:`, paymentPostError);
                 } else {
+                  console.log(`[backfill] Payment ${payment.id} posted successfully:`, postResult);
                   results.linked_payments++;
                 }
               } catch (err) {
