@@ -387,11 +387,23 @@ export function RoomActionDrawer({ roomId, contextDate, open, onClose, onOpenAss
 
   const handleCheckIn = async () => {
     if (!room) return;
-    await checkIn(room.id);
-    toast({ title: 'Check-In Complete', description: 'Guest checked in successfully' });
     
-    // Phase 6: Keep 600ms for check-in (allows user to see success)
-    setTimeout(() => onClose(), 600);
+    try {
+      console.log('[RoomActionDrawer] Starting check-in for room:', room.id);
+      await checkIn(room.id);
+      console.log('[RoomActionDrawer] Check-in completed successfully');
+      toast({ title: 'Check-In Complete', description: 'Guest checked in successfully' });
+      
+      // Phase 6: Keep 600ms for check-in (allows user to see success)
+      setTimeout(() => onClose(), 600);
+    } catch (error) {
+      console.error('[RoomActionDrawer] Check-in failed:', error);
+      toast({ 
+        title: 'Check-In Failed', 
+        description: error instanceof Error ? error.message : 'Unknown error occurred',
+        variant: 'destructive'
+      });
+    }
   };
 
   const handleMarkClean = async () => {
