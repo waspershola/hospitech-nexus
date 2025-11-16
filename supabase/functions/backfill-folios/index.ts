@@ -30,7 +30,7 @@ serve(async (req) => {
       .select(`
         *,
         guest:guests(*),
-        room:rooms(*)
+        room:rooms!bookings_room_id_fkey(*)
       `)
       .eq('tenant_id', tenant_id)
       .in('status', ['confirmed', 'checked_in'])
