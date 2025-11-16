@@ -45,15 +45,18 @@ export function BackfillFoliosButton() {
           Dry Run Backfill
         </Button>
 
-        {result && !result.dry_run && (
-          <Button
-            onClick={() => setShowExecuteDialog(true)}
-            disabled={isBackfilling || result.results.processed === 0}
-            variant="default"
-          >
-            Execute Backfill
-          </Button>
-        )}
+        <Button
+          onClick={() => setShowExecuteDialog(true)}
+          disabled={isBackfilling}
+          variant="default"
+        >
+          {isBackfilling ? (
+            <Loader2 className="h-4 w-4 animate-spin mr-2" />
+          ) : (
+            <Database className="h-4 w-4 mr-2" />
+          )}
+          Execute Backfill
+        </Button>
       </div>
 
       {result && (
