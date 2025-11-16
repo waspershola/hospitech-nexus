@@ -85,10 +85,10 @@ export function useBookingFolio(bookingId: string | null) {
         return null;
       }
 
-      // Fetch booking details to check for group_id
+      // Fetch booking details to check for group_id and status
       const { data: booking, error: bookingError } = await supabase
         .from('bookings')
-        .select('total_amount, metadata')
+        .select('total_amount, metadata, status')
         .eq('id', bookingId)
         .eq('tenant_id', tenantId)
         .single();
@@ -103,10 +103,69 @@ export function useBookingFolio(bookingId: string | null) {
       const bookingMeta = booking?.metadata as any;
       const groupId = bookingMeta?.group_id;
       
+      // Check if booking is checked-in (has a folio)
+      const isCheckedIn = booking.status === 'checked_in' || booking.status === 'checked_out';
+      
       // Update query key to include groupId for group bookings (for cache sharing)
       if (groupId) {
         // Note: We can't modify queryKey here, but the cache will be invalidated properly
       }
+
+      // If checked-in, prioritize stay_folios table as source of truth
+      if (isCheckedIn) {
+        // Try to fetch from stay_folios first
+        const { data: stayFolio, error: folioError } = await supabase
+          .from('stay_folios')
+          .select('id, total_charges, total_payments, balance, created_at')
+          .eq('booking_id', bookingId)
+          .eq('tenant_id', tenantId)
+          .eq('status', 'open')
+          .maybeSingle();
+
+        if (stayFolio && !folioError) {
+          console.log('[useBookingFolio] Using stay_folios table as source of truth:', stayFolio);
+          
+          // Fetch payments linked to this folio
+          const { data: folioPayments, error: paymentsError } = await supabase
+            .from('payments')
+            .select('id, amount, currency, method, method_provider, transaction_ref, created_at, metadata')
+            .eq('stay_folio_id', stayFolio.id)
+            .eq('tenant_id', tenantId)
+            .order('created_at', { ascending: false });
+
+          if (paymentsError) throw paymentsError;
+
+          const paymentDetails: PaymentDetail[] = folioPayments?.map(p => {
+            const paymentMeta = p.metadata as any;
+            return {
+              id: p.id,
+              amount: Number(p.amount),
+              method: p.method,
+              method_provider: p.method_provider,
+              transaction_ref: p.transaction_ref || '',
+              created_at: p.created_at,
+              tax_breakdown: paymentMeta?.tax_breakdown as TaxBreakdown | undefined,
+            };
+          }) || [];
+
+          const currency = folioPayments?.[0]?.currency || 'NGN';
+
+          return {
+            bookingId,
+            totalCharges: Number(stayFolio.total_charges || 0),
+            totalPayments: Number(stayFolio.total_payments || 0),
+            balance: Number(stayFolio.balance || 0),
+            currency,
+            bookingTaxBreakdown: bookingMeta?.tax_breakdown as TaxBreakdown | undefined,
+            payments: paymentDetails,
+            isGroupBooking: false,
+            numberOfBookings: 1,
+          };
+        }
+      }
+
+      // Fallback: Calculate from bookings + payments (for pre-check-in or if folio doesn't exist)
+      console.log('[useBookingFolio] Using fallback calculation from bookings + payments');
 
       // If this is a group booking, fetch all bookings in the group
       if (groupId) {
@@ -176,7 +235,7 @@ export function useBookingFolio(bookingId: string | null) {
       const totalPayments = payments?.reduce((sum, p) => sum + Number(p.amount), 0) || 0;
       const currency = payments?.[0]?.currency || 'NGN';
 
-      console.log('[useBookingFolio] Final folio data:', {
+      console.log('[useBookingFolio] Fallback calculation result:', {
         totalCharges,
         totalPayments,
         balance: totalCharges - totalPayments,
