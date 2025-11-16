@@ -412,7 +412,7 @@ serve(async (req) => {
 
     console.log('Payment created:', payment.id);
 
-    // NEW: Post payment to folio if booking is linked
+    // Post payment to folio if booking is linked
     if (booking_id) {
       console.log('[folio] Attempting to post payment to folio for booking:', booking_id);
       
@@ -426,20 +426,46 @@ serve(async (req) => {
       if (openFolio) {
         console.log('[folio] Found open folio:', openFolio.id, '- posting payment');
         
-        const { error: folioError } = await supabase.rpc('folio_post_payment', {
+        const { data: postResult, error: folioError } = await supabase.rpc('folio_post_payment', {
           p_folio_id: openFolio.id,
           p_payment_id: payment.id,
           p_amount: amount
         });
         
-        if (folioError) {
-          console.error('[folio] Failed to post payment to folio:', folioError);
-          // Don't throw - payment is already created successfully
+        if (folioError || !postResult?.success) {
+          console.error('[folio] Failed to post payment to folio:', folioError || postResult);
+          
+          // Mark payment for manual reconciliation
+          await supabase
+            .from('payments')
+            .update({ 
+              metadata: {
+                ...payment.metadata,
+                needs_folio: true,
+                folio_link_error: folioError?.message || postResult?.error || 'Unknown error',
+                folio_link_attempted_at: new Date().toISOString()
+              }
+            })
+            .eq('id', payment.id);
+          
+          console.warn('[folio] Payment marked for reconciliation');
         } else {
-          console.log('[folio] Payment posted to folio successfully');
+          console.log('[folio] Payment posted to folio successfully:', postResult);
         }
       } else {
-        console.log('[folio] No open folio found for booking - skipping folio posting');
+        console.log('[folio] No open folio found for booking - marking for reconciliation');
+        
+        // Mark for reconciliation (guest may check in later)
+        await supabase
+          .from('payments')
+          .update({ 
+            metadata: {
+              ...payment.metadata,
+              needs_folio: true,
+              folio_link_reason: 'No open folio at payment time'
+            }
+          })
+          .eq('id', payment.id);
       }
     }
 
