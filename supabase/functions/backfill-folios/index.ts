@@ -24,17 +24,18 @@ serve(async (req) => {
 
     console.log(`[backfill] Starting folio backfill for tenant ${tenant_id} (dry_run: ${dry_run})`);
 
-    // Find all checked-in bookings without folios
+    // Find all bookings without folios - using LEFT JOIN to avoid metadata issues
     const { data: bookingsWithoutFolios, error: bookingsError } = await supabase
       .from('bookings')
       .select(`
         *,
         guest:guests(*),
-        room:rooms!bookings_room_id_fkey(*)
+        room:rooms!bookings_room_id_fkey(*),
+        stay_folios!left(id)
       `)
       .eq('tenant_id', tenant_id)
       .in('status', ['confirmed', 'checked_in'])
-      .is('metadata->folio_id', null);
+      .is('stay_folios.id', null);
 
     if (bookingsError) throw bookingsError;
 
@@ -141,9 +142,21 @@ serve(async (req) => {
                   p_payment_id: payment.id,
                   p_amount: Number(payment.amount)
                 });
-                
+
                 if (paymentPostError) {
-                  console.error(`[backfill] Failed to post payment ${payment.id}:`, paymentPostError);
+                  console.error(`[backfill] RPC failed for payment ${payment.id}:`, paymentPostError);
+                  // Fallback: Update payment directly if RPC fails
+                  const { error: directUpdateError } = await supabaseServiceClient
+                    .from('payments')
+                    .update({ stay_folio_id: newFolio.id })
+                    .eq('id', payment.id);
+                  
+                  if (directUpdateError) {
+                    console.error(`[backfill] Direct update also failed for payment ${payment.id}:`, directUpdateError);
+                  } else {
+                    console.log(`[backfill] Payment ${payment.id} linked via direct update`);
+                    results.linked_payments++;
+                  }
                 } else {
                   console.log(`[backfill] Payment ${payment.id} posted successfully:`, postResult);
                   results.linked_payments++;
