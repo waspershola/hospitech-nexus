@@ -92,10 +92,24 @@ export function useRoomActions() {
         after_data: { status: 'checked_in', metadata: updatedMetadata },
       });
 
+      // Get session for auth header
+      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+
+      if (!session) {
+        throw new Error('No active session for check-in');
+      }
+
+      console.log('[checkin] Calling checkin-guest edge function for booking:', booking.id);
+
       // Create folio via edge function (BLOCKING - MUST SUCCEED)
       const { data: folioResult, error: folioError } = await supabase.functions.invoke('checkin-guest', {
+        headers: {
+          Authorization: `Bearer ${session.access_token}`,
+        },
         body: { booking_id: booking.id }
       });
+
+      console.log('[checkin] Edge function response:', { folioResult, folioError });
       
       if (folioError || !folioResult?.folio) {
         // Rollback booking status if folio creation fails
