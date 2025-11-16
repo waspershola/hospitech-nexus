@@ -121,26 +121,7 @@ export function useRoomActions() {
         throw new Error(`Failed to create folio: ${folioError?.message || 'Unknown error'}`);
       }
 
-      // Verify folio was created in database
-      const { data: verifyFolio, error: verifyError } = await supabase
-        .from('stay_folios')
-        .select('id')
-        .eq('booking_id', booking.id)
-        .eq('status', 'open')
-        .maybeSingle();
-
-      if (verifyError || !verifyFolio) {
-        console.error('[checkin] Folio verification failed:', verifyError);
-        // Rollback booking
-        await supabase
-          .from('bookings')
-          .update({ status: booking.status })
-          .eq('id', booking.id);
-        
-        throw new Error('Folio created but not found in database - check-in aborted');
-      }
-
-      console.log('[checkin] Folio verified in database:', verifyFolio.id);
+      console.log('[checkin] Folio created:', folioResult.folio.id);
 
       // Then update room status to occupied
       const { data, error } = await supabase
