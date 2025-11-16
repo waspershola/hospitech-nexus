@@ -71,8 +71,8 @@ serve(async (req) => {
         booking_id: booking.id,
         room_id: booking.room_id,
         guest_id: booking.guest_id,
-        total_charges: booking.total_amount || 0,
-        balance: booking.total_amount || 0,
+        total_charges: 0,
+        balance: 0,
         metadata: {
           created_on_checkin: true,
           booking_reference: booking.booking_reference
@@ -90,6 +90,26 @@ serve(async (req) => {
     }
 
     console.log('[checkin] Folio created successfully:', folio.id)
+
+    // Post initial booking charge to folio
+    if (booking.total_amount && booking.total_amount > 0) {
+      console.log('[checkin] Posting booking charge:', booking.total_amount)
+      
+      const { data: chargeResult, error: chargeError } = await supabaseServiceClient.rpc('folio_post_charge', {
+        p_folio_id: folio.id,
+        p_amount: booking.total_amount,
+        p_description: `Accommodation charges (${booking.booking_reference})`,
+        p_charge_type: 'accommodation',
+        p_department: 'front_desk'
+      })
+
+      if (chargeError || !chargeResult?.success) {
+        console.error('[checkin] Failed to post charge to folio:', chargeError || chargeResult)
+        // Don't fail the check-in, just log the error
+      } else {
+        console.log('[checkin] Charge posted successfully to folio')
+      }
+    }
 
     // Broadcast real-time update to all subscribers
     await supabaseServiceClient
