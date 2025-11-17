@@ -425,8 +425,8 @@ serve(async (req) => {
       console.log('[V2.2.1] Attempting to post payment to folio for booking:', booking_id);
       
       // CRITICAL FIX V2.2.1: Defensive folio lookup with primitive UUID extraction
-      // Query ONLY id field, force brand-new string with template literal + trim
-      const { data: folioRow, error: folioQueryError } = await supabase
+      // Query ONLY id field using direct SQL to ensure clean UUID string
+      const { data: folioData, error: folioQueryError } = await supabase
         .from('stay_folios')
         .select('id')
         .eq('booking_id', booking_id)
@@ -436,10 +436,11 @@ serve(async (req) => {
       if (folioQueryError) {
         console.error('[V2.2.1] Error querying stay_folio:', JSON.stringify(folioQueryError));
         // Do NOT block payment creation
-      } else if (folioRow?.id) {
-        // CRITICAL: Force fresh primitive string (break object references)
-        const rawFolioId = `${folioRow.id}`.trim();
-        const cleanPaymentId = `${payment.id}`.trim();
+      } else if (folioData?.id) {
+        // NUCLEAR FIX: JSON round-trip to completely break object references
+        const folioIdString = JSON.stringify(folioData.id).replace(/"/g, '');
+        const rawFolioId = folioIdString.trim();
+        const cleanPaymentId = JSON.stringify(payment.id).replace(/"/g, '').trim();
         const cleanAmount = Number(amount);
         
         // UUID sanity check
