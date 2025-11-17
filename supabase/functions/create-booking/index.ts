@@ -500,6 +500,37 @@ serve(async (req) => {
       console.error('[platform-fee] Error extracting fee (non-blocking):', feeError);
     }
 
+    // CRITICAL: If booking created with checked_in status, create folio BEFORE returning
+    if (status === 'checked_in') {
+      console.log('[create-booking] Booking created with checked_in status - creating folio');
+      
+      const { data: folioData, error: folioError } = await supabaseClient.functions.invoke('checkin-guest', {
+        body: { booking_id: newBooking.id }
+      });
+      
+      if (folioError || !folioData?.folio) {
+        console.error('[create-booking] Folio creation failed - rolling back booking:', folioError);
+        
+        // Rollback: delete the booking we just created
+        await supabaseClient
+          .from('bookings')
+          .delete()
+          .eq('id', newBooking.id);
+        
+        return new Response(
+          JSON.stringify({ 
+            success: false, 
+            error: 'FOLIO_CREATION_FAILED',
+            message: `Cannot create folio: ${folioError?.message || 'Unknown error'}. Booking rolled back.`,
+            booking_id: newBooking.id
+          }),
+          { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 500 }
+        );
+      }
+      
+      console.log('[create-booking] ✅ Folio created successfully:', folioData.folio.id);
+    }
+
     // Update room status based on booking status
     const roomStatus = (status === 'checked_in') ? 'occupied' : 'reserved';
     await supabaseClient
