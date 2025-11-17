@@ -91,6 +91,40 @@ serve(async (req) => {
 
     console.log('[checkin] Folio created successfully:', folio.id)
 
+    // Update booking status to checked_in with actual check-in timestamp
+    const { error: bookingUpdateError } = await supabaseServiceClient
+      .from('bookings')
+      .update({ 
+        status: 'checked_in',
+        metadata: {
+          ...(booking.metadata || {}),
+          actual_checkin: new Date().toISOString(),
+          folio_id: folio.id
+        }
+      })
+      .eq('id', booking_id)
+
+    if (bookingUpdateError) {
+      console.error('[checkin] Failed to update booking status:', bookingUpdateError)
+      
+      // Rollback: delete folio to maintain consistency
+      await supabaseServiceClient
+        .from('stay_folios')
+        .delete()
+        .eq('id', folio.id)
+      
+      return new Response(
+        JSON.stringify({ 
+          success: false, 
+          error: 'Failed to update booking status', 
+          details: bookingUpdateError.message 
+        }),
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      )
+    }
+
+    console.log('[checkin] Booking status updated to checked_in')
+
     // Broadcast real-time update to all subscribers
     await supabaseServiceClient
       .channel(`folio-${folio.id}`)
