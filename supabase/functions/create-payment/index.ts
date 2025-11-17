@@ -40,7 +40,7 @@ serve(async (req) => {
   }
 
   try {
-    console.log('🚀 CREATE-PAYMENT-V2.2.0: Function initialized');
+    console.log('🚀 CREATE-PAYMENT-V2.2.1: Function initialized');
     
     const supabase = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
@@ -422,56 +422,58 @@ serve(async (req) => {
 
     // NEW: Post payment to folio if booking is linked
     if (booking_id) {
-      console.log('[folio] Attempting to post payment to folio for booking:', booking_id);
+      console.log('[V2.2.1] Attempting to post payment to folio for booking:', booking_id);
       
-      // CRITICAL FIX V2.2.0: Query ONLY the ID field to prevent object serialization
-      // This prevents "invalid input syntax for type uuid" error
-      const { data: openFolio, error: folioQueryError } = await supabase
+      // CRITICAL FIX V2.2.1: Defensive folio lookup with primitive UUID extraction
+      // Query ONLY id field, force brand-new string with template literal + trim
+      const { data: folioRow, error: folioQueryError } = await supabase
         .from('stay_folios')
-        .select('id') // ONLY select id - nothing else
+        .select('id')
         .eq('booking_id', booking_id)
         .eq('status', 'open')
         .maybeSingle();
       
-      console.log('[FOLIO V2.2.0] Query result:', openFolio ? `Found folio ${openFolio.id}` : 'No folio found');
-      
       if (folioQueryError) {
-        console.error('[folio] Error querying for open folio:', JSON.stringify(folioQueryError, null, 2));
-        // Do NOT block payment creation; but fail loudly for ops to see
-      }
-      
-      if (openFolio?.id) {
-        // CRITICAL: Extract as primitive string BEFORE any operations
-        const folioId: string = String(openFolio.id);
+        console.error('[V2.2.1] Error querying stay_folio:', JSON.stringify(folioQueryError));
+        // Do NOT block payment creation
+      } else if (folioRow?.id) {
+        // CRITICAL: Force fresh primitive string (break object references)
+        const rawFolioId = `${folioRow.id}`.trim();
+        const cleanPaymentId = `${payment.id}`.trim();
+        const cleanAmount = Number(amount);
         
-        console.log('✅ [FOLIO V2.2.0] UUID extracted as string:', folioId, 'Type:', typeof folioId);
-        console.log('✅ [FOLIO V2.2.0] About to call RPC with:', {
-          p_folio_id: folioId,
-          p_payment_id: payment.id,
-          p_amount: amount
-        });
-        
-        // Call RPC using ONLY primitive string values
-        const { data: rpcResult, error: folioError} = await supabase.rpc('folio_post_payment', {
-          p_folio_id: folioId, // This MUST be a primitive string
-          p_payment_id: payment.id,
-          p_amount: amount
-        });
-        
-        if (folioError) {
-          console.error('❌ [FOLIO V2.2.0] RPC CALL FAILED:', {
-            error: JSON.stringify(folioError, null, 2),
-            params_sent: { p_folio_id: folioId, p_payment_id: payment.id, p_amount: amount },
-            folioId_type: typeof folioId
-          });
-          throw new Error(`Failed to post payment to folio: ${folioError.message || JSON.stringify(folioError)}`);
+        // UUID sanity check
+        const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+        if (!uuidRegex.test(rawFolioId)) {
+          console.error('[V2.2.1] Invalid folio UUID:', rawFolioId);
+          throw new Error(`Invalid folio UUID format: ${rawFolioId}`);
         }
         
-        console.log('✅ [FOLIO V2.2.0] RPC SUCCESS:', rpcResult);
+        console.log('[V2.2.1] RPC CALL:', {
+          folioId: rawFolioId,
+          paymentId: cleanPaymentId,
+          amount: cleanAmount,
+          types: {
+            folioId: typeof rawFolioId,
+            paymentId: typeof cleanPaymentId,
+            amount: typeof cleanAmount
+          }
+        });
         
-        console.log('[folio] Payment posted successfully to folio:', rpcResult);
+        const { data: rpcResult, error: rpcError } = await supabase.rpc('folio_post_payment', {
+          p_folio_id: rawFolioId,
+          p_payment_id: cleanPaymentId,
+          p_amount: cleanAmount
+        });
+        
+        if (rpcError) {
+          console.error('[V2.2.1] RPC FAILED:', JSON.stringify(rpcError));
+          throw new Error(`folio_post_payment failed: ${rpcError.message || JSON.stringify(rpcError)}`);
+        }
+        
+        console.log('✅ [V2.2.1] RPC SUCCESS:', JSON.stringify(rpcResult));
       } else {
-        console.warn('[folio] No open folio found for booking', { booking_id });
+        console.warn('[V2.2.1] No open folio found for booking:', booking_id);
       }
     }
 
