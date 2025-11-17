@@ -336,6 +336,10 @@ serve(async (req) => {
 
     console.log('[complete-checkout] Checkout completed successfully');
 
+    // Declare guest and room variables for use across notification blocks
+    let guest: any = null;
+    let room: any = null;
+
     // PHASE 1: Send checkout SMS notification
     try {
       // Fetch SMS settings
@@ -362,8 +366,8 @@ serve(async (req) => {
 
         console.log('[complete-checkout] Full booking for notifications:', fullBooking);
 
-        const guest = Array.isArray(fullBooking?.guest) ? fullBooking?.guest[0] : fullBooking?.guest;
-        const room = Array.isArray(fullBooking?.room) ? fullBooking?.room[0] : fullBooking?.room;
+        guest = Array.isArray(fullBooking?.guest) ? fullBooking?.guest[0] : fullBooking?.guest;
+        room = Array.isArray(fullBooking?.room) ? fullBooking?.room[0] : fullBooking?.room;
         
         const roomNumber = room?.number || 'N/A';
 

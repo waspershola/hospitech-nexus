@@ -88,8 +88,8 @@ Deno.serve(async (req) => {
     // 6. Calculate running balance for transactions
     let runningBalance = 0;
     const transactionsWithBalance = (folio.transactions || [])
-      .sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime())
-      .map(txn => {
+      .sort((a: any, b: any) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime())
+      .map((txn: any) => {
         if (txn.transaction_type === 'charge') {
           runningBalance += Number(txn.amount);
         } else if (txn.transaction_type === 'payment') {
