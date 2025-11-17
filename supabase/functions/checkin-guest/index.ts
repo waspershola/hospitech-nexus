@@ -57,6 +57,29 @@ serve(async (req) => {
 
     if (existingFolio) {
       console.log('[checkin] Folio already exists:', existingFolio.id)
+      
+      // Ensure booking status is updated even if folio exists (idempotency fix)
+      if (booking.status !== 'checked_in') {
+        console.log('[checkin] Updating booking status for existing folio')
+        const { error: bookingUpdateError } = await supabaseServiceClient
+          .from('bookings')
+          .update({
+            status: 'checked_in',
+            metadata: {
+              ...(booking.metadata || {}),
+              actual_checkin: new Date().toISOString(),
+              folio_id: existingFolio.id
+            }
+          })
+          .eq('id', booking_id)
+        
+        if (bookingUpdateError) {
+          console.error('[checkin] Failed to update booking status:', bookingUpdateError)
+        } else {
+          console.log('[checkin] Booking status updated to checked_in')
+        }
+      }
+      
       return new Response(
         JSON.stringify({ success: true, folio: existingFolio, already_exists: true }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
