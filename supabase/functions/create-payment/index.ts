@@ -1,6 +1,6 @@
 /**
  * create-payment Edge Function
- * Version: 2.1.0 - Fixed UUID serialization issue
+ * Version: 2.1.1 - URGENT FIX: UUID serialization issue (redeployed)
  * Handles payment creation and folio posting
  */
 
