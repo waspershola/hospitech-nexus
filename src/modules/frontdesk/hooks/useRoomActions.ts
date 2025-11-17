@@ -67,47 +67,26 @@ export function useRoomActions() {
       if (bookingFetchError) throw bookingFetchError;
       if (!booking) throw new Error('No active booking found for this room today');
 
-      // Update booking status to checked_in with actual check-in timestamp
-      const updatedMetadata = {
-        ...(booking.metadata as object || {}),
-        actual_checkin: new Date().toISOString()
-      };
-
-      const { error: bookingUpdateError } = await supabase
-        .from('bookings')
-        .update({ 
-          status: 'checked_in',
-          metadata: updatedMetadata
-        })
-        .eq('id', booking.id);
-
-      if (bookingUpdateError) throw bookingUpdateError;
-
-      // Log booking status change
-      logAction({
-        action: 'UPDATE',
-        table_name: 'bookings',
-        record_id: booking.id,
-        before_data: { status: booking.status },
-        after_data: { status: 'checked_in', metadata: updatedMetadata },
-      });
-
-      // Create folio via edge function - BLOCKING (must succeed)
+      // Call checkin-guest edge function FIRST (it handles booking status update + folio creation atomically)
       const { data: folioResult, error: folioError } = await supabase.functions.invoke('checkin-guest', {
         body: { booking_id: booking.id }
       });
       
       if (folioError || !folioResult?.folio) {
-        // ROLLBACK booking status if folio creation fails
-        await supabase
-          .from('bookings')
-          .update({ status: 'reserved', metadata: booking.metadata })
-          .eq('id', booking.id);
-          
-        throw new Error(`Folio creation failed: ${folioError?.message || 'Unknown error'}. Check-in cancelled.`);
+        const errMsg = folioError?.message || (!folioResult?.folio ? 'Folio not returned' : 'Unknown error');
+        throw new Error(`Check-in failed: ${errMsg}`);
       }
 
       console.log('[checkin] ✅ Folio created successfully:', folioResult.folio.id);
+
+      // Log booking status change for audit trail
+      logAction({
+        action: 'UPDATE',
+        table_name: 'bookings',
+        record_id: booking.id,
+        before_data: { status: booking.status },
+        after_data: { status: 'checked_in', folio_id: folioResult.folio.id },
+      });
 
       // ONLY NOW update room status to occupied
       const { data, error } = await supabase
