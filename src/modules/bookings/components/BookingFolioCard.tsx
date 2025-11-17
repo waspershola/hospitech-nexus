@@ -4,6 +4,7 @@ import { Badge } from '@/components/ui/badge';
 import { useBookingFolio } from '@/hooks/useBookingFolio';
 import { formatCurrency } from '@/lib/finance/tax';
 import { Calendar, CreditCard, Info } from 'lucide-react';
+import { FolioPDFButtons } from '@/components/folio/FolioPDFButtons';
 import { format } from 'date-fns';
 import { Skeleton } from '@/components/ui/skeleton';
 import {
@@ -16,10 +17,18 @@ import {
 interface BookingFolioCardProps {
   bookingId: string;
   currency?: string;
+  folioId?: string | null;
+  guestEmail?: string | null;
+  guestName?: string;
 }
 
-export function BookingFolioCard({ bookingId, currency = 'NGN' }: BookingFolioCardProps) {
+export function BookingFolioCard({ bookingId, currency = 'NGN', folioId: propFolioId, guestEmail: propGuestEmail, guestName: propGuestName }: BookingFolioCardProps) {
   const { data: folio, isLoading } = useBookingFolio(bookingId);
+
+  // Use folio data for PDF actions
+  const actualFolioId = propFolioId || folio?.folioId;
+  const actualGuestEmail = propGuestEmail || folio?.guestEmail;
+  const actualGuestName = propGuestName || folio?.guestName;
 
   if (isLoading) {
     return (
@@ -47,11 +56,22 @@ export function BookingFolioCard({ bookingId, currency = 'NGN' }: BookingFolioCa
       <CardHeader>
         <CardTitle className="flex items-center justify-between">
           <span>Booking Folio</span>
-          <Badge variant={balanceStatus === 'paid' ? 'default' : balanceStatus === 'due' ? 'destructive' : 'secondary'}>
-            {balanceStatus === 'paid' && 'Paid in Full'}
-            {balanceStatus === 'due' && `Balance Due: ${formatCurrency(folio.balance, currency)}`}
-            {balanceStatus === 'credit' && `Credit: ${formatCurrency(Math.abs(folio.balance), currency)}`}
-          </Badge>
+          <div className="flex items-center gap-2">
+            <Badge variant={balanceStatus === 'paid' ? 'default' : balanceStatus === 'due' ? 'destructive' : 'secondary'}>
+              {balanceStatus === 'paid' && 'Paid in Full'}
+              {balanceStatus === 'due' && `Balance Due: ${formatCurrency(folio.balance, currency)}`}
+              {balanceStatus === 'credit' && `Credit: ${formatCurrency(Math.abs(folio.balance), currency)}`}
+            </Badge>
+            {actualFolioId && (
+              <FolioPDFButtons 
+                folioId={actualFolioId}
+                guestEmail={actualGuestEmail}
+                guestName={actualGuestName}
+                size="sm"
+                showLabels={false}
+              />
+            )}
+          </div>
         </CardTitle>
         <CardDescription>Complete payment breakdown for this booking</CardDescription>
       </CardHeader>
