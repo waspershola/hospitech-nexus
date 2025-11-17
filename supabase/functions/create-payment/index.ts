@@ -437,7 +437,8 @@ serve(async (req) => {
       
       if (openFolio?.id) {
         const folioId = openFolio.id as string;
-        console.log('[folio] Found open folio id:', folioId, ' - attempting to post payment', {
+        console.log('✅ [FOLIO V2.1.1] Extracted UUID string:', folioId);
+        console.log('✅ [FOLIO V2.1.1] Posting payment:', {
           folio_id: folioId,
           payment_id: payment.id,
           amount
@@ -452,7 +453,7 @@ serve(async (req) => {
         
         if (folioError) {
           // Make this loud and actionable (do not silently swallow)
-          console.error('[folio] RPC FAILED:', JSON.stringify(folioError, null, 2), {
+          console.error('❌ [FOLIO V2.1.1] RPC FAILED:', JSON.stringify(folioError, null, 2), {
             folio_id: folioId,
             payment_id: payment.id,
             amount
