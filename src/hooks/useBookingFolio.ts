@@ -3,6 +3,46 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 
+/**
+ * FOLIO SYSTEM ARCHITECTURE (Phase 4 - Zero Fallback)
+ * =====================================================
+ * 
+ * This hook is the SINGLE SOURCE OF TRUTH for all folio data in the system.
+ * 
+ * CRITICAL RULES:
+ * ---------------
+ * 1. Pre-Check-In (status: 'reserved', 'pending', 'cancelled'):
+ *    - Use booking.total_amount for preview calculations
+ *    - Calculate balance as: booking.total_amount - sum(payments)
+ * 
+ * 2. Post-Check-In (status: 'checked_in', 'completed'):
+ *    - ONLY use stay_folios table data (NEVER fall back to booking calculations)
+ *    - If stay_folio is missing for checked-in booking → THROW ERROR
+ *    - All values come from database: total_charges, total_payments, balance
+ * 
+ * 3. Platform Fee Separation:
+ *    - Platform fees are BACKEND-ONLY (never appear in folio_transactions)
+ *    - For guest-pays mode: booking.total_amount includes platform fee
+ *    - stay_folios.total_charges mirrors booking.total_amount (includes fee)
+ *    - Platform fees tracked separately in platform_fee_ledger table
+ *    - Guests see single total without platform fee breakdown
+ * 
+ * PROHIBITED PATTERNS:
+ * --------------------
+ * ❌ booking.total_amount - sum(payments) for checked-in bookings
+ * ❌ SQL aggregation queries (SELECT SUM(amount) FROM payments)
+ * ❌ Fallback logic (folio?.balance || calculated_balance)
+ * ❌ Platform fees as folio_transactions entries
+ * 
+ * ERROR HANDLING:
+ * ---------------
+ * - Missing folio for checked-in booking = THROW ERROR (data integrity issue)
+ * - This enforces the requirement that checkin-guest edge function MUST create folios
+ * - Loud failures are better than silent data corruption
+ * 
+ * See: docs/PHASE-4-FOLIO-FALLBACK-REMOVAL.md
+ */
+
 export interface TaxBreakdown {
   baseAmount: number;
   vatAmount: number;
@@ -161,7 +201,7 @@ export function useBookingFolio(bookingId: string | null) {
       const isCheckedIn = booking.status === 'checked_in' || booking.status === 'completed';
 
       if (isCheckedIn) {
-        // POST-CHECK-IN: Read from REAL folio data
+        // POST-CHECK-IN: ONLY read from REAL folio data (NO FALLBACK)
         const { data: folio, error: folioError } = await supabase
           .from('stay_folios')
           .select('id, total_charges, total_payments, balance')
@@ -171,48 +211,50 @@ export function useBookingFolio(bookingId: string | null) {
 
         if (folioError) throw folioError;
 
+        // CRITICAL: No fallback. Checked-in bookings MUST have folios.
         if (!folio) {
-          console.warn('[folio] No folio found for checked-in booking:', bookingId);
-          // Fallback to booking calculation if folio missing
-        } else {
-          // Use REAL folio numbers
-          const { data: payments, error: paymentsError } = await supabase
-            .from('payments')
-            .select('id, amount, currency, method, method_provider, transaction_ref, created_at, metadata')
-            .eq('booking_id', bookingId)
-            .eq('tenant_id', tenantId)
-            .order('created_at', { ascending: false });
-
-          if (paymentsError) throw paymentsError;
-
-          const currency = payments?.[0]?.currency || 'NGN';
-          const bookingTaxBreakdown = bookingMeta?.tax_breakdown as TaxBreakdown | undefined;
-
-          const paymentDetails: PaymentDetail[] = payments?.map(p => {
-            const paymentMeta = p.metadata as any;
-            return {
-              id: p.id,
-              amount: Number(p.amount),
-              method: p.method,
-              method_provider: p.method_provider,
-              transaction_ref: p.transaction_ref || '',
-              created_at: p.created_at,
-              tax_breakdown: paymentMeta?.tax_breakdown as TaxBreakdown | undefined,
-            };
-          }) || [];
-
-          return {
-            bookingId,
-            totalCharges: Number(folio.total_charges),
-            totalPayments: Number(folio.total_payments),
-            balance: Number(folio.balance),
-            currency,
-            bookingTaxBreakdown,
-            payments: paymentDetails,
-            isGroupBooking: false,
-            numberOfBookings: 1,
-          };
+          throw new Error(
+            `FOLIO MISSING: Booking ${bookingId} is checked-in but has no stay_folio. ` +
+            `This indicates a critical data integrity issue. Check checkin-guest edge function deployment.`
+          );
         }
+        // Use REAL folio numbers
+        const { data: payments, error: paymentsError } = await supabase
+          .from('payments')
+          .select('id, amount, currency, method, method_provider, transaction_ref, created_at, metadata')
+          .eq('booking_id', bookingId)
+          .eq('tenant_id', tenantId)
+          .order('created_at', { ascending: false });
+
+        if (paymentsError) throw paymentsError;
+
+        const currency = payments?.[0]?.currency || 'NGN';
+        const bookingTaxBreakdown = bookingMeta?.tax_breakdown as TaxBreakdown | undefined;
+
+        const paymentDetails: PaymentDetail[] = payments?.map(p => {
+          const paymentMeta = p.metadata as any;
+          return {
+            id: p.id,
+            amount: Number(p.amount),
+            method: p.method,
+            method_provider: p.method_provider,
+            transaction_ref: p.transaction_ref || '',
+            created_at: p.created_at,
+            tax_breakdown: paymentMeta?.tax_breakdown as TaxBreakdown | undefined,
+          };
+        }) || [];
+
+        return {
+          bookingId,
+          totalCharges: Number(folio.total_charges),
+          totalPayments: Number(folio.total_payments),
+          balance: Number(folio.balance),
+          currency,
+          bookingTaxBreakdown,
+          payments: paymentDetails,
+          isGroupBooking: false,
+          numberOfBookings: 1,
+        };
       }
 
       // PRE-CHECK-IN: Use booking.total_amount for preview
