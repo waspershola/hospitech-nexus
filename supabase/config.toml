@@ -159,3 +159,6 @@ verify_jwt = true
 [functions.cancel-booking]
 verify_jwt = true
 
+[functions.backfill-payments]
+verify_jwt = true
+
