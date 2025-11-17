@@ -1,11 +1,11 @@
 /**
  * create-payment Edge Function
- * Version: 2.1.1 - URGENT FIX: UUID serialization issue (redeployed)
+ * Version: 2.2.0 - STABLE BUILD with correct imports
  * Handles payment creation and folio posting
  */
 
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.7';
 import { z } from 'https://deno.land/x/zod@v3.22.4/mod.ts';
 
 const corsHeaders = {
@@ -40,6 +40,8 @@ serve(async (req) => {
   }
 
   try {
+    console.log('🚀 CREATE-PAYMENT-V2.2.0: Function initialized');
+    
     const supabase = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
@@ -422,13 +424,16 @@ serve(async (req) => {
     if (booking_id) {
       console.log('[folio] Attempting to post payment to folio for booking:', booking_id);
       
-      // Query only the folio id to avoid serializing the whole object into RPC param
+      // CRITICAL FIX V2.2.0: Query ONLY the ID field to prevent object serialization
+      // This prevents "invalid input syntax for type uuid" error
       const { data: openFolio, error: folioQueryError } = await supabase
         .from('stay_folios')
-        .select('id')
+        .select('id') // ONLY select id - nothing else
         .eq('booking_id', booking_id)
         .eq('status', 'open')
         .maybeSingle();
+      
+      console.log('[FOLIO V2.2.0] Query result:', openFolio ? `Found folio ${openFolio.id}` : 'No folio found');
       
       if (folioQueryError) {
         console.error('[folio] Error querying for open folio:', JSON.stringify(folioQueryError, null, 2));
@@ -436,31 +441,33 @@ serve(async (req) => {
       }
       
       if (openFolio?.id) {
-        const folioId = openFolio.id as string;
-        console.log('✅ [FOLIO V2.1.1] Extracted UUID string:', folioId);
-        console.log('✅ [FOLIO V2.1.1] Posting payment:', {
-          folio_id: folioId,
-          payment_id: payment.id,
-          amount
-        });
+        // CRITICAL: Extract as primitive string BEFORE any operations
+        const folioId: string = String(openFolio.id);
         
-        // Call RPC using primitive values only
-        const { data: rpcResult, error: folioError } = await supabase.rpc('folio_post_payment', {
+        console.log('✅ [FOLIO V2.2.0] UUID extracted as string:', folioId, 'Type:', typeof folioId);
+        console.log('✅ [FOLIO V2.2.0] About to call RPC with:', {
           p_folio_id: folioId,
           p_payment_id: payment.id,
           p_amount: amount
         });
         
+        // Call RPC using ONLY primitive string values
+        const { data: rpcResult, error: folioError} = await supabase.rpc('folio_post_payment', {
+          p_folio_id: folioId, // This MUST be a primitive string
+          p_payment_id: payment.id,
+          p_amount: amount
+        });
+        
         if (folioError) {
-          // Make this loud and actionable (do not silently swallow)
-          console.error('❌ [FOLIO V2.1.1] RPC FAILED:', JSON.stringify(folioError, null, 2), {
-            folio_id: folioId,
-            payment_id: payment.id,
-            amount
+          console.error('❌ [FOLIO V2.2.0] RPC CALL FAILED:', {
+            error: JSON.stringify(folioError, null, 2),
+            params_sent: { p_folio_id: folioId, p_payment_id: payment.id, p_amount: amount },
+            folioId_type: typeof folioId
           });
-          // Throw to fail the function invocation so CI/ops can pick up and backfill/rollback if needed
           throw new Error(`Failed to post payment to folio: ${folioError.message || JSON.stringify(folioError)}`);
         }
+        
+        console.log('✅ [FOLIO V2.2.0] RPC SUCCESS:', rpcResult);
         
         console.log('[folio] Payment posted successfully to folio:', rpcResult);
       } else {
