@@ -99,7 +99,8 @@ serve(async (req) => {
         p_folio_id: folio.id,
         p_amount: booking.total_amount,
         p_description: `Accommodation charges (${booking.booking_reference})`,
-        p_charge_type: 'accommodation',
+        p_reference_type: 'booking',
+        p_reference_id: booking.id,
         p_department: 'front_desk'
       })
 
