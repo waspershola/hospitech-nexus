@@ -1,11 +1,9 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
 import { useBookingFolio } from '@/hooks/useBookingFolio';
-import { useManualCreateFolio } from '@/hooks/useManualCreateFolio';
 import { formatCurrency } from '@/lib/finance/tax';
-import { Calendar, CreditCard, Info, Plus, AlertCircle } from 'lucide-react';
+import { Calendar, CreditCard, Info } from 'lucide-react';
 import { format } from 'date-fns';
 import { Skeleton } from '@/components/ui/skeleton';
 import {
@@ -18,15 +16,10 @@ import {
 interface BookingFolioCardProps {
   bookingId: string;
   currency?: string;
-  bookingStatus?: string;
 }
 
-export function BookingFolioCard({ bookingId, currency = 'NGN', bookingStatus }: BookingFolioCardProps) {
+export function BookingFolioCard({ bookingId, currency = 'NGN' }: BookingFolioCardProps) {
   const { data: folio, isLoading } = useBookingFolio(bookingId);
-  const { mutate: createFolio, isPending: isCreatingFolio } = useManualCreateFolio();
-
-  // Debug logging
-  console.log('[BookingFolioCard] Rendering with:', { bookingId, folio, isLoading, bookingStatus });
 
   if (isLoading) {
     return (
@@ -43,71 +36,8 @@ export function BookingFolioCard({ bookingId, currency = 'NGN', bookingStatus }:
     );
   }
 
-  // Fallback UI when folio doesn't exist
   if (!folio) {
-    console.log('[BookingFolioCard] No folio data found for booking:', bookingId);
-    
-    const isCheckedIn = bookingStatus === 'checked_in';
-    
-    return (
-      <Card className={isCheckedIn ? "border-destructive" : "border-dashed"}>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2 text-muted-foreground">
-            {isCheckedIn ? (
-              <AlertCircle className="h-5 w-5 text-destructive" />
-            ) : (
-              <Info className="h-5 w-5" />
-            )}
-            {isCheckedIn ? 'Stay Folio Missing' : 'Stay Folio Not Created Yet'}
-          </CardTitle>
-          <CardDescription>
-            {isCheckedIn 
-              ? 'The folio should have been created during check-in but is missing.'
-              : 'The stay folio will be automatically created when the guest checks in.'
-            }
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          {isCheckedIn ? (
-            <>
-              <div className="bg-destructive/10 rounded-lg p-4 text-sm">
-                <p className="font-medium text-destructive mb-2">Action Required</p>
-                <p className="text-muted-foreground mb-3">
-                  This guest is checked in but has no folio. Create one now to track charges and payments.
-                </p>
-                <Button
-                  onClick={() => createFolio(bookingId)}
-                  disabled={isCreatingFolio}
-                  size="sm"
-                  className="w-full"
-                >
-                  {isCreatingFolio ? (
-                    <>
-                      <Plus className="h-4 w-4 mr-2 animate-spin" />
-                      Creating Folio...
-                    </>
-                  ) : (
-                    <>
-                      <Plus className="h-4 w-4 mr-2" />
-                      Create Folio Now
-                    </>
-                  )}
-                </Button>
-              </div>
-            </>
-          ) : (
-            <div className="bg-muted/30 rounded-lg p-4 text-sm text-muted-foreground">
-              <p className="mb-2">Folio information will be available after check-in, including:</p>
-              <ul className="list-disc list-inside space-y-1 ml-2">
-                <li>Room charges and extras</li>
-                <li>Payment history</li>
-                <li>Outstanding balance</li>
-              </ul>
-            </div>
-          )}
-        </CardContent>
-      </Card>
-    );
+    return null;
   }
 
   const balanceStatus = folio.balance === 0 ? 'paid' : folio.balance > 0 ? 'due' : 'credit';
@@ -116,14 +46,14 @@ export function BookingFolioCard({ bookingId, currency = 'NGN', bookingStatus }:
     <Card>
       <CardHeader>
         <CardTitle className="flex items-center justify-between">
-          <span>Stay Folio</span>
+          <span>Booking Folio</span>
           <Badge variant={balanceStatus === 'paid' ? 'default' : balanceStatus === 'due' ? 'destructive' : 'secondary'}>
             {balanceStatus === 'paid' && 'Paid in Full'}
             {balanceStatus === 'due' && `Balance Due: ${formatCurrency(folio.balance, currency)}`}
             {balanceStatus === 'credit' && `Credit: ${formatCurrency(Math.abs(folio.balance), currency)}`}
           </Badge>
         </CardTitle>
-        <CardDescription>Complete payment breakdown for this stay</CardDescription>
+        <CardDescription>Complete payment breakdown for this booking</CardDescription>
       </CardHeader>
       <CardContent className="space-y-6">
         {/* Booking Charges with Tax Breakdown */}

@@ -43,7 +43,7 @@ export function PaymentStep({
   const [walletApplied, setWalletApplied] = useState(false);
   const [isApplyingWallet, setIsApplyingWallet] = useState(false);
 
-  // Fetch actual stay folio to get current balance
+  // Fetch actual booking folio to get current balance
   const { data: folio, isLoading: folioLoading } = useBookingFolio(bookingId);
 
   // Check for available wallet balance

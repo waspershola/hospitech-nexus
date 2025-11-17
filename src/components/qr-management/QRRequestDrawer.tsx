@@ -24,7 +24,6 @@ import { RequestPaymentInfo } from './RequestPaymentInfo';
 import { RequestCardSkeleton } from './RequestCardSkeleton';
 import { PaymentHistoryTimeline } from './PaymentHistoryTimeline';
 import { RequestFolioLink } from '@/components/staff/RequestFolioLink';
-import { FolioDetailDrawer } from '@/components/folio/FolioDetailDrawer';
 import { format } from 'date-fns';
 import { useQueries, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
@@ -68,8 +67,6 @@ export function QRRequestDrawer({ open, onOpenChange }: QRRequestDrawerProps) {
     const saved = localStorage.getItem('qr-quick-replies-open');
     return saved !== null ? JSON.parse(saved) : false;
   });
-  const [folioDrawerOpen, setFolioDrawerOpen] = useState(false);
-  const [folioBookingId, setFolioBookingId] = useState<string | null>(null);
   
   const { messages, requestContext, sendMessage, isSending } = useStaffChat(selectedRequest?.id);
   
@@ -506,54 +503,6 @@ export function QRRequestDrawer({ open, onOpenChange }: QRRequestDrawerProps) {
     }
   };
 
-  const handleCompleteRequest = async () => {
-    if (!selectedRequest) return;
-    
-    const paymentChoice = selectedRequest.metadata?.payment_choice;
-    const isBillToRoom = paymentChoice === 'bill_to_room';
-    const folioId = selectedRequest.stay_folio_id;
-    
-    // If bill-to-room and has folio, post charge before completing
-    if (isBillToRoom && folioId) {
-      const amount = selectedRequest.metadata?.payment_info?.amount;
-      
-      if (amount && amount > 0) {
-        console.log('[Complete Request] Posting charge to folio:', {
-          folio_id: folioId,
-          amount,
-          request_id: selectedRequest.id
-        });
-        
-        try {
-          const { data, error } = await supabase.rpc('folio_post_charge', {
-            p_folio_id: folioId,
-            p_amount: amount,
-            p_description: `${selectedRequest.service_category.replace('_', ' ').toUpperCase()} - ${selectedRequest.note || 'Service charge'}`,
-            p_reference_type: 'request',
-            p_reference_id: selectedRequest.id,
-            p_department: selectedRequest.assigned_department || selectedRequest.service_category
-          });
-          
-          if (error) {
-            console.error('[Complete Request] Folio charge posting failed:', error);
-            toast.error('Failed to post charge to folio');
-            return;
-          }
-          
-          console.log('[Complete Request] Charge posted to folio successfully');
-          toast.success(`Charge of ₦${amount.toLocaleString()} posted to guest folio`);
-        } catch (err) {
-          console.error('[Complete Request] Folio posting error:', err);
-          toast.error('Failed to post charge to folio');
-          return;
-        }
-      }
-    }
-    
-    // Then mark as completed
-    await updateRequestStatus(selectedRequest.id, 'completed');
-  };
-
   const getQuickReplyTemplates = (serviceCategory: string) => {
     const templates: Record<string, string[]> = {
       room_service: [
@@ -891,56 +840,7 @@ export function QRRequestDrawer({ open, onOpenChange }: QRRequestDrawerProps) {
                     <RequestPaymentInfo request={selectedRequest} />
                     
                     {/* Folio Link */}
-                    <RequestFolioLink 
-                      request={selectedRequest}
-                      onViewFolio={async () => {
-                        console.log('[QRRequestDrawer] Opening folio for request:', selectedRequest);
-                        
-                        // Try to get booking_id from stay_folio or room lookup
-                        let bookingId = null;
-                        
-                        if (selectedRequest.stay_folio_id) {
-                          // Fetch stay_folio to get booking_id
-                          const { data: folio } = await supabase
-                            .from('stay_folios')
-                            .select('booking_id')
-                            .eq('id', selectedRequest.stay_folio_id)
-                            .single();
-                          bookingId = folio?.booking_id;
-                        } else {
-                          // Fallback: Find booking by room number
-                          const roomNumber = selectedRequest.metadata?.room_number || selectedRequest.metadata?.qr_location;
-                          if (roomNumber) {
-                            const { data: rooms } = await supabase
-                              .from('rooms')
-                              .select('id, status, current_reservation_id')
-                              .eq('number', roomNumber)
-                              .eq('tenant_id', tenantId)
-                              .order('status', { ascending: true }) // Prefer occupied rooms
-                              .order('created_at', { ascending: false });
-                            
-                            const room = rooms?.[0]; // Get most recent occupied room
-                            
-                            if (room) {
-                              const { data: booking } = await supabase
-                                .from('bookings')
-                                .select('id')
-                                .eq('room_id', room.id)
-                                .eq('tenant_id', tenantId)
-                                .eq('status', 'checked_in')
-                                .order('check_in', { ascending: false })
-                                .limit(1)
-                                .maybeSingle();
-                              bookingId = booking?.id;
-                            }
-                          }
-                        }
-                        
-                        console.log('[QRRequestDrawer] Opening folio for booking:', bookingId);
-                        setFolioBookingId(bookingId);
-                        setFolioDrawerOpen(true);
-                      }}
-                    />
+                    <RequestFolioLink request={selectedRequest} />
                     
                     {/* Amount Adjustment for Dining Reservations */}
                     {selectedRequest.service_category === 'dining_reservation' &&
@@ -1417,7 +1317,7 @@ export function QRRequestDrawer({ open, onOpenChange }: QRRequestDrawerProps) {
                     )}
                     {selectedRequest.status === 'in_progress' && (
                       <Button
-                        onClick={handleCompleteRequest}
+                        onClick={() => updateRequestStatus(selectedRequest.id, 'completed')}
                         className="flex-1"
                       >
                         <CheckCircle2 className="h-4 w-4 mr-2" />
@@ -1441,16 +1341,6 @@ export function QRRequestDrawer({ open, onOpenChange }: QRRequestDrawerProps) {
           </div>
         </div>
       </SheetContent>
-
-      {/* Folio Detail Drawer */}
-      <FolioDetailDrawer
-        bookingId={folioBookingId}
-        open={folioDrawerOpen}
-        onClose={() => {
-          setFolioDrawerOpen(false);
-          setFolioBookingId(null);
-        }}
-      />
     </Sheet>
   );
 }

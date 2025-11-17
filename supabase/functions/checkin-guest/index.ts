@@ -7,14 +7,11 @@ const corsHeaders = {
 }
 
 serve(async (req) => {
-  console.log('[checkin] Function invoked');
-  
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders })
   }
 
   try {
-    console.log('[checkin] Initializing Supabase client');
     const supabaseServiceClient = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '',
@@ -27,7 +24,6 @@ serve(async (req) => {
     )
 
     const { booking_id } = await req.json()
-    console.log('[checkin] Processing check-in for booking:', booking_id);
 
     if (!booking_id) {
       return new Response(
@@ -75,8 +71,8 @@ serve(async (req) => {
         booking_id: booking.id,
         room_id: booking.room_id,
         guest_id: booking.guest_id,
-        total_charges: 0,
-        balance: 0,
+        total_charges: booking.total_amount || 0,
+        balance: booking.total_amount || 0,
         metadata: {
           created_on_checkin: true,
           booking_reference: booking.booking_reference
@@ -94,27 +90,6 @@ serve(async (req) => {
     }
 
     console.log('[checkin] Folio created successfully:', folio.id)
-
-    // Post initial booking charge to folio
-    if (booking.total_amount && booking.total_amount > 0) {
-      console.log('[checkin] Posting booking charge:', booking.total_amount)
-      
-      const { data: chargeResult, error: chargeError } = await supabaseServiceClient.rpc('folio_post_charge', {
-        p_folio_id: folio.id,
-        p_amount: booking.total_amount,
-        p_description: `Accommodation charges (${booking.booking_reference})`,
-        p_reference_type: 'booking',
-        p_reference_id: booking.id,
-        p_department: 'front_desk'
-      })
-
-      if (chargeError || !chargeResult?.success) {
-        console.error('[checkin] Failed to post charge to folio:', chargeError || chargeResult)
-        // Don't fail the check-in, just log the error
-      } else {
-        console.log('[checkin] Charge posted successfully to folio')
-      }
-    }
 
     // Broadcast real-time update to all subscribers
     await supabaseServiceClient

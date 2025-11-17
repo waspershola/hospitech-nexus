@@ -145,7 +145,7 @@ export function calculateTaxForAmount(
  * Format currency - supports both string (legacy) and settings object
  */
 export function formatCurrency(
-  amount: number | undefined | null, 
+  amount: number, 
   settingsOrCurrency?: string | { 
     currency?: string;
     currency_symbol?: string;
@@ -155,14 +155,6 @@ export function formatCurrency(
     decimal_places?: number;
   }
 ): string {
-  // Handle undefined/null/NaN amount
-  if (amount === undefined || amount === null || isNaN(amount)) {
-    const symbol = typeof settingsOrCurrency === 'string' 
-      ? (settingsOrCurrency === 'NGN' ? '₦' : settingsOrCurrency)
-      : settingsOrCurrency?.currency_symbol || '₦';
-    return `${symbol}0.00`;
-  }
-  
   // Handle legacy string parameter
   if (typeof settingsOrCurrency === 'string') {
     const symbol = settingsOrCurrency === 'NGN' ? '₦' : settingsOrCurrency;

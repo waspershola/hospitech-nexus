@@ -32,12 +32,10 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { Plus, Search, Filter, Receipt } from 'lucide-react';
+import { Plus, Search, Filter } from 'lucide-react';
 import { useBookingSearch, type BookingFilters } from '@/hooks/useBookingSearch';
 import { BookingFlow } from '@/modules/bookings/BookingFlow';
-import { FolioDetailDrawer } from '@/components/folio/FolioDetailDrawer';
 import { toast } from 'sonner';
-import { formatCurrency } from '@/lib/finance/tax';
 
 interface Booking {
   id: string;
@@ -54,11 +52,6 @@ interface Booking {
   guests: { id: string; name: string };
   rooms: { id: string; number: string; type: string };
   profiles?: { id: string; full_name: string | null };
-  folio?: {
-    balance: number;
-    totalCharges: number;
-    totalPayments: number;
-  };
 }
 
 interface Guest {
@@ -80,7 +73,6 @@ export default function Bookings() {
   const [searchTerm, setSearchTerm] = useState('');
   const [showFilters, setShowFilters] = useState(false);
   const [filters, setFilters] = useState<BookingFilters>({});
-  const [selectedBookingForFolio, setSelectedBookingForFolio] = useState<string | null>(null);
 
   const { data: bookings = [], isLoading, error } = useQuery({
     queryKey: ['bookings', tenantId],
@@ -108,54 +100,28 @@ export default function Bookings() {
       
       console.log(`✅ Fetched ${data?.length || 0} bookings`);
       
-      // Fetch booked_by user data and folio balance
-      const bookingsWithData = await Promise.all(
+      // Fetch booked_by user data separately
+      const bookingsWithUsers = await Promise.all(
         (data || []).map(async (booking) => {
-          let profile = null;
           if (booking.action_id) {
-            const { data: profileData } = await supabase
+            const { data: profile } = await supabase
               .from('profiles')
               .select('id, full_name')
               .eq('id', booking.action_id)
               .single();
-            profile = profileData;
+            
+            return { ...booking, profiles: profile };
           }
-          
-          // Fetch folio balance
-          const { data: payments } = await supabase
-            .from('payments')
-            .select('amount')
-            .eq('booking_id', booking.id)
-            .eq('tenant_id', tenantId);
-          
-          const totalPayments = payments?.reduce((sum, p) => sum + Number(p.amount), 0) || 0;
-          const totalCharges = Number(booking.total_amount || 0);
-          const balance = totalCharges - totalPayments;
-          
-          return { 
-            ...booking, 
-            profiles: profile,
-            folio: {
-              balance,
-              totalCharges,
-              totalPayments
-            }
-          };
+          return { ...booking, profiles: null };
         })
       );
       
-      return bookingsWithData as Booking[];
+      return bookingsWithUsers as Booking[];
     },
     enabled: !!tenantId,
   });
 
   const filteredBookings = useBookingSearch(bookings, searchTerm, filters);
-
-  const getBalanceStatus = (balance: number) => {
-    if (balance === 0) return { label: 'Paid', variant: 'default' as const, color: 'text-green-600' };
-    if (balance > 0) return { label: 'Due', variant: 'destructive' as const, color: 'text-red-600' };
-    return { label: 'Credit', variant: 'secondary' as const, color: 'text-blue-600' };
-  };
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -317,7 +283,6 @@ export default function Bookings() {
               <TableHead>Source</TableHead>
               <TableHead>Booked By</TableHead>
               <TableHead className="text-right">Amount</TableHead>
-              <TableHead className="text-right">Balance</TableHead>
               <TableHead className="text-right">Actions</TableHead>
             </TableRow>
           </TableHeader>
@@ -351,28 +316,7 @@ export default function Bookings() {
                 </TableCell>
                 <TableCell className="text-right">₦{Number(booking.total_amount).toLocaleString()}</TableCell>
                 <TableCell className="text-right">
-                  {booking.folio ? (
-                    <div className="flex flex-col items-end gap-1">
-                      <span className={`font-medium ${getBalanceStatus(booking.folio.balance).color}`}>
-                        {formatCurrency(booking.folio.balance, 'NGN')}
-                      </span>
-                      <Badge variant={getBalanceStatus(booking.folio.balance).variant} className="text-xs">
-                        {getBalanceStatus(booking.folio.balance).label}
-                      </Badge>
-                    </div>
-                  ) : (
-                    <span className="text-muted-foreground text-sm">-</span>
-                  )}
-                </TableCell>
-                <TableCell className="text-right">
-                  <Button 
-                    variant="ghost" 
-                    size="sm"
-                    onClick={() => setSelectedBookingForFolio(booking.id)}
-                  >
-                    <Receipt className="h-4 w-4 mr-1" />
-                    View Folio
-                  </Button>
+                  <span className="text-sm text-muted-foreground">View in Front Desk</span>
                 </TableCell>
               </TableRow>
             ))}
@@ -397,28 +341,14 @@ export default function Bookings() {
           <AlertDialogHeader>
             <AlertDialogTitle>Cannot Delete Booking</AlertDialogTitle>
             <AlertDialogDescription>
-              Bookings cannot be deleted directly from this page. If you need to cancel or modify a booking,
-              please use the Front Desk interface where you can properly manage room assignments, payments, and guest information.
+              Bookings cannot be deleted from this page. Please use the Front Desk to cancel or modify bookings through the proper workflow.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogAction onClick={() => setDeleteId(null)}>
-              Understood
-            </AlertDialogAction>
+            <AlertDialogCancel>Close</AlertDialogCancel>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-
-      <BookingFlow 
-        open={isBookingFlowOpen} 
-        onClose={() => setIsBookingFlowOpen(false)} 
-      />
-      
-      <FolioDetailDrawer
-        bookingId={selectedBookingForFolio}
-        open={!!selectedBookingForFolio}
-        onClose={() => setSelectedBookingForFolio(null)}
-      />
     </div>
   );
 }

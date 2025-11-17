@@ -18,10 +18,9 @@ import { BulkCheckInDrawer } from '@/modules/frontdesk/components/BulkCheckInDra
 import { QRRequestNotificationWidget } from '@/components/frontdesk/QRRequestNotificationWidget';
 import { useOverstayRooms } from '@/hooks/useOverstayRooms';
 import { useRoomActions } from '@/modules/frontdesk/hooks/useRoomActions';
-import { useRoomRealtime, useBookingRealtime, usePaymentRealtime, useFolioRealtime } from '@/hooks/useRoomRealtime';
+import { useRoomRealtime, useBookingRealtime, usePaymentRealtime } from '@/hooks/useRoomRealtime';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Calendar, LayoutGrid } from 'lucide-react';
-import { useQueryClient } from '@tanstack/react-query';
 
 export default function FrontDesk() {
   const [selectedRoomId, setSelectedRoomId] = useState<string | null>(null);
@@ -42,18 +41,11 @@ export default function FrontDesk() {
   
   const { data: overstayRooms = [] } = useOverstayRooms();
   const { checkOut } = useRoomActions();
-  const queryClient = useQueryClient();
   
   // Enable real-time updates
   useRoomRealtime();
   useBookingRealtime();
   usePaymentRealtime();
-  useFolioRealtime();
-
-  // Force refresh on mount to clear stale cache
-  useEffect(() => {
-    queryClient.invalidateQueries({ queryKey: ['rooms-grid'] });
-  }, [queryClient]);
 
   // Handle opening AssignRoomDrawer from RoomActionDrawer
   const handleOpenAssignDrawer = (roomId: string, roomNumber: string) => {

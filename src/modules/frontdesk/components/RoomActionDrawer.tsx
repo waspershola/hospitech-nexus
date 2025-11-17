@@ -32,8 +32,7 @@ import { PaymentHistory } from '@/modules/payments/PaymentHistory';
 import { BookingAmendmentDrawer } from '@/modules/bookings/components/BookingAmendmentDrawer';
 import { CancelBookingModal } from '@/modules/bookings/components/CancelBookingModal';
 import { BookingConfirmationDocument } from '@/modules/bookings/components/BookingConfirmationDocument';
-import { BookingFolioCard } from '@/modules/bookings/components/BookingFolioCard';
-import { FolioDetailDrawer } from '@/components/folio/FolioDetailDrawer';
+import { BookingPaymentManager } from '@/modules/bookings/components/BookingPaymentManager';
 import { toast } from '@/hooks/use-toast';
 import { Switch } from '@/components/ui/switch';
 import { 
@@ -70,7 +69,6 @@ export function RoomActionDrawer({ roomId, contextDate, open, onClose, onOpenAss
   const [realtimeDebounceTimer, setRealtimeDebounceTimer] = useState<NodeJS.Timeout | null>(null);
   const [printReceipt, setPrintReceipt] = useState(false);
   const [selectedBookingId, setSelectedBookingId] = useState<string | null>(null);
-  const [folioDrawerOpen, setFolioDrawerOpen] = useState(false);
 
   const { data: room, isLoading } = useQuery({
     queryKey: ['room-detail', roomId, contextDate ? format(contextDate, 'yyyy-MM-dd') : 'today'],
@@ -105,29 +103,41 @@ export function RoomActionDrawer({ roomId, contextDate, open, onClose, onOpenAss
 
       if (error) throw error;
       
-      // Get ALL active bookings (not cancelled/completed) - don't filter by date
-      // Let getRoomStatusNow() handle the date/time logic
+      // Filter bookings based on filterDate (contextDate or today)
       if (data && data.bookings) {
         const activeBookings = Array.isArray(data.bookings) 
-          ? data.bookings.filter((b: any) => !['completed', 'cancelled'].includes(b.status))
+          ? data.bookings.filter((b: any) => {
+              if (['completed', 'cancelled'].includes(b.status)) return false;
+              
+              const checkInDate = format(new Date(b.check_in), 'yyyy-MM-dd');
+              const checkOutDate = format(new Date(b.check_out), 'yyyy-MM-dd');
+              
+              // Show booking if it overlaps with the filter date:
+              // 1. Checked in and still active on filter date
+              if (b.status === 'checked_in' && checkInDate <= filterDateStr && checkOutDate > filterDateStr) {
+                return true;
+              }
+              
+              // 2. Reserved and arriving on filter date
+              if (b.status === 'reserved' && checkInDate === filterDateStr) {
+                return true;
+              }
+              
+              // 3. For any date, also include reserved bookings that span the filter date
+              if (b.status === 'reserved' && checkInDate <= filterDateStr && checkOutDate > filterDateStr) {
+                return true;
+              }
+              
+              return false;
+            })
           : [];
         
-        // Find the most relevant active booking for this room
-        // Priority 1: Checked-in bookings (these are always most important, even if overstay)
-        let activeBooking = activeBookings.find((b: any) => b.status === 'checked_in');
+        // Sort by check_in date (earliest first) to prioritize today's arrivals
+        activeBookings.sort((a: any, b: any) => 
+          new Date(a.check_in).getTime() - new Date(b.check_in).getTime()
+        );
         
-        // Priority 2: If no checked-in booking, use reserved booking
-        if (!activeBooking && activeBookings.length > 0) {
-          // Sort by check-in date ascending to get the earliest reservation
-          const reservedBookings = activeBookings
-            .filter((b: any) => b.status === 'reserved')
-            .sort((a: any, b: any) => new Date(a.check_in).getTime() - new Date(b.check_in).getTime());
-          
-          activeBooking = reservedBookings[0];
-        }
-        
-        // Return the single most relevant booking in an array (or empty array if none)
-        return { ...data, bookings: activeBooking ? [activeBooking] : [] };
+        return { ...data, bookings: activeBookings };
       }
       
       return data;
@@ -387,23 +397,11 @@ export function RoomActionDrawer({ roomId, contextDate, open, onClose, onOpenAss
 
   const handleCheckIn = async () => {
     if (!room) return;
+    await checkIn(room.id);
+    toast({ title: 'Check-In Complete', description: 'Guest checked in successfully' });
     
-    try {
-      console.log('[RoomActionDrawer] Starting check-in for room:', room.id);
-      await checkIn(room.id);
-      console.log('[RoomActionDrawer] Check-in completed successfully');
-      toast({ title: 'Check-In Complete', description: 'Guest checked in successfully' });
-      
-      // Phase 6: Keep 600ms for check-in (allows user to see success)
-      setTimeout(() => onClose(), 600);
-    } catch (error) {
-      console.error('[RoomActionDrawer] Check-in failed:', error);
-      toast({ 
-        title: 'Check-In Failed', 
-        description: error instanceof Error ? error.message : 'Unknown error occurred',
-        variant: 'destructive'
-      });
-    }
+    // Phase 6: Keep 600ms for check-in (allows user to see success)
+    setTimeout(() => onClose(), 600);
   };
 
   const handleMarkClean = async () => {
@@ -810,11 +808,11 @@ export function RoomActionDrawer({ roomId, contextDate, open, onClose, onOpenAss
                             <Button
                               variant="outline"
                               size="sm"
-                              onClick={() => setFolioDrawerOpen(true)}
+                              onClick={() => setPaymentHistoryOpen(true)}
                               className="w-full"
                             >
                               <Receipt className="w-4 h-4 mr-2" />
-                              View Folio
+                              View Payment History
                             </Button>
                             <Button
                               variant="outline"
@@ -909,11 +907,7 @@ export function RoomActionDrawer({ roomId, contextDate, open, onClose, onOpenAss
 
                 <TabsContent value="payments" className="mt-6">
                   {currentBooking ? (
-                    <BookingFolioCard 
-                      bookingId={currentBooking.id} 
-                      currency="NGN"
-                      bookingStatus={currentBooking.status}
-                    />
+                    <BookingPaymentManager bookingId={currentBooking.id} />
                   ) : (
                     <div className="text-center py-8 text-muted-foreground">
                       <Receipt className="h-12 w-12 mx-auto mb-4 opacity-50" />
@@ -990,11 +984,6 @@ export function RoomActionDrawer({ roomId, contextDate, open, onClose, onOpenAss
                 open={cancelModalOpen}
                 onClose={() => setCancelModalOpen(false)}
                 bookingId={currentBooking.id}
-              />
-              <FolioDetailDrawer
-                bookingId={currentBooking.id}
-                open={folioDrawerOpen}
-                onClose={() => setFolioDrawerOpen(false)}
               />
             </>
           )}

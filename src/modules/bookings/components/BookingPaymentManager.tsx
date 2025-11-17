@@ -230,7 +230,7 @@ export function BookingPaymentManager({ bookingId }: BookingPaymentManagerProps)
           <div className="flex items-center justify-between">
             <CardTitle className="flex items-center gap-2">
               <Receipt className="h-5 w-5" />
-              Stay Folio Summary
+              Booking Folio Summary
             </CardTitle>
             <Button 
               variant="outline" 

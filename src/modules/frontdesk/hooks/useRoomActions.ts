@@ -92,36 +92,20 @@ export function useRoomActions() {
         after_data: { status: 'checked_in', metadata: updatedMetadata },
       });
 
-      // Get session for auth header
-      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
-
-      if (!session) {
-        throw new Error('No active session for check-in');
-      }
-
-      console.log('[checkin] Calling checkin-guest edge function for booking:', booking.id);
-
-      // Create folio via edge function (BLOCKING - MUST SUCCEED)
-      const { data: folioResult, error: folioError } = await supabase.functions.invoke('checkin-guest', {
-        headers: {
-          Authorization: `Bearer ${session.access_token}`,
-        },
-        body: { booking_id: booking.id }
-      });
-
-      console.log('[checkin] Edge function response:', { folioResult, folioError });
-      
-      if (folioError || !folioResult?.folio) {
-        // Rollback booking status if folio creation fails
-        await supabase
-          .from('bookings')
-          .update({ status: booking.status })
-          .eq('id', booking.id);
+      // Create folio via edge function
+      try {
+        const { data: folioResult, error: folioError } = await supabase.functions.invoke('checkin-guest', {
+          body: { booking_id: booking.id }
+        });
         
-        throw new Error(`Failed to create folio: ${folioError?.message || 'Unknown error'}`);
+        if (folioError) {
+          console.error('[checkin] Failed to create folio:', folioError);
+        } else if (folioResult?.folio) {
+          console.log('[checkin] Folio created:', folioResult.folio.id);
+        }
+      } catch (folioErr) {
+        console.error('[checkin] Folio creation error:', folioErr);
       }
-
-      console.log('[checkin] Folio created:', folioResult.folio.id);
 
       // Then update room status to occupied
       const { data, error } = await supabase
@@ -245,36 +229,13 @@ export function useRoomActions() {
 
       return data;
     },
-    onMutate: async (roomId: string) => {
-      // Cancel outgoing refetches
-      await queryClient.cancelQueries({ queryKey: ['rooms-grid'] });
-      
-      // Snapshot previous value
-      const previousRooms = queryClient.getQueryData(['rooms-grid']);
-      
-      // Optimistically update to occupied status
-      queryClient.setQueryData(['rooms-grid'], (old: any) => {
-        if (!old) return old;
-        return old.map((room: any) => 
-          room.id === roomId 
-            ? { ...room, status: 'occupied', currentStatus: 'occupied' }
-            : room
-        );
-      });
-      
-      return { previousRooms };
-    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['rooms-grid'] });
       queryClient.invalidateQueries({ queryKey: ['frontdesk-kpis'] });
       queryClient.invalidateQueries({ queryKey: ['room-detail'] });
       toast.success('Guest checked in successfully');
     },
-    onError: (error: Error, roomId, context) => {
-      // Rollback on error
-      if (context?.previousRooms) {
-        queryClient.setQueryData(['rooms-grid'], context.previousRooms);
-      }
+    onError: (error: Error) => {
       toast.error(`Check-in failed: ${error.message}`);
     },
   });
@@ -312,36 +273,13 @@ export function useRoomActions() {
         // SMS now handled by complete-checkout edge function
       }
     },
-    onMutate: async (roomId: string) => {
-      // Cancel outgoing refetches
-      await queryClient.cancelQueries({ queryKey: ['rooms-grid'] });
-      
-      // Snapshot previous value
-      const previousRooms = queryClient.getQueryData(['rooms-grid']);
-      
-      // Optimistically update to cleaning status
-      queryClient.setQueryData(['rooms-grid'], (old: any) => {
-        if (!old) return old;
-        return old.map((room: any) => 
-          room.id === roomId 
-            ? { ...room, status: 'cleaning', currentStatus: 'cleaning' }
-            : room
-        );
-      });
-      
-      return { previousRooms };
-    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['rooms-grid'] });
       queryClient.invalidateQueries({ queryKey: ['frontdesk-kpis'] });
       queryClient.invalidateQueries({ queryKey: ['room-detail'] });
       toast.success('Guest checked out successfully');
     },
-    onError: (error: Error, roomId, context) => {
-      // Rollback on error
-      if (context?.previousRooms) {
-        queryClient.setQueryData(['rooms-grid'], context.previousRooms);
-      }
+    onError: (error: Error) => {
       toast.error(`Check-out failed: ${error.message}`);
     },
   });

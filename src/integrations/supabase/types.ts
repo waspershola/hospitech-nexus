@@ -75,24 +75,10 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "booking_charges_booking_id_fkey"
-            columns: ["booking_id"]
-            isOneToOne: false
-            referencedRelation: "v_bookings"
-            referencedColumns: ["id"]
-          },
-          {
             foreignKeyName: "booking_charges_guest_id_fkey"
             columns: ["guest_id"]
             isOneToOne: false
             referencedRelation: "guests"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "booking_charges_guest_id_fkey"
-            columns: ["guest_id"]
-            isOneToOne: false
-            referencedRelation: "v_guests"
             referencedColumns: ["id"]
           },
           {
@@ -193,13 +179,6 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "bookings_guest_id_fkey"
-            columns: ["guest_id"]
-            isOneToOne: false
-            referencedRelation: "v_guests"
-            referencedColumns: ["id"]
-          },
-          {
             foreignKeyName: "bookings_organization_id_fkey"
             columns: ["organization_id"]
             isOneToOne: false
@@ -211,13 +190,6 @@ export type Database = {
             columns: ["room_id"]
             isOneToOne: false
             referencedRelation: "rooms"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "bookings_room_id_fkey"
-            columns: ["room_id"]
-            isOneToOne: false
-            referencedRelation: "v_rooms"
             referencedColumns: ["id"]
           },
           {
@@ -840,13 +812,6 @@ export type Database = {
             foreignKeyName: "finance_reconciliation_records_internal_txn_id_fkey"
             columns: ["internal_txn_id"]
             isOneToOne: false
-            referencedRelation: "v_payments"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "finance_reconciliation_records_internal_txn_id_fkey"
-            columns: ["internal_txn_id"]
-            isOneToOne: false
             referencedRelation: "v_today_payments"
             referencedColumns: ["id"]
           },
@@ -982,24 +947,10 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "guest_communications_guest_id_fkey"
-            columns: ["guest_id"]
-            isOneToOne: false
-            referencedRelation: "v_guests"
-            referencedColumns: ["id"]
-          },
-          {
             foreignKeyName: "guest_communications_sent_by_fkey"
             columns: ["sent_by"]
             isOneToOne: false
             referencedRelation: "profiles"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "guest_communications_sent_by_fkey"
-            columns: ["sent_by"]
-            isOneToOne: false
-            referencedRelation: "v_profiles"
             referencedColumns: ["id"]
           },
           {
@@ -1121,13 +1072,6 @@ export type Database = {
             columns: ["room_id"]
             isOneToOne: false
             referencedRelation: "rooms"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "guest_orders_room_id_fkey"
-            columns: ["room_id"]
-            isOneToOne: false
-            referencedRelation: "v_rooms"
             referencedColumns: ["id"]
           },
           {
@@ -2042,13 +1986,6 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "organization_members_guest_id_fkey"
-            columns: ["guest_id"]
-            isOneToOne: false
-            referencedRelation: "v_guests"
-            referencedColumns: ["id"]
-          },
-          {
             foreignKeyName: "organization_members_organization_id_fkey"
             columns: ["organization_id"]
             isOneToOne: false
@@ -2322,13 +2259,6 @@ export type Database = {
             columns: ["booking_id"]
             isOneToOne: false
             referencedRelation: "bookings"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "payments_booking_id_fkey"
-            columns: ["booking_id"]
-            isOneToOne: false
-            referencedRelation: "v_bookings"
             referencedColumns: ["id"]
           },
           {
@@ -3992,13 +3922,6 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "qr_codes_room_id_fkey"
-            columns: ["room_id"]
-            isOneToOne: false
-            referencedRelation: "v_rooms"
-            referencedColumns: ["id"]
-          },
-          {
             foreignKeyName: "qr_codes_tenant_id_fkey"
             columns: ["tenant_id"]
             isOneToOne: false
@@ -4089,24 +4012,10 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "receipt_print_logs_booking_id_fkey"
-            columns: ["booking_id"]
-            isOneToOne: false
-            referencedRelation: "v_bookings"
-            referencedColumns: ["id"]
-          },
-          {
             foreignKeyName: "receipt_print_logs_payment_id_fkey"
             columns: ["payment_id"]
             isOneToOne: false
             referencedRelation: "payments"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "receipt_print_logs_payment_id_fkey"
-            columns: ["payment_id"]
-            isOneToOne: false
-            referencedRelation: "v_payments"
             referencedColumns: ["id"]
           },
           {
@@ -4321,24 +4230,10 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "receivables_booking_id_fkey"
-            columns: ["booking_id"]
-            isOneToOne: false
-            referencedRelation: "v_bookings"
-            referencedColumns: ["id"]
-          },
-          {
             foreignKeyName: "receivables_guest_id_fkey"
             columns: ["guest_id"]
             isOneToOne: false
             referencedRelation: "guests"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "receivables_guest_id_fkey"
-            columns: ["guest_id"]
-            isOneToOne: false
-            referencedRelation: "v_guests"
             referencedColumns: ["id"]
           },
           {
@@ -4431,13 +4326,6 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "requests_assigned_to_fkey"
-            columns: ["assigned_to"]
-            isOneToOne: false
-            referencedRelation: "v_profiles"
-            referencedColumns: ["id"]
-          },
-          {
             foreignKeyName: "requests_guest_id_fkey"
             columns: ["guest_id"]
             isOneToOne: false
@@ -4445,24 +4333,10 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "requests_guest_id_fkey"
-            columns: ["guest_id"]
-            isOneToOne: false
-            referencedRelation: "v_guests"
-            referencedColumns: ["id"]
-          },
-          {
             foreignKeyName: "requests_room_id_fkey"
             columns: ["room_id"]
             isOneToOne: false
             referencedRelation: "rooms"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "requests_room_id_fkey"
-            columns: ["room_id"]
-            isOneToOne: false
-            referencedRelation: "v_rooms"
             referencedColumns: ["id"]
           },
           {
@@ -4695,13 +4569,6 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "room_status_history_room_id_fkey"
-            columns: ["room_id"]
-            isOneToOne: false
-            referencedRelation: "v_rooms"
-            referencedColumns: ["id"]
-          },
-          {
             foreignKeyName: "room_status_history_tenant_id_fkey"
             columns: ["tenant_id"]
             isOneToOne: false
@@ -4781,24 +4648,10 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "rooms_current_guest_id_fkey"
-            columns: ["current_guest_id"]
-            isOneToOne: false
-            referencedRelation: "v_guests"
-            referencedColumns: ["id"]
-          },
-          {
             foreignKeyName: "rooms_current_reservation_id_fkey"
             columns: ["current_reservation_id"]
             isOneToOne: false
             referencedRelation: "bookings"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "rooms_current_reservation_id_fkey"
-            columns: ["current_reservation_id"]
-            isOneToOne: false
-            referencedRelation: "v_bookings"
             referencedColumns: ["id"]
           },
           {
@@ -4871,24 +4724,10 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "sms_logs_booking_id_fkey"
-            columns: ["booking_id"]
-            isOneToOne: false
-            referencedRelation: "v_bookings"
-            referencedColumns: ["id"]
-          },
-          {
             foreignKeyName: "sms_logs_guest_id_fkey"
             columns: ["guest_id"]
             isOneToOne: false
             referencedRelation: "guests"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "sms_logs_guest_id_fkey"
-            columns: ["guest_id"]
-            isOneToOne: false
-            referencedRelation: "v_guests"
             referencedColumns: ["id"]
           },
           {
@@ -5297,13 +5136,6 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "stay_folios_booking_id_fkey"
-            columns: ["booking_id"]
-            isOneToOne: false
-            referencedRelation: "v_bookings"
-            referencedColumns: ["id"]
-          },
-          {
             foreignKeyName: "stay_folios_guest_id_fkey"
             columns: ["guest_id"]
             isOneToOne: false
@@ -5311,24 +5143,10 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "stay_folios_guest_id_fkey"
-            columns: ["guest_id"]
-            isOneToOne: false
-            referencedRelation: "v_guests"
-            referencedColumns: ["id"]
-          },
-          {
             foreignKeyName: "stay_folios_room_id_fkey"
             columns: ["room_id"]
             isOneToOne: false
             referencedRelation: "rooms"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "stay_folios_room_id_fkey"
-            columns: ["room_id"]
-            isOneToOne: false
-            referencedRelation: "v_rooms"
             referencedColumns: ["id"]
           },
           {
@@ -5913,13 +5731,6 @@ export type Database = {
             foreignKeyName: "tenant_sms_purchases_payment_id_fkey"
             columns: ["payment_id"]
             isOneToOne: false
-            referencedRelation: "v_payments"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "tenant_sms_purchases_payment_id_fkey"
-            columns: ["payment_id"]
-            isOneToOne: false
             referencedRelation: "v_today_payments"
             referencedColumns: ["id"]
           },
@@ -6319,13 +6130,6 @@ export type Database = {
             foreignKeyName: "wallet_transactions_payment_id_fkey"
             columns: ["payment_id"]
             isOneToOne: false
-            referencedRelation: "v_payments"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "wallet_transactions_payment_id_fkey"
-            columns: ["payment_id"]
-            isOneToOne: false
             referencedRelation: "v_today_payments"
             referencedColumns: ["id"]
           },
@@ -6466,69 +6270,6 @@ export type Database = {
           },
         ]
       }
-      v_bookings: {
-        Row: {
-          action_id: string | null
-          booking_reference: string | null
-          check_in: string | null
-          check_out: string | null
-          created_at: string | null
-          guest_id: string | null
-          id: string | null
-          metadata: Json | null
-          notes: string | null
-          organization_id: string | null
-          room_id: string | null
-          source: string | null
-          status: string | null
-          tenant_id: string | null
-          total_amount: number | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "bookings_guest_id_fkey"
-            columns: ["guest_id"]
-            isOneToOne: false
-            referencedRelation: "guests"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "bookings_guest_id_fkey"
-            columns: ["guest_id"]
-            isOneToOne: false
-            referencedRelation: "v_guests"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "bookings_organization_id_fkey"
-            columns: ["organization_id"]
-            isOneToOne: false
-            referencedRelation: "organizations"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "bookings_room_id_fkey"
-            columns: ["room_id"]
-            isOneToOne: false
-            referencedRelation: "rooms"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "bookings_room_id_fkey"
-            columns: ["room_id"]
-            isOneToOne: false
-            referencedRelation: "v_rooms"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "bookings_tenant_id_fkey"
-            columns: ["tenant_id"]
-            isOneToOne: false
-            referencedRelation: "tenants"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       v_debtors_creditors: {
         Row: {
           entity_id: string | null
@@ -6567,310 +6308,6 @@ export type Database = {
           },
         ]
       }
-      v_guests: {
-        Row: {
-          created_at: string | null
-          email: string | null
-          id: string | null
-          id_number: string | null
-          last_stay_date: string | null
-          name: string | null
-          notes: string | null
-          phone: string | null
-          status: string | null
-          tags: Json | null
-          tenant_id: string | null
-          total_bookings: number | null
-          total_spent: number | null
-          user_id: string | null
-        }
-        Insert: {
-          created_at?: string | null
-          email?: string | null
-          id?: string | null
-          id_number?: string | null
-          last_stay_date?: string | null
-          name?: string | null
-          notes?: string | null
-          phone?: string | null
-          status?: string | null
-          tags?: Json | null
-          tenant_id?: string | null
-          total_bookings?: number | null
-          total_spent?: number | null
-          user_id?: string | null
-        }
-        Update: {
-          created_at?: string | null
-          email?: string | null
-          id?: string | null
-          id_number?: string | null
-          last_stay_date?: string | null
-          name?: string | null
-          notes?: string | null
-          phone?: string | null
-          status?: string | null
-          tags?: Json | null
-          tenant_id?: string | null
-          total_bookings?: number | null
-          total_spent?: number | null
-          user_id?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "guests_tenant_id_fkey"
-            columns: ["tenant_id"]
-            isOneToOne: false
-            referencedRelation: "tenants"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      v_payments: {
-        Row: {
-          amount: number | null
-          booking_id: string | null
-          charged_to_organization: boolean | null
-          created_at: string | null
-          currency: string | null
-          department: string | null
-          expected_amount: number | null
-          guest_id: string | null
-          id: string | null
-          location: string | null
-          metadata: Json | null
-          method: string | null
-          method_provider: string | null
-          organization_id: string | null
-          payment_type: string | null
-          provider_reference: string | null
-          recorded_by: string | null
-          status: string | null
-          stay_folio_id: string | null
-          tenant_id: string | null
-          transaction_ref: string | null
-          wallet_id: string | null
-        }
-        Insert: {
-          amount?: number | null
-          booking_id?: string | null
-          charged_to_organization?: boolean | null
-          created_at?: string | null
-          currency?: string | null
-          department?: string | null
-          expected_amount?: number | null
-          guest_id?: string | null
-          id?: string | null
-          location?: string | null
-          metadata?: Json | null
-          method?: string | null
-          method_provider?: string | null
-          organization_id?: string | null
-          payment_type?: string | null
-          provider_reference?: string | null
-          recorded_by?: string | null
-          status?: string | null
-          stay_folio_id?: string | null
-          tenant_id?: string | null
-          transaction_ref?: string | null
-          wallet_id?: string | null
-        }
-        Update: {
-          amount?: number | null
-          booking_id?: string | null
-          charged_to_organization?: boolean | null
-          created_at?: string | null
-          currency?: string | null
-          department?: string | null
-          expected_amount?: number | null
-          guest_id?: string | null
-          id?: string | null
-          location?: string | null
-          metadata?: Json | null
-          method?: string | null
-          method_provider?: string | null
-          organization_id?: string | null
-          payment_type?: string | null
-          provider_reference?: string | null
-          recorded_by?: string | null
-          status?: string | null
-          stay_folio_id?: string | null
-          tenant_id?: string | null
-          transaction_ref?: string | null
-          wallet_id?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "payments_booking_id_fkey"
-            columns: ["booking_id"]
-            isOneToOne: false
-            referencedRelation: "bookings"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "payments_booking_id_fkey"
-            columns: ["booking_id"]
-            isOneToOne: false
-            referencedRelation: "v_bookings"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "payments_organization_id_fkey"
-            columns: ["organization_id"]
-            isOneToOne: false
-            referencedRelation: "organizations"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "payments_stay_folio_id_fkey"
-            columns: ["stay_folio_id"]
-            isOneToOne: false
-            referencedRelation: "stay_folios"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "payments_tenant_id_fkey"
-            columns: ["tenant_id"]
-            isOneToOne: false
-            referencedRelation: "tenants"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "payments_wallet_id_fkey"
-            columns: ["wallet_id"]
-            isOneToOne: false
-            referencedRelation: "wallets"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      v_profiles: {
-        Row: {
-          avatar_url: string | null
-          created_at: string | null
-          email: string | null
-          full_name: string | null
-          id: string | null
-          phone: string | null
-        }
-        Insert: {
-          avatar_url?: string | null
-          created_at?: string | null
-          email?: string | null
-          full_name?: string | null
-          id?: string | null
-          phone?: string | null
-        }
-        Update: {
-          avatar_url?: string | null
-          created_at?: string | null
-          email?: string | null
-          full_name?: string | null
-          id?: string | null
-          phone?: string | null
-        }
-        Relationships: []
-      }
-      v_rooms: {
-        Row: {
-          assigned_to: string | null
-          capacity: number | null
-          category_id: string | null
-          created_at: string | null
-          current_guest_id: string | null
-          current_reservation_id: string | null
-          floor: number | null
-          housekeeping_status: string | null
-          id: string | null
-          metadata: Json | null
-          notes: string | null
-          number: string | null
-          rate: number | null
-          status: string | null
-          tenant_id: string | null
-          type: string | null
-        }
-        Insert: {
-          assigned_to?: string | null
-          capacity?: number | null
-          category_id?: string | null
-          created_at?: string | null
-          current_guest_id?: string | null
-          current_reservation_id?: string | null
-          floor?: number | null
-          housekeeping_status?: string | null
-          id?: string | null
-          metadata?: Json | null
-          notes?: string | null
-          number?: string | null
-          rate?: number | null
-          status?: string | null
-          tenant_id?: string | null
-          type?: string | null
-        }
-        Update: {
-          assigned_to?: string | null
-          capacity?: number | null
-          category_id?: string | null
-          created_at?: string | null
-          current_guest_id?: string | null
-          current_reservation_id?: string | null
-          floor?: number | null
-          housekeeping_status?: string | null
-          id?: string | null
-          metadata?: Json | null
-          notes?: string | null
-          number?: string | null
-          rate?: number | null
-          status?: string | null
-          tenant_id?: string | null
-          type?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "rooms_category_id_fkey"
-            columns: ["category_id"]
-            isOneToOne: false
-            referencedRelation: "room_categories"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "rooms_current_guest_id_fkey"
-            columns: ["current_guest_id"]
-            isOneToOne: false
-            referencedRelation: "guests"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "rooms_current_guest_id_fkey"
-            columns: ["current_guest_id"]
-            isOneToOne: false
-            referencedRelation: "v_guests"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "rooms_current_reservation_id_fkey"
-            columns: ["current_reservation_id"]
-            isOneToOne: false
-            referencedRelation: "bookings"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "rooms_current_reservation_id_fkey"
-            columns: ["current_reservation_id"]
-            isOneToOne: false
-            referencedRelation: "v_bookings"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "rooms_tenant_id_fkey"
-            columns: ["tenant_id"]
-            isOneToOne: false
-            referencedRelation: "tenants"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       v_today_payments: {
         Row: {
           amount: number | null
@@ -6899,13 +6336,6 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "payments_booking_id_fkey"
-            columns: ["booking_id"]
-            isOneToOne: false
-            referencedRelation: "v_bookings"
-            referencedColumns: ["id"]
-          },
-          {
             foreignKeyName: "payments_organization_id_fkey"
             columns: ["organization_id"]
             isOneToOne: false
@@ -6924,7 +6354,6 @@ export type Database = {
     }
     Functions: {
       check_tenant_access: { Args: { _tenant_id: string }; Returns: Json }
-      current_user_tenant: { Args: never; Returns: string }
       find_open_folio_by_guest_phone: {
         Args: { p_phone: string; p_tenant_id: string }
         Returns: {
@@ -6968,16 +6397,6 @@ export type Database = {
       generate_request_number: {
         Args: { p_tenant_id: string }
         Returns: string
-      }
-      get_bookings_for_user: {
-        Args: { uid: string }
-        Returns: {
-          check_in: string
-          check_out: string
-          id: string
-          room_id: string
-          tenant_id: string
-        }[]
       }
       get_department_staff: {
         Args: { _tenant_id: string; _user_id: string }

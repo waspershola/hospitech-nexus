@@ -367,34 +367,6 @@ serve(async (req) => {
         
         const roomNumber = room?.number || 'N/A';
 
-        // Close folio if exists
-        const { data: folio } = await supabaseClient
-          .from('stay_folios')
-          .select('id, balance')
-          .eq('booking_id', bookingId)
-          .eq('status', 'open')
-          .maybeSingle();
-
-        if (folio) {
-          console.log('[complete-checkout] Closing folio:', folio.id, 'Balance:', folio.balance);
-          
-          const { error: folioCloseError } = await supabaseClient
-            .from('stay_folios')
-            .update({ 
-              status: 'closed',
-              updated_at: new Date().toISOString()
-            })
-            .eq('id', folio.id);
-          
-          if (folioCloseError) {
-            console.error('[complete-checkout] Failed to close folio:', folioCloseError);
-            // Non-blocking - checkout can proceed
-          } else {
-            console.log('[complete-checkout] Folio closed successfully');
-          }
-        }
-
-
         if (guest?.phone) {
           // Fetch hotel name
           const { data: tenant } = await supabaseClient

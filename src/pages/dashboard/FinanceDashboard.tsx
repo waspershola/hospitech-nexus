@@ -3,8 +3,6 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { DollarSign } from 'lucide-react';
 import { useRole } from '@/hooks/useRole';
 import { Navigate } from 'react-router-dom';
-import { ReconcileFolioPaymentsButton } from '@/components/finance/ReconcileFolioPaymentsButton';
-import { RecoverFolioDataButton } from '@/components/finance/RecoverFolioDataButton';
 
 export default function FinanceDashboard() {
   const { role, staffInfo } = useRole();
@@ -23,11 +21,7 @@ export default function FinanceDashboard() {
           <h1 className="text-3xl font-display text-foreground">Finance Dashboard</h1>
           <p className="text-muted-foreground">Financial overview and analytics</p>
         </div>
-        <div className="flex items-center gap-2">
-          <RecoverFolioDataButton />
-          <ReconcileFolioPaymentsButton />
-          <DollarSign className="h-8 w-8 text-primary" />
-        </div>
+        <DollarSign className="h-8 w-8 text-primary" />
       </div>
       
       <div className="grid gap-6">
