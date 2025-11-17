@@ -40,7 +40,7 @@ serve(async (req) => {
   }
 
   try {
-    console.log('🚀 CREATE-PAYMENT-V2.2.1: Function initialized');
+    console.log('🚀 CREATE-PAYMENT-V2.2.1-DB-WRAPPER: Function initialized');
     
     const supabase = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
