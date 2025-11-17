@@ -33,7 +33,35 @@ jobs:
             echo "❌ ERROR: create-payment V2.2.1 not found in logs"
             echo "Recent logs:"
             echo "$LOGS"
+            echo ""
+            echo "TROUBLESHOOTING:"
+            echo "1. Check for dependency resolution errors: supabase functions deploy create-payment --debug"
+            echo "2. Verify imports are standardized to @2.46.1"
+            echo "3. See docs/DEPLOYMENT-VERIFICATION.md for full guide"
             exit 1
+          fi
+      
+      - name: Verify RPC calls successful
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+          SUPABASE_PROJECT_REF: akchmpmzcupzjaeewdui
+        run: |
+          echo "Checking for successful RPC calls..."
+          LOGS=$(supabase functions logs create-payment --project-ref $SUPABASE_PROJECT_REF --limit 100)
+          
+          SUCCESS_COUNT=$(echo "$LOGS" | grep -c "RPC SUCCESS" || true)
+          FAILED_COUNT=$(echo "$LOGS" | grep -c "RPC FAILED" || true)
+          
+          echo "RPC SUCCESS count: $SUCCESS_COUNT"
+          echo "RPC FAILED count: $FAILED_COUNT"
+          
+          if [ "$FAILED_COUNT" -gt 0 ]; then
+            echo "⚠️ WARNING: $FAILED_COUNT RPC failures detected"
+            echo "Failed calls:"
+            echo "$LOGS" | grep "RPC FAILED"
+            exit 1
+          else
+            echo "✅ No RPC failures detected"
           fi
       
       - name: Check for RPC failures
@@ -41,16 +69,44 @@ jobs:
           SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
           SUPABASE_PROJECT_REF: akchmpmzcupzjaeewdui
         run: |
-          echo "Checking for RPC failures..."
-          LOGS=$(supabase functions logs create-payment --project-ref $SUPABASE_PROJECT_REF --limit 100)
+          echo "Checking for RPC failures across all critical functions..."
           
-          if echo "$LOGS" | grep -q "RPC FAILED"; then
-            echo "⚠️ WARNING: RPC failures detected in recent logs"
-            echo "Failed calls:"
-            echo "$LOGS" | grep "RPC FAILED"
+          FUNCTIONS=("create-payment" "checkin-guest" "complete-checkout" "qr-request")
+          TOTAL_FAILURES=0
+          
+          for func in "${FUNCTIONS[@]}"; do
+            echo ""
+            echo "Checking $func..."
+            LOGS=$(supabase functions logs $func --project-ref $SUPABASE_PROJECT_REF --limit 100 || echo "")
+            
+            if [ -z "$LOGS" ]; then
+              echo "⚠️ No logs available for $func"
+              continue
+            fi
+            
+            FAILED_COUNT=$(echo "$LOGS" | grep -c "RPC FAILED" || true)
+            SUCCESS_COUNT=$(echo "$LOGS" | grep -c "RPC SUCCESS" || true)
+            
+            if [ "$FAILED_COUNT" -gt 0 ]; then
+              echo "❌ $func has $FAILED_COUNT RPC failures"
+              echo "Recent failures:"
+              echo "$LOGS" | grep "RPC FAILED" | head -5
+              TOTAL_FAILURES=$((TOTAL_FAILURES + FAILED_COUNT))
+            elif [ "$SUCCESS_COUNT" -gt 0 ]; then
+              echo "✅ $func has $SUCCESS_COUNT successful RPC calls, 0 failures"
+            else
+              echo "ℹ️ $func has no recent RPC activity"
+            fi
+          done
+          
+          if [ "$TOTAL_FAILURES" -gt 0 ]; then
+            echo ""
+            echo "❌ TOTAL RPC FAILURES: $TOTAL_FAILURES"
+            echo "See docs/DEPLOYMENT-VERIFICATION.md for troubleshooting"
             exit 1
           else
-            echo "✅ No RPC failures detected"
+            echo ""
+            echo "✅ No RPC failures detected across all functions"
           fi
       
       - name: Verify other critical functions
