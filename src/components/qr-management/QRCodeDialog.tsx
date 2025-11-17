@@ -30,6 +30,7 @@ import {
 } from '@/components/ui/select';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
+import { RoomDropdown } from '@/components/shared/RoomDropdown';
 
 const qrCodeSchema = z.object({
   display_name: z.string().min(1, 'Display name is required'),
@@ -137,20 +138,42 @@ export default function QRCodeDialog({ open, onOpenChange, qrCode, onSave }: QRC
               )}
             />
 
-            <FormField
-              control={form.control}
-              name="assigned_to"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Assigned To</FormLabel>
-                  <FormControl>
-                    <Input placeholder="e.g., Room 101, Pool Area, Conference Hall A" {...field} />
-                  </FormControl>
-                  <FormDescription>The location or entity this QR code is assigned to</FormDescription>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
+            {form.watch('scope') === 'room' && (
+              <FormField
+                control={form.control}
+                name="room_id"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Select Room</FormLabel>
+                    <FormControl>
+                      <RoomDropdown
+                        value={field.value}
+                        onChange={field.onChange}
+                      />
+                    </FormControl>
+                    <FormDescription>The room this QR code is assigned to</FormDescription>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            )}
+
+            {form.watch('scope') !== 'room' && (
+              <FormField
+                control={form.control}
+                name="assigned_to"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Location Name</FormLabel>
+                    <FormControl>
+                      <Input placeholder="e.g., Pool Area, Conference Hall A, Gym" {...field} />
+                    </FormControl>
+                    <FormDescription>The location this QR code is assigned to</FormDescription>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            )}
 
             <FormField
               control={form.control}

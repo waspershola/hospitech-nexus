@@ -92,22 +92,24 @@ export function useRoomActions() {
         after_data: { status: 'checked_in', metadata: updatedMetadata },
       });
 
-      // Create folio via edge function
-      try {
-        const { data: folioResult, error: folioError } = await supabase.functions.invoke('checkin-guest', {
-          body: { booking_id: booking.id }
-        });
-        
-        if (folioError) {
-          console.error('[checkin] Failed to create folio:', folioError);
-        } else if (folioResult?.folio) {
-          console.log('[checkin] Folio created:', folioResult.folio.id);
-        }
-      } catch (folioErr) {
-        console.error('[checkin] Folio creation error:', folioErr);
+      // Create folio via edge function - BLOCKING (must succeed)
+      const { data: folioResult, error: folioError } = await supabase.functions.invoke('checkin-guest', {
+        body: { booking_id: booking.id }
+      });
+      
+      if (folioError || !folioResult?.folio) {
+        // ROLLBACK booking status if folio creation fails
+        await supabase
+          .from('bookings')
+          .update({ status: 'reserved', metadata: booking.metadata })
+          .eq('id', booking.id);
+          
+        throw new Error(`Folio creation failed: ${folioError?.message || 'Unknown error'}. Check-in cancelled.`);
       }
 
-      // Then update room status to occupied
+      console.log('[checkin] ✅ Folio created successfully:', folioResult.folio.id);
+
+      // ONLY NOW update room status to occupied
       const { data, error } = await supabase
         .from('rooms')
         .update({ status: 'occupied' })
