@@ -430,6 +430,66 @@ serve(async (req) => {
       console.error('[complete-checkout] Notification error (non-blocking):', notificationError);
     }
 
+    // PHASE 5: Auto-generate folio PDF on checkout (non-blocking)
+    try {
+      console.log('[complete-checkout] Generating folio PDF...');
+      
+      // Get folio ID from booking metadata
+      const folioId = booking.metadata?.folio_id;
+      
+      if (folioId) {
+        const { data: pdfData, error: pdfError } = await supabaseAdmin.functions.invoke('generate-folio-pdf', {
+          body: {
+            folio_id: folioId,
+            tenant_id: booking.tenant_id,
+            format: 'A4',
+            include_qr: true,
+          },
+        });
+
+        if (pdfError) {
+          console.error('[complete-checkout] PDF generation error:', pdfError);
+        } else if (pdfData?.success) {
+          console.log('[complete-checkout] Folio PDF generated:', pdfData.pdf_url);
+          
+          // Optionally auto-email PDF to guest
+          if (guest?.email) {
+            console.log('[complete-checkout] Emailing folio PDF to guest...');
+            
+            await supabaseAdmin.functions.invoke('send-email-notification', {
+              body: {
+                to: guest.email,
+                subject: 'Your Stay Folio',
+                html: `
+                  <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+                    <h2>Thank You for Your Stay</h2>
+                    <p>Dear ${guest.name},</p>
+                    <p>Please find your stay folio attached below:</p>
+                    <p style="margin: 2rem 0;">
+                      <a href="${pdfData.pdf_url}" 
+                         style="background: #dc2626; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; display: inline-block;">
+                        View Folio
+                      </a>
+                    </p>
+                    <p>We appreciate your patronage and look forward to serving you again.</p>
+                    <p>Best regards,<br>Hotel Management</p>
+                  </div>
+                `,
+                tenant_id: booking.tenant_id,
+              },
+            }).catch((emailError) => {
+              console.error('[complete-checkout] Folio email error (non-blocking):', emailError);
+            });
+          }
+        }
+      } else {
+        console.warn('[complete-checkout] No folio_id in booking metadata, skipping PDF generation');
+      }
+    } catch (pdfError) {
+      // Don't block checkout if PDF generation fails
+      console.error('[complete-checkout] PDF generation error (non-blocking):', pdfError);
+    }
+
     return new Response(
       JSON.stringify({ 
         success: true, 
