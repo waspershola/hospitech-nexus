@@ -64,6 +64,7 @@ export interface PaymentDetail {
 
 export interface FolioBalance {
   bookingId: string;
+  folioId?: string | null;
   totalCharges: number;
   totalPayments: number;
   balance: number;
@@ -73,6 +74,8 @@ export interface FolioBalance {
   isGroupBooking?: boolean;
   numberOfBookings?: number;
   groupId?: string | null;
+  guestEmail?: string | null;
+  guestName?: string;
 }
 
 /**
@@ -246,6 +249,7 @@ export function useBookingFolio(bookingId: string | null) {
 
         return {
           bookingId,
+          folioId: folio.id,
           totalCharges: Number(folio.total_charges),
           totalPayments: Number(folio.total_payments),
           balance: Number(folio.balance),
