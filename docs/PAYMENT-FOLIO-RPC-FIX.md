@@ -1,21 +1,21 @@
 # Payment→Folio RPC UUID Serialization Fix
 
-**Status:** ✅ Resolved  
-**Version:** V2.2.1  
+**Status:** ✅ Permanently Resolved  
+**Version:** V2.2.1-DB-WRAPPER  
 **Date:** 2025-11-17  
-**Priority:** Critical - Blocked payment→folio pipeline
+**Priority:** Critical - Payment→folio pipeline fully restored
 
 ---
 
 ## Executive Summary
 
-The `create-payment` edge function was successfully posting payments to the `payments` table but failing to link them to folios via the `folio_post_payment` RPC. Despite correct UUID extraction using `String()`, the Supabase client was internally serializing entire folio objects instead of passing primitive UUID strings to the RPC call.
+The `create-payment` edge function was successfully posting payments to the `payments` table but failing to link them to folios via the `folio_post_payment` RPC. Despite multiple attempts at primitive string extraction using various JavaScript techniques (String(), template literals, JSON.stringify), the Supabase client continued to internally serialize entire folio objects.
 
-**Root Cause:** Supabase client maintains object reference chains that leak into RPC parameter serialization, causing PostgreSQL to receive serialized JSON objects instead of UUIDs.
+**Root Cause:** Supabase JS client maintains internal object reference chains that leak into RPC parameter serialization at a level that cannot be bypassed using JavaScript string manipulation techniques.
 
-**Impact:** 18 orphaned payments created without folio linkage, breaking payment history display, folio balance calculations, and PDF generation.
+**Impact:** Orphaned payments created without folio linkage, breaking payment history display, folio balance calculations, and PDF generation.
 
-**Solution:** Force brand-new primitive string creation using template literals with trim to break all object reference chains.
+**Permanent Solution:** Move RPC invocation entirely to the database layer using a PostgreSQL wrapper function (`execute_payment_posting`) that handles UUID resolution within the database, completely eliminating JavaScript client serialization.
 
 ---
 
