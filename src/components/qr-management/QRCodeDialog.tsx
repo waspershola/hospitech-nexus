@@ -149,6 +149,7 @@ export default function QRCodeDialog({ open, onOpenChange, qrCode, onSave }: QRC
                       <RoomDropdown
                         value={field.value}
                         onChange={field.onChange}
+                        excludeOccupied={!qrCode} // Exclude occupied rooms for NEW QR codes only
                       />
                     </FormControl>
                     <FormDescription>The room this QR code is assigned to</FormDescription>
