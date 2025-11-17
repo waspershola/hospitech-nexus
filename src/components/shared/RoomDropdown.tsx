@@ -8,18 +8,30 @@ interface RoomDropdownProps {
   onChange: (value: string) => void;
 }
 
-export function RoomDropdown({ value, onChange }: RoomDropdownProps) {
+interface RoomDropdownProps {
+  value: string | undefined;
+  onChange: (value: string) => void;
+  excludeOccupied?: boolean; // For new QR creation, exclude occupied rooms
+}
+
+export function RoomDropdown({ value, onChange, excludeOccupied = false }: RoomDropdownProps) {
   const { tenantId } = useAuth();
   
   const { data: rooms = [], isLoading } = useQuery({
-    queryKey: ['rooms-dropdown', tenantId],
+    queryKey: ['rooms-dropdown', tenantId, excludeOccupied],
     queryFn: async () => {
-      const { data, error } = await supabase
+      let query = supabase
         .from('rooms')
         .select('id, number, status')
         .eq('tenant_id', tenantId)
-        .not('status', 'eq', 'out_of_order')
-        .order('number', { ascending: true });
+        .not('status', 'eq', 'out_of_order');
+      
+      // When creating new QR codes, exclude occupied rooms
+      if (excludeOccupied) {
+        query = query.not('status', 'eq', 'occupied');
+      }
+      
+      const { data, error } = await query.order('number', { ascending: true });
       
       if (error) throw error;
       return data;
@@ -33,11 +45,17 @@ export function RoomDropdown({ value, onChange }: RoomDropdownProps) {
         <SelectValue placeholder={isLoading ? 'Loading rooms...' : 'Select room'} />
       </SelectTrigger>
       <SelectContent className="bg-background z-50">
-        {rooms.map(room => (
-          <SelectItem key={room.id} value={room.id}>
-            Room {room.number} ({room.status})
-          </SelectItem>
-        ))}
+        {rooms.length === 0 && !isLoading ? (
+          <div className="p-2 text-sm text-muted-foreground text-center">
+            {excludeOccupied ? 'No available rooms' : 'No rooms found'}
+          </div>
+        ) : (
+          rooms.map(room => (
+            <SelectItem key={room.id} value={room.id}>
+              Room {room.number} ({room.status})
+            </SelectItem>
+          ))
+        )}
       </SelectContent>
     </Select>
   );
