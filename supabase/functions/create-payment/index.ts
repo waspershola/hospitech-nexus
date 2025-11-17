@@ -416,30 +416,48 @@ serve(async (req) => {
     if (booking_id) {
       console.log('[folio] Attempting to post payment to folio for booking:', booking_id);
       
-      const { data: openFolio } = await supabase
+      // Query only the folio id to avoid serializing the whole object into RPC param
+      const { data: openFolio, error: folioQueryError } = await supabase
         .from('stay_folios')
-        .select('id, status')
+        .select('id')
         .eq('booking_id', booking_id)
         .eq('status', 'open')
         .maybeSingle();
       
-      if (openFolio) {
-        console.log('[folio] Found open folio:', openFolio.id, '- posting payment');
+      if (folioQueryError) {
+        console.error('[folio] Error querying for open folio:', JSON.stringify(folioQueryError, null, 2));
+        // Do NOT block payment creation; but fail loudly for ops to see
+      }
+      
+      if (openFolio?.id) {
+        const folioId = openFolio.id as string;
+        console.log('[folio] Found open folio id:', folioId, ' - attempting to post payment', {
+          folio_id: folioId,
+          payment_id: payment.id,
+          amount
+        });
         
-        const { error: folioError } = await supabase.rpc('folio_post_payment', {
-          p_folio_id: openFolio.id,
+        // Call RPC using primitive values only
+        const { data: rpcResult, error: folioError } = await supabase.rpc('folio_post_payment', {
+          p_folio_id: folioId,
           p_payment_id: payment.id,
           p_amount: amount
         });
         
         if (folioError) {
-          console.error('[folio] Failed to post payment to folio:', folioError);
-          // Don't throw - payment is already created successfully
-        } else {
-          console.log('[folio] Payment posted to folio successfully');
+          // Make this loud and actionable (do not silently swallow)
+          console.error('[folio] RPC FAILED:', JSON.stringify(folioError, null, 2), {
+            folio_id: folioId,
+            payment_id: payment.id,
+            amount
+          });
+          // Throw to fail the function invocation so CI/ops can pick up and backfill/rollback if needed
+          throw new Error(`Failed to post payment to folio: ${folioError.message || JSON.stringify(folioError)}`);
         }
+        
+        console.log('[folio] Payment posted successfully to folio:', rpcResult);
       } else {
-        console.log('[folio] No open folio found for booking - skipping folio posting');
+        console.warn('[folio] No open folio found for booking', { booking_id });
       }
     }
 

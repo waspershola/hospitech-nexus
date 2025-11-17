@@ -221,31 +221,28 @@ export function useBookingFolio(bookingId: string | null) {
             `This indicates a critical data integrity issue. Check checkin-guest edge function deployment.`
           );
         }
-        // Use REAL folio numbers
-        const { data: payments, error: paymentsError } = await supabase
-          .from('payments')
-          .select('id, amount, currency, method, method_provider, transaction_ref, created_at, metadata')
-          .eq('booking_id', bookingId)
-          .eq('tenant_id', tenantId)
+        // Fetch payments from the canonical ledger (folio_transactions)
+        const { data: transactions, error: txError } = await supabase
+          .from('folio_transactions')
+          .select('id, amount, created_at, description, reference_type, reference_id, transaction_type, metadata')
+          .eq('folio_id', folio.id)
+          .eq('transaction_type', 'payment')
           .order('created_at', { ascending: false });
 
-        if (paymentsError) throw paymentsError;
+        if (txError) throw txError;
 
-        const currency = payments?.[0]?.currency || 'NGN';
+        const currency = 'NGN';
         const bookingTaxBreakdown = bookingMeta?.tax_breakdown as TaxBreakdown | undefined;
 
-        const paymentDetails: PaymentDetail[] = payments?.map(p => {
-          const paymentMeta = p.metadata as any;
-          return {
-            id: p.id,
-            amount: Number(p.amount),
-            method: p.method,
-            method_provider: p.method_provider,
-            transaction_ref: p.transaction_ref || '',
-            created_at: p.created_at,
-            tax_breakdown: paymentMeta?.tax_breakdown as TaxBreakdown | undefined,
-          };
-        }) || [];
+        const paymentDetails: PaymentDetail[] = (transactions || []).map((ft: any) => ({
+          id: ft.reference_id || ft.id,
+          amount: Number(ft.amount),
+          method: ft.metadata?.method || 'unknown',
+          method_provider: ft.metadata?.provider || null,
+          transaction_ref: ft.reference_id || '',
+          created_at: ft.created_at,
+          tax_breakdown: ft.metadata?.tax_breakdown as TaxBreakdown | undefined
+        }));
 
         return {
           bookingId,
