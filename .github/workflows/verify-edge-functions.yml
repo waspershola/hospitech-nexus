@@ -1,0 +1,82 @@
+name: Verify Edge Functions Deployment
+
+on:
+  push:
+    paths:
+      - 'supabase/functions/**'
+  workflow_dispatch:
+
+jobs:
+  verify-deployment:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+      
+      - name: Setup Supabase CLI
+        uses: supabase/setup-cli@v1
+        with:
+          version: latest
+      
+      - name: Verify create-payment V2.2.1 deployed
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+          SUPABASE_PROJECT_REF: akchmpmzcupzjaeewdui
+        run: |
+          echo "Checking create-payment deployment..."
+          LOGS=$(supabase functions logs create-payment --project-ref $SUPABASE_PROJECT_REF --limit 50)
+          
+          if echo "$LOGS" | grep -q "CREATE-PAYMENT-V2.2.1"; then
+            echo "✅ create-payment V2.2.1 is deployed and running"
+          else
+            echo "❌ ERROR: create-payment V2.2.1 not found in logs"
+            echo "Recent logs:"
+            echo "$LOGS"
+            exit 1
+          fi
+      
+      - name: Check for RPC failures
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+          SUPABASE_PROJECT_REF: akchmpmzcupzjaeewdui
+        run: |
+          echo "Checking for RPC failures..."
+          LOGS=$(supabase functions logs create-payment --project-ref $SUPABASE_PROJECT_REF --limit 100)
+          
+          if echo "$LOGS" | grep -q "RPC FAILED"; then
+            echo "⚠️ WARNING: RPC failures detected in recent logs"
+            echo "Failed calls:"
+            echo "$LOGS" | grep "RPC FAILED"
+            exit 1
+          else
+            echo "✅ No RPC failures detected"
+          fi
+      
+      - name: Verify other critical functions
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+          SUPABASE_PROJECT_REF: akchmpmzcupzjaeewdui
+        run: |
+          echo "Verifying other edge functions..."
+          
+          FUNCTIONS=("generate-folio-pdf" "complete-checkout" "qr-request" "checkin-guest")
+          
+          for func in "${FUNCTIONS[@]}"; do
+            echo "Checking $func..."
+            LOGS=$(supabase functions logs $func --project-ref $SUPABASE_PROJECT_REF --limit 10 || echo "")
+            
+            if [ -z "$LOGS" ]; then
+              echo "⚠️ No recent logs for $func (may not have been invoked)"
+            else
+              echo "✅ $func has recent activity"
+            fi
+          done
+      
+      - name: Summary
+        if: always()
+        run: |
+          echo "=== Edge Functions Deployment Verification Complete ==="
+          echo "Timestamp: $(date)"
+          echo "Project: akchmpmzcupzjaeewdui"
+          echo "Primary Check: create-payment V2.2.1"
