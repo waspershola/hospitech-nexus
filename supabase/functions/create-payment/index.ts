@@ -420,61 +420,39 @@ serve(async (req) => {
 
     console.log('Payment created:', payment.id);
 
-    // NEW: Post payment to folio if booking is linked
+    // V2.2.1-DB-WRAPPER: Post payment to folio using database-level RPC wrapper
+    // This eliminates JS client serialization issues by handling UUIDs entirely in PostgreSQL
     if (booking_id) {
-      console.log('[V2.2.1] Attempting to post payment to folio for booking:', booking_id);
+      console.log('[V2.2.1-DB] Attempting DB-level payment posting for booking:', booking_id);
       
-      // CRITICAL FIX V2.2.1: Defensive folio lookup with primitive UUID extraction
-      // Query ONLY id field using direct SQL to ensure clean UUID string
-      const { data: folioData, error: folioQueryError } = await supabase
-        .from('stay_folios')
-        .select('id')
-        .eq('booking_id', booking_id)
-        .eq('status', 'open')
-        .maybeSingle();
-      
-      if (folioQueryError) {
-        console.error('[V2.2.1] Error querying stay_folio:', JSON.stringify(folioQueryError));
-        // Do NOT block payment creation
-      } else if (folioData?.id) {
-        // NUCLEAR FIX: JSON round-trip to completely break object references
-        const folioIdString = JSON.stringify(folioData.id).replace(/"/g, '');
-        const rawFolioId = folioIdString.trim();
-        const cleanPaymentId = JSON.stringify(payment.id).replace(/"/g, '').trim();
-        const cleanAmount = Number(amount);
-        
-        // UUID sanity check
-        const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-        if (!uuidRegex.test(rawFolioId)) {
-          console.error('[V2.2.1] Invalid folio UUID:', rawFolioId);
-          throw new Error(`Invalid folio UUID format: ${rawFolioId}`);
-        }
-        
-        console.log('[V2.2.1] RPC CALL:', {
-          folioId: rawFolioId,
-          paymentId: cleanPaymentId,
-          amount: cleanAmount,
-          types: {
-            folioId: typeof rawFolioId,
-            paymentId: typeof cleanPaymentId,
-            amount: typeof cleanAmount
+      try {
+        // Call DB wrapper (bypasses JS client serialization entirely)
+        const { data: execRes, error: execErr } = await supabase.rpc('execute_payment_posting', {
+          p_booking_id: booking_id,
+          p_payment_id: payment.id,
+          p_amount: amount
+        });
+
+        if (execErr) {
+          // Log error but don't block payment creation (payment already exists)
+          console.error('[V2.2.1-DB] execute_payment_posting RPC error:', JSON.stringify(execErr));
+          console.error('[V2.2.1-DB] Payment created but NOT posted to folio - manual intervention may be required');
+        } else {
+          console.log('[V2.2.1-DB] execute_payment_posting response:', JSON.stringify(execRes));
+          
+          // Check wrapper response
+          if (execRes?.success === false) {
+            console.warn('[V2.2.1-DB] execute_payment_posting indicated failure:', execRes);
+            console.warn('[V2.2.1-DB] Reason:', execRes.message || 'unknown');
+          } else {
+            console.log('[V2.2.1-DB] ✅ Payment posted to folio successfully via DB wrapper');
+            console.log('[V2.2.1-DB] Folio ID:', execRes?.folio_id);
+            console.log('[V2.2.1-DB] Method:', execRes?.method);
           }
-        });
-        
-        const { data: rpcResult, error: rpcError } = await supabase.rpc('folio_post_payment', {
-          p_folio_id: rawFolioId,
-          p_payment_id: cleanPaymentId,
-          p_amount: cleanAmount
-        });
-        
-        if (rpcError) {
-          console.error('[V2.2.1] RPC FAILED:', JSON.stringify(rpcError));
-          throw new Error(`folio_post_payment failed: ${rpcError.message || JSON.stringify(rpcError)}`);
         }
-        
-        console.log('✅ [V2.2.1] RPC SUCCESS:', JSON.stringify(rpcResult));
-      } else {
-        console.warn('[V2.2.1] No open folio found for booking:', booking_id);
+      } catch (err) {
+        console.error('[V2.2.1-DB] Unexpected error calling execute_payment_posting:', err);
+        console.error('[V2.2.1-DB] Payment exists but folio posting failed - check logs');
       }
     }
 
