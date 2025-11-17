@@ -46,38 +46,49 @@ serve(async (req) => {
     };
 
     for (const payment of orphanPayments || []) {
-      // Handle both array and object responses from nested query
-      const folios = payment.bookings?.stay_folios;
-      const folio = Array.isArray(folios) ? folios[0] : folios;
-      const folioId = folio?.id;
-      
-      console.log(`[reconcile] Payment ${payment.id}: folio structure:`, { folios, folio, folioId });
-      
-      if (!folioId) {
+      try {
+        // Handle both array and object responses from nested query
+        const folios = payment.bookings?.stay_folios;
+        const folio = Array.isArray(folios) ? folios[0] : folios;
+        
+        // Explicitly extract and validate folio ID as string
+        const folioIdRaw = folio?.id;
+        if (!folioIdRaw || typeof folioIdRaw !== 'string') {
+          console.error(`[reconcile] Payment ${payment.id}: Invalid folio ID`, { folio, folioIdRaw });
+          results.failed.push({
+            payment_id: payment.id,
+            reason: 'No valid folio ID found'
+          });
+          continue;
+        }
+        
+        const folioId = String(folioIdRaw); // Ensure it's a string
+        console.log(`[reconcile] Payment ${payment.id}: Linking to folio ${folioId}`);
+        
+        const { data: postResult, error } = await supabase.rpc('folio_post_payment', {
+          p_folio_id: folioId,
+          p_payment_id: payment.id,
+          p_amount: payment.amount
+        });
+
+        if (error || !postResult?.success) {
+          console.error(`[reconcile] Failed to link payment ${payment.id}:`, error || postResult);
+          results.failed.push({
+            payment_id: payment.id,
+            transaction_ref: payment.transaction_ref,
+            amount: payment.amount,
+            error: error?.message || postResult?.error
+          });
+        } else {
+          results.linked++;
+          console.log(`[reconcile] Successfully linked payment ${payment.id} to folio ${folioId}`);
+        }
+      } catch (err) {
+        console.error(`[reconcile] Exception linking payment ${payment.id}:`, err);
         results.failed.push({
           payment_id: payment.id,
-          reason: 'No open folio found'
+          error: err?.message || 'Unknown error'
         });
-        continue;
-      }
-
-      const { data: postResult, error } = await supabase.rpc('folio_post_payment', {
-        p_folio_id: folioId,
-        p_payment_id: payment.id,
-        p_amount: payment.amount
-      });
-
-      if (error || !postResult?.success) {
-        console.error(`[reconcile] Failed to link payment ${payment.id}:`, error || postResult);
-        results.failed.push({
-          payment_id: payment.id,
-          transaction_ref: payment.transaction_ref,
-          amount: payment.amount,
-          error: error?.message || postResult?.error
-        });
-      } else {
-        results.linked++;
-        console.log(`[reconcile] Successfully linked payment ${payment.id} to folio ${folioId}`);
       }
     }
 

@@ -7,11 +7,14 @@ const corsHeaders = {
 }
 
 serve(async (req) => {
+  console.log('[checkin] Function invoked');
+  
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders })
   }
 
   try {
+    console.log('[checkin] Initializing Supabase client');
     const supabaseServiceClient = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '',
@@ -24,6 +27,7 @@ serve(async (req) => {
     )
 
     const { booking_id } = await req.json()
+    console.log('[checkin] Processing check-in for booking:', booking_id);
 
     if (!booking_id) {
       return new Response(

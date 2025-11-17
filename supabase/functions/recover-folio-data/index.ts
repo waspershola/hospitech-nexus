@@ -7,17 +7,21 @@ const corsHeaders = {
 }
 
 serve(async (req) => {
+  console.log('[recover-folio] Function invoked');
+  
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders })
   }
 
   try {
+    console.log('[recover-folio] Initializing Supabase client');
     const supabase = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
     )
 
     const { tenant_id } = await req.json()
+    console.log('[recover-folio] Request for tenant:', tenant_id);
 
     if (!tenant_id) {
       return new Response(
