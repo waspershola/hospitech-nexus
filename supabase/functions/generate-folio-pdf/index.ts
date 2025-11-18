@@ -13,20 +13,49 @@ interface FolioPDFRequest {
 }
 
 Deno.serve(async (req) => {
+  // PDF-V2.1: Enhanced logging and error handling
+  const startTime = Date.now();
+  
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
 
   try {
+    console.log('PDF-V2.1: Request received');
+    
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+    
+    if (!supabaseUrl || !supabaseServiceKey) {
+      console.error('PDF-V2.1: Missing Supabase environment variables');
+      throw new Error('Server configuration error');
+    }
+    
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
     const { folio_id, tenant_id, format = 'A4', include_qr = true } = await req.json() as FolioPDFRequest;
 
-    console.log('[generate-folio-pdf] Generating PDF for folio:', folio_id);
+    console.log('PDF-V2.1: Generating PDF', {
+      folio_id,
+      tenant_id,
+      format,
+      include_qr,
+      timestamp: new Date().toISOString()
+    });
+    
+    // Validate required parameters
+    if (!folio_id) {
+      console.error('PDF-V2.1: Missing folio_id parameter');
+      throw new Error('folio_id is required');
+    }
+    
+    if (!tenant_id) {
+      console.error('PDF-V2.1: Missing tenant_id parameter');
+      throw new Error('tenant_id is required');
+    }
 
     // 1. Fetch complete folio data with relationships
+    console.log('PDF-V2.1: Fetching folio data...');
     const { data: folio, error: folioError } = await supabase
       .from('stay_folios')
       .select(`
@@ -54,38 +83,98 @@ Deno.serve(async (req) => {
       .eq('tenant_id', tenant_id)
       .single();
 
-    if (folioError || !folio) {
-      throw new Error(`Folio not found: ${folioError?.message}`);
+    if (folioError) {
+      console.error('PDF-V2.1: Folio fetch error', {
+        error: folioError.message,
+        code: folioError.code,
+        folio_id,
+        tenant_id
+      });
+      throw new Error(`Failed to fetch folio: ${folioError.message}`);
+    }
+    
+    if (!folio) {
+      console.error('PDF-V2.1: Folio not found', { folio_id, tenant_id });
+      throw new Error('Folio not found');
+    }
+    
+    console.log('PDF-V2.1: Folio data fetched', {
+      folio_id: folio.id,
+      status: folio.status,
+      total_charges: folio.total_charges,
+      total_payments: folio.total_payments,
+      balance: folio.balance,
+      transaction_count: folio.transactions?.length || 0
+    });
+    
+    // Validate required folio relationships
+    if (!folio.booking) {
+      console.error('PDF-V2.1: Missing booking data', { folio_id });
+      throw new Error('Folio has no associated booking');
+    }
+    
+    if (!folio.guest) {
+      console.error('PDF-V2.1: Missing guest data', { folio_id });
+      throw new Error('Folio has no associated guest');
+    }
+    
+    if (!folio.room) {
+      console.error('PDF-V2.1: Missing room data', { folio_id });
+      throw new Error('Folio has no associated room');
     }
 
     // 2. Fetch hotel branding
-    const { data: branding } = await supabase
+    console.log('PDF-V2.1: Fetching hotel branding...');
+    const { data: branding, error: brandingError } = await supabase
       .from('hotel_branding')
       .select('*')
       .eq('tenant_id', tenant_id)
       .single();
+    
+    if (brandingError) {
+      console.warn('PDF-V2.1: Branding fetch warning', brandingError.message);
+    }
 
     // 3. Fetch receipt settings for styling
-    const { data: receiptSettings } = await supabase
+    console.log('PDF-V2.1: Fetching receipt settings...');
+    const { data: receiptSettings, error: receiptError } = await supabase
       .from('receipt_settings')
       .select('*')
       .eq('tenant_id', tenant_id)
       .limit(1)
       .single();
+    
+    if (receiptError) {
+      console.warn('PDF-V2.1: Receipt settings warning', receiptError.message);
+    }
 
     // 4. Fetch tenant details
-    const { data: tenant } = await supabase
+    console.log('PDF-V2.1: Fetching tenant details...');
+    const { data: tenant, error: tenantError } = await supabase
       .from('tenants')
       .select('name')
       .eq('id', tenant_id)
       .single();
+    
+    if (tenantError) {
+      console.error('PDF-V2.1: Tenant fetch error', tenantError.message);
+      throw new Error('Failed to fetch tenant details');
+    }
 
     // 5. Calculate nights and format dates
+    console.log('PDF-V2.1: Calculating stay duration...');
     const checkIn = new Date(folio.booking.check_in);
     const checkOut = new Date(folio.booking.check_out);
     const nights = Math.ceil((checkOut.getTime() - checkIn.getTime()) / (1000 * 60 * 60 * 24));
+    
+    console.log('PDF-V2.1: Stay details', {
+      check_in: checkIn.toISOString(),
+      check_out: checkOut.toISOString(),
+      nights
+    });
 
     // 6. Calculate running balance for transactions
+    console.log('PDF-V2.1: Processing transactions...');
     let runningBalance = 0;
     const transactionsWithBalance = (folio.transactions || [])
       .sort((a: any, b: any) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime())
@@ -97,8 +186,14 @@ Deno.serve(async (req) => {
         }
         return { ...txn, running_balance: runningBalance };
       });
+    
+    console.log('PDF-V2.1: Transactions processed', {
+      count: transactionsWithBalance.length,
+      final_balance: runningBalance
+    });
 
     // 7. Generate luxury modern HTML
+    console.log('PDF-V2.1: Generating HTML folio...');
     const folioHtml = generateLuxuryFolioHTML({
       folio,
       tenant,
@@ -109,11 +204,22 @@ Deno.serve(async (req) => {
       format,
       include_qr,
     });
+    
+    console.log('PDF-V2.1: HTML generated', {
+      html_length: folioHtml.length,
+      has_content: folioHtml.length > 1000
+    });
 
     // 8. Store PDF metadata in folio
     const version = (folio.metadata?.pdf_version || 0) + 1;
     const fileName = `${folio_id}_${version}_${Date.now()}.html`;
     const storagePath = `${tenant_id}/folios/${fileName}`;
+
+    console.log('PDF-V2.1: Uploading to storage', {
+      fileName,
+      storagePath,
+      version
+    });
 
     // Note: For now storing HTML. Phase 5 can be extended with actual PDF generation
     // using libraries like jsPDF or puppeteer when needed
@@ -126,18 +232,29 @@ Deno.serve(async (req) => {
       });
 
     if (uploadError) {
-      console.error('[generate-folio-pdf] Storage error:', uploadError);
-      throw uploadError;
+      console.error('PDF-V2.1: Upload failed', {
+        error: uploadError.message,
+        storagePath
+      });
+      throw new Error(`Failed to upload folio: ${uploadError.message}`);
     }
+    
+    console.log('PDF-V2.1: Upload successful', {
+      path: uploadData.path
+    });
 
     // 9. Get public URL
+    console.log('PDF-V2.1: Getting public URL...');
     const { data: urlData } = supabase
       .storage
       .from('receipts')
       .getPublicUrl(storagePath);
 
+    console.log('PDF-V2.1: Public URL generated', { publicUrl: urlData.publicUrl });
+
     // 10. Update folio metadata
-    await supabase
+    console.log('PDF-V2.1: Updating folio metadata...');
+    const { error: updateError } = await supabase
       .from('stay_folios')
       .update({
         metadata: {
@@ -147,26 +264,45 @@ Deno.serve(async (req) => {
           pdf_version: version
         }
       })
-      .eq('id', folio_id);
+      .eq('id', folio_id)
+      .eq('tenant_id', tenant_id);
 
-    console.log('[generate-folio-pdf] PDF generated successfully:', urlData.publicUrl);
+    if (updateError) {
+      console.warn('PDF-V2.1: Metadata update warning', updateError.message);
+    }
+
+    const duration = Date.now() - startTime;
+    console.log('PDF-V2.1: PDF generation complete', {
+      success: true,
+      publicUrl: urlData.publicUrl,
+      version,
+      duration_ms: duration
+    });
 
     return new Response(
       JSON.stringify({
         success: true,
         pdf_url: urlData.publicUrl,
         version,
+        duration_ms: duration,
         message: 'Folio PDF generated successfully'
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
 
   } catch (error) {
-    console.error('[generate-folio-pdf] Error:', error);
+    const duration = Date.now() - startTime;
+    console.error('PDF-V2.1: Error caught', {
+      error: error instanceof Error ? error.message : 'Unknown error',
+      stack: error instanceof Error ? error.stack : undefined,
+      duration_ms: duration
+    });
+    
     return new Response(
       JSON.stringify({ 
         success: false, 
-        error: error instanceof Error ? error.message : 'Failed to generate folio PDF' 
+        error: error instanceof Error ? error.message : 'Failed to generate folio PDF',
+        version: 'PDF-V2.1'
       }),
       { 
         status: 500,
