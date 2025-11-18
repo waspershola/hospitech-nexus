@@ -32,8 +32,7 @@ export function useFolioById(folioId: string | null) {
             phone
           ),
           room:rooms(
-            number,
-            room_type
+            number
           )
         `)
         .eq('id', folioId)
