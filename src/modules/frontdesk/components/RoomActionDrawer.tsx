@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { format } from 'date-fns';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { Button } from '@/components/ui/button';
@@ -49,6 +50,7 @@ interface RoomActionDrawerProps {
 }
 
 export function RoomActionDrawer({ roomId, contextDate, open, onClose, onOpenAssignDrawer }: RoomActionDrawerProps) {
+  const navigate = useNavigate();
   const { tenantId, role } = useAuth();
   const canForceCheckout = hasPermission(role, PERMISSIONS.MANAGE_FINANCE);
   const queryClient = useQueryClient();
@@ -294,6 +296,22 @@ export function RoomActionDrawer({ roomId, contextDate, open, onClose, onOpenAss
 
   // Use activeBooking consistently throughout component
   const currentBooking = activeBooking;
+
+  // VIEW-FOLIO-BUTTON-V1: Cross-tab folio update listener
+  useEffect(() => {
+    const handleFolioUpdate = (event: MessageEvent) => {
+      if (event.data?.type === 'FOLIO_UPDATED' && event.data?.bookingId === activeBooking?.id) {
+        console.log('[drawer] VIEW-FOLIO-BUTTON-V1: Cross-tab folio update received - refetching');
+        queryClient.invalidateQueries({ queryKey: ['booking-folio', activeBooking.id, tenantId] });
+        if (folio?.id) {
+          queryClient.invalidateQueries({ queryKey: ['folio-by-id', folio.id] });
+        }
+      }
+    };
+    
+    window.addEventListener('message', handleFolioUpdate);
+    return () => window.removeEventListener('message', handleFolioUpdate);
+  }, [activeBooking?.id, folio?.id, tenantId, queryClient]);
 
   const handleQuickCheckIn = () => {
     if (!room || !onOpenAssignDrawer) return;
@@ -631,6 +649,30 @@ export function RoomActionDrawer({ roomId, contextDate, open, onClose, onOpenAss
                       </span>
                     </div>
                   </div>
+                  {/* VIEW-FOLIO-BUTTON-V1: Navigate to Billing Center */}
+                  {folio?.id && (
+                    <TooltipProvider>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => {
+                              console.log('VIEW-FOLIO-BUTTON-V1: Navigating to billing center', folio.id);
+                              navigate(`/dashboard/billing/${folio.id}`);
+                            }}
+                            className="gap-2"
+                          >
+                            <FileText className="w-4 h-4" />
+                            View Folio
+                          </Button>
+                        </TooltipTrigger>
+                        <TooltipContent>
+                          <p>Open full billing center for advanced folio management</p>
+                        </TooltipContent>
+                      </Tooltip>
+                    </TooltipProvider>
+                  )}
                 </div>
               </SheetHeader>
 

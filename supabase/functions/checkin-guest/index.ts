@@ -114,6 +114,25 @@ serve(async (req) => {
 
     console.log('[checkin] Folio created successfully:', folio.id)
 
+    // CHECKIN-V3-PAYMENT-ATTACH: Auto-attach reservation payments to new folio
+    console.log('[checkin-v3] Attaching reservation payments to folio:', folio.id)
+    try {
+      const { data: attachResult, error: attachError } = await supabaseServiceClient
+        .rpc('attach_booking_payments_to_folio', {
+          p_tenant_id: booking.tenant_id,
+          p_booking_id: booking.id,
+          p_folio_id: folio.id
+        })
+      
+      if (attachError) {
+        console.error('[checkin-v3] Payment attachment failed (non-blocking):', attachError)
+      } else {
+        console.log('[checkin-v3] Payment attachment result:', attachResult)
+      }
+    } catch (attachErr) {
+      console.error('[checkin-v3] Payment attachment exception (non-blocking):', attachErr)
+    }
+
     // Update booking status to checked_in with actual check-in timestamp
     const { error: bookingUpdateError } = await supabaseServiceClient
       .from('bookings')
