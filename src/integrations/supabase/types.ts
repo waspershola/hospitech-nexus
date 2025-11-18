@@ -1972,6 +1972,107 @@ export type Database = {
           },
         ]
       }
+      night_audit_reports: {
+        Row: {
+          audit_run_id: string
+          created_at: string | null
+          id: string
+          pdf_url: string | null
+          report_data: Json
+          report_type: string
+          tenant_id: string
+        }
+        Insert: {
+          audit_run_id: string
+          created_at?: string | null
+          id?: string
+          pdf_url?: string | null
+          report_data: Json
+          report_type: string
+          tenant_id: string
+        }
+        Update: {
+          audit_run_id?: string
+          created_at?: string | null
+          id?: string
+          pdf_url?: string | null
+          report_data?: Json
+          report_type?: string
+          tenant_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "night_audit_reports_audit_run_id_fkey"
+            columns: ["audit_run_id"]
+            isOneToOne: false
+            referencedRelation: "night_audit_runs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "night_audit_reports_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      night_audit_runs: {
+        Row: {
+          audit_date: string
+          completed_at: string | null
+          created_at: string | null
+          cutoff_time: string
+          error_message: string | null
+          id: string
+          metadata: Json | null
+          run_by: string | null
+          started_at: string | null
+          status: string
+          tenant_id: string
+          total_folios_processed: number | null
+          total_revenue: number | null
+        }
+        Insert: {
+          audit_date: string
+          completed_at?: string | null
+          created_at?: string | null
+          cutoff_time: string
+          error_message?: string | null
+          id?: string
+          metadata?: Json | null
+          run_by?: string | null
+          started_at?: string | null
+          status?: string
+          tenant_id: string
+          total_folios_processed?: number | null
+          total_revenue?: number | null
+        }
+        Update: {
+          audit_date?: string
+          completed_at?: string | null
+          created_at?: string | null
+          cutoff_time?: string
+          error_message?: string | null
+          id?: string
+          metadata?: Json | null
+          run_by?: string | null
+          started_at?: string | null
+          status?: string
+          tenant_id?: string
+          total_folios_processed?: number | null
+          total_revenue?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "night_audit_runs_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       notification_sounds: {
         Row: {
           category: string | null
@@ -3813,6 +3914,109 @@ export type Database = {
           updated_at?: string
         }
         Relationships: []
+      }
+      post_checkout_ledger: {
+        Row: {
+          amount: number
+          booking_id: string
+          created_at: string | null
+          guest_id: string | null
+          id: string
+          notes: string | null
+          payment_id: string
+          reason: string
+          recorded_by: string | null
+          tenant_id: string
+        }
+        Insert: {
+          amount: number
+          booking_id: string
+          created_at?: string | null
+          guest_id?: string | null
+          id?: string
+          notes?: string | null
+          payment_id: string
+          reason: string
+          recorded_by?: string | null
+          tenant_id: string
+        }
+        Update: {
+          amount?: number
+          booking_id?: string
+          created_at?: string | null
+          guest_id?: string | null
+          id?: string
+          notes?: string | null
+          payment_id?: string
+          reason?: string
+          recorded_by?: string | null
+          tenant_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fk_tenant"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "post_checkout_ledger_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: false
+            referencedRelation: "bookings"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "post_checkout_ledger_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: false
+            referencedRelation: "v_bookings"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "post_checkout_ledger_guest_id_fkey"
+            columns: ["guest_id"]
+            isOneToOne: false
+            referencedRelation: "guests"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "post_checkout_ledger_guest_id_fkey"
+            columns: ["guest_id"]
+            isOneToOne: false
+            referencedRelation: "v_guests"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "post_checkout_ledger_payment_id_fkey"
+            columns: ["payment_id"]
+            isOneToOne: true
+            referencedRelation: "payments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "post_checkout_ledger_payment_id_fkey"
+            columns: ["payment_id"]
+            isOneToOne: true
+            referencedRelation: "v_payments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "post_checkout_ledger_payment_id_fkey"
+            columns: ["payment_id"]
+            isOneToOne: true
+            referencedRelation: "v_today_payments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "post_checkout_ledger_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       profiles: {
         Row: {
@@ -6529,6 +6733,25 @@ export type Database = {
           },
         ]
       }
+      v_daily_revenue: {
+        Row: {
+          payment_count: number | null
+          report_date: string | null
+          tenant_id: string | null
+          total_revenue: number | null
+          unique_bookings: number | null
+          unique_guests: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "payments_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       v_debtors_creditors: {
         Row: {
           entity_id: string | null
@@ -6541,6 +6764,24 @@ export type Database = {
           type: string | null
         }
         Relationships: []
+      }
+      v_department_revenue: {
+        Row: {
+          department: string | null
+          report_date: string | null
+          revenue: number | null
+          tenant_id: string | null
+          transaction_count: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "payments_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       v_finance_overview_summary: {
         Row: {
@@ -6619,6 +6860,24 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "guests_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      v_outstanding_summary: {
+        Row: {
+          avg_balance: number | null
+          folio_count: number | null
+          max_balance: number | null
+          tenant_id: string | null
+          total_outstanding: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "stay_folios_tenant_id_fkey"
             columns: ["tenant_id"]
             isOneToOne: false
             referencedRelation: "tenants"
