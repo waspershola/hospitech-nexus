@@ -40,7 +40,7 @@ serve(async (req) => {
   }
 
   try {
-    console.log('🚀 CREATE-PAYMENT-V2.2.1-DB-WRAPPER: Function initialized');
+    console.log('🚀 CREATE-PAYMENT V2.2.1-FINAL: Initialized');
     
     const supabase = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
@@ -423,7 +423,7 @@ serve(async (req) => {
     // V2.2.1-DB-WRAPPER: Post payment to folio using database-level RPC wrapper
     // This eliminates JS client serialization issues by handling UUIDs entirely in PostgreSQL
     if (booking_id) {
-      console.log('[V2.2.1-DB] Attempting DB-level payment posting for booking:', booking_id);
+      console.log('[V2.2.1-FINAL] Attempting DB-level payment posting for booking:', booking_id);
       
       try {
         // Call DB wrapper (bypasses JS client serialization entirely)
@@ -435,24 +435,24 @@ serve(async (req) => {
 
         if (execErr) {
           // Log error but don't block payment creation (payment already exists)
-          console.error('[V2.2.1-DB] execute_payment_posting RPC error:', JSON.stringify(execErr));
-          console.error('[V2.2.1-DB] Payment created but NOT posted to folio - manual intervention may be required');
+          console.error('[V2.2.1-FINAL] execute_payment_posting RPC error:', JSON.stringify(execErr));
+          console.error('[V2.2.1-FINAL] Payment created but NOT posted to folio - manual intervention may be required');
         } else {
-          console.log('[V2.2.1-DB] execute_payment_posting response:', JSON.stringify(execRes));
+          console.log('[V2.2.1-FINAL] execute_payment_posting response:', JSON.stringify(execRes));
           
           // Check wrapper response
           if (execRes?.success === false) {
-            console.warn('[V2.2.1-DB] execute_payment_posting indicated failure:', execRes);
-            console.warn('[V2.2.1-DB] Reason:', execRes.message || 'unknown');
+            console.warn('[V2.2.1-FINAL] execute_payment_posting indicated failure:', execRes);
+            console.warn('[V2.2.1-FINAL] Reason:', execRes.message || 'unknown');
           } else {
-            console.log('[V2.2.1-DB] ✅ Payment posted to folio successfully via DB wrapper');
-            console.log('[V2.2.1-DB] Folio ID:', execRes?.folio_id);
-            console.log('[V2.2.1-DB] Method:', execRes?.method);
+            console.log('[V2.2.1-FINAL] ✅ Payment posted to folio successfully via DB wrapper');
+            console.log('[V2.2.1-FINAL] Folio ID:', execRes?.folio_id);
+            console.log('[V2.2.1-FINAL] Method:', execRes?.method);
           }
         }
       } catch (err) {
-        console.error('[V2.2.1-DB] Unexpected error calling execute_payment_posting:', err);
-        console.error('[V2.2.1-DB] Payment exists but folio posting failed - check logs');
+        console.error('[V2.2.1-FINAL] Unexpected error calling execute_payment_posting:', err);
+        console.error('[V2.2.1-FINAL] Payment exists but folio posting failed - check logs');
       }
     }
 
