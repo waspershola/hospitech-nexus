@@ -1,12 +1,14 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import { useBookingFolio } from '@/hooks/useBookingFolio';
 import { formatCurrency } from '@/lib/finance/tax';
-import { Calendar, CreditCard, Info } from 'lucide-react';
+import { Calendar, CreditCard, Info, FileText } from 'lucide-react';
 import { FolioPDFButtons } from '@/components/folio/FolioPDFButtons';
 import { format } from 'date-fns';
 import { Skeleton } from '@/components/ui/skeleton';
+import { useNavigate } from 'react-router-dom';
 import {
   Tooltip,
   TooltipContent,
@@ -23,6 +25,7 @@ interface BookingFolioCardProps {
 }
 
 export function BookingFolioCard({ bookingId, currency = 'NGN', folioId: propFolioId, guestEmail: propGuestEmail, guestName: propGuestName }: BookingFolioCardProps) {
+  const navigate = useNavigate();
   const { data: folio, isLoading } = useBookingFolio(bookingId);
 
   // Use folio data for PDF actions
@@ -63,13 +66,23 @@ export function BookingFolioCard({ bookingId, currency = 'NGN', folioId: propFol
               {balanceStatus === 'credit' && `Credit: ${formatCurrency(Math.abs(folio.balance), currency)}`}
             </Badge>
             {actualFolioId && (
-              <FolioPDFButtons 
-                folioId={actualFolioId}
-                guestEmail={actualGuestEmail}
-                guestName={actualGuestName}
-                size="sm"
-                showLabels={false}
-              />
+              <>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => navigate(`/dashboard/billing/${actualFolioId}`)}
+                >
+                  <FileText className="w-4 h-4 mr-2" />
+                  View in Billing Center
+                </Button>
+                <FolioPDFButtons 
+                  folioId={actualFolioId}
+                  guestEmail={actualGuestEmail}
+                  guestName={actualGuestName}
+                  size="sm"
+                  showLabels={false}
+                />
+              </>
             )}
           </div>
         </CardTitle>
