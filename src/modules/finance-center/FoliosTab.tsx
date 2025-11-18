@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useOutstandingFolios } from '@/hooks/useOutstandingFolios';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -11,13 +12,15 @@ import {
   AlertCircle, 
   DollarSign,
   Users,
-  Calendar
+  Calendar,
+  FileText
 } from 'lucide-react';
 import { formatCurrency } from '@/lib/finance/tax';
 import { format } from 'date-fns';
 import { FolioSettlementDialog } from './components/FolioSettlementDialog';
 
 export function FoliosTab() {
+  const navigate = useNavigate();
   const { data: folios, isLoading } = useOutstandingFolios();
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedFolioId, setSelectedFolioId] = useState<string | null>(null);
@@ -216,6 +219,15 @@ export function FoliosTab() {
                       </div>
 
                       <div className="flex flex-col gap-2">
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => navigate(`/dashboard/billing/${folio.id}`)}
+                          className="whitespace-nowrap"
+                        >
+                          <FileText className="h-4 w-4 mr-2" />
+                          View Details
+                        </Button>
                         <Button
                           size="lg"
                           onClick={() => handleSettle(folio.id)}
