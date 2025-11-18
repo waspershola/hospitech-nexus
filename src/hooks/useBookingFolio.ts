@@ -86,7 +86,7 @@ export function useBookingFolio(bookingId: string | null) {
   const { tenantId } = useAuth();
   const queryClient = useQueryClient();
 
-  // Real-time folio updates
+  // Real-time folio updates via Supabase channels
   useEffect(() => {
     if (!bookingId || !tenantId) return;
     
@@ -111,11 +111,31 @@ export function useBookingFolio(bookingId: string | null) {
         console.log('[folio-txn] Transaction update received:', payload);
         queryClient.invalidateQueries({ queryKey: ['booking-folio', bookingId, tenantId] });
       })
+      .on('postgres_changes', {
+        event: '*',
+        schema: 'public',
+        table: 'payments',
+        filter: `booking_id=eq.${bookingId}`
+      }, (payload) => {
+        console.log('[payment] Payment update received:', payload);
+        queryClient.invalidateQueries({ queryKey: ['booking-folio', bookingId, tenantId] });
+      })
       .subscribe();
+    
+    // Multi-tab sync via postMessage
+    const handleMessage = (e: MessageEvent) => {
+      if (e.data?.type === 'FOLIO_UPDATED' && e.data?.bookingId === bookingId) {
+        console.log('[folio] Multi-tab update received:', e.data);
+        queryClient.invalidateQueries({ queryKey: ['booking-folio', bookingId, tenantId] });
+      }
+    };
+    
+    window.addEventListener('message', handleMessage);
     
     return () => {
       console.log('[folio] Cleaning up real-time subscription');
       supabase.removeChannel(channel);
+      window.removeEventListener('message', handleMessage);
     };
   }, [bookingId, tenantId, queryClient]);
 
