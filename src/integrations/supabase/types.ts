@@ -6926,7 +6926,12 @@ export type Database = {
       check_tenant_access: { Args: { _tenant_id: string }; Returns: Json }
       current_user_tenant: { Args: never; Returns: string }
       execute_payment_posting: {
-        Args: { p_amount: number; p_booking_id: string; p_payment_id: string }
+        Args: {
+          p_amount: number
+          p_booking_id: string
+          p_payment_id: string
+          p_tenant_id: string
+        }
         Returns: Json
       }
       find_open_folio_by_guest_phone: {
