@@ -1,5 +1,6 @@
 import { useParams } from 'react-router-dom';
 import { useFolioById } from '@/hooks/useFolioById';
+import { useFolioPDF } from '@/hooks/useFolioPDF';
 import { useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useQueryClient } from '@tanstack/react-query';
@@ -10,16 +11,28 @@ import { formatCurrency } from '@/lib/finance/tax';
 import { format } from 'date-fns';
 import { FileText, Mail, Printer, ArrowLeft } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import { FolioTransactionHistory } from '@/modules/billing/FolioTransactionHistory';
+import { useAuth } from '@/contexts/AuthContext';
 
 export default function BillingCenter() {
   const { folioId } = useParams<{ folioId: string }>();
+  const { tenantId } = useAuth();
   const { data: folio, isLoading } = useFolioById(folioId || null);
   const queryClient = useQueryClient();
   const navigate = useNavigate();
+  
+  const { 
+    generatePDF, 
+    emailFolio, 
+    printFolio,
+    isGenerating,
+    isPrinting,
+    isEmailing
+  } = useFolioPDF();
 
-  // Real-time subscription
+  // Real-time subscription for folio updates
   useEffect(() => {
-    if (!folioId) return;
+    if (!folioId || !tenantId) return;
 
     const channel = supabase
       .channel(`folio-${folioId}`)
@@ -29,14 +42,32 @@ export default function BillingCenter() {
         table: 'folio_transactions',
         filter: `folio_id=eq.${folioId}`
       }, () => {
-        queryClient.invalidateQueries({ queryKey: ['folio-by-id', folioId] });
+        console.log('[BillingCenter] Transaction update');
+        queryClient.invalidateQueries({ queryKey: ['folio-by-id', folioId, tenantId] });
+      })
+      .on('postgres_changes', {
+        event: '*',
+        schema: 'public',
+        table: 'stay_folios',
+        filter: `id=eq.${folioId}`
+      }, () => {
+        console.log('[BillingCenter] Folio update');
+        queryClient.invalidateQueries({ queryKey: ['folio-by-id', folioId, tenantId] });
+      })
+      .on('postgres_changes', {
+        event: '*',
+        schema: 'public',
+        table: 'payments',
+      }, (payload) => {
+        console.log('[BillingCenter] Payment update');
+        queryClient.invalidateQueries({ queryKey: ['folio-by-id', folioId, tenantId] });
       })
       .subscribe();
 
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [folioId, queryClient]);
+  }, [folioId, tenantId, queryClient]);
 
   if (isLoading) {
     return (
@@ -78,15 +109,35 @@ export default function BillingCenter() {
           </div>
         </div>
         <div className="flex gap-2">
-          <Button variant="outline" size="sm">
+          <Button 
+            variant="outline" 
+            size="sm"
+            onClick={() => generatePDF({ folioId: folioId!, format: 'A4' })}
+            disabled={isGenerating || !folioId}
+          >
             <FileText className="w-4 h-4 mr-2" />
             Generate PDF
           </Button>
-          <Button variant="outline" size="sm">
+          <Button 
+            variant="outline" 
+            size="sm"
+            onClick={() => emailFolio({ 
+              folioId: folioId!, 
+              format: 'A4',
+              guestEmail: folio?.guest?.email || '',
+              guestName: folio?.guest?.name || ''
+            })}
+            disabled={isEmailing || !folioId || !folio?.guest?.email}
+          >
             <Mail className="w-4 h-4 mr-2" />
             Email Invoice
           </Button>
-          <Button variant="outline" size="sm">
+          <Button 
+            variant="outline" 
+            size="sm"
+            onClick={() => printFolio({ folioId: folioId!, format: 'A4' })}
+            disabled={isPrinting || !folioId}
+          >
             <Printer className="w-4 h-4 mr-2" />
             Print
           </Button>
