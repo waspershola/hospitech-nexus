@@ -42,6 +42,48 @@ export function useRecordPayment() {
 
       return data;
     },
+    onMutate: async (newPayment) => {
+      // Cancel outgoing refetches
+      await queryClient.cancelQueries({ queryKey: ['booking-folio'] });
+      
+      // Snapshot previous value
+      const bookingId = newPayment.booking_id;
+      if (!bookingId) return { previousFolio: null };
+      
+      const previousFolio = queryClient.getQueryData(['booking-folio', bookingId, tenantId]);
+      
+      // Optimistically update folio balance
+      queryClient.setQueryData(['booking-folio', bookingId, tenantId], (old: any) => {
+        if (!old) return old;
+        return {
+          ...old,
+          totalPayments: (old?.totalPayments || 0) + newPayment.amount,
+          balance: (old?.balance || 0) - newPayment.amount,
+          payments: [
+            ...(old?.payments || []),
+            {
+              id: 'optimistic-' + Date.now(),
+              amount: newPayment.amount,
+              method: newPayment.method,
+              transaction_ref: newPayment.transaction_ref,
+              created_at: new Date().toISOString(),
+            }
+          ]
+        };
+      });
+      
+      return { previousFolio, bookingId };
+    },
+    onError: (err, newPayment, context: any) => {
+      // Rollback on error
+      if (context?.previousFolio && context?.bookingId) {
+        queryClient.setQueryData(
+          ['booking-folio', context.bookingId, tenantId], 
+          context.previousFolio
+        );
+      }
+      toast.error(err.message);
+    },
     onSuccess: async (data) => {
       // Phase 1 Enhancement: Better cache management with forced refetch
       await Promise.all([
@@ -76,8 +118,6 @@ export function useRecordPayment() {
           : `Transaction: ${data.payment?.transaction_ref || ''}`,
       });
     },
-    onError: (error: Error) => {
-      toast.error(error.message);
-    },
+    // onError already handled in onMutate
   });
 }
