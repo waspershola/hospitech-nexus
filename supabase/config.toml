@@ -162,3 +162,9 @@ verify_jwt = true
 [functions.backfill-payments]
 verify_jwt = true
 
+[functions.generate-folio-pdf]
+verify_jwt = true
+
+[functions.send-folio-email]
+verify_jwt = true
+

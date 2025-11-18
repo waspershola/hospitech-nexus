@@ -102,6 +102,8 @@ export function useFolioPDF() {
     mutationFn: async (params: EmailFolioParams) => {
       if (!tenantId) throw new Error('No tenant ID');
 
+      console.log('[useFolioPDF] PDF-V2.1-EMAIL: Starting email workflow');
+
       // First generate the PDF
       const pdfData = await generatePDF.mutateAsync({
         folioId: params.folioId,
@@ -109,31 +111,30 @@ export function useFolioPDF() {
         includeQR: params.includeQR,
       });
 
-      // Send email with PDF link
-      const { data, error } = await supabase.functions.invoke('send-email-notification', {
+      console.log('[useFolioPDF] PDF-V2.1-EMAIL: PDF generated, sending email');
+
+      // Send email using dedicated folio email function
+      const { data, error } = await supabase.functions.invoke('send-folio-email', {
         body: {
-          to: params.guestEmail,
-          subject: 'Your Stay Folio',
-          html: `
-            <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-              <h2>Thank You for Your Stay</h2>
-              <p>Dear ${params.guestName},</p>
-              <p>Please find your stay folio attached below:</p>
-              <p style="margin: 2rem 0;">
-                <a href="${pdfData.pdf_url}" 
-                   style="background: #dc2626; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; display: inline-block;">
-                  View Folio
-                </a>
-              </p>
-              <p>We appreciate your patronage and look forward to serving you again.</p>
-              <p>Best regards,<br>Hotel Management</p>
-            </div>
-          `,
           tenant_id: tenantId,
+          folio_id: params.folioId,
+          guest_email: params.guestEmail,
+          guest_name: params.guestName,
+          pdf_url: pdfData.pdf_url,
         },
       });
 
-      if (error) throw error;
+      if (error) {
+        console.error('[useFolioPDF] PDF-V2.1-EMAIL: Error', error);
+        throw error;
+      }
+      
+      if (!data.success) {
+        console.error('[useFolioPDF] PDF-V2.1-EMAIL: Failed', data.error);
+        throw new Error(data.error || 'Failed to send email');
+      }
+
+      console.log('[useFolioPDF] PDF-V2.1-EMAIL: Success', data.message_id);
       return data;
     },
     onSuccess: () => {
