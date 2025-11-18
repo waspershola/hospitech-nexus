@@ -14,6 +14,8 @@ import { WalletCreditsTab } from '@/modules/finance-center/WalletCreditsTab';
 import { ReceiptSettingsTab } from '@/modules/finance-center/ReceiptSettingsTab';
 import { ReceiptLogsTab } from '@/modules/finance-center/ReceiptLogsTab';
 import { FoliosTab } from '@/modules/finance-center/FoliosTab';
+import { PostCheckoutLedgerTab } from '@/modules/finance-center/PostCheckoutLedgerTab';
+import { FinanceReportsTab } from '@/modules/finance-center/FinanceReportsTab';
 import { BackfillFoliosButton } from '@/components/admin/BackfillFoliosButton';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
 import { PlatformFeesTab } from '@/components/finance/PlatformFeesTab';
@@ -61,6 +63,14 @@ export default function FinanceCenter() {
             <TabsTrigger value="folios" className="flex items-center gap-2 whitespace-nowrap">
               <Receipt className="w-4 h-4" />
               <span>Folios</span>
+            </TabsTrigger>
+            <TabsTrigger value="post-checkout" className="flex items-center gap-2 whitespace-nowrap">
+              <FileText className="w-4 h-4" />
+              <span>Post-Checkout</span>
+            </TabsTrigger>
+            <TabsTrigger value="reports" className="flex items-center gap-2 whitespace-nowrap">
+              <BarChart3 className="w-4 h-4" />
+              <span>Reports</span>
             </TabsTrigger>
             <TabsTrigger value="organizations" className="flex items-center gap-2 whitespace-nowrap">
               <Building className="w-4 h-4" />
@@ -128,6 +138,14 @@ export default function FinanceCenter() {
 
           <TabsContent value="folios" className="mt-0">
             <FoliosTab />
+          </TabsContent>
+
+          <TabsContent value="post-checkout" className="mt-0">
+            <PostCheckoutLedgerTab />
+          </TabsContent>
+
+          <TabsContent value="reports" className="mt-0">
+            <FinanceReportsTab />
           </TabsContent>
 
           <TabsContent value="organizations" className="mt-0">

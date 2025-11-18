@@ -42,18 +42,38 @@ export function useRecordPayment() {
 
       return data;
     },
-    onSuccess: (data) => {
-      queryClient.invalidateQueries({ queryKey: ['payments', tenantId] });
-      queryClient.invalidateQueries({ queryKey: ['wallets', tenantId] });
-      queryClient.invalidateQueries({ queryKey: ['wallet-transactions', tenantId] });
-      queryClient.invalidateQueries({ queryKey: ['finance-analytics', tenantId] });
-      queryClient.invalidateQueries({ queryKey: ['reconciliation-records', tenantId] });
-      // Invalidate ALL booking folios (including group bookings) to ensure all rooms refresh
-      queryClient.invalidateQueries({ queryKey: ['booking-folio'] });
-      queryClient.invalidateQueries({ queryKey: ['bookings'] });
+    onSuccess: async (data) => {
+      // Phase 1 Enhancement: Better cache management with forced refetch
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ['payments', tenantId] }),
+        queryClient.invalidateQueries({ queryKey: ['wallets', tenantId] }),
+        queryClient.invalidateQueries({ queryKey: ['wallet-transactions', tenantId] }),
+        queryClient.invalidateQueries({ queryKey: ['finance-analytics', tenantId] }),
+        queryClient.invalidateQueries({ queryKey: ['reconciliation-records', tenantId] }),
+        queryClient.invalidateQueries({ queryKey: ['booking-folio'] }),
+        queryClient.invalidateQueries({ queryKey: ['folio-by-id'] }),
+        queryClient.invalidateQueries({ queryKey: ['bookings'] }),
+        queryClient.invalidateQueries({ queryKey: ['frontdesk-kpis'] }),
+      ]);
+      
+      // Force immediate refetch for active queries
+      await queryClient.refetchQueries({ 
+        queryKey: ['booking-folio'], 
+        type: 'active' 
+      });
+      
+      // Broadcast update event for multi-tab consistency
+      if (data.booking_id) {
+        window.postMessage({ 
+          type: 'FOLIO_UPDATED', 
+          bookingId: data.booking_id 
+        }, '*');
+      }
       
       toast.success('Payment recorded successfully', {
-        description: `Transaction: ${data.payment?.transaction_ref || ''}`,
+        description: data.post_checkout 
+          ? 'Post-checkout payment recorded in ledger'
+          : `Transaction: ${data.payment?.transaction_ref || ''}`,
       });
     },
     onError: (error: Error) => {

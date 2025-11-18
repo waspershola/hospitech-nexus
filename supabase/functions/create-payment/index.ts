@@ -420,6 +420,47 @@ serve(async (req) => {
 
     console.log('Payment created:', payment.id);
 
+    // Phase 2: Check if booking is completed - route to post-checkout ledger
+    if (booking_id) {
+      const { data: booking, error: bookingError } = await supabase
+        .from('bookings')
+        .select('status')
+        .eq('id', booking_id)
+        .single();
+
+      if (!bookingError && booking?.status === 'completed') {
+        console.log('✅ Booking completed - routing to post-checkout ledger');
+        
+        const { error: ledgerError } = await supabase
+          .from('post_checkout_ledger')
+          .insert({
+            tenant_id,
+            booking_id,
+            payment_id: payment.id,
+            guest_id,
+            amount,
+            reason: 'late_payment',
+            recorded_by: recorded_by || user.id,
+            notes: `Payment received after checkout: ${method}`
+          });
+        
+        if (ledgerError) {
+          console.error('Failed to record post-checkout payment:', ledgerError);
+          // Don't fail - payment is already recorded
+        } else {
+          console.log('✅ Post-checkout payment recorded in ledger');
+        }
+        
+        // Return success - skip folio posting
+        return new Response(JSON.stringify({
+          success: true,
+          payment,
+          post_checkout: true,
+          message: 'Payment recorded in post-checkout ledger'
+        }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+      }
+    }
+
     // V2.2.1-FINAL-4PARAM: Post payment to folio using tenant-aware database wrapper
     // This ensures explicit tenant isolation and eliminates JS client serialization issues
     if (booking_id) {
