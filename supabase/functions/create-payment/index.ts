@@ -40,7 +40,7 @@ serve(async (req) => {
   }
 
   try {
-    console.log('🚀 CREATE-PAYMENT V2.2.1-FINAL: Initialized');
+    console.log('🚀 CREATE-PAYMENT V2.2.1-FINAL-4PARAM: Initialized');
     
     const supabase = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
@@ -420,14 +420,21 @@ serve(async (req) => {
 
     console.log('Payment created:', payment.id);
 
-    // V2.2.1-DB-WRAPPER: Post payment to folio using database-level RPC wrapper
-    // This eliminates JS client serialization issues by handling UUIDs entirely in PostgreSQL
+    // V2.2.1-FINAL-4PARAM: Post payment to folio using tenant-aware database wrapper
+    // This ensures explicit tenant isolation and eliminates JS client serialization issues
     if (booking_id) {
-      console.log('[V2.2.1-FINAL] Attempting DB-level payment posting for booking:', booking_id);
+      console.log('[V2.2.1-FINAL-4PARAM] Attempting DB-level payment posting');
+      console.log('[V2.2.1-FINAL-4PARAM] Parameters:', {
+        tenant_id,
+        booking_id,
+        payment_id: payment.id,
+        amount
+      });
       
       try {
-        // Call DB wrapper (bypasses JS client serialization entirely)
+        // Call DB wrapper with all 4 parameters (tenant_id is critical for security)
         const { data: execRes, error: execErr } = await supabase.rpc('execute_payment_posting', {
+          p_tenant_id: tenant_id,
           p_booking_id: booking_id,
           p_payment_id: payment.id,
           p_amount: amount
@@ -435,24 +442,24 @@ serve(async (req) => {
 
         if (execErr) {
           // Log error but don't block payment creation (payment already exists)
-          console.error('[V2.2.1-FINAL] execute_payment_posting RPC error:', JSON.stringify(execErr));
-          console.error('[V2.2.1-FINAL] Payment created but NOT posted to folio - manual intervention may be required');
+          console.error('[V2.2.1-FINAL-4PARAM] execute_payment_posting RPC error:', JSON.stringify(execErr));
+          console.error('[V2.2.1-FINAL-4PARAM] Payment created but NOT posted to folio - manual intervention may be required');
         } else {
-          console.log('[V2.2.1-FINAL] execute_payment_posting response:', JSON.stringify(execRes));
+          console.log('[V2.2.1-FINAL-4PARAM] execute_payment_posting response:', JSON.stringify(execRes));
           
           // Check wrapper response
           if (execRes?.success === false) {
-            console.warn('[V2.2.1-FINAL] execute_payment_posting indicated failure:', execRes);
-            console.warn('[V2.2.1-FINAL] Reason:', execRes.message || 'unknown');
+            console.warn('[V2.2.1-FINAL-4PARAM] execute_payment_posting indicated failure:', execRes);
+            console.warn('[V2.2.1-FINAL-4PARAM] Reason:', execRes.message || 'unknown');
           } else {
-            console.log('[V2.2.1-FINAL] ✅ Payment posted to folio successfully via DB wrapper');
-            console.log('[V2.2.1-FINAL] Folio ID:', execRes?.folio_id);
-            console.log('[V2.2.1-FINAL] Method:', execRes?.method);
+            console.log('[V2.2.1-FINAL-4PARAM] ✅ Payment posted to folio successfully via DB wrapper');
+            console.log('[V2.2.1-FINAL-4PARAM] Folio ID:', execRes?.folio_id);
+            console.log('[V2.2.1-FINAL-4PARAM] Result:', execRes?.result);
           }
         }
       } catch (err) {
-        console.error('[V2.2.1-FINAL] Unexpected error calling execute_payment_posting:', err);
-        console.error('[V2.2.1-FINAL] Payment exists but folio posting failed - check logs');
+        console.error('[V2.2.1-FINAL-4PARAM] Unexpected error calling execute_payment_posting:', err);
+        console.error('[V2.2.1-FINAL-4PARAM] Payment exists but folio posting failed - check logs');
       }
     }
 
