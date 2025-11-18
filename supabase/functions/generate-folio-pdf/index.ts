@@ -13,7 +13,7 @@ interface FolioPDFRequest {
 }
 
 Deno.serve(async (req) => {
-  // PDF-V2.1: Enhanced logging and error handling
+  // PDF-V2.1.1-SCHEMA-FIX: Enhanced logging and error handling
   const startTime = Date.now();
   
   if (req.method === 'OPTIONS') {
@@ -21,13 +21,13 @@ Deno.serve(async (req) => {
   }
 
   try {
-    console.log('PDF-V2.1: Request received');
+    console.log('PDF-V2.1.1-SCHEMA-FIX: Request received');
     
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     
     if (!supabaseUrl || !supabaseServiceKey) {
-      console.error('PDF-V2.1: Missing Supabase environment variables');
+      console.error('PDF-V2.1.1-SCHEMA-FIX: Missing Supabase environment variables');
       throw new Error('Server configuration error');
     }
     
@@ -35,7 +35,7 @@ Deno.serve(async (req) => {
 
     const { folio_id, tenant_id, format = 'A4', include_qr = true } = await req.json() as FolioPDFRequest;
 
-    console.log('PDF-V2.1: Generating PDF', {
+    console.log('PDF-V2.1.1-SCHEMA-FIX: Generating PDF', {
       folio_id,
       tenant_id,
       format,
@@ -45,17 +45,17 @@ Deno.serve(async (req) => {
     
     // Validate required parameters
     if (!folio_id) {
-      console.error('PDF-V2.1: Missing folio_id parameter');
+      console.error('PDF-V2.1.1-SCHEMA-FIX: Missing folio_id parameter');
       throw new Error('folio_id is required');
     }
     
     if (!tenant_id) {
-      console.error('PDF-V2.1: Missing tenant_id parameter');
+      console.error('PDF-V2.1.1-SCHEMA-FIX: Missing tenant_id parameter');
       throw new Error('tenant_id is required');
     }
 
     // 1. Fetch complete folio data with relationships
-    console.log('PDF-V2.1: Fetching folio data...');
+    console.log('PDF-V2.1.1-SCHEMA-FIX: Fetching folio data...');
     const { data: folio, error: folioError } = await supabase
       .from('stay_folios')
       .select(`
@@ -68,7 +68,7 @@ Deno.serve(async (req) => {
           metadata
         ),
         guest:guests(name, email, phone),
-        room:rooms(number, room_type),
+        room:rooms(number, type),
         transactions:folio_transactions(
           id,
           transaction_type,
@@ -84,7 +84,7 @@ Deno.serve(async (req) => {
       .single();
 
     if (folioError) {
-      console.error('PDF-V2.1: Folio fetch error', {
+      console.error('PDF-V2.1.1-SCHEMA-FIX: Folio fetch error', {
         error: folioError.message,
         code: folioError.code,
         folio_id,
@@ -94,11 +94,11 @@ Deno.serve(async (req) => {
     }
     
     if (!folio) {
-      console.error('PDF-V2.1: Folio not found', { folio_id, tenant_id });
+      console.error('PDF-V2.1.1-SCHEMA-FIX: Folio not found', { folio_id, tenant_id });
       throw new Error('Folio not found');
     }
     
-    console.log('PDF-V2.1: Folio data fetched', {
+    console.log('PDF-V2.1.1-SCHEMA-FIX: Folio data fetched', {
       folio_id: folio.id,
       status: folio.status,
       total_charges: folio.total_charges,
@@ -109,22 +109,22 @@ Deno.serve(async (req) => {
     
     // Validate required folio relationships
     if (!folio.booking) {
-      console.error('PDF-V2.1: Missing booking data', { folio_id });
+      console.error('PDF-V2.1.1-SCHEMA-FIX: Missing booking data', { folio_id });
       throw new Error('Folio has no associated booking');
     }
     
     if (!folio.guest) {
-      console.error('PDF-V2.1: Missing guest data', { folio_id });
+      console.error('PDF-V2.1.1-SCHEMA-FIX: Missing guest data', { folio_id });
       throw new Error('Folio has no associated guest');
     }
     
     if (!folio.room) {
-      console.error('PDF-V2.1: Missing room data', { folio_id });
+      console.error('PDF-V2.1.1-SCHEMA-FIX: Missing room data', { folio_id });
       throw new Error('Folio has no associated room');
     }
 
     // 2. Fetch hotel branding
-    console.log('PDF-V2.1: Fetching hotel branding...');
+    console.log('PDF-V2.1.1-SCHEMA-FIX: Fetching hotel branding...');
     const { data: branding, error: brandingError } = await supabase
       .from('hotel_branding')
       .select('*')
@@ -132,11 +132,11 @@ Deno.serve(async (req) => {
       .single();
     
     if (brandingError) {
-      console.warn('PDF-V2.1: Branding fetch warning', brandingError.message);
+      console.warn('PDF-V2.1.1-SCHEMA-FIX: Branding fetch warning', brandingError.message);
     }
 
     // 3. Fetch receipt settings for styling
-    console.log('PDF-V2.1: Fetching receipt settings...');
+    console.log('PDF-V2.1.1-SCHEMA-FIX: Fetching receipt settings...');
     const { data: receiptSettings, error: receiptError } = await supabase
       .from('receipt_settings')
       .select('*')
@@ -145,11 +145,11 @@ Deno.serve(async (req) => {
       .single();
     
     if (receiptError) {
-      console.warn('PDF-V2.1: Receipt settings warning', receiptError.message);
+      console.warn('PDF-V2.1.1-SCHEMA-FIX: Receipt settings warning', receiptError.message);
     }
 
     // 4. Fetch tenant details
-    console.log('PDF-V2.1: Fetching tenant details...');
+    console.log('PDF-V2.1.1-SCHEMA-FIX: Fetching tenant details...');
     const { data: tenant, error: tenantError } = await supabase
       .from('tenants')
       .select('name')
@@ -157,24 +157,24 @@ Deno.serve(async (req) => {
       .single();
     
     if (tenantError) {
-      console.error('PDF-V2.1: Tenant fetch error', tenantError.message);
+      console.error('PDF-V2.1.1-SCHEMA-FIX: Tenant fetch error', tenantError.message);
       throw new Error('Failed to fetch tenant details');
     }
 
     // 5. Calculate nights and format dates
-    console.log('PDF-V2.1: Calculating stay duration...');
+    console.log('PDF-V2.1.1-SCHEMA-FIX: Calculating stay duration...');
     const checkIn = new Date(folio.booking.check_in);
     const checkOut = new Date(folio.booking.check_out);
     const nights = Math.ceil((checkOut.getTime() - checkIn.getTime()) / (1000 * 60 * 60 * 24));
     
-    console.log('PDF-V2.1: Stay details', {
+    console.log('PDF-V2.1.1-SCHEMA-FIX: Stay details', {
       check_in: checkIn.toISOString(),
       check_out: checkOut.toISOString(),
       nights
     });
 
     // 6. Calculate running balance for transactions
-    console.log('PDF-V2.1: Processing transactions...');
+    console.log('PDF-V2.1.1-SCHEMA-FIX: Processing transactions...');
     let runningBalance = 0;
     const transactionsWithBalance = (folio.transactions || [])
       .sort((a: any, b: any) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime())
@@ -187,13 +187,13 @@ Deno.serve(async (req) => {
         return { ...txn, running_balance: runningBalance };
       });
     
-    console.log('PDF-V2.1: Transactions processed', {
+    console.log('PDF-V2.1.1-SCHEMA-FIX: Transactions processed', {
       count: transactionsWithBalance.length,
       final_balance: runningBalance
     });
 
     // 7. Generate luxury modern HTML
-    console.log('PDF-V2.1: Generating HTML folio...');
+    console.log('PDF-V2.1.1-SCHEMA-FIX: Generating HTML folio...');
     const folioHtml = generateLuxuryFolioHTML({
       folio,
       tenant,
@@ -205,7 +205,7 @@ Deno.serve(async (req) => {
       include_qr,
     });
     
-    console.log('PDF-V2.1: HTML generated', {
+    console.log('PDF-V2.1.1-SCHEMA-FIX: HTML generated', {
       html_length: folioHtml.length,
       has_content: folioHtml.length > 1000
     });
@@ -215,7 +215,7 @@ Deno.serve(async (req) => {
     const fileName = `${folio_id}_${version}_${Date.now()}.html`;
     const storagePath = `${tenant_id}/folios/${fileName}`;
 
-    console.log('PDF-V2.1: Uploading to storage', {
+    console.log('PDF-V2.1.1-SCHEMA-FIX: Uploading to storage', {
       fileName,
       storagePath,
       version
@@ -232,28 +232,28 @@ Deno.serve(async (req) => {
       });
 
     if (uploadError) {
-      console.error('PDF-V2.1: Upload failed', {
+      console.error('PDF-V2.1.1-SCHEMA-FIX: Upload failed', {
         error: uploadError.message,
         storagePath
       });
       throw new Error(`Failed to upload folio: ${uploadError.message}`);
     }
     
-    console.log('PDF-V2.1: Upload successful', {
+    console.log('PDF-V2.1.1-SCHEMA-FIX: Upload successful', {
       path: uploadData.path
     });
 
     // 9. Get public URL
-    console.log('PDF-V2.1: Getting public URL...');
+    console.log('PDF-V2.1.1-SCHEMA-FIX: Getting public URL...');
     const { data: urlData } = supabase
       .storage
       .from('receipts')
       .getPublicUrl(storagePath);
 
-    console.log('PDF-V2.1: Public URL generated', { publicUrl: urlData.publicUrl });
+    console.log('PDF-V2.1.1-SCHEMA-FIX: Public URL generated', { publicUrl: urlData.publicUrl });
 
     // 10. Update folio metadata
-    console.log('PDF-V2.1: Updating folio metadata...');
+    console.log('PDF-V2.1.1-SCHEMA-FIX: Updating folio metadata...');
     const { error: updateError } = await supabase
       .from('stay_folios')
       .update({
@@ -268,11 +268,11 @@ Deno.serve(async (req) => {
       .eq('tenant_id', tenant_id);
 
     if (updateError) {
-      console.warn('PDF-V2.1: Metadata update warning', updateError.message);
+      console.warn('PDF-V2.1.1-SCHEMA-FIX: Metadata update warning', updateError.message);
     }
 
     const duration = Date.now() - startTime;
-    console.log('PDF-V2.1: PDF generation complete', {
+    console.log('PDF-V2.1.1-SCHEMA-FIX: PDF generation complete', {
       success: true,
       publicUrl: urlData.publicUrl,
       version,
@@ -292,7 +292,7 @@ Deno.serve(async (req) => {
 
   } catch (error) {
     const duration = Date.now() - startTime;
-    console.error('PDF-V2.1: Error caught', {
+    console.error('PDF-V2.1.1-SCHEMA-FIX: Error caught', {
       error: error instanceof Error ? error.message : 'Unknown error',
       stack: error instanceof Error ? error.stack : undefined,
       duration_ms: duration
@@ -302,7 +302,7 @@ Deno.serve(async (req) => {
       JSON.stringify({ 
         success: false, 
         error: error instanceof Error ? error.message : 'Failed to generate folio PDF',
-        version: 'PDF-V2.1'
+        version: 'PDF-V2.1.1-SCHEMA-FIX'
       }),
       { 
         status: 500,
