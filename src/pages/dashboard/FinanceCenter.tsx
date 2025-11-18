@@ -16,6 +16,7 @@ import { ReceiptLogsTab } from '@/modules/finance-center/ReceiptLogsTab';
 import { FoliosTab } from '@/modules/finance-center/FoliosTab';
 import { PostCheckoutLedgerTab } from '@/modules/finance-center/PostCheckoutLedgerTab';
 import { FinanceReportsTab } from '@/modules/finance-center/FinanceReportsTab';
+import { FinanceAuditTab } from '@/modules/finance-center/FinanceAuditTab';
 import { BackfillFoliosButton } from '@/components/admin/BackfillFoliosButton';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
 import { PlatformFeesTab } from '@/components/finance/PlatformFeesTab';
@@ -108,6 +109,10 @@ export default function FinanceCenter() {
               <DollarSign className="w-4 h-4" />
               <span>Platform Fees</span>
             </TabsTrigger>
+            <TabsTrigger value="audit" className="flex items-center gap-2 whitespace-nowrap">
+              <Shield className="w-4 h-4" />
+              <span>Audit Trail</span>
+            </TabsTrigger>
           </TabsList>
         </div>
 
@@ -183,9 +188,13 @@ export default function FinanceCenter() {
           <TabsContent value="platform-fees" className="mt-0">
             <PlatformFeesTab />
           </TabsContent>
+
+          <TabsContent value="audit" className="mt-0">
+            <FinanceAuditTab />
+          </TabsContent>
         </div>
       </Tabs>
-      </div>
+    </div>
     </ErrorBoundary>
   );
 }

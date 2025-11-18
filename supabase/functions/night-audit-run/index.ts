@@ -69,15 +69,17 @@ serve(async (req) => {
         auditRun: { ...auditRun, total_revenue: totalRevenue }
       }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
       await supabase
         .from('night_audit_runs')
-        .update({ status: 'failed', error_message: error.message })
+        .update({ status: 'failed', error_message: errorMessage })
         .eq('id', auditRun.id);
 
       throw error;
     }
   } catch (error) {
-    return new Response(JSON.stringify({ error: error.message }), {
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    return new Response(JSON.stringify({ error: errorMessage }), {
       status: 500,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' }
     });
