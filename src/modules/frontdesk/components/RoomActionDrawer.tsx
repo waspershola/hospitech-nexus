@@ -303,15 +303,15 @@ export function RoomActionDrawer({ roomId, contextDate, open, onClose, onOpenAss
       if (event.data?.type === 'FOLIO_UPDATED' && event.data?.bookingId === activeBooking?.id) {
         console.log('[drawer] VIEW-FOLIO-BUTTON-V1: Cross-tab folio update received - refetching');
         queryClient.invalidateQueries({ queryKey: ['booking-folio', activeBooking.id, tenantId] });
-        if (folio?.id) {
-          queryClient.invalidateQueries({ queryKey: ['folio-by-id', folio.id] });
+        if (folio?.folioId) {
+          queryClient.invalidateQueries({ queryKey: ['folio-by-id', folio.folioId] });
         }
       }
     };
     
     window.addEventListener('message', handleFolioUpdate);
     return () => window.removeEventListener('message', handleFolioUpdate);
-  }, [activeBooking?.id, folio?.id, tenantId, queryClient]);
+  }, [activeBooking?.id, folio?.folioId, tenantId, queryClient]);
 
   const handleQuickCheckIn = () => {
     if (!room || !onOpenAssignDrawer) return;
@@ -650,7 +650,7 @@ export function RoomActionDrawer({ roomId, contextDate, open, onClose, onOpenAss
                     </div>
                   </div>
                   {/* VIEW-FOLIO-BUTTON-V1: Navigate to Billing Center */}
-                  {folio?.id && (
+                  {folio?.folioId && (
                     <TooltipProvider>
                       <Tooltip>
                         <TooltipTrigger asChild>
@@ -658,8 +658,8 @@ export function RoomActionDrawer({ roomId, contextDate, open, onClose, onOpenAss
                             variant="outline"
                             size="sm"
                             onClick={() => {
-                              console.log('VIEW-FOLIO-BUTTON-V1: Navigating to billing center', folio.id);
-                              navigate(`/dashboard/billing/${folio.id}`);
+                              console.log('VIEW-FOLIO-BUTTON-V1: Navigating to billing center', folio.folioId);
+                              navigate(`/dashboard/billing/${folio.folioId}`);
                             }}
                             className="gap-2"
                           >
