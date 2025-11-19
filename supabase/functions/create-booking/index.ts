@@ -414,7 +414,7 @@ serve(async (req) => {
           .from('bookings')
           .select('id, booking_reference')
           .eq('tenant_id', tenant_id)
-          .eq('metadata->>group_id', group_id);
+          .contains('metadata', { group_id: group_id });
         
         if (groupBookings && groupBookings.length > 0) {
           console.log(`[ROLLBACK-V1] Found ${groupBookings.length} group bookings to rollback:`, groupBookings.map(b => b.booking_reference));
@@ -423,7 +423,7 @@ serve(async (req) => {
           const { error: deleteError } = await supabaseClient
             .from('bookings')
             .delete()
-            .eq('metadata->>group_id', group_id)
+            .contains('metadata', { group_id: group_id })
             .eq('tenant_id', tenant_id);
           
           if (deleteError) {
@@ -528,7 +528,7 @@ serve(async (req) => {
           .from('bookings')
           .select('id, booking_reference')
           .eq('tenant_id', tenant_id)
-          .eq('metadata->>group_id', group_id);
+          .contains('metadata', { group_id: group_id });
         
         if (groupBookings && groupBookings.length > 0) {
           console.log(`[ROLLBACK-V1] Deleting ${groupBookings.length} group bookings:`, groupBookings.map(b => b.booking_reference));
@@ -536,7 +536,7 @@ serve(async (req) => {
           await supabaseClient
             .from('bookings')
             .delete()
-            .eq('metadata->>group_id', group_id)
+            .contains('metadata', { group_id: group_id })
             .eq('tenant_id', tenant_id);
           
           console.log(`[ROLLBACK-V1] ✅ Rolled back group ${group_id}`);
@@ -634,7 +634,7 @@ serve(async (req) => {
           await supabaseClient
             .from('bookings')
             .delete()
-            .eq('metadata->>group_id', group_id)
+            .contains('metadata', { group_id: group_id })
             .eq('tenant_id', tenant_id);
           
           return new Response(
@@ -702,7 +702,7 @@ serve(async (req) => {
           await supabaseClient
             .from('bookings')
             .delete()
-            .eq('metadata->>group_id', group_id)
+            .contains('metadata', { group_id: group_id })
             .eq('tenant_id', tenant_id);
           
           return new Response(
