@@ -571,6 +571,51 @@ serve(async (req) => {
       console.error('[platform-fee] Error extracting fee (non-blocking):', feeError);
     }
 
+    // GROUP-MASTER-V1: Create group master folio for first booking in group
+    if (group_id) {
+      console.log('[GROUP-MASTER-V1] Group booking detected. Checking if master folio needed for group:', group_id);
+      
+      try {
+        // Check if this is the first booking in the group by counting existing bookings
+        const { data: existingGroupBookings, error: countError } = await supabaseClient
+          .from('bookings')
+          .select('id')
+          .eq('tenant_id', tenant_id)
+          .eq('metadata->>group_id', group_id);
+        
+        if (countError) {
+          console.error('[GROUP-MASTER-V1] Error counting group bookings (non-blocking):', countError);
+        } else {
+          const bookingCount = existingGroupBookings?.length || 0;
+          console.log('[GROUP-MASTER-V1] Group has', bookingCount, 'booking(s)');
+          
+          // If this is the first or only booking, create master folio
+          if (bookingCount === 1) {
+            console.log('[GROUP-MASTER-V1] First booking in group - creating master folio');
+            
+            const { data: masterFolioResult, error: masterFolioError } = await supabaseClient
+              .rpc('create_group_master_folio', {
+                p_tenant_id: tenant_id,
+                p_group_id: group_id,
+                p_master_booking_id: newBooking.id,
+                p_guest_id: guest_id,
+                p_group_name: group_name || `Group ${group_id.substring(0, 8)}`
+              });
+            
+            if (masterFolioError) {
+              console.error('[GROUP-MASTER-V1] Failed to create master folio (non-blocking):', masterFolioError);
+            } else {
+              console.log('[GROUP-MASTER-V1] ✅ Master folio created:', masterFolioResult);
+            }
+          } else {
+            console.log('[GROUP-MASTER-V1] Not first booking - master folio should already exist');
+          }
+        }
+      } catch (groupMasterError) {
+        console.error('[GROUP-MASTER-V1] Group master folio creation exception (non-blocking):', groupMasterError);
+      }
+    }
+
     // CRITICAL: If booking created with checked_in status, create folio BEFORE returning
     if (status === 'checked_in') {
       console.log('[create-booking] Booking created with checked_in status - creating folio');

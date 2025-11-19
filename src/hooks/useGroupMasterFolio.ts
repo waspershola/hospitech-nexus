@@ -122,11 +122,11 @@ export function useGroupMasterFolio(groupBookingId: string | null) {
         };
       }
 
-      console.log('[useGroupMasterFolio] Fetching group master folio for:', groupBookingId);
+      console.log('[useGroupMasterFolio] Fetching group master folio for group_id:', groupBookingId);
 
       const { data, error } = await supabase.rpc('get_group_master_folio', {
         p_tenant_id: tenantId,
-        p_group_booking_id: groupBookingId,
+        p_group_id: groupBookingId,
       });
 
       if (error) {
