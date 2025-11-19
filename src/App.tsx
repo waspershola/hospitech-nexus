@@ -37,6 +37,7 @@ import BarDashboard from './pages/dashboard/BarDashboard';
 import SpaDashboard from './pages/dashboard/SpaDashboard';
 import LaundryDashboard from './pages/dashboard/LaundryDashboard';
 import BillingCenter from './pages/dashboard/BillingCenter';
+import ClosedFolios from './pages/dashboard/ClosedFolios';
 import NightAudit from './pages/dashboard/NightAudit';
 import Payments from './pages/dashboard/Payments';
 import Wallets from './pages/dashboard/Wallets';
@@ -151,6 +152,7 @@ const App = () => (
               <Route path="configuration-center" element={<RoleGuard allowedRoles={['owner', 'manager']}><ConfigurationCenter /></RoleGuard>} />
               <Route path="finance-center" element={<RoleGuard allowedRoles={['owner', 'manager', 'finance', 'accountant']}><FinanceCenter /></RoleGuard>} />
               <Route path="billing/:folioId" element={<RoleGuard allowedRoles={['owner', 'manager', 'finance', 'accountant']}><BillingCenter /></RoleGuard>} />
+              <Route path="folios/closed" element={<RoleGuard allowedRoles={['owner', 'manager', 'finance', 'accountant']}><ClosedFolios /></RoleGuard>} />
               <Route path="night-audit" element={<RoleGuard allowedRoles={['owner', 'manager', 'finance', 'accountant']}><NightAudit /></RoleGuard>} />
               
               {/* Department-specific dashboards */}
