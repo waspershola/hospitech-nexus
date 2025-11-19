@@ -81,10 +81,10 @@ serve(async (req) => {
       );
     }
 
-    // Verify folio is open
+    // Verify folio is open and get booking details
     const { data: folio, error: folioError } = await supabaseClient
       .from('stay_folios')
-      .select('id, status, folio_number, balance')
+      .select('id, status, folio_number, balance, booking_id, guest_id')
       .eq('id', request.stay_folio_id)
       .eq('tenant_id', tenant_id)
       .single();
@@ -100,7 +100,55 @@ serve(async (req) => {
       );
     }
 
-    // Post charge to folio using RPC
+    // Get booking to check organization limits
+    const { data: booking, error: bookingError } = await supabaseClient
+      .from('bookings')
+      .select('organization_id')
+      .eq('id', folio.booking_id)
+      .eq('tenant_id', tenant_id)
+      .single();
+
+    if (bookingError) {
+      console.error('[qr-auto-folio-post] Error fetching booking:', bookingError);
+    }
+
+    // Validate organization limits if applicable
+    if (booking?.organization_id) {
+      console.log('[qr-auto-folio-post] Validating org limits for:', booking.organization_id);
+      
+      const { data: validation, error: validationError } = await supabaseClient.rpc(
+        'validate_org_limits',
+        {
+          _org_id: booking.organization_id,
+          _guest_id: folio.guest_id,
+          _department: service_category || 'general',
+          _amount: amount,
+        }
+      );
+
+      if (validationError) {
+        console.error('[qr-auto-folio-post] Validation error:', validationError);
+        return new Response(
+          JSON.stringify({ success: false, error: 'Failed to validate organization limits' }),
+          { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 500 }
+        );
+      }
+
+      if (validation && !validation.allowed) {
+        console.log('[qr-auto-folio-post] Organization limit exceeded:', validation.detail);
+        return new Response(
+          JSON.stringify({
+            success: false,
+            error: 'Organization credit limit exceeded',
+            code: validation.code,
+            detail: validation.detail,
+          }),
+          { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 400 }
+        );
+      }
+    }
+
+    // Post charge to folio using RPC (validation happens inside RPC too)
     const chargeDescription = description || `${service_category} - ${request_id.slice(0, 8)}`;
     
     const { data: postResult, error: postError } = await supabaseClient.rpc(

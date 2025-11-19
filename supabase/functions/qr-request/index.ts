@@ -436,6 +436,56 @@ serve(async (req) => {
         console.log(`[folio] Posting charge of ${paymentInfo.subtotal} to folio ${attachedFolioId}`);
         
         try {
+          // Get booking to check organization limits
+          const { data: folioData } = await supabase
+            .from('stay_folios')
+            .select('booking_id, guest_id')
+            .eq('id', attachedFolioId)
+            .single();
+
+          if (folioData) {
+            const { data: bookingData } = await supabase
+              .from('bookings')
+              .select('organization_id')
+              .eq('id', folioData.booking_id)
+              .eq('tenant_id', qr.tenant_id)
+              .single();
+
+            // Validate organization limits if applicable
+            if (bookingData?.organization_id) {
+              console.log('[qr-request] Validating org limits for:', bookingData.organization_id);
+              
+              const { data: validation, error: validationError } = await supabase.rpc(
+                'validate_org_limits',
+                {
+                  _org_id: bookingData.organization_id,
+                  _guest_id: folioData.guest_id,
+                  _department: finalDepartment || 'general',
+                  _amount: paymentInfo.subtotal,
+                }
+              );
+
+              if (validationError) {
+                console.error('[qr-request] Validation error:', validationError);
+                throw new Error('Failed to validate organization limits');
+              }
+
+              if (validation && !validation.allowed) {
+                console.log('[qr-request] Organization limit exceeded:', validation.detail);
+                return new Response(
+                  JSON.stringify({
+                    success: false,
+                    error: 'Organization credit limit exceeded',
+                    code: validation.code,
+                    detail: validation.detail,
+                  }),
+                  { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 400 }
+                );
+              }
+            }
+          }
+
+          // Post charge to folio using RPC (validation happens inside RPC too)
           const { data: chargeResult, error: chargeError } = await supabase.rpc('folio_post_charge', {
             p_folio_id: attachedFolioId,
             p_amount: paymentInfo.subtotal,
