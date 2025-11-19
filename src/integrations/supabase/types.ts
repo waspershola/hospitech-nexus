@@ -5518,13 +5518,18 @@ export type Database = {
           created_at: string | null
           created_by: string | null
           folio_number: string | null
+          folio_snapshot: Json | null
           folio_type: string
           group_id: string | null
           guest_id: string | null
           id: string
+          is_closed_for_day: boolean | null
           is_primary: boolean
           metadata: Json | null
+          night_audit_day: string | null
+          night_audit_status: string | null
           parent_folio_id: string | null
+          posting_date: string | null
           room_id: string | null
           status: string
           tenant_id: string
@@ -5540,13 +5545,18 @@ export type Database = {
           created_at?: string | null
           created_by?: string | null
           folio_number?: string | null
+          folio_snapshot?: Json | null
           folio_type?: string
           group_id?: string | null
           guest_id?: string | null
           id?: string
+          is_closed_for_day?: boolean | null
           is_primary?: boolean
           metadata?: Json | null
+          night_audit_day?: string | null
+          night_audit_status?: string | null
           parent_folio_id?: string | null
+          posting_date?: string | null
           room_id?: string | null
           status?: string
           tenant_id: string
@@ -5562,13 +5572,18 @@ export type Database = {
           created_at?: string | null
           created_by?: string | null
           folio_number?: string | null
+          folio_snapshot?: Json | null
           folio_type?: string
           group_id?: string | null
           guest_id?: string | null
           id?: string
+          is_closed_for_day?: boolean | null
           is_primary?: boolean
           metadata?: Json | null
+          night_audit_day?: string | null
+          night_audit_status?: string | null
           parent_folio_id?: string | null
+          posting_date?: string | null
           room_id?: string | null
           status?: string
           tenant_id?: string
@@ -7286,6 +7301,10 @@ export type Database = {
         Returns: Json
       }
       check_tenant_access: { Args: { _tenant_id: string }; Returns: Json }
+      complete_night_audit_for_folio: {
+        Args: { p_folio_id: string }
+        Returns: Json
+      }
       current_user_tenant: { Args: never; Returns: string }
       execute_payment_posting: {
         Args: {
@@ -7413,6 +7432,10 @@ export type Database = {
       }
       is_platform_admin: { Args: { _user_id: string }; Returns: boolean }
       is_system_locked_user: { Args: { _user_id: string }; Returns: boolean }
+      prepare_folio_for_night_audit: {
+        Args: { p_audit_day: string; p_folio_id: string }
+        Returns: Json
+      }
       restore_tenant: { Args: { _tenant_id: string }; Returns: Json }
       soft_delete_tenant: {
         Args: { _deleted_by: string; _tenant_id: string }
