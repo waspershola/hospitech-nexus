@@ -23,11 +23,14 @@ import { TransferChargeDialog } from '@/components/folio/TransferChargeDialog';
 import { SplitChargeDialog } from '@/components/folio/SplitChargeDialog';
 import { MergeFolioDialog } from '@/components/folio/MergeFolioDialog';
 import { AddPaymentDialog } from '@/components/folio/AddPaymentDialog';
+import { ReopenFolioDialog } from '@/components/folio/ReopenFolioDialog';
 import { useAuth } from '@/contexts/AuthContext';
+import { Eye } from 'lucide-react';
 
 export default function BillingCenter() {
   const { folioId } = useParams<{ folioId: string }>();
   const [searchParams, setSearchParams] = useSearchParams();
+  const isClosedMode = searchParams.get('mode') === 'closed';
   const { tenantId } = useAuth();
   const { data: folio, isLoading } = useFolioById(folioId || null);
   const queryClient = useQueryClient();
@@ -39,9 +42,13 @@ export default function BillingCenter() {
   const [splitDialogOpen, setSplitDialogOpen] = useState(false);
   const [mergeFolioOpen, setMergeFolioOpen] = useState(false);
   const [addPaymentOpen, setAddPaymentOpen] = useState(false);
+  const [reopenDialogOpen, setReopenDialogOpen] = useState(false);
   const [selectedTransactionId, setSelectedTransactionId] = useState<string | null>(null);
   const [selectedTransactionAmount, setSelectedTransactionAmount] = useState(0);
   const [selectedTransactionDescription, setSelectedTransactionDescription] = useState('');
+  
+  const isClosed = folio?.status === 'closed' || folio?.status === 'completed';
+  const isReadOnly = isClosedMode || isClosed;
 
   // Get multi-folio support if we have a booking
   const { folios, createFolio, isCreatingFolio } = useMultiFolios(folio?.booking_id || null);
@@ -168,23 +175,40 @@ export default function BillingCenter() {
           </div>
         </div>
         <div className="flex items-center gap-3">
-          <Badge variant="outline" className="gap-1">
-            <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
-            Live Updates
-          </Badge>
+          {isReadOnly && isClosed && (
+            <Button
+              variant="outline"
+              onClick={() => setReopenDialogOpen(true)}
+            >
+              Reopen Folio
+            </Button>
+          )}
+          {isReadOnly ? (
+            <Badge variant="outline" className="gap-1">
+              <Eye className="w-3 h-3" />
+              Read-Only (Closed)
+            </Badge>
+          ) : (
+            <Badge variant="outline" className="gap-1">
+              <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
+              Live Updates
+            </Badge>
+          )}
           <FolioSwitcher
             folios={folios}
             currentFolioId={folioId!}
             onSwitch={(newFolioId) => navigate(`/dashboard/billing/${newFolioId}`)}
           />
-          <Button 
-            variant="outline" 
-            size="sm"
-            onClick={() => setCreateFolioOpen(true)}
-          >
-            <Plus className="w-4 h-4 mr-2" />
-            Create Folio
-          </Button>
+          {!isReadOnly && (
+            <Button 
+              variant="outline" 
+              size="sm"
+              onClick={() => setCreateFolioOpen(true)}
+            >
+              <Plus className="w-4 h-4 mr-2" />
+              Create Folio
+            </Button>
+          )}
         </div>
       </div>
         <div className="space-y-2">
@@ -295,23 +319,23 @@ export default function BillingCenter() {
       {/* Transaction History */}
       <FolioTransactionHistory
           folioId={folioId} 
-          onTransfer={(txnId, amount) => {
+          onTransfer={!isReadOnly ? (txnId, amount) => {
             console.log('[BillingCenter] TRANSACTION-ROW-ACTIONS-V1: Transfer', txnId, amount);
             setSelectedTransactionId(txnId);
             setSelectedTransactionAmount(amount);
             setTransferDialogOpen(true);
-          }}
-          onSplit={(txnId, amount, description) => {
+          } : undefined}
+          onSplit={!isReadOnly ? (txnId, amount, description) => {
             console.log('[BillingCenter] TRANSACTION-ROW-ACTIONS-V1: Split', txnId, amount);
             setSelectedTransactionId(txnId);
             setSelectedTransactionAmount(amount);
             setSelectedTransactionDescription(description);
             setSplitDialogOpen(true);
-          }}
-          onReverse={(txnId) => {
+          } : undefined}
+          onReverse={!isReadOnly ? (txnId) => {
             console.log('[BillingCenter] TRANSACTION-ROW-ACTIONS-V1: Reverse', txnId);
             // TODO: Implement reverse transaction
-          }}
+          } : undefined}
           availableFoliosCount={folios.length}
         />
       </div>
@@ -373,7 +397,11 @@ export default function BillingCenter() {
             <CardTitle className="text-lg">Quick Actions</CardTitle>
           </CardHeader>
           <CardContent className="space-y-2">
-            {folio.status === 'open' && (
+            {isReadOnly ? (
+              <p className="text-sm text-muted-foreground py-4 text-center">
+                Folio is closed. Reopen to make changes.
+              </p>
+            ) : (
               <>
                 <Button 
                   variant="outline" 
@@ -391,26 +419,26 @@ export default function BillingCenter() {
                   <DollarSign className="w-4 h-4 mr-2" />
                   Add Payment
                 </Button>
-              </>
-            )}
-            {folio.status === 'open' && folios.length > 1 && (
-              <>
-                <Button 
-                  variant="outline" 
-                  className="w-full justify-start"
-                  onClick={() => setTransferDialogOpen(true)}
-                >
-                  <ArrowLeftRight className="w-4 h-4 mr-2" />
-                  Transfer Charges
-                </Button>
-                <Button 
-                  variant="outline" 
-                  className="w-full justify-start"
-                  onClick={() => setMergeFolioOpen(true)}
-                >
-                  <Merge className="w-4 h-4 mr-2" />
-                  Merge Folio
-                </Button>
+                {folios.length > 1 && (
+                  <>
+                    <Button 
+                      variant="outline" 
+                      className="w-full justify-start"
+                      onClick={() => setTransferDialogOpen(true)}
+                    >
+                      <ArrowLeftRight className="w-4 h-4 mr-2" />
+                      Transfer Charges
+                    </Button>
+                    <Button 
+                      variant="outline" 
+                      className="w-full justify-start"
+                      onClick={() => setMergeFolioOpen(true)}
+                    >
+                      <Merge className="w-4 h-4 mr-2" />
+                      Merge Folio
+                    </Button>
+                  </>
+                )}
               </>
             )}
             <div className="pt-2 border-t" />
@@ -538,6 +566,14 @@ export default function BillingCenter() {
           </CardContent>
         </Card>
       </div>
+
+      {/* Reopen Folio Dialog */}
+      <ReopenFolioDialog
+        open={reopenDialogOpen}
+        onOpenChange={setReopenDialogOpen}
+        folioId={folioId!}
+        folioNumber={folio.folio_number}
+      />
     </div>
   );
 }

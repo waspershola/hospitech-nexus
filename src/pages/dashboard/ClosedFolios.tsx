@@ -158,14 +158,16 @@ export default function ClosedFolios() {
                         </span>
                       </TableCell>
                       <TableCell className="text-right">
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => navigate(`/dashboard/billing/${folio.id}`)}
-                        >
-                          <Eye className="w-4 h-4 mr-1" />
-                          View
-                        </Button>
+                        <div className="flex items-center justify-end gap-2">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => navigate(`/dashboard/billing/${folio.id}?mode=closed`)}
+                          >
+                            <Eye className="w-4 h-4 mr-1" />
+                            View Folio
+                          </Button>
+                        </div>
                       </TableCell>
                     </TableRow>
                   ))}
