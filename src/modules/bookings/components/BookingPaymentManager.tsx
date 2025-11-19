@@ -233,15 +233,44 @@ export function BookingPaymentManager({ bookingId }: BookingPaymentManagerProps)
     }, defaultSettings);
   };
 
-  if (bookingLoading) {
+  // Show unified loading state
+  if (isLoading) {
     return (
-      <div className="flex items-center justify-center py-8">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      <div className="space-y-4">
+        <Card>
+          <CardHeader>
+            <Skeleton className="h-8 w-64" />
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <Skeleton className="h-20 w-full" />
+            <Skeleton className="h-20 w-full" />
+            <Skeleton className="h-20 w-full" />
+          </CardContent>
+        </Card>
       </div>
     );
   }
 
   if (!booking) return null;
+
+  // Show pre-check-in message if booking is reserved and no folio exists
+  if (booking.status === 'reserved' && !folio) {
+    return (
+      <div className="space-y-4">
+        <Card>
+          <CardContent className="py-12 text-center">
+            <p className="text-muted-foreground mb-4">
+              No folio created yet — check-in required
+            </p>
+            <p className="text-sm text-muted-foreground">
+              Folio will be created automatically when guest checks in. <br />
+              After check-in, open Billing Center for detailed folio management.
+            </p>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
 
   const totalPaid = payments.reduce((sum, p) => sum + (p.status === 'completed' ? Number(p.amount) : 0), 0);
   const balance = Number(booking.total_amount) - totalPaid;
