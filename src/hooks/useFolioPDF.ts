@@ -150,22 +150,24 @@ export function useFolioPDF() {
       });
 
       if (error) {
-        console.error('[useFolioPDF] PDF-V2.1-EMAIL: Error', error);
+        console.error('[useFolioPDF] BILLING-CENTER-V2-EMAIL: Error', error);
         throw error;
       }
       
       if (!data.success) {
-        console.error('[useFolioPDF] PDF-V2.1-EMAIL: Failed', data.error);
+        console.error('[useFolioPDF] BILLING-CENTER-V2-EMAIL: Failed', data.error);
         throw new Error(data.error || 'Failed to send email');
       }
 
-      console.log('[useFolioPDF] PDF-V2.1-EMAIL: Success', data.message_id);
+      console.log('[useFolioPDF] BILLING-CENTER-V2-EMAIL: Success', data.message_id);
       return data;
     },
     onSuccess: () => {
+      console.log('[useFolioPDF] BILLING-CENTER-V2-EMAIL: Complete');
       toast.success('Folio emailed to guest successfully');
     },
     onError: (error: Error) => {
+      console.error('[useFolioPDF] BILLING-CENTER-V2-EMAIL: Failed workflow', error);
       toast.error(`Failed to email folio: ${error.message}`);
     },
   });

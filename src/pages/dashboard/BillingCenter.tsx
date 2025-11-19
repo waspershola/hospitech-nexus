@@ -20,6 +20,8 @@ export default function BillingCenter() {
   const { data: folio, isLoading } = useFolioById(folioId || null);
   const queryClient = useQueryClient();
   const navigate = useNavigate();
+
+  console.log('[BillingCenter] BILLING-CENTER-V2: Route accessed', { folioId, tenantId });
   
   const { 
     generatePDF, 
@@ -73,6 +75,23 @@ export default function BillingCenter() {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
         <div className="text-muted-foreground">Loading folio...</div>
+      </div>
+    );
+  }
+
+  // Handle direct navigation from sidebar (no folioId)
+  if (!folioId) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[400px] gap-4">
+        <div className="text-muted-foreground">Please select a folio to view</div>
+        <p className="text-sm text-muted-foreground text-center">
+          Access Billing Center from a specific booking or folio.<br />
+          Go to Finance Center → Folios to view all folios.
+        </p>
+        <Button onClick={() => navigate('/dashboard/finance-center')}>
+          <ArrowLeft className="w-4 h-4 mr-2" />
+          Go to Finance Center
+        </Button>
       </div>
     );
   }
