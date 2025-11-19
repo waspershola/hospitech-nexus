@@ -785,7 +785,7 @@ function generateLuxuryFolioHTML(params: {
       ${tenant?.name || 'Hotel'} • Powered by LuxuryHotelPro
     </div>
     <div class="generated-timestamp">
-      Generated on ${new Date().toLocaleString('en-NG')} • PDF-TEMPLATE-V3
+      Generated on ${new Date().toLocaleString('en-NG')} • <strong style="color: #C9A959;">Folio Template V3</strong>
     </div>
   </div>
 </body>

@@ -67,7 +67,12 @@ export function useFolioPDF() {
       }
     },
     onSuccess: (data) => {
-      console.log('[useFolioPDF] BILLING-CENTER-V2: PDF generated successfully:', data.pdf_url);
+      console.log('[useFolioPDF] BILLING-CENTER-V2: PDF generated successfully:', {
+        pdf_url: data.pdf_url,
+        version: data.version,
+        template_version: data.metadata?.template_version,
+        storage_path: data.metadata?.storage_path
+      });
       toast.success('Folio PDF generated successfully');
     },
     onError: (error: Error) => {
@@ -83,7 +88,11 @@ export function useFolioPDF() {
       // First generate the PDF
       const pdfData = await generatePDF.mutateAsync(params);
       
-      console.log('[useFolioPDF] BILLING-CENTER-V2: Opening PDF for print:', pdfData.pdf_url);
+      console.log('[useFolioPDF] BILLING-CENTER-V2: Opening PDF for print:', {
+        pdf_url: pdfData.pdf_url,
+        version: pdfData.version,
+        template_version: pdfData.metadata?.template_version
+      });
       
       // Open PDF in new window for printing
       window.open(pdfData.pdf_url, '_blank');
@@ -102,13 +111,21 @@ export function useFolioPDF() {
 
   const downloadFolio = useMutation({
     mutationFn: async (params: GenerateFolioPDFParams) => {
+      console.log('[useFolioPDF] BILLING-CENTER-V2: Download workflow starting');
+      
       // Generate the PDF
       const pdfData = await generatePDF.mutateAsync(params);
+      
+      console.log('[useFolioPDF] BILLING-CENTER-V2: Downloading PDF:', {
+        pdf_url: pdfData.pdf_url,
+        version: pdfData.version,
+        template_version: pdfData.metadata?.template_version
+      });
       
       // Create download link
       const link = document.createElement('a');
       link.href = pdfData.pdf_url;
-      link.download = `folio_${params.folioId}_${Date.now()}.html`;
+      link.download = `folio_${params.folioId}_v${pdfData.version}_${Date.now()}.html`;
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
