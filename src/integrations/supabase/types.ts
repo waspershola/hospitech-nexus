@@ -993,6 +993,80 @@ export type Database = {
           },
         ]
       }
+      group_bookings: {
+        Row: {
+          created_at: string
+          group_id: string
+          group_leader: string | null
+          group_name: string
+          group_size: number
+          id: string
+          master_booking_id: string | null
+          master_folio_id: string | null
+          metadata: Json | null
+          status: string
+          tenant_id: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          group_id: string
+          group_leader?: string | null
+          group_name: string
+          group_size?: number
+          id?: string
+          master_booking_id?: string | null
+          master_folio_id?: string | null
+          metadata?: Json | null
+          status?: string
+          tenant_id: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          group_id?: string
+          group_leader?: string | null
+          group_name?: string
+          group_size?: number
+          id?: string
+          master_booking_id?: string | null
+          master_folio_id?: string | null
+          metadata?: Json | null
+          status?: string
+          tenant_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "group_bookings_master_booking_id_fkey"
+            columns: ["master_booking_id"]
+            isOneToOne: false
+            referencedRelation: "bookings"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "group_bookings_master_booking_id_fkey"
+            columns: ["master_booking_id"]
+            isOneToOne: false
+            referencedRelation: "v_bookings"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "group_bookings_master_folio_id_fkey"
+            columns: ["master_folio_id"]
+            isOneToOne: false
+            referencedRelation: "stay_folios"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "group_bookings_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       guest_communications: {
         Row: {
           created_at: string | null
@@ -7388,6 +7462,16 @@ export type Database = {
         Args: { p_folio_id: string }
         Returns: Json
       }
+      create_group_master_folio: {
+        Args: {
+          p_group_id: string
+          p_group_name: string
+          p_guest_id: string
+          p_master_booking_id: string
+          p_tenant_id: string
+        }
+        Returns: Json
+      }
       current_user_tenant: { Args: never; Returns: string }
       execute_payment_posting: {
         Args: {
@@ -7490,7 +7574,7 @@ export type Database = {
         }[]
       }
       get_group_master_folio: {
-        Args: { p_group_booking_id: string; p_tenant_id: string }
+        Args: { p_group_id: string; p_tenant_id: string }
         Returns: Json
       }
       get_low_stock_items: {
