@@ -2,6 +2,7 @@ import { useMutation } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
+import { convertHtmlToPdfAndDownload } from '@/lib/pdf/convertHtmlToPdf';
 
 interface GenerateFolioPDFParams {
   folioId: string;
@@ -111,32 +112,29 @@ export function useFolioPDF() {
 
   const downloadFolio = useMutation({
     mutationFn: async (params: GenerateFolioPDFParams) => {
-      console.log('[useFolioPDF] BILLING-CENTER-V2: Download workflow starting');
+      console.log('[useFolioPDF] PDF-TEMPLATE-V3: Download workflow starting');
       
-      // Generate the PDF
+      // Generate the HTML folio
       const pdfData = await generatePDF.mutateAsync(params);
       
-      console.log('[useFolioPDF] BILLING-CENTER-V2: Downloading PDF:', {
-        pdf_url: pdfData.pdf_url,
+      console.log('[useFolioPDF] PDF-TEMPLATE-V3: Converting HTML to PDF:', {
+        html_url: pdfData.pdf_url,
         version: pdfData.version,
         template_version: pdfData.metadata?.template_version
       });
       
-      // Create download link
-      const link = document.createElement('a');
-      link.href = pdfData.pdf_url;
-      link.download = `folio_${params.folioId}_v${pdfData.version}_${Date.now()}.html`;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
+      // Convert HTML to real PDF client-side
+      const filename = `Guest_Folio_${params.folioId}_v${pdfData.version}.pdf`;
+      await convertHtmlToPdfAndDownload(pdfData.pdf_url, filename);
       
       return pdfData;
     },
     onSuccess: () => {
-      toast.success('Folio downloaded successfully');
+      toast.success('Folio PDF downloaded successfully');
     },
     onError: (error: Error) => {
-      toast.error(`Failed to download folio: ${error.message}`);
+      console.error('[useFolioPDF] PDF-TEMPLATE-V3: Download failed', error);
+      toast.error(`Failed to download folio PDF: ${error.message}`);
     },
   });
 
