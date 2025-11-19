@@ -7465,7 +7465,7 @@ export type Database = {
       create_group_master_folio: {
         Args: {
           p_group_id: string
-          p_group_name?: string
+          p_group_name: string
           p_guest_id: string
           p_master_booking_id: string
           p_tenant_id: string
