@@ -5,6 +5,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useFinancials } from '@/hooks/useFinancials';
 import { useRoomAvailability } from '@/hooks/useRoomAvailability';
 import { calculateGroupBookingTotal } from '@/lib/finance/groupBookingCalculator';
+import { RoomAvailabilityGrid } from '../components/RoomAvailabilityGrid';
 import { Card } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
@@ -155,6 +156,17 @@ export function MultiRoomSelection({ bookingData, onChange }: MultiRoomSelection
           />
         </div>
       </div>
+
+      {/* Availability Summary Grid */}
+      {selectedRoomIds.length > 0 && (
+        <RoomAvailabilityGrid
+          rooms={allRooms || []}
+          availabilityMap={availabilityMap}
+          selectedRoomIds={selectedRoomIds}
+          checkIn={checkIn}
+          checkOut={checkOut}
+        />
+      )}
 
       <div className="space-y-3">
         <div className="flex items-center justify-between">
