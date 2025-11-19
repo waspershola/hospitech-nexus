@@ -125,7 +125,7 @@ export function FinanceReportsTab() {
               {outstandingSummary ? formatCurrency(outstandingSummary.total_outstanding, 'NGN') : '₦0'}
             </div>
             <p className="text-xs text-muted-foreground">
-              {outstandingSummary?.folio_count || 0} open folios
+              {outstandingSummary?.open_folios_count || 0} open folios
             </p>
           </CardContent>
         </Card>

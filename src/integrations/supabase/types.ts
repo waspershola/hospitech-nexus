@@ -6768,6 +6768,7 @@ export type Database = {
       v_department_revenue: {
         Row: {
           department: string | null
+          payments_received: number | null
           report_date: string | null
           revenue: number | null
           tenant_id: string | null
@@ -6775,7 +6776,7 @@ export type Database = {
         }
         Relationships: [
           {
-            foreignKeyName: "payments_tenant_id_fkey"
+            foreignKeyName: "folio_transactions_tenant_id_fkey"
             columns: ["tenant_id"]
             isOneToOne: false
             referencedRelation: "tenants"
@@ -6870,8 +6871,11 @@ export type Database = {
       v_outstanding_summary: {
         Row: {
           avg_balance: number | null
-          folio_count: number | null
           max_balance: number | null
+          min_balance: number | null
+          negative_balance_total: number | null
+          open_folios_count: number | null
+          positive_balance_total: number | null
           tenant_id: string | null
           total_outstanding: number | null
         }
