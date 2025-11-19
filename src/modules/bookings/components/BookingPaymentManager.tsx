@@ -71,7 +71,7 @@ export function BookingPaymentManager({ bookingId }: BookingPaymentManagerProps)
       console.log('BookingPaymentManager - Fetching booking:', bookingId);
       const { data, error } = await supabase
         .from('bookings')
-        .select('*, guest:guests(*), room:rooms(*)')
+        .select('*, guest:guests(*), room:rooms!bookings_room_id_fkey(*)')
         .eq('id', bookingId)
         .eq('tenant_id', tenantId!)
         .maybeSingle();
