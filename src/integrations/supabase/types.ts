@@ -2416,6 +2416,76 @@ export type Database = {
         }
         Relationships: []
       }
+      payment_methods: {
+        Row: {
+          active: boolean
+          created_at: string | null
+          created_by: string | null
+          display_order: number
+          id: string
+          metadata: Json | null
+          method_name: string
+          method_type: string
+          provider_id: string | null
+          requires_approval: boolean
+          requires_reference: boolean
+          tenant_id: string
+          updated_at: string | null
+        }
+        Insert: {
+          active?: boolean
+          created_at?: string | null
+          created_by?: string | null
+          display_order?: number
+          id?: string
+          metadata?: Json | null
+          method_name: string
+          method_type: string
+          provider_id?: string | null
+          requires_approval?: boolean
+          requires_reference?: boolean
+          tenant_id: string
+          updated_at?: string | null
+        }
+        Update: {
+          active?: boolean
+          created_at?: string | null
+          created_by?: string | null
+          display_order?: number
+          id?: string
+          metadata?: Json | null
+          method_name?: string
+          method_type?: string
+          provider_id?: string | null
+          requires_approval?: boolean
+          requires_reference?: boolean
+          tenant_id?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "payment_methods_provider_id_fkey"
+            columns: ["provider_id"]
+            isOneToOne: false
+            referencedRelation: "finance_providers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "payment_methods_provider_id_fkey"
+            columns: ["provider_id"]
+            isOneToOne: false
+            referencedRelation: "v_finance_overview_summary"
+            referencedColumns: ["provider_id"]
+          },
+          {
+            foreignKeyName: "payment_methods_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       payments: {
         Row: {
           amount: number
