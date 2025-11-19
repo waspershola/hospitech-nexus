@@ -873,6 +873,66 @@ export type Database = {
           },
         ]
       }
+      folio_routing_rules: {
+        Row: {
+          auto_create_folio: boolean
+          charge_category: string
+          created_at: string
+          created_by: string | null
+          department: string | null
+          id: string
+          is_active: boolean
+          organization_id: string | null
+          priority: number
+          target_folio_type: string
+          tenant_id: string
+          updated_at: string
+        }
+        Insert: {
+          auto_create_folio?: boolean
+          charge_category: string
+          created_at?: string
+          created_by?: string | null
+          department?: string | null
+          id?: string
+          is_active?: boolean
+          organization_id?: string | null
+          priority?: number
+          target_folio_type: string
+          tenant_id: string
+          updated_at?: string
+        }
+        Update: {
+          auto_create_folio?: boolean
+          charge_category?: string
+          created_at?: string
+          created_by?: string | null
+          department?: string | null
+          id?: string
+          is_active?: boolean
+          organization_id?: string | null
+          priority?: number
+          target_folio_type?: string
+          tenant_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "folio_routing_rules_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "folio_routing_rules_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       folio_transactions: {
         Row: {
           amount: number
