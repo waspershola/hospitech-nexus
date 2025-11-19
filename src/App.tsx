@@ -39,6 +39,8 @@ import LaundryDashboard from './pages/dashboard/LaundryDashboard';
 import BillingCenter from './pages/dashboard/BillingCenter';
 import ClosedFolios from './pages/dashboard/ClosedFolios';
 import NightAudit from './pages/dashboard/NightAudit';
+import AuditTrail from './pages/dashboard/AuditTrail';
+import FinanceReports from './pages/dashboard/FinanceReports';
 import Payments from './pages/dashboard/Payments';
 import Wallets from './pages/dashboard/Wallets';
 import Debtors from './pages/dashboard/Debtors';
@@ -154,6 +156,8 @@ const App = () => (
               <Route path="billing/:folioId" element={<RoleGuard allowedRoles={['owner', 'manager', 'finance', 'accountant']}><BillingCenter /></RoleGuard>} />
               <Route path="folios/closed" element={<RoleGuard allowedRoles={['owner', 'manager', 'finance', 'accountant']}><ClosedFolios /></RoleGuard>} />
               <Route path="night-audit" element={<RoleGuard allowedRoles={['owner', 'manager', 'finance', 'accountant']}><NightAudit /></RoleGuard>} />
+              <Route path="audit" element={<RoleGuard allowedRoles={['owner', 'manager']}><AuditTrail /></RoleGuard>} />
+              <Route path="finance/reports" element={<RoleGuard allowedRoles={['owner', 'manager', 'finance', 'accountant']}><FinanceReports /></RoleGuard>} />
               
               {/* Department-specific dashboards */}
               <Route path="finance-dashboard" element={<RoleGuard allowedRoles={['owner', 'manager', 'finance', 'accountant']}><FinanceDashboard /></RoleGuard>} />
