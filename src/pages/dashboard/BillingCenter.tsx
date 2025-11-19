@@ -16,6 +16,7 @@ import { FolioTransactionHistory } from '@/modules/billing/FolioTransactionHisto
 import { FolioSwitcher } from '@/components/folio/FolioSwitcher';
 import { AddChargeDialog } from '@/modules/billing/AddChargeDialog';
 import { CloseFolioDialog } from '@/modules/billing/CloseFolioDialog';
+import { CreateFolioDialog } from '@/components/folio/CreateFolioDialog';
 import { useAuth } from '@/contexts/AuthContext';
 
 export default function BillingCenter() {
@@ -27,6 +28,7 @@ export default function BillingCenter() {
   const navigate = useNavigate();
   const [addChargeOpen, setAddChargeOpen] = useState(false);
   const [closeFolioOpen, setCloseFolioOpen] = useState(false);
+  const [createFolioOpen, setCreateFolioOpen] = useState(false);
 
   // Get multi-folio support if we have a booking
   const { folios, createFolio, isCreatingFolio } = useMultiFolios(folio?.booking_id || null);
@@ -147,13 +149,21 @@ export default function BillingCenter() {
             </p>
           </div>
         </div>
-        {folios.length > 1 && (
+        <div className="flex items-center gap-3">
           <FolioSwitcher
             folios={folios}
             currentFolioId={folioId!}
             onSwitch={(newFolioId) => navigate(`/dashboard/billing/${newFolioId}`)}
           />
-        )}
+          <Button 
+            variant="outline" 
+            size="sm"
+            onClick={() => setCreateFolioOpen(true)}
+          >
+            <Plus className="w-4 h-4 mr-2" />
+            Create Folio
+          </Button>
+        </div>
       </div>
         <div className="space-y-2">
           <div className="flex gap-2">
@@ -368,6 +378,12 @@ export default function BillingCenter() {
               folioId={folioId}
               currentStatus={folio.status}
               folioBalance={folio.balance || 0}
+            />
+            <CreateFolioDialog
+              open={createFolioOpen}
+              onOpenChange={setCreateFolioOpen}
+              bookingId={folio.booking_id}
+              onSuccess={(newFolioId) => navigate(`/dashboard/billing/${newFolioId}`)}
             />
           </>
         )}
