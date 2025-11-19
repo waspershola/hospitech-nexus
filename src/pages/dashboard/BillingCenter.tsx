@@ -18,6 +18,7 @@ import { AddChargeDialog } from '@/modules/billing/AddChargeDialog';
 import { CloseFolioDialog } from '@/modules/billing/CloseFolioDialog';
 import { CreateFolioDialog } from '@/components/folio/CreateFolioDialog';
 import { RelatedFoliosPanel } from '@/components/folio/RelatedFoliosPanel';
+import { CrossFolioSummary } from '@/components/folio/CrossFolioSummary';
 import { TransferChargeDialog } from '@/components/folio/TransferChargeDialog';
 import { SplitChargeDialog } from '@/components/folio/SplitChargeDialog';
 import { MergeFolioDialog } from '@/components/folio/MergeFolioDialog';
@@ -155,13 +156,22 @@ export default function BillingCenter() {
             <ArrowLeft className="w-4 h-4" />
           </Button>
           <div>
-            <h1 className="text-3xl font-bold">Billing Center</h1>
+            <div className="flex items-center gap-2">
+              <h1 className="text-3xl font-bold">Billing Center</h1>
+              <Badge variant="secondary" className="capitalize">
+                {folio.folio_type.replace('_', ' ')}
+              </Badge>
+            </div>
             <p className="text-muted-foreground">
               {folio.booking?.booking_reference} • {folio.guest?.name}
             </p>
           </div>
         </div>
         <div className="flex items-center gap-3">
+          <Badge variant="outline" className="gap-1">
+            <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
+            Live Updates
+          </Badge>
           <FolioSwitcher
             folios={folios}
             currentFolioId={folioId!}
@@ -277,8 +287,13 @@ export default function BillingCenter() {
         </Card>
       </div>
 
-        {/* Transaction History */}
-        <FolioTransactionHistory 
+      {/* Cross-Folio Summary */}
+      {folios.length > 1 && (
+        <CrossFolioSummary folios={folios} />
+      )}
+
+      {/* Transaction History */}
+      <FolioTransactionHistory
           folioId={folioId} 
           onTransfer={(txnId, amount) => {
             console.log('[BillingCenter] TRANSACTION-ROW-ACTIONS-V1: Transfer', txnId, amount);
