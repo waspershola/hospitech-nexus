@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useFinancials } from '@/hooks/useFinancials';
@@ -31,6 +32,7 @@ interface BookingConfirmationProps {
 
 export function BookingConfirmation({ bookingData, onComplete }: BookingConfirmationProps) {
   const { tenantId, user } = useAuth();
+  const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { data: financials } = useFinancials();
   const { data: platformFeeConfig } = usePlatformFee(tenantId);
@@ -328,12 +330,17 @@ export function BookingConfirmation({ bookingData, onComplete }: BookingConfirma
       
       // For organization bookings, complete immediately (auto-charged to wallet)
       if (bookingData.organizationId) {
-        if (isGroupBooking) {
+        if (isGroupBooking && bookingData.groupId) {
           toast.success(`Group booking created and charged to organization! ${bookingData.selectedRoomIds?.length} rooms reserved.`);
+          // Navigate to Group Billing Center for group bookings
+          setTimeout(() => {
+            navigate(`/dashboard/group-billing/${bookingData.groupId}`);
+            onComplete();
+          }, 1500);
         } else {
           toast.success('Booking created and charged to organization!');
+          onComplete();
         }
-        onComplete();
         return;
       }
 
@@ -480,16 +487,34 @@ export function BookingConfirmation({ bookingData, onComplete }: BookingConfirma
     queryClient.invalidateQueries({ queryKey: ['payments'] });
     queryClient.invalidateQueries({ queryKey: ['bookings'] });
     toast.success('Payment recorded successfully!');
-    setTimeout(() => {
-      onComplete();
-    }, 1500);
+    
+    // Navigate to Group Billing Center for group bookings
+    if (isGroupBooking && bookingData.groupId) {
+      setTimeout(() => {
+        navigate(`/dashboard/group-billing/${bookingData.groupId}`);
+        onComplete();
+      }, 1500);
+    } else {
+      setTimeout(() => {
+        onComplete();
+      }, 1500);
+    }
   };
 
   const handleSkipPayment = () => {
     toast.info('Payment skipped. Booking recorded as accounts receivable.');
-    setTimeout(() => {
-      onComplete();
-    }, 1500);
+    
+    // Navigate to Group Billing Center for group bookings
+    if (isGroupBooking && bookingData.groupId) {
+      setTimeout(() => {
+        navigate(`/dashboard/group-billing/${bookingData.groupId}`);
+        onComplete();
+      }, 1500);
+    } else {
+      setTimeout(() => {
+        onComplete();
+      }, 1500);
+    }
   };
 
   const handlePrintConfirmation = async () => {

@@ -155,7 +155,7 @@ const App = () => (
               <Route path="configuration-center" element={<RoleGuard allowedRoles={['owner', 'manager']}><ConfigurationCenter /></RoleGuard>} />
               <Route path="finance-center" element={<RoleGuard allowedRoles={['owner', 'manager', 'finance', 'accountant']}><FinanceCenter /></RoleGuard>} />
               <Route path="billing/:folioId" element={<RoleGuard allowedRoles={['owner', 'manager', 'finance', 'accountant']}><BillingCenter /></RoleGuard>} />
-              <Route path="group-billing/:groupBookingId" element={<RoleGuard allowedRoles={['owner', 'manager', 'finance', 'accountant']}><GroupBillingCenter /></RoleGuard>} />
+              <Route path="group-billing/:groupId" element={<RoleGuard allowedRoles={['owner', 'manager', 'finance', 'accountant']}><GroupBillingCenter /></RoleGuard>} />
               <Route path="folios/closed" element={<RoleGuard allowedRoles={['owner', 'manager', 'finance', 'accountant']}><ClosedFolios /></RoleGuard>} />
               <Route path="night-audit" element={<RoleGuard allowedRoles={['owner', 'manager', 'finance', 'accountant']}><NightAudit /></RoleGuard>} />
               <Route path="audit" element={<RoleGuard allowedRoles={['owner', 'manager']}><AuditTrail /></RoleGuard>} />

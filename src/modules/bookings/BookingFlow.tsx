@@ -27,6 +27,7 @@ export type BookingData = {
   totalAmount?: number;
   organizationId?: string;
   isGroupBooking?: boolean;
+  groupId?: string;
   groupName?: string;
   groupSize?: number;
   groupLeaderName?: string;

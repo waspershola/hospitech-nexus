@@ -11,9 +11,9 @@ import { FolioTransactionHistory } from "@/modules/billing/FolioTransactionHisto
 import { Skeleton } from "@/components/ui/skeleton";
 
 export default function GroupBillingCenter() {
-  const { groupBookingId } = useParams<{ groupBookingId: string }>();
+  const { groupId } = useParams<{ groupId: string }>();
   const navigate = useNavigate();
-  const { data, isLoading } = useGroupMasterFolio(groupBookingId || null);
+  const { data, isLoading } = useGroupMasterFolio(groupId || null);
 
   if (isLoading) {
     return (
@@ -81,7 +81,7 @@ export default function GroupBillingCenter() {
         <div>
           <GroupMasterActions
             masterFolioId={master_folio.id}
-            groupBookingId={groupBookingId || ''}
+            groupBookingId={groupId || ''}
             childFolios={child_folios}
           />
         </div>

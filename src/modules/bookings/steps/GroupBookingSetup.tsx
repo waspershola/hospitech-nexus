@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Card } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
@@ -18,6 +18,17 @@ export function GroupBookingSetup({ bookingData, onChange, onNext }: GroupBookin
   const [groupName, setGroupName] = useState(bookingData.groupName || '');
   const [groupSize, setGroupSize] = useState(bookingData.groupSize || 1);
   const [groupLeaderName, setGroupLeaderName] = useState(bookingData.groupLeaderName || '');
+  
+  // Generate groupId once when component mounts if not already set
+  useEffect(() => {
+    if (!bookingData.groupId) {
+      const groupId = crypto.randomUUID();
+      onChange({
+        ...bookingData,
+        groupId,
+      });
+    }
+  }, []);
 
   const handleContinue = () => {
     onChange({
