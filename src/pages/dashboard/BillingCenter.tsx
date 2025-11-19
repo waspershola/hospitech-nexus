@@ -17,6 +17,7 @@ import { FolioSwitcher } from '@/components/folio/FolioSwitcher';
 import { AddChargeDialog } from '@/modules/billing/AddChargeDialog';
 import { CloseFolioDialog } from '@/modules/billing/CloseFolioDialog';
 import { CreateFolioDialog } from '@/components/folio/CreateFolioDialog';
+import { RelatedFoliosPanel } from '@/components/folio/RelatedFoliosPanel';
 import { useAuth } from '@/contexts/AuthContext';
 
 export default function BillingCenter() {
@@ -303,6 +304,22 @@ export default function BillingCenter() {
             </div>
           </CardContent>
         </Card>
+
+        {/* Related Folios */}
+        {folios.length > 1 && (
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-lg">Related Folios</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <RelatedFoliosPanel
+                folios={folios}
+                currentFolioId={folioId!}
+                onSelectFolio={(id) => navigate(`/dashboard/billing/${id}`)}
+              />
+            </CardContent>
+          </Card>
+        )}
 
         {/* Quick Actions */}
         <Card>
