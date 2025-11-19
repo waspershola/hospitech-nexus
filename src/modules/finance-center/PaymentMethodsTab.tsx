@@ -182,11 +182,14 @@ export function PaymentMethodsTab() {
         </div>
       )}
 
-      <PaymentMethodDrawer
-        open={drawerOpen}
-        onClose={() => setDrawerOpen(false)}
-        methodId={selectedMethod}
-      />
+      {drawerOpen && (
+        <PaymentMethodDrawer
+          open={drawerOpen}
+          onClose={() => setDrawerOpen(false)}
+          methodId={selectedMethod}
+        />
+      )}
+
 
       <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
         <AlertDialogContent>
