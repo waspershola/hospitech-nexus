@@ -32,9 +32,11 @@ export default function BillingCenter() {
     generatePDF, 
     emailFolio, 
     printFolio,
+    downloadFolio,
     isGenerating,
     isPrinting,
-    isEmailing
+    isEmailing,
+    isDownloading
   } = useFolioPDF();
 
   // Real-time subscription for folio updates
@@ -134,39 +136,44 @@ export default function BillingCenter() {
             </div>
           </div>
         </div>
-        <div className="flex gap-2">
-          <Button 
-            variant="outline" 
-            size="sm"
-            onClick={() => generatePDF({ folioId: folioId!, format: 'A4' })}
-            disabled={isGenerating || !folioId}
-          >
-            <FileText className="w-4 h-4 mr-2" />
-            Generate PDF
-          </Button>
-          <Button 
-            variant="outline" 
-            size="sm"
-            onClick={() => emailFolio({ 
-              folioId: folioId!, 
-              format: 'A4',
-              guestEmail: folio?.guest?.email || '',
-              guestName: folio?.guest?.name || ''
-            })}
-            disabled={isEmailing || !folioId || !folio?.guest?.email}
-          >
-            <Mail className="w-4 h-4 mr-2" />
-            Email Invoice
-          </Button>
-          <Button 
-            variant="outline" 
-            size="sm"
-            onClick={() => printFolio({ folioId: folioId!, format: 'A4' })}
-            disabled={isPrinting || !folioId}
-          >
-            <Printer className="w-4 h-4 mr-2" />
-            Print
-          </Button>
+        <div className="space-y-2">
+          <div className="flex gap-2">
+            <Button 
+              variant="outline" 
+              size="sm"
+              onClick={() => downloadFolio({ folioId: folioId!, format: 'A4' })}
+              disabled={isDownloading || !folioId}
+            >
+              <FileText className="w-4 h-4 mr-2" />
+              Download PDF
+            </Button>
+            <Button 
+              variant="outline" 
+              size="sm"
+              onClick={() => emailFolio({ 
+                folioId: folioId!, 
+                format: 'A4',
+                guestEmail: folio?.guest?.email || '',
+                guestName: folio?.guest?.name || ''
+              })}
+              disabled={isEmailing || !folioId || !folio?.guest?.email}
+            >
+              <Mail className="w-4 h-4 mr-2" />
+              Email Invoice
+            </Button>
+            <Button 
+              variant="outline" 
+              size="sm"
+              onClick={() => printFolio({ folioId: folioId!, format: 'A4' })}
+              disabled={isPrinting || !folioId}
+            >
+              <Printer className="w-4 h-4 mr-2" />
+              Print
+            </Button>
+          </div>
+          <p className="text-xs text-muted-foreground">
+            All actions use the latest folio template (V3). Download saves locally, Print opens in new tab.
+          </p>
         </div>
       </div>
 
