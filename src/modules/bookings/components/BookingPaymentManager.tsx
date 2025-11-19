@@ -10,6 +10,7 @@ import { Badge } from '@/components/ui/badge';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Plus, Receipt, CreditCard, Trash2, Loader2, Printer } from 'lucide-react';
+import { Skeleton } from '@/components/ui/skeleton';
 import { format } from 'date-fns';
 import { toast } from 'sonner';
 import { useRecordPayment } from '@/hooks/useRecordPayment';
@@ -19,6 +20,7 @@ import { useFinanceLocations } from '@/hooks/useFinanceLocations';
 import { usePrintReceipt } from '@/hooks/usePrintReceipt';
 import { useReceiptData } from '@/hooks/useReceiptData';
 import { useReceiptSettings } from '@/hooks/useReceiptSettings';
+import { useFolioById } from '@/hooks/useFolioById';
 
 interface BookingPaymentManagerProps {
   bookingId: string;
@@ -64,31 +66,53 @@ export function BookingPaymentManager({ bookingId }: BookingPaymentManagerProps)
 
   // Fetch booking details
   const { data: booking, isLoading: bookingLoading } = useQuery({
-    queryKey: ['booking-payment', bookingId],
+    queryKey: ['booking-payment', bookingId, tenantId],
     queryFn: async () => {
       const { data, error } = await supabase
         .from('bookings')
         .select('*, guest:guests(*), room:rooms(*)')
         .eq('id', bookingId)
+        .eq('tenant_id', tenantId!)
         .single();
       if (error) throw error;
       return data;
     },
+    enabled: !!tenantId && !!bookingId,
+  });
+
+  // Fetch folio to check check-in status
+  const { data: folio, isLoading: folioLoading } = useQuery({
+    queryKey: ['booking-folio-check', bookingId, tenantId],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('stay_folios')
+        .select('id, status')
+        .eq('booking_id', bookingId)
+        .eq('tenant_id', tenantId!)
+        .maybeSingle();
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!tenantId && !!bookingId,
   });
 
   // Fetch payments
-  const { data: payments = [] } = useQuery({
-    queryKey: ['booking-payments', bookingId],
+  const { data: payments = [], isLoading: paymentsLoading } = useQuery({
+    queryKey: ['booking-payments', bookingId, tenantId],
     queryFn: async () => {
       const { data, error } = await supabase
         .from('payments')
         .select('*')
         .eq('booking_id', bookingId)
+        .eq('tenant_id', tenantId!)
         .order('created_at', { ascending: false });
       if (error) throw error;
       return data;
     },
+    enabled: !!tenantId && !!bookingId,
   });
+
+  const isLoading = bookingLoading || folioLoading || paymentsLoading;
 
   // Fetch charges from metadata
   const metadata = booking?.metadata as any;
