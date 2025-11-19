@@ -257,7 +257,64 @@ export function QRRequestDrawer({ open, onOpenChange }: QRRequestDrawerProps) {
     }
   };
 
-  // Universal payment handler for all service types
+  // Charge to room handler - bypasses payment collection
+  const handleChargeToRoom = async () => {
+    if (!selectedRequest) return;
+    
+    const amount = selectedRequest.metadata?.payment_info?.amount;
+    
+    if (!amount || amount <= 0) {
+      toast.error('Invalid charge amount');
+      return;
+    }
+
+    if (!selectedRequest.stay_folio_id) {
+      toast.error('No active folio found. Guest must be checked in to charge to room.');
+      return;
+    }
+
+    setIsCollectingPayment(true);
+    console.log('[Charge to Room] QR-AUTO-FOLIO-UI-V1 - Charging to folio:', {
+      request_id: selectedRequest.id,
+      folio_id: selectedRequest.stay_folio_id,
+      amount,
+    });
+
+    try {
+      const { data, error } = await supabase.functions.invoke('qr-auto-folio-post', {
+        body: {
+          request_id: selectedRequest.id,
+          tenant_id: tenantId,
+          amount,
+          service_category: selectedRequest.service_category,
+          description: `${selectedRequest.service_category} - QR Request`,
+        },
+      });
+
+      if (error) throw error;
+
+      if (!data?.success) {
+        throw new Error(data?.error || 'Failed to charge to room');
+      }
+
+      toast.success(`₦${amount.toLocaleString()} charged to folio ${data.folio_number}`);
+      
+      // Invalidate queries to refresh data
+      queryClient.invalidateQueries({ queryKey: ['staff-requests'] });
+      queryClient.invalidateQueries({ queryKey: ['folio-by-id', selectedRequest.stay_folio_id] });
+      queryClient.invalidateQueries({ queryKey: ['booking-folio'] });
+      
+      // Close drawer
+      onOpenChange(false);
+    } catch (error: any) {
+      console.error('[Charge to Room] Error:', error);
+      toast.error(error.message || 'Failed to charge to room');
+    } finally {
+      setIsCollectingPayment(false);
+    }
+  };
+
+  // Universal payment handler for all service types with auto-folio posting
   const handleCollectPaymentForService = async () => {
     if (!selectedRequest) return;
     
@@ -269,12 +326,13 @@ export function QRRequestDrawer({ open, onOpenChange }: QRRequestDrawerProps) {
     setIsCollectingPayment(true);
     
     // Enhanced logging for debugging payment issues
-    console.log('[Payment Collection] Starting payment collection:', {
+    console.log('[Payment Collection] QR-PAYMENT-AUTO-FOLIO-V1 - Starting payment collection:', {
       request_id: selectedRequest.id,
       service_category: selectedRequest.service_category,
       location_id: selectedLocationId,
       provider_id: selectedProviderId,
       payment_info: selectedRequest.metadata?.payment_info,
+      has_folio: !!selectedRequest.stay_folio_id,
     });
     
     try {
