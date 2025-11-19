@@ -133,6 +133,44 @@ serve(async (req) => {
 
     console.log('[checkin] Folio created successfully:', folio.id)
 
+    // GROUP-CHECKIN-V1: Link room folio to group master folio if booking is part of a group
+    const groupId = booking.metadata?.group_id;
+    if (groupId) {
+      console.log('[GROUP-CHECKIN-V1] Booking is part of group:', groupId, '- linking to master folio');
+      
+      try {
+        // Get group master folio
+        const { data: groupData, error: groupError } = await supabaseServiceClient
+          .rpc('get_group_master_folio', {
+            p_tenant_id: booking.tenant_id,
+            p_group_id: groupId
+          });
+        
+        if (groupError) {
+          console.error('[GROUP-CHECKIN-V1] Error fetching group master folio (non-blocking):', groupError);
+        } else if (groupData?.master_folio?.id) {
+          const masterFolioId = groupData.master_folio.id;
+          console.log('[GROUP-CHECKIN-V1] Found master folio:', masterFolioId, '- linking room folio');
+          
+          // Update room folio to link to master
+          const { error: linkError } = await supabaseServiceClient
+            .from('stay_folios')
+            .update({ parent_folio_id: masterFolioId })
+            .eq('id', folio.id);
+          
+          if (linkError) {
+            console.error('[GROUP-CHECKIN-V1] Failed to link folio to master (non-blocking):', linkError);
+          } else {
+            console.log('[GROUP-CHECKIN-V1] ✅ Room folio linked to master folio');
+          }
+        } else {
+          console.warn('[GROUP-CHECKIN-V1] Master folio not found for group:', groupId);
+        }
+      } catch (groupLinkError) {
+        console.error('[GROUP-CHECKIN-V1] Group folio linking exception (non-blocking):', groupLinkError);
+      }
+    }
+
     // CHECKIN-V3-PAYMENT-ATTACH: Auto-attach reservation payments to new folio
     console.log('[checkin-v3] Attaching reservation payments to folio:', folio.id)
     try {
