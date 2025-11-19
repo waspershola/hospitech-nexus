@@ -339,6 +339,27 @@ function generateLuxuryFolioHTML(params: {
     });
   };
 
+  const formatDateTime = (date: string) => {
+    return new Date(date).toLocaleString('en-NG', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    });
+  };
+
+  // Calculate totals
+  const totalCharges = transactionsWithBalance
+    .filter(t => t.transaction_type === 'charge')
+    .reduce((sum, t) => sum + Number(t.amount), 0);
+  
+  const totalPayments = transactionsWithBalance
+    .filter(t => t.transaction_type === 'payment')
+    .reduce((sum, t) => sum + Number(t.amount), 0);
+
+  const outstandingBalance = folio.balance;
+
   return `
 <!DOCTYPE html>
 <html>
@@ -351,20 +372,21 @@ function generateLuxuryFolioHTML(params: {
     body {
       font-family: ${branding?.font_body || 'Inter, system-ui, -apple-system, sans-serif'};
       font-size: 10pt;
-      line-height: 1.6;
-      color: #1a1a1a;
+      line-height: 1.5;
+      color: #111111;
       background: #ffffff;
       max-width: 21cm;
       margin: 0 auto;
-      padding: 2cm;
+      padding: 1.5cm;
     }
     
+    /* PDF-TEMPLATE-V3: Header Section */
     .header {
       display: flex;
       justify-content: space-between;
       align-items: flex-start;
-      padding-bottom: 2rem;
-      border-bottom: 2px solid #e5e5e5;
+      padding-bottom: 1.5rem;
+      border-bottom: 3px solid #C9A959;
       margin-bottom: 2rem;
     }
     
@@ -373,214 +395,271 @@ function generateLuxuryFolioHTML(params: {
     }
     
     .logo {
-      max-width: 200px;
+      max-width: 180px;
       height: auto;
       margin-bottom: 1rem;
     }
     
     .hotel-name {
       font-family: ${branding?.font_heading || 'Playfair Display, Georgia, serif'};
-      font-size: 20pt;
+      font-size: 22pt;
       font-weight: 700;
-      color: ${branding?.primary_color?.replace('hsl(', '').replace(')', '') || '0, 65%, 51%'};
+      color: #111111;
       margin-bottom: 0.5rem;
+      letter-spacing: -0.5px;
     }
     
     .hotel-info {
       font-size: 9pt;
-      color: #666;
-      line-height: 1.5;
+      color: #555555;
+      line-height: 1.6;
     }
     
     .folio-title {
       text-align: right;
-      flex: 0 0 auto;
     }
     
     .folio-title h1 {
       font-family: ${branding?.font_heading || 'Playfair Display, Georgia, serif'};
-      font-size: 28pt;
-      font-weight: 300;
-      letter-spacing: 1px;
-      color: #1a1a1a;
-      margin-bottom: 0.5rem;
+      font-size: 26pt;
+      font-weight: 600;
+      letter-spacing: 0.5px;
+      color: #111111;
+      margin-bottom: 0.25rem;
     }
     
-    .folio-subtitle {
-      font-size: 10pt;
-      color: #666;
+    .folio-number {
+      font-size: 11pt;
+      color: #555555;
+      font-weight: 600;
     }
     
-    .guest-info {
-      background: linear-gradient(135deg, #f8f9fa 0%, #ffffff 100%);
-      border-left: 4px solid ${branding?.primary_color?.replace('hsl(', '').replace(')', '') || '0, 65%, 51%'};
-      padding: 1.5rem;
-      margin: 2rem 0;
-      border-radius: 8px;
+    .folio-status {
+      display: inline-block;
+      padding: 0.25rem 0.75rem;
+      border-radius: 4px;
+      font-size: 8pt;
+      font-weight: 700;
+      text-transform: uppercase;
+      margin-top: 0.5rem;
+      background: ${folio.status === 'open' ? '#FEF3C7' : '#D1FAE5'};
+      color: ${folio.status === 'open' ? '#92400E' : '#065F46'};
     }
     
-    .info-grid {
+    /* Guest Summary Section */
+    .guest-summary {
       display: grid;
-      grid-template-columns: repeat(2, 1fr);
-      gap: 1rem;
+      grid-template-columns: 1fr 1fr;
+      gap: 2rem;
+      margin: 2rem 0;
+      padding: 1.5rem;
+      background: #FAFAFA;
+      border-left: 4px solid #C9A959;
     }
     
-    .info-item {
+    .summary-block {
+      display: flex;
+      flex-direction: column;
+      gap: 0.75rem;
+    }
+    
+    .summary-item {
       display: flex;
       flex-direction: column;
     }
     
-    .info-label {
+    .summary-label {
       font-size: 8pt;
       text-transform: uppercase;
-      letter-spacing: 0.5px;
-      color: #888;
-      margin-bottom: 0.25rem;
+      letter-spacing: 0.75px;
+      color: #777777;
+      margin-bottom: 0.15rem;
+      font-weight: 600;
     }
     
-    .info-value {
+    .summary-value {
       font-size: 11pt;
       font-weight: 600;
-      color: #1a1a1a;
+      color: #111111;
     }
     
-    .summary-section {
-      margin: 2rem 0;
+    /* Itemized Ledger Section */
+    .ledger-section {
+      margin: 2.5rem 0;
     }
     
-    .summary-title {
+    .section-title {
       font-family: ${branding?.font_heading || 'Playfair Display, Georgia, serif'};
-      font-size: 14pt;
+      font-size: 16pt;
       font-weight: 600;
-      color: #1a1a1a;
+      color: #111111;
       margin-bottom: 1rem;
       padding-bottom: 0.5rem;
-      border-bottom: 1px solid #e5e5e5;
+      border-bottom: 2px solid #E5E5E5;
     }
     
-    .summary-cards {
-      display: grid;
-      grid-template-columns: repeat(3, 1fr);
-      gap: 1rem;
-      margin-bottom: 2rem;
-    }
-    
-    .summary-card {
-      background: #ffffff;
-      border: 1px solid #e5e5e5;
-      border-radius: 8px;
-      padding: 1.5rem;
-      text-align: center;
-    }
-    
-    .summary-card-label {
-      font-size: 9pt;
-      color: #666;
-      text-transform: uppercase;
-      letter-spacing: 0.5px;
-      margin-bottom: 0.5rem;
-    }
-    
-    .summary-card-value {
-      font-size: 18pt;
-      font-weight: 700;
-      color: #1a1a1a;
-    }
-    
-    .summary-card-value.balance {
-      color: ${folio.balance > 0 ? '#dc2626' : folio.balance < 0 ? '#059669' : '#1a1a1a'};
-    }
-    
-    .transactions-section {
-      margin: 2rem 0;
-    }
-    
-    .transactions-table {
+    .ledger-table {
       width: 100%;
       border-collapse: collapse;
       margin-top: 1rem;
-    }
-    
-    .transactions-table thead {
-      background: #f8f9fa;
-    }
-    
-    .transactions-table th {
-      padding: 0.75rem;
-      text-align: left;
       font-size: 9pt;
-      font-weight: 600;
+    }
+    
+    .ledger-table thead {
+      background: #F8F9FA;
+      border-bottom: 2px solid #E5E5E5;
+    }
+    
+    .ledger-table th {
+      padding: 0.75rem 0.5rem;
+      text-align: left;
+      font-size: 8pt;
+      font-weight: 700;
       text-transform: uppercase;
       letter-spacing: 0.5px;
-      color: #666;
-      border-bottom: 2px solid #e5e5e5;
+      color: #555555;
     }
     
-    .transactions-table td {
-      padding: 0.75rem;
-      font-size: 10pt;
-      border-bottom: 1px solid #f0f0f0;
+    .ledger-table th.align-right {
+      text-align: right;
     }
     
-    .transactions-table tbody tr:hover {
-      background: #fafafa;
+    .ledger-table tbody tr {
+      border-bottom: 1px solid #F0F0F0;
     }
     
-    .transaction-type {
-      display: inline-block;
-      padding: 0.25rem 0.5rem;
-      border-radius: 4px;
+    .ledger-table tbody tr:nth-child(even) {
+      background: #FAFAFA;
+    }
+    
+    .ledger-table tbody tr:hover {
+      background: #F5F5F5;
+    }
+    
+    .ledger-table td {
+      padding: 0.75rem 0.5rem;
+      color: #111111;
+    }
+    
+    .ledger-table td.align-right {
+      text-align: right;
+    }
+    
+    .txn-date {
+      font-size: 9pt;
+      color: #555555;
+    }
+    
+    .txn-description {
+      font-weight: 500;
+    }
+    
+    .txn-reference {
       font-size: 8pt;
+      color: #777777;
+      font-family: monospace;
+    }
+    
+    .txn-debit {
+      color: #111111;
       font-weight: 600;
-      text-transform: uppercase;
     }
     
-    .transaction-type.charge {
-      background: #fef3c7;
-      color: #92400e;
+    .txn-credit {
+      color: #0B8F2F;
+      font-weight: 600;
     }
     
-    .transaction-type.payment {
-      background: #d1fae5;
-      color: #065f46;
+    .txn-balance {
+      font-weight: 700;
+      color: #111111;
     }
     
-    .amount-positive {
-      color: #dc2626;
+    /* Totals Summary Box */
+    .totals-box {
+      margin: 2rem 0 2rem auto;
+      max-width: 400px;
+      border: 2px solid #E5E5E5;
+      border-radius: 8px;
+      padding: 1.5rem;
+      background: #FAFAFA;
     }
     
-    .amount-negative {
-      color: #059669;
+    .totals-row {
+      display: flex;
+      justify-content: space-between;
+      padding: 0.5rem 0;
+      border-bottom: 1px solid #E5E5E5;
     }
     
+    .totals-row:last-child {
+      border-bottom: none;
+      margin-top: 0.5rem;
+      padding-top: 1rem;
+      border-top: 2px solid #C9A959;
+    }
+    
+    .totals-label {
+      font-size: 10pt;
+      color: #555555;
+      font-weight: 500;
+    }
+    
+    .totals-value {
+      font-size: 11pt;
+      font-weight: 600;
+      color: #111111;
+    }
+    
+    .totals-row:last-child .totals-label {
+      font-size: 12pt;
+      font-weight: 700;
+      color: #111111;
+    }
+    
+    .totals-row:last-child .totals-value {
+      font-size: 16pt;
+      font-weight: 700;
+      color: ${outstandingBalance > 0 ? '#D60000' : outstandingBalance < 0 ? '#0B8F2F' : '#111111'};
+    }
+    
+    /* Footer */
     .footer {
       margin-top: 3rem;
-      padding-top: 2rem;
-      border-top: 1px solid #e5e5e5;
+      padding-top: 1.5rem;
+      border-top: 2px solid #E5E5E5;
       text-align: center;
     }
     
-    .footer-text {
-      font-size: 9pt;
-      color: #666;
-      line-height: 1.8;
+    .footer-message {
+      font-size: 11pt;
+      color: #555555;
+      margin-bottom: 0.75rem;
     }
     
-    .thank-you {
-      font-family: ${branding?.font_heading || 'Playfair Display, Georgia, serif'};
-      font-size: 14pt;
-      color: #1a1a1a;
+    .footer-branding {
+      font-size: 8pt;
+      color: #999999;
       margin-top: 1rem;
     }
     
+    .generated-timestamp {
+      font-size: 8pt;
+      color: #AAAAAA;
+      margin-top: 0.5rem;
+      font-style: italic;
+    }
+    
     @media print {
-      body { padding: 0; }
-      .summary-card { break-inside: avoid; }
+      body { padding: 0.5cm; }
+      .ledger-table { page-break-inside: auto; }
+      .ledger-table tr { page-break-inside: avoid; page-break-after: auto; }
+      .totals-box { page-break-inside: avoid; }
     }
   </style>
 </head>
 <body>
-  <!-- Header -->
+  <!-- PDF-TEMPLATE-V3: Header with Hotel Branding -->
   <div class="header">
     <div class="header-left">
       ${branding?.logo_url ? `<img src="${branding.logo_url}" alt="${tenant?.name}" class="logo">` : ''}
@@ -591,103 +670,110 @@ function generateLuxuryFolioHTML(params: {
     </div>
     <div class="folio-title">
       <h1>GUEST FOLIO</h1>
-      <div class="folio-subtitle">Folio ${folio.booking.booking_reference}</div>
+      <div class="folio-number">#${folio.booking.booking_reference}</div>
+      <span class="folio-status">${folio.status || 'OPEN'}</span>
     </div>
   </div>
 
-  <!-- Guest Information -->
-  <div class="guest-info">
-    <div class="info-grid">
-      <div class="info-item">
-        <div class="info-label">Guest Name</div>
-        <div class="info-value">${folio.guest.name}</div>
+  <!-- Guest and Booking Summary -->
+  <div class="guest-summary">
+    <div class="summary-block">
+      <div class="summary-item">
+        <div class="summary-label">Guest Name</div>
+        <div class="summary-value">${folio.guest.name}</div>
       </div>
-      <div class="info-item">
-        <div class="info-label">Room Number</div>
-        <div class="info-value">${folio.room.number}</div>
+      <div class="summary-item">
+        <div class="summary-label">Email</div>
+        <div class="summary-value">${folio.guest.email || 'N/A'}</div>
       </div>
-      <div class="info-item">
-        <div class="info-label">Check-In Date</div>
-        <div class="info-value">${formatDate(folio.booking.check_in)}</div>
+      <div class="summary-item">
+        <div class="summary-label">Phone</div>
+        <div class="summary-value">${folio.guest.phone || 'N/A'}</div>
       </div>
-      <div class="info-item">
-        <div class="info-label">Check-Out Date</div>
-        <div class="info-value">${formatDate(folio.booking.check_out)}</div>
-      </div>
-      <div class="info-item">
-        <div class="info-label">Booking Reference</div>
-        <div class="info-value">${folio.booking.booking_reference}</div>
-      </div>
-      <div class="info-item">
-        <div class="info-label">Number of Nights</div>
-        <div class="info-value">${nights}</div>
+      <div class="summary-item">
+        <div class="summary-label">Room Number</div>
+        <div class="summary-value">${folio.room.number} (${folio.room.type})</div>
       </div>
     </div>
-  </div>
-
-  <!-- Financial Summary -->
-  <div class="summary-section">
-    <div class="summary-title">Financial Summary</div>
-    <div class="summary-cards">
-      <div class="summary-card">
-        <div class="summary-card-label">Total Charges</div>
-        <div class="summary-card-value">${formatCurrency(folio.total_charges)}</div>
+    <div class="summary-block">
+      <div class="summary-item">
+        <div class="summary-label">Check-In Date</div>
+        <div class="summary-value">${formatDate(folio.booking.check_in)}</div>
       </div>
-      <div class="summary-card">
-        <div class="summary-card-label">Total Payments</div>
-        <div class="summary-card-value">${formatCurrency(folio.total_payments)}</div>
+      <div class="summary-item">
+        <div class="summary-label">Check-Out Date</div>
+        <div class="summary-value">${formatDate(folio.booking.check_out)}</div>
       </div>
-      <div class="summary-card">
-        <div class="summary-card-label">${folio.balance > 0 ? 'Balance Due' : folio.balance < 0 ? 'Credit Balance' : 'Balance'}</div>
-        <div class="summary-card-value balance">${formatCurrency(Math.abs(folio.balance))}</div>
+      <div class="summary-item">
+        <div class="summary-label">Number of Nights</div>
+        <div class="summary-value">${nights} ${nights === 1 ? 'Night' : 'Nights'}</div>
+      </div>
+      <div class="summary-item">
+        <div class="summary-label">Booking Reference</div>
+        <div class="summary-value">${folio.booking.booking_reference}</div>
       </div>
     </div>
   </div>
 
-  <!-- Transaction History -->
-  <div class="transactions-section">
-    <div class="summary-title">Transaction History</div>
-    <table class="transactions-table">
+  <!-- Itemized Ledger -->
+  <div class="ledger-section">
+    <div class="section-title">Transaction Ledger</div>
+    <table class="ledger-table">
       <thead>
         <tr>
-          <th>Date</th>
-          <th>Description</th>
-          <th>Type</th>
-          <th style="text-align: right;">Charge</th>
-          <th style="text-align: right;">Payment</th>
-          <th style="text-align: right;">Balance</th>
+          <th style="width: 12%;">Date</th>
+          <th style="width: 30%;">Description</th>
+          <th style="width: 15%;">Reference</th>
+          <th class="align-right" style="width: 14%;">Debit</th>
+          <th class="align-right" style="width: 14%;">Credit</th>
+          <th class="align-right" style="width: 15%;">Balance</th>
         </tr>
       </thead>
       <tbody>
         ${transactionsWithBalance.map(txn => `
           <tr>
-            <td>${formatDate(txn.created_at)}</td>
-            <td>${txn.description}</td>
-            <td>
-              <span class="transaction-type ${txn.transaction_type}">
-                ${txn.transaction_type}
-              </span>
+            <td class="txn-date">${formatDateTime(txn.created_at).split(',')[0]}</td>
+            <td class="txn-description">${txn.description}</td>
+            <td class="txn-reference">${txn.reference_type || '—'}</td>
+            <td class="align-right txn-debit">
+              ${txn.transaction_type === 'charge' ? formatCurrency(txn.amount) : '—'}
             </td>
-            <td style="text-align: right;">
-              ${txn.transaction_type === 'charge' ? `<span class="amount-positive">${formatCurrency(txn.amount)}</span>` : '—'}
+            <td class="align-right txn-credit">
+              ${txn.transaction_type === 'payment' ? formatCurrency(txn.amount) : '—'}
             </td>
-            <td style="text-align: right;">
-              ${txn.transaction_type === 'payment' ? `<span class="amount-negative">${formatCurrency(txn.amount)}</span>` : '—'}
-            </td>
-            <td style="text-align: right;">${formatCurrency(txn.running_balance)}</td>
+            <td class="align-right txn-balance">${formatCurrency(txn.running_balance)}</td>
           </tr>
         `).join('')}
       </tbody>
     </table>
   </div>
 
+  <!-- Totals Summary -->
+  <div class="totals-box">
+    <div class="totals-row">
+      <span class="totals-label">Total Charges</span>
+      <span class="totals-value">${formatCurrency(totalCharges)}</span>
+    </div>
+    <div class="totals-row">
+      <span class="totals-label">Total Payments</span>
+      <span class="totals-value">${formatCurrency(totalPayments)}</span>
+    </div>
+    <div class="totals-row">
+      <span class="totals-label">${outstandingBalance > 0 ? 'Outstanding Balance' : outstandingBalance < 0 ? 'Credit Balance' : 'Balance'}</span>
+      <span class="totals-value">${formatCurrency(Math.abs(outstandingBalance))}</span>
+    </div>
+  </div>
+
   <!-- Footer -->
   <div class="footer">
-    <div class="footer-text">
-      ${receiptSettings?.footer_text || 'Thank you for choosing us'}
+    <div class="footer-message">
+      ${receiptSettings?.footer_text || 'Thank you for choosing us. We appreciate your patronage.'}
     </div>
-    <div class="thank-you">
-      We appreciate your patronage
+    <div class="footer-branding">
+      ${tenant?.name || 'Hotel'} • Powered by LuxuryHotelPro
+    </div>
+    <div class="generated-timestamp">
+      Generated on ${new Date().toLocaleString('en-NG')} • PDF-TEMPLATE-V3
     </div>
   </div>
 </body>
