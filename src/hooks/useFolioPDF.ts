@@ -31,36 +31,59 @@ export function useFolioPDF() {
     mutationFn: async (params: GenerateFolioPDFParams) => {
       if (!tenantId) throw new Error('No tenant ID');
 
-      console.log('[useFolioPDF] Generating PDF for folio:', params.folioId);
+      console.log('[useFolioPDF] BILLING-CENTER-V2: Generating PDF for folio:', params.folioId);
 
-      const { data, error } = await supabase.functions.invoke('generate-folio-pdf', {
-        body: {
-          folio_id: params.folioId,
-          tenant_id: tenantId,
-          format: params.format || 'A4',
-          include_qr: params.includeQR !== false,
-        },
-      });
+      try {
+        const { data, error } = await supabase.functions.invoke('generate-folio-pdf', {
+          body: {
+            folio_id: params.folioId,
+            tenant_id: tenantId,
+            format: params.format || 'A4',
+            include_qr: params.includeQR !== false,
+          },
+        });
 
-      if (error) throw error;
-      if (!data.success) throw new Error(data.error || 'Failed to generate folio PDF');
+        console.log('[useFolioPDF] BILLING-CENTER-V2: Response:', { data, error });
 
-      return data;
+        if (error) {
+          console.error('[useFolioPDF] BILLING-CENTER-V2: Edge function error:', error);
+          throw new Error(error.message || 'Edge function error');
+        }
+        
+        if (!data) {
+          console.error('[useFolioPDF] BILLING-CENTER-V2: No data returned');
+          throw new Error('No data returned from edge function');
+        }
+
+        if (!data.success) {
+          console.error('[useFolioPDF] BILLING-CENTER-V2: Operation failed:', data.error);
+          throw new Error(data.error || 'Failed to generate folio PDF');
+        }
+
+        return data;
+      } catch (err) {
+        console.error('[useFolioPDF] BILLING-CENTER-V2: Caught error:', err);
+        throw err;
+      }
     },
     onSuccess: (data) => {
-      console.log('[useFolioPDF] PDF generated:', data.pdf_url);
+      console.log('[useFolioPDF] BILLING-CENTER-V2: PDF generated successfully:', data.pdf_url);
       toast.success('Folio PDF generated successfully');
     },
     onError: (error: Error) => {
-      console.error('[useFolioPDF] Error:', error);
+      console.error('[useFolioPDF] BILLING-CENTER-V2: Error in generatePDF:', error);
       toast.error(`Failed to generate folio PDF: ${error.message}`);
     },
   });
 
   const printFolio = useMutation({
     mutationFn: async (params: GenerateFolioPDFParams) => {
+      console.log('[useFolioPDF] BILLING-CENTER-V2: Print workflow starting');
+      
       // First generate the PDF
       const pdfData = await generatePDF.mutateAsync(params);
+      
+      console.log('[useFolioPDF] BILLING-CENTER-V2: Opening PDF for print:', pdfData.pdf_url);
       
       // Open PDF in new window for printing
       window.open(pdfData.pdf_url, '_blank');
@@ -68,9 +91,11 @@ export function useFolioPDF() {
       return pdfData;
     },
     onSuccess: () => {
+      console.log('[useFolioPDF] BILLING-CENTER-V2: Print workflow complete');
       toast.success('Folio ready for printing');
     },
     onError: (error: Error) => {
+      console.error('[useFolioPDF] BILLING-CENTER-V2: Print workflow failed:', error);
       toast.error(`Failed to print folio: ${error.message}`);
     },
   });
@@ -102,7 +127,7 @@ export function useFolioPDF() {
     mutationFn: async (params: EmailFolioParams) => {
       if (!tenantId) throw new Error('No tenant ID');
 
-      console.log('[useFolioPDF] PDF-V2.1-EMAIL: Starting email workflow');
+      console.log('[useFolioPDF] BILLING-CENTER-V2-EMAIL: Starting email workflow');
 
       // First generate the PDF
       const pdfData = await generatePDF.mutateAsync({
@@ -111,7 +136,7 @@ export function useFolioPDF() {
         includeQR: params.includeQR,
       });
 
-      console.log('[useFolioPDF] PDF-V2.1-EMAIL: PDF generated, sending email');
+      console.log('[useFolioPDF] BILLING-CENTER-V2-EMAIL: PDF generated, sending email');
 
       // Send email using dedicated folio email function
       const { data, error } = await supabase.functions.invoke('send-folio-email', {
