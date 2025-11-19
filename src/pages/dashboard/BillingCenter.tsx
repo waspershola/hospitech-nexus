@@ -52,8 +52,18 @@ export default function BillingCenter() {
   const isClosed = folio?.status === 'closed' || folio?.status === 'completed';
   const isReadOnly = isClosedMode || isClosed;
 
-  // Get multi-folio support if we have a booking
-  const { folios, createFolio, isCreatingFolio } = useMultiFolios(folio?.booking_id || null);
+  // Get multi-folio support if we have a booking (BILLING-CENTER-V2.1-MULTI-FOLIO-INTEGRATION)
+  const { 
+    folios, 
+    createFolio, 
+    isCreatingFolio,
+    transferCharge,
+    isTransferring,
+    splitCharge,
+    isSplitting,
+    mergeFolios,
+    isMerging
+  } = useMultiFolios(folio?.booking_id || null);
 
   console.log('[BillingCenter] BILLING-CENTER-V2-MULTI-FOLIO: Route accessed', { 
     folioId, 
@@ -527,8 +537,16 @@ export default function BillingCenter() {
               transactionAmount={selectedTransactionAmount}
               transactionDescription={selectedTransactionDescription}
               onConfirm={(splits) => {
-                console.log('[BillingCenter] Split charges:', splits);
-                setSplitDialogOpen(false);
+                if (!selectedTransactionId) return;
+                splitCharge({
+                  transactionId: selectedTransactionId,
+                  splits,
+                }, {
+                  onSuccess: () => {
+                    console.log('[BillingCenter] BILLING-CENTER-V2.1-SPLIT: Split successful');
+                    setSplitDialogOpen(false);
+                  }
+                });
               }}
               availableFolios={folios}
             />
@@ -539,10 +557,18 @@ export default function BillingCenter() {
               sourceFolioNumber={folio.folio_number}
               availableFolios={folios.filter(f => f.id !== folioId)}
               onConfirm={(targetId) => {
-                console.log('[BillingCenter] Merge folio to:', targetId);
-                setMergeFolioOpen(false);
+                mergeFolios({
+                  sourceFolioId: folioId!,
+                  targetFolioId: targetId,
+                }, {
+                  onSuccess: () => {
+                    console.log('[BillingCenter] BILLING-CENTER-V2.1-MERGE: Merge successful');
+                    setMergeFolioOpen(false);
+                    navigate(`/dashboard/billing/${targetId}`);
+                  }
+                });
               }}
-              isLoading={false}
+              isLoading={isMerging}
             />
             <AddPaymentDialog
               open={addPaymentOpen}
