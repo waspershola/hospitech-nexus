@@ -113,28 +113,99 @@ export function useMultiFolios(bookingId: string | null) {
     },
   });
 
+  // Transfer charge using folio_transfer_charge RPC (BILLING-CENTER-V2.1-MULTI-FOLIO-RPCS)
   const transferCharge = useMutation({
     mutationFn: async ({
-      transactionId,
+      sourceFolioId,
       targetFolioId,
+      transactionId,
       amount,
     }: {
-      transactionId: string;
+      sourceFolioId: string;
       targetFolioId: string;
+      transactionId: string;
       amount: number;
     }) => {
-      if (!tenantId) throw new Error('No tenant ID');
+      const { data, error } = await supabase.rpc('folio_transfer_charge', {
+        p_source_folio_id: sourceFolioId,
+        p_target_folio_id: targetFolioId,
+        p_transaction_id: transactionId,
+        p_amount: amount,
+      });
 
-      // TODO: Implement transfer via edge function
-      // For now, this is a placeholder for the transfer functionality
-      throw new Error('Transfer functionality to be implemented via edge function');
+      if (error) throw error;
+      
+      const result = data as { success: boolean; error?: string; transaction_id?: string };
+      if (!result?.success) throw new Error(result?.error || 'Transfer failed');
+      
+      return result;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['multi-folios', bookingId, tenantId] });
-      toast.success('Charge transferred');
+      toast.success('Charge transferred successfully');
     },
     onError: (error: Error) => {
       toast.error(`Failed to transfer charge: ${error.message}`);
+    },
+  });
+
+  // Split charge using folio_split_charge RPC (BILLING-CENTER-V2.1-MULTI-FOLIO-RPCS)
+  const splitCharge = useMutation({
+    mutationFn: async ({
+      transactionId,
+      splits,
+    }: {
+      transactionId: string;
+      splits: Array<{ targetFolioId: string; amount: number }>;
+    }) => {
+      const { data, error } = await supabase.rpc('folio_split_charge', {
+        p_transaction_id: transactionId,
+        p_splits: splits,
+      });
+
+      if (error) throw error;
+      
+      const result = data as { success: boolean; error?: string; transaction_ids?: string[] };
+      if (!result?.success) throw new Error(result?.error || 'Split failed');
+      
+      return result;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['multi-folios', bookingId, tenantId] });
+      toast.success('Charge split successfully');
+    },
+    onError: (error: Error) => {
+      toast.error(`Failed to split charge: ${error.message}`);
+    },
+  });
+
+  // Merge folios using folio_merge RPC (BILLING-CENTER-V2.1-MULTI-FOLIO-RPCS)
+  const mergeFolios = useMutation({
+    mutationFn: async ({
+      sourceFolioId,
+      targetFolioId,
+    }: {
+      sourceFolioId: string;
+      targetFolioId: string;
+    }) => {
+      const { data, error } = await supabase.rpc('folio_merge', {
+        p_source_folio_id: sourceFolioId,
+        p_target_folio_id: targetFolioId,
+      });
+
+      if (error) throw error;
+      
+      const result = data as { success: boolean; error?: string; source_folio_id?: string; target_folio_id?: string };
+      if (!result?.success) throw new Error(result?.error || 'Merge failed');
+      
+      return result;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['multi-folios', bookingId, tenantId] });
+      toast.success('Folios merged successfully');
+    },
+    onError: (error: Error) => {
+      toast.error(`Failed to merge folios: ${error.message}`);
     },
   });
 
@@ -151,10 +222,14 @@ export function useMultiFolios(bookingId: string | null) {
     primaryFolio,
     isLoading,
     createFolio: createFolio.mutate,
+    isCreatingFolio: createFolio.isPending,
     transferCharge: transferCharge.mutate,
+    isTransferring: transferCharge.isPending,
+    splitCharge: splitCharge.mutate,
+    isSplitting: splitCharge.isPending,
+    mergeFolios: mergeFolios.mutate,
+    isMerging: mergeFolios.isPending,
     getFolioByType,
     getTotalBalance,
-    isCreatingFolio: createFolio.isPending,
-    isTransferring: transferCharge.isPending,
   };
 }

@@ -24,6 +24,8 @@ import { SplitChargeDialog } from '@/components/folio/SplitChargeDialog';
 import { MergeFolioDialog } from '@/components/folio/MergeFolioDialog';
 import { AddPaymentDialog } from '@/components/folio/AddPaymentDialog';
 import { ReopenFolioDialog } from '@/components/folio/ReopenFolioDialog';
+import { FolioTypeBadge } from '@/components/folio/FolioTypeBadge';
+import { RealTimeSyncIndicator } from '@/components/folio/RealTimeSyncIndicator';
 import { useAuth } from '@/contexts/AuthContext';
 import { Eye } from 'lucide-react';
 
@@ -170,9 +172,8 @@ export default function BillingCenter() {
           <div>
             <div className="flex items-center gap-2">
               <h1 className="text-3xl font-bold">Billing Center</h1>
-              <Badge variant="secondary" className="capitalize">
-                {folio.folio_type.replace('_', ' ')}
-              </Badge>
+              <FolioTypeBadge folioType={folio.folio_type} />
+              <RealTimeSyncIndicator folioId={folioId!} />
             </div>
             <p className="text-muted-foreground">
               {folio.booking?.booking_reference} • {folio.guest?.name}

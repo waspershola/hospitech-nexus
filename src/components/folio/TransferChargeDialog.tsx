@@ -40,8 +40,9 @@ export function TransferChargeDialog({
 
     transferCharge(
       {
-        transactionId,
+        sourceFolioId: currentFolioId,
         targetFolioId,
+        transactionId,
         amount: parseFloat(amount),
       },
       {
