@@ -173,7 +173,7 @@ serve(async (req) => {
       is_part_of_group,
       total_rooms_in_group,
       createdAt: new Date().toISOString(),
-      version: 'CREATE-BOOKING-V3'
+      version: 'CREATE-BOOKING-V3.1-UUID-CAST'
     };
 
     const isGroupBooking = enrichedMetadata.group_id && enrichedMetadata.isGroupBooking;
@@ -209,18 +209,25 @@ serve(async (req) => {
       );
     }
 
-    console.log('[CREATE-BOOKING-V3] Booking created:', newBooking.id);
+    console.log('[CREATE-BOOKING-V3.1-UUID-CAST] Booking created:', newBooking.id);
 
     let platformFeeResult = { applied: false, fee_amount: 0, base_amount: total_amount };
     try {
       platformFeeResult = await applyPlatformFee(supabase, tenant_id, newBooking.id, total_amount);
     } catch (feeError) {
-      console.error('[CREATE-BOOKING-V3] Platform fee failed (non-blocking):', feeError);
+      console.error('[CREATE-BOOKING-V3.1-UUID-CAST] Platform fee failed (non-blocking):', feeError);
     }
 
     let masterFolioResult = null;
     if (isGroupBooking) {
       try {
+        console.log('[GROUP-MASTER-V1] Group booking detected:', enrichedMetadata.group_id);
+        
+        // Validate group_id is a valid UUID format
+        if (enrichedMetadata.group_id && !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(enrichedMetadata.group_id)) {
+          throw new Error(`Invalid group_id UUID format: ${enrichedMetadata.group_id}`);
+        }
+        
         console.log('[GROUP-MASTER-V1] Creating master folio...');
         
         const { data: masterFolio, error: masterFolioError } = await supabase
@@ -257,8 +264,8 @@ serve(async (req) => {
     );
 
   } catch (error: any) {
-    console.error('[CREATE-BOOKING-V3] FATAL ERROR:', error);
-    console.error('[CREATE-BOOKING-V3] Stack:', error?.stack);
+    console.error('[CREATE-BOOKING-V3.1-UUID-CAST] FATAL ERROR:', error);
+    console.error('[CREATE-BOOKING-V3.1-UUID-CAST] Stack:', error?.stack);
     
     return new Response(
       JSON.stringify({ 
