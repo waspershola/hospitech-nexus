@@ -7335,6 +7335,10 @@ export type Database = {
           guest_id: string
         }[]
       }
+      folio_merge: {
+        Args: { p_source_folio_id: string; p_target_folio_id: string }
+        Returns: Json
+      }
       folio_post_charge: {
         Args: {
           p_amount: number
@@ -7348,6 +7352,19 @@ export type Database = {
       }
       folio_post_payment: {
         Args: { p_amount: number; p_folio_id: string; p_payment_id: string }
+        Returns: Json
+      }
+      folio_split_charge: {
+        Args: { p_splits: Json; p_transaction_id: string }
+        Returns: Json
+      }
+      folio_transfer_charge: {
+        Args: {
+          p_amount: number
+          p_source_folio_id: string
+          p_target_folio_id: string
+          p_transaction_id: string
+        }
         Returns: Json
       }
       generate_folio_number: {
