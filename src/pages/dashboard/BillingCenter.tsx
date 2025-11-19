@@ -111,7 +111,9 @@ export default function BillingCenter() {
   const statusVariant = folio.status === 'open' ? 'default' : folio.status === 'closed' ? 'secondary' : 'outline';
 
   return (
-    <div className="space-y-6">
+    <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
+      {/* Main Content - 3 columns */}
+      <div className="lg:col-span-3 space-y-6">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
@@ -223,17 +225,105 @@ export default function BillingCenter() {
         </Card>
       </div>
 
-      {/* Transactions Placeholder */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Transactions</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="text-center py-8 text-muted-foreground">
-            Transaction history will appear here
-          </div>
-        </CardContent>
-      </Card>
+      {/* Transaction History */}
+      <FolioTransactionHistory folioId={folioId} />
+      </div>
+
+      {/* Sidebar - 1 column */}
+      <div className="space-y-6">
+        {/* Guest Snapshot */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-lg">Guest Information</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div>
+              <div className="text-sm text-muted-foreground">Guest Name</div>
+              <div className="font-medium">{folio.guest?.name}</div>
+            </div>
+            {folio.guest?.email && (
+              <div>
+                <div className="text-sm text-muted-foreground">Email</div>
+                <div className="font-medium text-sm">{folio.guest.email}</div>
+              </div>
+            )}
+            {folio.guest?.phone && (
+              <div>
+                <div className="text-sm text-muted-foreground">Phone</div>
+                <div className="font-medium">{folio.guest.phone}</div>
+              </div>
+            )}
+            <div>
+              <div className="text-sm text-muted-foreground">Room</div>
+              <div className="font-medium">{folio.room?.number}</div>
+            </div>
+            <div>
+              <div className="text-sm text-muted-foreground">Booking Reference</div>
+              <div className="font-medium text-sm">{folio.booking?.booking_reference}</div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Quick Actions */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-lg">Quick Actions</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-2">
+            <Button 
+              variant="outline" 
+              className="w-full justify-start"
+              onClick={() => generatePDF({ folioId: folioId!, format: 'A4' })}
+              disabled={isGenerating}
+            >
+              <FileText className="w-4 h-4 mr-2" />
+              Generate PDF
+            </Button>
+            <Button 
+              variant="outline" 
+              className="w-full justify-start"
+              onClick={() => printFolio({ folioId: folioId!, format: 'A4' })}
+              disabled={isPrinting}
+            >
+              <Printer className="w-4 h-4 mr-2" />
+              Print Folio
+            </Button>
+            <Button 
+              variant="outline" 
+              className="w-full justify-start"
+              onClick={() => emailFolio({ 
+                folioId: folioId!, 
+                format: 'A4',
+                guestEmail: folio?.guest?.email || '',
+                guestName: folio?.guest?.name || ''
+              })}
+              disabled={isEmailing || !folio?.guest?.email}
+            >
+              <Mail className="w-4 h-4 mr-2" />
+              Email Invoice
+            </Button>
+          </CardContent>
+        </Card>
+
+        {/* Folio Status */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-lg">Folio Status</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <div className="flex items-center justify-between">
+              <span className="text-sm text-muted-foreground">Status</span>
+              <Badge variant={statusVariant}>{folio.status}</Badge>
+            </div>
+            <div className="flex items-center justify-between">
+              <span className="text-sm text-muted-foreground">Balance</span>
+              <span className={`font-bold ${folio.balance > 0 ? 'text-destructive' : 'text-green-600'}`}>
+                {formatCurrency(folio.balance || 0, 'NGN')}
+              </span>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
     </div>
   );
 }
