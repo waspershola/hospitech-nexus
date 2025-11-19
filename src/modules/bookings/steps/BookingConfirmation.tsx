@@ -360,7 +360,29 @@ export function BookingConfirmation({ bookingData, onComplete }: BookingConfirma
       setShowPayment(true);
     },
     onError: (error: Error) => {
-      toast.error(error.message);
+      // Parse error message for group booking rollback info
+      const errorMessage = error.message;
+      
+      // Check if this was a group booking rollback
+      if (errorMessage.includes('All bookings in this group have been cancelled')) {
+        toast.error(
+          errorMessage,
+          {
+            duration: 8000,
+            description: 'The group booking has been cancelled. No partial bookings were created. Please try again with different rooms or dates.'
+          }
+        );
+      } else if (errorMessage.includes('Room(s) no longer available')) {
+        toast.error(
+          errorMessage,
+          {
+            duration: 6000,
+            description: 'Please go back and select different rooms.'
+          }
+        );
+      } else {
+        toast.error(errorMessage);
+      }
     },
   });
 
