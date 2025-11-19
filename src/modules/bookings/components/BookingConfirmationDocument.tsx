@@ -14,9 +14,10 @@ interface BookingConfirmationDocumentProps {
 
 export function BookingConfirmationDocument({ bookingId }: BookingConfirmationDocumentProps) {
   // Fetch booking details
-  const { data: booking, isLoading: bookingLoading } = useQuery({
+  const { data: booking, isLoading: bookingLoading, error: bookingError } = useQuery({
     queryKey: ['booking-document', bookingId],
     queryFn: async () => {
+      console.log('BookingConfirmationDocument - Fetching booking:', bookingId);
       const { data, error } = await supabase
         .from('bookings')
         .select(`
@@ -26,9 +27,10 @@ export function BookingConfirmationDocument({ bookingId }: BookingConfirmationDo
           organization:organizations(*)
         `)
         .eq('id', bookingId)
-        .single();
+        .maybeSingle();
 
       if (error) throw error;
+      if (!data) throw new Error('Booking not found');
       return data;
     },
   });
@@ -99,8 +101,27 @@ export function BookingConfirmationDocument({ bookingId }: BookingConfirmationDo
   if (bookingLoading) {
     return (
       <Card className="p-6">
-        <div className="flex items-center justify-center py-8">
+        <div className="flex flex-col items-center justify-center py-8 gap-2">
           <Loader2 className="h-8 w-8 animate-spin text-primary" />
+          <p className="text-sm text-muted-foreground">Loading booking confirmation...</p>
+        </div>
+      </Card>
+    );
+  }
+
+  if (bookingError) {
+    console.error('BookingConfirmationDocument - Error:', bookingError);
+    return (
+      <Card className="p-6">
+        <div className="text-center py-8">
+          <CheckCircle className="h-12 w-12 mx-auto mb-4 opacity-50 text-destructive" />
+          <p className="text-lg font-semibold mb-2">Error Loading Booking</p>
+          <p className="text-sm text-muted-foreground mb-4">
+            {bookingError.message || 'Unable to load booking confirmation'}
+          </p>
+          <p className="text-xs text-muted-foreground">
+            Booking ID: {bookingId}
+          </p>
         </div>
       </Card>
     );
@@ -109,7 +130,13 @@ export function BookingConfirmationDocument({ bookingId }: BookingConfirmationDo
   if (!booking) {
     return (
       <Card className="p-6">
-        <p className="text-center text-muted-foreground">Booking not found</p>
+        <div className="text-center py-8">
+          <FileText className="h-12 w-12 mx-auto mb-4 opacity-50" />
+          <p className="text-lg font-semibold mb-2">Booking Not Found</p>
+          <p className="text-sm text-muted-foreground">
+            No booking exists with ID: {bookingId}
+          </p>
+        </div>
       </Card>
     );
   }

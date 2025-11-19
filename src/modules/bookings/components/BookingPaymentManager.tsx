@@ -9,7 +9,7 @@ import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Plus, Receipt, CreditCard, Trash2, Loader2, Printer } from 'lucide-react';
+import { Plus, Receipt, CreditCard, Trash2, Loader2, Printer, AlertCircle } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { format } from 'date-fns';
 import { toast } from 'sonner';
@@ -65,23 +65,25 @@ export function BookingPaymentManager({ bookingId }: BookingPaymentManagerProps)
   });
 
   // Fetch booking details
-  const { data: booking, isLoading: bookingLoading } = useQuery({
+  const { data: booking, isLoading: bookingLoading, error: bookingError } = useQuery({
     queryKey: ['booking-payment', bookingId, tenantId],
     queryFn: async () => {
+      console.log('BookingPaymentManager - Fetching booking:', bookingId);
       const { data, error } = await supabase
         .from('bookings')
         .select('*, guest:guests(*), room:rooms(*)')
         .eq('id', bookingId)
         .eq('tenant_id', tenantId!)
-        .single();
+        .maybeSingle();
       if (error) throw error;
+      if (!data) throw new Error('Booking not found');
       return data;
     },
     enabled: !!tenantId && !!bookingId,
   });
 
   // Fetch folio to check check-in status
-  const { data: folio, isLoading: folioLoading } = useQuery({
+  const { data: folio, isLoading: folioLoading, error: folioError } = useQuery({
     queryKey: ['booking-folio-check', bookingId, tenantId],
     queryFn: async () => {
       const { data, error } = await supabase
@@ -97,7 +99,7 @@ export function BookingPaymentManager({ bookingId }: BookingPaymentManagerProps)
   });
 
   // Fetch payments
-  const { data: payments = [], isLoading: paymentsLoading } = useQuery({
+  const { data: payments = [], isLoading: paymentsLoading, error: paymentsError } = useQuery({
     queryKey: ['booking-payments', bookingId, tenantId],
     queryFn: async () => {
       const { data, error } = await supabase
@@ -113,6 +115,7 @@ export function BookingPaymentManager({ bookingId }: BookingPaymentManagerProps)
   });
 
   const isLoading = bookingLoading || folioLoading || paymentsLoading;
+  const hasError = bookingError || folioError || paymentsError;
 
   // Fetch charges from metadata
   const metadata = booking?.metadata as any;
@@ -221,16 +224,23 @@ export function BookingPaymentManager({ bookingId }: BookingPaymentManagerProps)
     });
   };
 
-  const handlePrintReceipt = async () => {
-    if (!receiptData) return;
-    await print({
-      receiptType: 'checkout',
-      bookingId,
-      guestId: receiptData.guest?.id,
-      organizationId: receiptData.organization?.id,
-      settingsId: defaultSettings?.id,
-      receiptData,
-    }, defaultSettings);
+  const handlePrintFolio = async () => {
+    if (!booking || !receiptData) return;
+    
+    try {
+      await print({
+        receiptType: 'checkout',
+        bookingId,
+        guestId: receiptData.guest?.id,
+        organizationId: receiptData.organization?.id,
+        settingsId: defaultSettings?.id,
+        receiptData,
+      }, defaultSettings);
+      toast.success('Folio printed successfully');
+    } catch (error) {
+      console.error('Print error:', error);
+      toast.error('Failed to print folio');
+    }
   };
 
   // Show unified loading state
@@ -251,21 +261,61 @@ export function BookingPaymentManager({ bookingId }: BookingPaymentManagerProps)
     );
   }
 
-  if (!booking) return null;
-
-  // Show pre-check-in message if booking is reserved and no folio exists
-  if (booking.status === 'reserved' && !folio) {
+  // Error states with helpful messages
+  if (bookingError) {
+    console.error('BookingPaymentManager - Booking error:', bookingError);
     return (
       <div className="space-y-4">
         <Card>
-          <CardContent className="py-12 text-center">
-            <p className="text-muted-foreground mb-4">
-              No folio created yet — check-in required
-            </p>
-            <p className="text-sm text-muted-foreground">
-              Folio will be created automatically when guest checks in. <br />
-              After check-in, open Billing Center for detailed folio management.
-            </p>
+          <CardContent className="py-8">
+            <div className="text-center space-y-2">
+              <CreditCard className="h-12 w-12 mx-auto text-destructive opacity-50" />
+              <p className="font-semibold text-destructive">Error Loading Booking</p>
+              <p className="text-sm text-muted-foreground">
+                {bookingError.message || 'Unable to load booking details'}
+              </p>
+              <p className="text-xs text-muted-foreground">Booking ID: {bookingId}</p>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  if (!booking) {
+    return (
+      <div className="space-y-4">
+        <Card>
+          <CardContent className="py-8">
+            <div className="text-center space-y-2">
+              <Receipt className="h-12 w-12 mx-auto text-muted-foreground opacity-50" />
+              <p className="font-semibold">Booking Not Found</p>
+              <p className="text-sm text-muted-foreground">
+                No booking exists with ID: {bookingId}
+              </p>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  if (folioError) {
+    console.error('BookingPaymentManager - Folio error:', folioError);
+  }
+
+  if (!folio) {
+    return (
+      <div className="space-y-4">
+        <Card>
+          <CardContent className="py-8">
+            <div className="text-center space-y-2">
+              <Receipt className="h-12 w-12 mx-auto text-muted-foreground opacity-50" />
+              <p className="font-semibold">Folio Not Available</p>
+              <p className="text-sm text-muted-foreground">
+                This booking hasn't been checked in yet. Folio will be available after check-in.
+              </p>
+            </div>
           </CardContent>
         </Card>
       </div>
@@ -288,7 +338,7 @@ export function BookingPaymentManager({ bookingId }: BookingPaymentManagerProps)
             <Button 
               variant="outline" 
               size="sm" 
-              onClick={handlePrintReceipt}
+              onClick={handlePrintFolio}
               disabled={isPrinting || !receiptData}
             >
               <Printer className="h-4 w-4 mr-2" />
