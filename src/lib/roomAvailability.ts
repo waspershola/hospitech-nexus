@@ -41,7 +41,16 @@ export function getRoomStatusNow(
     return room.status as any;
   }
 
-  if (!booking || booking.status === 'cancelled' || booking.status === 'completed') {
+  // DEFENSIVE: If room is occupied in DB but booking data missing, preserve occupied status
+  // This prevents flickering to "available" when real-time updates don't include booking data
+  if (!booking) {
+    if (room.status === 'occupied') {
+      return 'occupied'; // Preserve database status to prevent auto-reset
+    }
+    return 'available';
+  }
+
+  if (booking.status === 'cancelled' || booking.status === 'completed') {
     return 'available';
   }
 
