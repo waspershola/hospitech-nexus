@@ -7462,16 +7462,27 @@ export type Database = {
         Args: { p_folio_id: string }
         Returns: Json
       }
-      create_group_master_folio: {
-        Args: {
-          p_group_id: string
-          p_group_name: string
-          p_guest_id: string
-          p_master_booking_id: string
-          p_tenant_id: string
-        }
-        Returns: Json
-      }
+      create_group_master_folio:
+        | {
+            Args: {
+              p_group_id: string
+              p_group_name?: string
+              p_guest_id: string
+              p_master_booking_id: string
+              p_tenant_id: string
+            }
+            Returns: Json
+          }
+        | {
+            Args: {
+              p_group_id: string
+              p_group_name: string
+              p_guest_id: string
+              p_master_booking_id: string
+              p_tenant_id: string
+            }
+            Returns: Json
+          }
       current_user_tenant: { Args: never; Returns: string }
       execute_payment_posting: {
         Args: {
