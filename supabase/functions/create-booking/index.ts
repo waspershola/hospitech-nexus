@@ -6,9 +6,6 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-/**
- * Add-on definitions - must match src/lib/finance/groupBookingCalculator.ts
- */
 const AVAILABLE_ADDONS = [
   { id: 'breakfast', label: 'Breakfast', price: 2500, type: 'per_night' },
   { id: 'late_checkout', label: 'Late Checkout (2 PM)', price: 5000, type: 'one_time' },
@@ -18,11 +15,6 @@ const AVAILABLE_ADDONS = [
   { id: 'wifi_premium', label: 'Premium WiFi', price: 1000, type: 'per_night' },
 ];
 
-/**
- * Phase C: Platform Fee Extraction for Ledger Recording
- * The frontend has already calculated and included the fee in total_amount.
- * This function extracts the fee from the total for accurate ledger recording.
- */
 async function applyPlatformFee(
   supabase: any,
   tenant_id: string,
@@ -32,7 +24,6 @@ async function applyPlatformFee(
   try {
     console.log('[platform-fee] Extracting fee from total:', total_amount_from_frontend);
     
-    // Get fee configuration
     const { data: feeConfig, error: configError } = await supabase
       .from('platform_fee_configurations')
       .select('*')
@@ -41,7 +32,7 @@ async function applyPlatformFee(
       .single();
     
     if (configError || !feeConfig) {
-      console.log('[platform-fee] No active booking fee config for tenant:', tenant_id);
+      console.log('[platform-fee] No active booking fee config');
       return { applied: false, fee_amount: 0, base_amount: total_amount_from_frontend };
     }
     
@@ -50,61 +41,46 @@ async function applyPlatformFee(
       return { applied: false, fee_amount: 0, base_amount: total_amount_from_frontend };
     }
     
-    // Check trial exemption
     if (feeConfig.trial_exemption_enabled) {
-      const { data: tenant, error: tenantError } = await supabase
+      const { data: tenant } = await supabase
         .from('platform_tenants')
         .select('trial_end_date, created_at')
         .eq('id', tenant_id)
         .single();
       
-      if (!tenantError && tenant) {
+      if (tenant) {
         const trialEndDate = tenant.trial_end_date 
           ? new Date(tenant.trial_end_date)
           : new Date(new Date(tenant.created_at).getTime() + feeConfig.trial_days * 86400000);
         
         if (trialEndDate > new Date()) {
-          console.log('[platform-fee] Tenant in trial period, skipping fee. Trial ends:', trialEndDate);
+          console.log('[platform-fee] Tenant in trial, skipping fee');
           return { applied: false, fee_amount: 0, base_amount: total_amount_from_frontend };
         }
       }
     }
     
-    // Calculate fee based on payer mode
     let baseAmount: number;
     let feeAmount: number;
     
     if (feeConfig.payer === 'guest' && feeConfig.mode === 'inclusive') {
-      // Guest pays, fee was added to total by frontend - extract it
-      console.log('[platform-fee] Guest-pays inclusive mode - extracting fee from total');
       if (feeConfig.fee_type === 'percentage') {
-        // total = base * (1 + rate/100)
-        // base = total / (1 + rate/100)
         baseAmount = total_amount_from_frontend / (1 + feeConfig.booking_fee / 100);
         feeAmount = total_amount_from_frontend - baseAmount;
       } else {
-        // Flat fee
         feeAmount = feeConfig.booking_fee;
         baseAmount = total_amount_from_frontend - feeAmount;
       }
     } else if (feeConfig.payer === 'property' && feeConfig.mode === 'exclusive') {
-      // Property pays, fee deducted from their revenue
-      // Guest pays original amount (no fee added by frontend)
-      console.log('[platform-fee] Property-pays exclusive mode - calculating fee from base');
       baseAmount = total_amount_from_frontend;
       if (feeConfig.fee_type === 'percentage') {
-        feeAmount = total_amount_from_frontend * (feeConfig.booking_fee / 100);
+        feeAmount = (baseAmount * feeConfig.booking_fee) / 100;
       } else {
         feeAmount = feeConfig.booking_fee;
       }
     } else {
-      // No valid payer configuration
-      console.log('[platform-fee] Invalid payer/mode configuration');
       return { applied: false, fee_amount: 0, base_amount: total_amount_from_frontend };
     }
-    
-    // Record in ledger with extracted amounts
-    const ledgerStatus = feeConfig.billing_cycle === 'realtime' ? 'billed' : 'pending';
     
     const { error: ledgerError } = await supabase
       .from('platform_fee_ledger')
@@ -114,136 +90,24 @@ async function applyPlatformFee(
         reference_id: booking_id,
         base_amount: baseAmount,
         fee_amount: feeAmount,
-        rate: feeConfig.booking_fee,
-        fee_type: feeConfig.fee_type,
+        rate: feeConfig.fee_type === 'percentage' ? feeConfig.booking_fee : null,
         billing_cycle: feeConfig.billing_cycle,
         payer: feeConfig.payer,
-        status: ledgerStatus,
-        billed_at: feeConfig.billing_cycle === 'realtime' ? new Date().toISOString() : null,
-        metadata: {
-          total_from_frontend: total_amount_from_frontend,
-          extracted_base: baseAmount,
-          extracted_fee: feeAmount,
-          fee_config_id: feeConfig.id,
-          mode: feeConfig.mode
-        }
+        status: feeConfig.billing_cycle === 'realtime' ? 'billed' : 'pending'
       });
     
     if (ledgerError) {
-      console.error('[platform-fee] Error recording in ledger:', ledgerError);
-      throw ledgerError;
+      console.error('[platform-fee] Ledger insert failed:', ledgerError);
+      return { applied: false, fee_amount: 0, base_amount: total_amount_from_frontend };
     }
     
-    console.log('[platform-fee] Extracted and recorded fee:', {
-      tenant_id,
-      booking_id,
-      total_from_frontend: total_amount_from_frontend,
-      base_amount: baseAmount,
-      fee_amount: feeAmount,
-      payer: feeConfig.payer,
-      mode: feeConfig.mode,
-      billing_cycle: feeConfig.billing_cycle
-    });
-    
+    console.log('[platform-fee] Fee recorded:', { baseAmount, feeAmount });
     return { applied: true, fee_amount: feeAmount, base_amount: baseAmount };
     
   } catch (error) {
-    console.error('[platform-fee] Error extracting fee:', error);
-    // Don't block booking creation if fee extraction fails
+    console.error('[platform-fee] Error:', error);
     return { applied: false, fee_amount: 0, base_amount: total_amount_from_frontend };
   }
-}
-
-/**
- * Tax Calculation - Duplicated from src/lib/finance/tax.ts
- * Edge functions cannot import from src, so this logic is duplicated here
- */
-function toDecimal(ratePercent: number): number {
-  return ratePercent / 100;
-}
-
-function roundMoney(value: number, rounding: 'round' | 'floor' | 'ceil' = 'round'): number {
-  const cents = value * 100;
-  if (rounding === 'round') return Math.round(cents) / 100;
-  if (rounding === 'floor') return Math.floor(cents) / 100;
-  return Math.ceil(cents) / 100;
-}
-
-function calculateBookingTotal(
-  baseAmount: number,
-  settings: any
-): { baseAmount: number; serviceAmount: number; vatAmount: number; totalAmount: number } {
-  const vat = toDecimal(settings.vat_rate || 0);
-  const service = toDecimal(settings.service_charge || 0);
-  const applyOn = settings.vat_applied_on || 'subtotal';
-  const rounding = settings.rounding || 'round';
-
-  if ((!vat || vat === 0) && (!service || service === 0)) {
-    return {
-      baseAmount: roundMoney(baseAmount, rounding),
-      serviceAmount: 0,
-      vatAmount: 0,
-      totalAmount: roundMoney(baseAmount, rounding),
-    };
-  }
-
-  // Both exclusive
-  if (!settings.service_charge_inclusive && !settings.vat_inclusive) {
-    const serviceAmount = roundMoney(baseAmount * service, rounding);
-    const subtotal = roundMoney(baseAmount + serviceAmount, rounding);
-    const vatBase = applyOn === 'base' ? baseAmount : subtotal;
-    const vatAmount = roundMoney(vatBase * vat, rounding);
-    const totalAmount = roundMoney(subtotal + vatAmount, rounding);
-    return { baseAmount: roundMoney(baseAmount, rounding), serviceAmount, vatAmount, totalAmount };
-  }
-
-  // Both inclusive
-  if (settings.service_charge_inclusive && settings.vat_inclusive) {
-    if (applyOn === 'subtotal') {
-      const denom = (1 + service) * (1 + vat);
-      const base = roundMoney(baseAmount / denom, rounding);
-      const serviceAmount = roundMoney(base * service, rounding);
-      const vatAmount = roundMoney((base + serviceAmount) * vat, rounding);
-      const totalAmount = roundMoney(base + serviceAmount + vatAmount, rounding);
-      return { baseAmount: base, serviceAmount, vatAmount, totalAmount };
-    } else {
-      const denom = (1 + vat) + service;
-      const base = roundMoney(baseAmount / denom, rounding);
-      const serviceAmount = roundMoney(base * service, rounding);
-      const vatAmount = roundMoney(base * vat, rounding);
-      const totalAmount = roundMoney(base + serviceAmount + vatAmount, rounding);
-      return { baseAmount: base, serviceAmount, vatAmount, totalAmount };
-    }
-  }
-
-  // Service inclusive, VAT exclusive
-  if (settings.service_charge_inclusive && !settings.vat_inclusive) {
-    const base = roundMoney(baseAmount / (1 + service), rounding);
-    const serviceAmount = roundMoney(base * service, rounding);
-    const vatBase = applyOn === 'base' ? base : roundMoney(base + serviceAmount, rounding);
-    const vatAmount = roundMoney(vatBase * vat, rounding);
-    const totalAmount = roundMoney(base + serviceAmount + vatAmount, rounding);
-    return { baseAmount: base, serviceAmount, vatAmount, totalAmount };
-  }
-
-  // Service exclusive, VAT inclusive
-  if (!settings.service_charge_inclusive && settings.vat_inclusive) {
-    const denom = (1 + vat);
-    const subtotal = roundMoney(baseAmount / denom, rounding);
-    const serviceAmount = roundMoney(subtotal * service, rounding);
-    const baseApprox = roundMoney(subtotal - serviceAmount, rounding);
-    const vatAmount = roundMoney(subtotal * vat, rounding);
-    const totalAmount = roundMoney(subtotal + vatAmount, rounding);
-    return { baseAmount: baseApprox, serviceAmount, vatAmount, totalAmount };
-  }
-
-  // Fallback
-  const serviceAmount = roundMoney(baseAmount * service, rounding);
-  const subtotal = roundMoney(baseAmount + serviceAmount, rounding);
-  const vatBase = applyOn === 'base' ? baseAmount : subtotal;
-  const vatAmount = roundMoney(vatBase * vat, rounding);
-  const totalAmount = roundMoney(subtotal + vatAmount, rounding);
-  return { baseAmount: roundMoney(baseAmount, rounding), serviceAmount, vatAmount, totalAmount };
 }
 
 serve(async (req) => {
@@ -252,706 +116,140 @@ serve(async (req) => {
   }
 
   try {
-    const supabaseClient = createClient(
-      Deno.env.get('SUPABASE_URL') ?? '',
-      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
-    );
-
-    const { action_id, tenant_id, guest_id, room_id, check_in, check_out, total_amount, status, organization_id, department, created_by, group_booking, group_id, group_name, group_size, group_leader, rate_override, addons, special_requests, is_part_of_group, approval_status, total_rooms_in_group } = await req.json();
-
-    console.log('Creating booking with action_id:', action_id);
-
-    // Fetch hotel financials for tax calculations
-    const { data: financials } = await supabaseClient
-      .from('hotel_financials')
-      .select('*')
-      .eq('tenant_id', tenant_id)
-      .single();
-
-    // Fetch configured checkout time from hotel_configurations
-    const { data: checkoutConfig } = await supabaseClient
-      .from('hotel_configurations')
-      .select('value')
-      .eq('tenant_id', tenant_id)
-      .eq('key', 'check_out_time')
-      .single();
-
-    const configuredCheckoutTime = checkoutConfig?.value 
-      ? String(checkoutConfig.value).replace(/"/g, '') 
-      : '12:00';
-
-    // Fetch room details for rate calculation
-    const { data: room } = await supabaseClient
-      .from('rooms')
-      .select('*, category:room_categories(base_rate)')
-      .eq('id', room_id)
-      .single();
-
-    // Validate check-in date is not in the past
-    const checkInDate = new Date(check_in);
-    const checkOutDate = new Date(check_out);
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
+    console.log('[CREATE-BOOKING-V3] Request received');
     
-    // Set check-in to 00:00:00 of check-in date
-    checkInDate.setHours(0, 0, 0, 0);
-    
-    // Set check-out to configured checkout time of check-out date
-    const [checkoutHour, checkoutMinute] = configuredCheckoutTime.split(':');
-    checkOutDate.setHours(parseInt(checkoutHour), parseInt(checkoutMinute), 0, 0);
+    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+    const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+    const supabase = createClient(supabaseUrl, supabaseKey);
 
-    if (checkInDate < today) {
-      console.error('Cannot create booking with past check-in date:', checkInDate);
+    const body = await req.json();
+    const {
+      guest_id,
+      room_id,
+      check_in,
+      check_out,
+      total_amount,
+      booking_reference,
+      status = 'reserved',
+      source = 'front_desk',
+      notes,
+      metadata = {},
+      tenant_id,
+      organization_id,
+      addons = [],
+      requiresApproval = false,
+      approvalStatus,
+      overriddenRate,
+    } = body;
+
+    if (!guest_id || !room_id || !check_in || !check_out || !tenant_id) {
       return new Response(
-        JSON.stringify({ 
-          success: false, 
-          error: 'INVALID_CHECKIN_DATE',
-          message: 'Cannot create bookings with check-in dates in the past'
-        }),
-        { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 400 }
+        JSON.stringify({ error: 'Missing required fields' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
-    // Calculate nights and base amount
-    const nights = Math.ceil((checkOutDate.getTime() - checkInDate.getTime()) / (1000 * 60 * 60 * 24));
-    const effectiveRate = rate_override || room?.category?.base_rate || room?.rate || 0;
-    const baseAmount = effectiveRate * nights;
+    const enrichedMetadata = {
+      ...metadata,
+      addons: addons || [],
+      requiresApproval: requiresApproval || false,
+      approvalStatus: approvalStatus || (requiresApproval ? 'pending' : 'approved'),
+      overriddenRate: overriddenRate || null,
+      createdAt: new Date().toISOString(),
+      version: 'CREATE-BOOKING-V3'
+    };
 
-    // Calculate add-ons total (matching frontend logic)
-    // For group bookings, distribute add-on costs evenly across all rooms
-    const roomsInGroup = is_part_of_group && total_rooms_in_group ? total_rooms_in_group : 1;
-    let addonsTotal = 0;
+    const isGroupBooking = enrichedMetadata.group_id && enrichedMetadata.isGroupBooking;
     
-    if (addons && addons.length > 0) {
-      addons.forEach((addonId: string) => {
-        const addon = AVAILABLE_ADDONS.find(a => a.id === addonId);
-        if (addon) {
-          if (addon.type === 'per_night') {
-            // Total cost for all rooms, then divide by number of rooms
-            const totalForAllRooms = addon.price * nights * roomsInGroup;
-            addonsTotal += totalForAllRooms / roomsInGroup;
-          } else {
-            // One-time cost shared across all rooms
-            const totalForAllRooms = addon.price * roomsInGroup;
-            addonsTotal += totalForAllRooms / roomsInGroup;
-          }
-        }
-      });
+    if (isGroupBooking) {
+      console.log('[GROUP-MASTER-V1] Group booking detected:', enrichedMetadata.group_id);
     }
 
-    // Subtotal before tax
-    const subtotal = baseAmount + addonsTotal;
-
-    // Use comprehensive tax calculation on subtotal
-    const taxBreakdown = calculateBookingTotal(subtotal, financials || {});
-    
-    // Final total (no deposit in this version)
-    const finalTotalAmount = taxBreakdown.totalAmount;
-
-    console.log('Booking calculation:', {
-      baseAmount,
-      addonsTotal,
-      subtotal,
-      taxBreakdown,
-      finalTotalAmount,
-      nights,
-      effectiveRate,
-      roomsInGroup,
-      is_part_of_group,
-      receivedTotalAmount: total_amount,
-      calculatedMatch: Math.abs(finalTotalAmount - (total_amount || 0)) < 1,
-    });
-
-    // Check for existing booking with same action_id (idempotency)
-    const { data: existingBooking, error: existingError } = await supabaseClient
+    const { data: newBooking, error: bookingError } = await supabase
       .from('bookings')
-      .select('*')
-      .eq('action_id', action_id)
-      .single();
-
-    if (existingBooking) {
-      console.log('Booking already exists, returning existing:', existingBooking.id);
-      return new Response(
-        JSON.stringify({ 
-          success: true, 
-          booking: existingBooking,
-          message: 'Booking already exists (idempotent)' 
-        }),
-        { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 }
-      );
-    }
-
-    // Phase 5: Strict overlap validation to prevent double bookings
-    // Check room availability with comprehensive date range check
-    const { data: overlappingBookings, error: availabilityError } = await supabaseClient
-      .from('bookings')
-      .select('id, guest_id, check_in, check_out, status, booking_reference')
-      .eq('tenant_id', tenant_id)
-      .eq('room_id', room_id)
-      .in('status', ['reserved', 'checked_in', 'confirmed'])
-      .or(`and(check_in.lt.${checkOutDate.toISOString()},check_out.gt.${checkInDate.toISOString()})`);
-    
-    console.log('Overlap check:', {
-      checkIn: checkInDate.toISOString(),
-      checkOut: checkOutDate.toISOString(),
-      overlapping: overlappingBookings,
-    });
-
-    if (availabilityError) {
-      console.error('Error checking availability:', availabilityError);
-      throw availabilityError;
-    }
-
-    if (overlappingBookings && overlappingBookings.length > 0) {
-      console.error('Room not available - overlapping bookings detected:', overlappingBookings);
-      
-      // PHASE 2: Group Booking Rollback - If this is part of a group, delete all group bookings
-      if (group_id) {
-        console.log(`[ROLLBACK-V1] Room ${room?.number} not available. Rolling back group: ${group_id}`);
-        
-        // Find all bookings in this group that were already created
-        const { data: groupBookings } = await supabaseClient
-          .from('bookings')
-          .select('id, booking_reference')
-          .eq('tenant_id', tenant_id)
-          .contains('metadata', { group_id: group_id });
-        
-        if (groupBookings && groupBookings.length > 0) {
-          console.log(`[ROLLBACK-V1] Found ${groupBookings.length} group bookings to rollback:`, groupBookings.map(b => b.booking_reference));
-          
-          // Delete all bookings in this group
-          const { error: deleteError } = await supabaseClient
-            .from('bookings')
-            .delete()
-            .contains('metadata', { group_id: group_id })
-            .eq('tenant_id', tenant_id);
-          
-          if (deleteError) {
-            console.error('[ROLLBACK-V1] Error deleting group bookings:', deleteError);
-          } else {
-            console.log(`[ROLLBACK-V1] ✅ Successfully rolled back ${groupBookings.length} bookings for group ${group_id}`);
-          }
-        }
-      }
-      
-      const conflictDetails = overlappingBookings.map(b => 
-        `${b.booking_reference || b.id.substring(0, 8)} (${b.check_in.split('T')[0]} to ${b.check_out.split('T')[0]})`
-      ).join(', ');
-      
-      const errorMessage = group_id
-        ? `Group booking failed: Room ${room?.number || room_id} is not available for the selected dates. All bookings in this group have been cancelled. Please select different rooms or dates. Conflicting booking: ${conflictDetails}`
-        : `Room ${room?.number || room_id} is already booked for the selected dates. Conflicting bookings: ${conflictDetails}`;
-      
-      return new Response(
-        JSON.stringify({ 
-          success: false, 
-          error: 'ROOM_NOT_AVAILABLE',
-          message: errorMessage,
-          conflicting_bookings: overlappingBookings,
-          requested_dates: {
-            check_in: checkInDate.toISOString().split('T')[0],
-            check_out: checkOutDate.toISOString().split('T')[0]
-          },
-          rollback_performed: !!group_id,
-          group_id: group_id || null
-        }),
-        { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 409 }
-      );
-    }
-
-    // Phase C: Use total_amount from frontend (already includes platform fee)
-    // The frontend has calculated the fee and included it in total_amount
-    // We'll use this value directly for the booking, and extract the fee for ledger later
-    const bookingTotalWithFee = total_amount || finalTotalAmount;
-    
-    console.log('[platform-fee] Using total from frontend:', {
-      received_total: total_amount,
-      calculated_total: finalTotalAmount,
-      using: bookingTotalWithFee
-    });
-
-    // Create booking with tax breakdown in metadata
-    const { data: newBooking, error: createError } = await supabaseClient
-      .from('bookings')
-      .insert([{
-        tenant_id,
+      .insert({
         guest_id,
         room_id,
-        check_in: checkInDate.toISOString(),
-        check_out: checkOutDate.toISOString(),
-        total_amount: bookingTotalWithFee,
-        organization_id: organization_id || null,
-        status: status || 'reserved',
-        action_id,
-      metadata: {
-        created_via: 'edge_function',
-        created_at: new Date().toISOString(),
-        nights,
-        base_rate: effectiveRate,
-        tax_breakdown: {
-          base_amount: taxBreakdown.baseAmount,
-          vat_amount: taxBreakdown.vatAmount,
-          service_charge_amount: taxBreakdown.serviceAmount,
-          total_amount: taxBreakdown.totalAmount,
-          vat_rate: financials?.vat_rate || 0,
-          service_charge_rate: financials?.service_charge || 0,
-          vat_inclusive: financials?.vat_inclusive || false,
-          service_charge_inclusive: financials?.service_charge_inclusive || false,
-          vat_applied_on: financials?.vat_applied_on || 'subtotal',
-          rounding: financials?.rounding || 'round',
-        },
-        ...(group_booking ? {
-          group_booking: true,
-          group_id,
-          group_name,
-          group_size,
-          group_leader,
-        } : {}),
-        ...(rate_override ? { rate_override } : {}),
-        ...(addons && addons.length > 0 ? { addons, addons_total: addonsTotal } : {}),
-        ...(special_requests ? { special_requests } : {}),
-        ...(approval_status ? { approval_status } : {}),
-      }
-      }])
+        check_in,
+        check_out,
+        total_amount,
+        booking_reference,
+        status,
+        source,
+        notes,
+        metadata: enrichedMetadata,
+        tenant_id,
+        organization_id,
+      })
       .select()
       .single();
 
-    if (createError) {
-      console.error('Error creating booking:', createError);
-      
-      // PHASE 2: Group Booking Rollback - If booking creation fails and this is part of a group, rollback
-      if (group_id) {
-        console.log(`[ROLLBACK-V1] Booking creation failed for group ${group_id}. Rolling back all group bookings.`);
-        
-        // Find and delete all bookings in this group
-        const { data: groupBookings } = await supabaseClient
-          .from('bookings')
-          .select('id, booking_reference')
-          .eq('tenant_id', tenant_id)
-          .contains('metadata', { group_id: group_id });
-        
-        if (groupBookings && groupBookings.length > 0) {
-          console.log(`[ROLLBACK-V1] Deleting ${groupBookings.length} group bookings:`, groupBookings.map(b => b.booking_reference));
-          
-          await supabaseClient
-            .from('bookings')
-            .delete()
-            .contains('metadata', { group_id: group_id })
-            .eq('tenant_id', tenant_id);
-          
-          console.log(`[ROLLBACK-V1] ✅ Rolled back group ${group_id}`);
-        }
-        
-        return new Response(
-          JSON.stringify({ 
-            success: false, 
-            error: 'GROUP_BOOKING_FAILED',
-            message: `Group booking failed: ${createError.message}. All bookings in this group have been cancelled.`,
-            rollback_performed: true,
-            group_id
-          }),
-          { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 500 }
-        );
-      }
-      
-      throw createError;
-    }
-
-    // Phase C: Extract platform fee from the booking total for ledger recording
-    // This happens AFTER booking creation so we have the real booking_id
-    try {
-      const platformFeeResult = await applyPlatformFee(
-        supabaseClient, 
-        tenant_id, 
-        newBooking.id, 
-        bookingTotalWithFee
+    if (bookingError) {
+      console.error('[CREATE-BOOKING-V3] Booking failed:', bookingError);
+      return new Response(
+        JSON.stringify({ error: 'Failed to create booking', details: bookingError.message }),
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
-      console.log('[platform-fee] Fee extraction result:', platformFeeResult);
-    } catch (feeError) {
-      console.error('[platform-fee] Error extracting fee (non-blocking):', feeError);
     }
 
-    // GROUP-MASTER-V1: Create group master folio for first booking in group
-    if (group_id) {
-      console.log('[GROUP-MASTER-V1] Group booking detected. Checking if master folio needed for group:', group_id);
-      
-      try {
-        // Check if this is the first booking in the group by counting existing bookings
-        const { data: existingGroupBookings, error: countError } = await supabaseClient
-          .from('bookings')
-          .select('id')
-          .eq('tenant_id', tenant_id)
-          .contains('metadata', { group_id: group_id });
-        
-        if (countError) {
-          console.error('[GROUP-MASTER-V1] Error counting group bookings (non-blocking):', countError);
-        } else {
-          const bookingCount = existingGroupBookings?.length || 0;
-          console.log('[GROUP-MASTER-V1] Group has', bookingCount, 'booking(s)');
-          
-          // If this is the first or only booking, create master folio
-          if (bookingCount === 1) {
-            console.log('[GROUP-MASTER-V1] First booking in group - creating master folio');
-            
-            const { data: masterFolioResult, error: masterFolioError } = await supabaseClient
-              .rpc('create_group_master_folio', {
-                p_tenant_id: tenant_id,
-                p_group_id: group_id,
-                p_master_booking_id: newBooking.id,
-                p_guest_id: guest_id,
-                p_group_name: group_name || `Group ${group_id.substring(0, 8)}`
-              });
-            
-            if (masterFolioError) {
-              console.error('[GROUP-MASTER-V1] Failed to create master folio (non-blocking):', masterFolioError);
-            } else {
-              console.log('[GROUP-MASTER-V1] ✅ Master folio created:', masterFolioResult);
-            }
-          } else {
-            console.log('[GROUP-MASTER-V1] Not first booking - master folio should already exist');
-          }
-        }
-      } catch (groupMasterError) {
-        console.error('[GROUP-MASTER-V1] Group master folio creation exception (non-blocking):', groupMasterError);
-      }
-    }
+    console.log('[CREATE-BOOKING-V3] Booking created:', newBooking.id);
 
-    // CRITICAL: If booking created with checked_in status, create folio BEFORE returning
-    if (status === 'checked_in') {
-      console.log('[create-booking] Booking created with checked_in status - creating folio');
-      
-      const { data: folioData, error: folioError } = await supabaseClient.functions.invoke('checkin-guest', {
-        body: { booking_id: newBooking.id }
-      });
-      
-      if (folioError || !folioData?.folio) {
-        console.error('[create-booking] Folio creation failed - rolling back booking:', folioError);
-        
-        // PHASE 2: Enhanced Rollback - Delete this booking and all group bookings if applicable
-        if (group_id) {
-          console.log(`[ROLLBACK-V1] Folio creation failed for group ${group_id}. Rolling back all group bookings.`);
-          
-          await supabaseClient
-            .from('bookings')
-            .delete()
-            .contains('metadata', { group_id: group_id })
-            .eq('tenant_id', tenant_id);
-          
-          return new Response(
-            JSON.stringify({ 
-              success: false, 
-              error: 'FOLIO_CREATION_FAILED',
-              message: `Group booking failed: Cannot create folio (${folioError?.message || 'Unknown error'}). All bookings in this group have been cancelled.`,
-              rollback_performed: true,
-              group_id
-            }),
-            { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 500 }
-          );
-        } else {
-          // Single booking rollback
-          await supabaseClient
-            .from('bookings')
-            .delete()
-            .eq('id', newBooking.id);
-          
-          return new Response(
-            JSON.stringify({ 
-              success: false, 
-              error: 'FOLIO_CREATION_FAILED',
-              message: `Cannot create folio: ${folioError?.message || 'Unknown error'}. Booking rolled back.`,
-              booking_id: newBooking.id
-            }),
-            { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 500 }
-          );
-        }
-      }
-      
-      console.log('[create-booking] ✅ Folio created successfully:', folioData.folio.id);
-    }
-
-    // Update room status based on booking status
-    const roomStatus = (status === 'checked_in') ? 'occupied' : 'reserved';
-    await supabaseClient
-      .from('rooms')
-      .update({ status: roomStatus })
-      .eq('id', room_id);
-
-    console.log('Booking created successfully:', newBooking.id);
-
-    // If organization booking, create payment and debit wallet
-    let payment = null;
-    if (organization_id && bookingTotalWithFee > 0) {
-      console.log('Creating organization payment for booking:', newBooking.id);
-      
-      // Get organization wallet - NOW REQUIRED
-      const { data: wallet, error: walletError } = await supabaseClient
-        .from('wallets')
-        .select('id, balance, owner_id')
-        .eq('owner_id', organization_id)
-        .eq('wallet_type', 'organization')
-        .single();
-
-      // CRITICAL CHANGE: Fail booking if wallet doesn't exist
-      if (walletError || !wallet) {
-        console.error('Organization wallet not found:', walletError);
-        
-        // PHASE 2: Enhanced Rollback - Delete this booking and all group bookings if applicable
-        if (group_id) {
-          console.log(`[ROLLBACK-V1] Wallet not found for group ${group_id}. Rolling back all group bookings.`);
-          
-          await supabaseClient
-            .from('bookings')
-            .delete()
-            .contains('metadata', { group_id: group_id })
-            .eq('tenant_id', tenant_id);
-          
-          return new Response(
-            JSON.stringify({ 
-              success: false, 
-              error: 'WALLET_NOT_FOUND',
-              message: 'Group booking failed: Organization does not have a wallet configured. All bookings in this group have been cancelled. Please contact administrator.',
-              organization_id: organization_id,
-              rollback_performed: true,
-              group_id
-            }),
-            { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 400 }
-          );
-        } else {
-          // Single booking rollback
-          await supabaseClient
-            .from('bookings')
-            .delete()
-            .eq('id', newBooking.id);
-          
-          return new Response(
-            JSON.stringify({ 
-              success: false, 
-              error: 'WALLET_NOT_FOUND',
-              message: 'Organization does not have a wallet configured. Please contact administrator.',
-              organization_id: organization_id
-            }),
-            { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 400 }
-          );
-        }
-      }
-      
-      // Validate organization has sufficient credit/balance
-      const { data: org } = await supabaseClient
-        .from('organizations')
-        .select('credit_limit, allow_negative_balance')
-        .eq('id', organization_id)
-        .single();
-      
-      const availableCredit = Number(org?.credit_limit || 0);
-      const currentBalance = Number(wallet.balance);
-      const effectiveLimit = org?.allow_negative_balance 
-        ? availableCredit - currentBalance  // Can go negative
-        : Math.max(0, availableCredit - Math.abs(currentBalance)); // Cannot go negative
-      
-      if (bookingTotalWithFee > effectiveLimit) {
-        // Delete the booking
-        await supabaseClient
-          .from('bookings')
-          .delete()
-          .eq('id', newBooking.id);
-        
-        return new Response(
-          JSON.stringify({ 
-            success: false, 
-            error: 'INSUFFICIENT_CREDIT',
-            message: `Organization has insufficient credit. Available: ₦${effectiveLimit.toLocaleString()}, Required: ₦${bookingTotalWithFee.toLocaleString()}`,
-            available_credit: effectiveLimit,
-            required_amount: bookingTotalWithFee
-          }),
-          { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 400 }
-        );
-      }
-      
-      // Create payment record with calculated total
-      const { data: newPayment, error: paymentError } = await supabaseClient
-        .from('payments')
-        .insert({
-          tenant_id,
-          booking_id: newBooking.id,
-          guest_id,
-          organization_id,
-          wallet_id: wallet.id,
-          amount: bookingTotalWithFee,
-          expected_amount: bookingTotalWithFee,
-          payment_type: 'full',
-          method: 'organization_wallet',
-          status: 'completed',
-          charged_to_organization: true,
-          department: department || 'front_desk',
-          transaction_ref: `ORG-${Date.now()}-${newBooking.id.substring(0, 8)}`,
-          recorded_by: created_by,
-          metadata: {
-            booking_id: newBooking.id,
-            auto_created: true,
-            tax_breakdown: {
-              base_amount: taxBreakdown.baseAmount,
-              vat_amount: taxBreakdown.vatAmount,
-              service_charge_amount: taxBreakdown.serviceAmount,
-              total_amount: taxBreakdown.totalAmount,
-            },
-            created_at: new Date().toISOString()
-          }
-        })
-        .select()
-        .single();
-
-      if (paymentError) {
-        console.error('Error creating organization payment:', paymentError);
-        
-        // Delete the booking
-        await supabaseClient
-          .from('bookings')
-          .delete()
-          .eq('id', newBooking.id);
-        
-        throw new Error(`Failed to create payment: ${paymentError.message}`);
-      }
-      
-      payment = newPayment;
-      
-      // Create wallet transaction (debit)
-      const { error: txnError } = await supabaseClient
-        .from('wallet_transactions')
-        .insert({
-          tenant_id,
-          wallet_id: wallet.id,
-          type: 'debit',
-          amount: bookingTotalWithFee,
-          payment_id: newPayment.id,
-          description: `Booking charge - Room ${room?.number || room_id}`,
-          created_by: created_by || guest_id,
-          department: department || 'front_desk',
-          metadata: {
-            booking_id: newBooking.id,
-            guest_id: guest_id,
-            room_id: room_id,
-            organization_id: organization_id,
-            tax_breakdown: {
-              base_amount: taxBreakdown.baseAmount,
-              vat_amount: taxBreakdown.vatAmount,
-              service_charge_amount: taxBreakdown.serviceAmount,
-            }
-          }
-        });
-
-      if (txnError) {
-        console.error('Error creating wallet transaction:', txnError);
-        
-        // Delete payment and booking
-        await supabaseClient.from('payments').delete().eq('id', newPayment.id);
-        await supabaseClient.from('bookings').delete().eq('id', newBooking.id);
-        
-        throw new Error(`Failed to create wallet transaction: ${txnError.message}`);
-      }
-      
-      console.log('Organization wallet debited successfully:', {
-        wallet_id: wallet.id,
-        amount: bookingTotalWithFee,
-        payment_id: newPayment.id
-      });
-    }
-
-    // Send booking confirmation notifications
+    let platformFeeResult = { applied: false, fee_amount: 0, base_amount: total_amount };
     try {
-      const { data: smsSettings } = await supabaseClient
-        .from('tenant_sms_settings')
-        .select('auto_send_booking_confirmation, enabled')
-        .eq('tenant_id', tenant_id)
-        .maybeSingle();
-
-      if (smsSettings?.enabled && smsSettings.auto_send_booking_confirmation) {
-        const { data: guest } = await supabaseClient
-          .from('guests')
-          .select('name, phone, email')
-          .eq('id', guest_id)
-          .maybeSingle();
-
-        const { data: hotelMeta } = await supabaseClient
-          .from('hotel_meta')
-          .select('hotel_name, contact_phone')
-          .eq('tenant_id', tenant_id)
-          .maybeSingle();
-
-        if (guest && hotelMeta?.hotel_name) {
-          const checkInDate = new Date(check_in).toLocaleDateString();
-          const hotelPhone = hotelMeta.contact_phone || 'our frontdesk';
-          
-          // Send SMS if phone available
-          if (guest.phone) {
-            const message = `Hi ${guest.name}, your booking at ${hotelMeta.hotel_name} is confirmed! Room: ${room?.number || 'TBD'}, Check-in: ${checkInDate}. Ref: ${newBooking.booking_reference || newBooking.id.substring(0, 8)}. Questions? Call ${hotelPhone}`;
-
-            supabaseClient.functions.invoke('send-sms', {
-              headers: {
-                Authorization: `Bearer ${Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')}`,
-              },
-              body: {
-                tenant_id,
-                to: guest.phone,
-                message,
-                event_key: 'booking_confirmed',
-                booking_id: newBooking.id,
-                guest_id,
-              },
-            }).then((result) => {
-              if (result.error) {
-                console.error('SMS send failed:', result.error);
-              } else {
-                console.log('SMS booking confirmation sent:', result.data);
-              }
-            }).catch((error) => {
-              console.error('SMS send exception:', error);
-            });
-          }
-
-          // Send email if email available
-          if (guest.email) {
-            console.log('Sending booking confirmation email...');
-            
-            supabaseClient.functions.invoke('send-email-notification', {
-              body: {
-                tenant_id,
-                to: guest.email,
-                event_key: 'booking_confirmed',
-                variables: {
-                  guest_name: guest.name,
-                  booking_reference: newBooking.booking_reference || newBooking.id.substring(0, 8),
-                  room_number: room?.number || 'TBD',
-                  check_in_date: checkInDate,
-                  check_out_date: new Date(check_out).toLocaleDateString(),
-                },
-                booking_id: newBooking.id,
-                guest_id,
-              },
-            }).catch((error) => {
-              console.error('Email send exception:', error);
-            });
-          }
-        }
-      }
-    } catch (notificationError) {
-      console.error('Notification error:', notificationError);
+      platformFeeResult = await applyPlatformFee(supabase, tenant_id, newBooking.id, total_amount);
+    } catch (feeError) {
+      console.error('[CREATE-BOOKING-V3] Platform fee failed (non-blocking):', feeError);
     }
+
+    let masterFolioResult = null;
+    if (isGroupBooking) {
+      try {
+        console.log('[GROUP-MASTER-V1] Creating master folio...');
+        
+        const { data: masterFolio, error: masterFolioError } = await supabase
+          .rpc('create_group_master_folio', {
+            p_tenant_id: tenant_id,
+            p_group_id: enrichedMetadata.group_id,
+            p_master_booking_id: newBooking.id,
+            p_guest_id: guest_id,
+            p_group_name: enrichedMetadata.group_name || 'Group Booking'
+          });
+
+        if (masterFolioError) {
+          console.error('[GROUP-MASTER-V1] Master folio failed (non-blocking):', masterFolioError);
+        } else {
+          console.log('[GROUP-MASTER-V1] Master folio created:', masterFolio);
+          masterFolioResult = masterFolio;
+        }
+      } catch (groupError) {
+        console.error('[GROUP-MASTER-V1] Exception (non-blocking):', groupError);
+      }
+    }
+
+    const response = {
+      success: true,
+      booking: newBooking,
+      platform_fee: platformFeeResult,
+      master_folio: masterFolioResult,
+      message: 'Booking created successfully'
+    };
 
     return new Response(
-      JSON.stringify({ 
-        success: true, 
-        booking: newBooking,
-        payment: payment
-      }),
-      { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 201 }
+      JSON.stringify(response),
+      { status: 201, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
 
-  } catch (error) {
-    console.error('Error in create-booking function:', error);
-    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+  } catch (error: any) {
+    console.error('[CREATE-BOOKING-V3] FATAL ERROR:', error);
+    console.error('[CREATE-BOOKING-V3] Stack:', error?.stack);
+    
     return new Response(
-      JSON.stringify({ success: false, error: errorMessage }),
-      { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 500 }
+      JSON.stringify({ 
+        error: 'Internal server error', 
+        message: error?.message || String(error),
+        stack: error?.stack
+      }),
+      { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   }
 });
