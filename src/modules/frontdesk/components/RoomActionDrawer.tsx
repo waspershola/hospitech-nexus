@@ -183,18 +183,43 @@ export function RoomActionDrawer({ roomId, contextDate, open, onClose, onOpenAss
   // Phase 7: Intelligent booking selection for overlapping bookings
   const bookingsArray = Array.isArray(room?.bookings) ? room.bookings : room?.bookings ? [room.bookings] : [];
   
+  // Debug logging for booking resolution
+  console.log('RoomActionDrawer - Booking Resolution Debug:', {
+    roomId: room?.id,
+    roomNumber: room?.number,
+    roomStatus: room?.status,
+    bookingsCount: bookingsArray.length,
+    bookings: bookingsArray.map((b: any) => ({
+      id: b.id,
+      status: b.status,
+      checkIn: b.check_in,
+      checkOut: b.check_out,
+      guestName: b.guest?.name
+    })),
+    contextDate: contextDate ? format(contextDate, 'yyyy-MM-dd') : null
+  });
+  
   // Smart booking selection: prioritize by context date, then active bookings
   const activeBooking = (() => {
-    if (!bookingsArray.length) return null;
+    if (!bookingsArray.length) {
+      console.log('RoomActionDrawer - No bookings found for room');
+      return null;
+    }
     
     // If user manually selected a booking, use that
     if (selectedBookingId) {
       const selected = bookingsArray.find((b: any) => b.id === selectedBookingId);
-      if (selected) return selected;
+      if (selected) {
+        console.log('RoomActionDrawer - Using manually selected booking:', selected.id);
+        return selected;
+      }
     }
     
     // Single booking - use it
-    if (bookingsArray.length === 1) return bookingsArray[0];
+    if (bookingsArray.length === 1) {
+      console.log('RoomActionDrawer - Single booking found:', bookingsArray[0].id);
+      return bookingsArray[0];
+    }
     
     // CONTEXT DATE FILTERING: If viewing from date calendar, prioritize bookings overlapping that date
     if (contextDate) {
@@ -214,6 +239,7 @@ export function RoomActionDrawer({ roomId, contextDate, open, onClose, onOpenAss
       
       // If we found bookings for this date, use the first one (most relevant)
       if (dateRelevantBookings.length > 0) {
+        console.log('RoomActionDrawer - Using context date booking:', dateRelevantBookings[0].id);
         return dateRelevantBookings[0];
       }
     }
@@ -233,7 +259,10 @@ export function RoomActionDrawer({ roomId, contextDate, open, onClose, onOpenAss
     
     // 1. Checked-in bookings first
     const checkedIn = activeBookings.filter((b: any) => b.status === 'checked_in');
-    if (checkedIn.length) return checkedIn[0];
+    if (checkedIn.length) {
+      console.log('RoomActionDrawer - Using checked-in booking:', checkedIn[0].id);
+      return checkedIn[0];
+    }
     
     // 2. Reserved bookings checking in today
     const checkingInToday = activeBookings.filter((b: any) => {
@@ -242,14 +271,19 @@ export function RoomActionDrawer({ roomId, contextDate, open, onClose, onOpenAss
       checkIn.setHours(0, 0, 0, 0);
       return checkIn.getTime() === now.getTime();
     });
-    if (checkingInToday.length) return checkingInToday[0];
+    if (checkingInToday.length) {
+      console.log('RoomActionDrawer - Using today check-in booking:', checkingInToday[0].id);
+      return checkingInToday[0];
+    }
     
     // 3. Earliest future check-in among reserved bookings
     const upcomingBookings = activeBookings
       .filter((b: any) => b.status === 'reserved')
       .sort((a: any, b: any) => new Date(a.check_in).getTime() - new Date(b.check_in).getTime());
-      
-    return upcomingBookings[0] || activeBookings[0];
+    
+    const selectedBooking = upcomingBookings[0] || activeBookings[0];
+    console.log('RoomActionDrawer - Using fallback booking:', selectedBooking?.id);
+    return selectedBooking;
   })();
   
   // Reset selected booking when room changes
