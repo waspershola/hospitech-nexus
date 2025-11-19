@@ -581,7 +581,7 @@ serve(async (req) => {
           .from('bookings')
           .select('id')
           .eq('tenant_id', tenant_id)
-          .eq('metadata->>group_id', group_id);
+          .contains('metadata', { group_id: group_id });
         
         if (countError) {
           console.error('[GROUP-MASTER-V1] Error counting group bookings (non-blocking):', countError);
