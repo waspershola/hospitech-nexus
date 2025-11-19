@@ -7380,6 +7380,10 @@ export type Database = {
         Returns: Json
       }
       check_tenant_access: { Args: { _tenant_id: string }; Returns: Json }
+      close_child_folio_to_master: {
+        Args: { p_child_folio_id: string; p_master_folio_id: string }
+        Returns: Json
+      }
       complete_night_audit_for_folio: {
         Args: { p_folio_id: string }
         Returns: Json
@@ -7484,6 +7488,10 @@ export type Database = {
           staff_id: string
           status: string
         }[]
+      }
+      get_group_master_folio: {
+        Args: { p_group_booking_id: string; p_tenant_id: string }
+        Returns: Json
       }
       get_low_stock_items: {
         Args: { p_tenant_id: string }
