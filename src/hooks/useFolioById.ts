@@ -10,7 +10,7 @@ export function useFolioById(folioId: string | null) {
   const { tenantId } = useAuth();
 
   return useQuery({
-    queryKey: ['folio-by-id', folioId, tenantId],
+    queryKey: ['folio', folioId, tenantId],
     queryFn: async () => {
       if (!folioId || !tenantId) return null;
 
@@ -37,7 +37,7 @@ export function useFolioById(folioId: string | null) {
         `)
         .eq('id', folioId)
         .eq('tenant_id', tenantId)
-        .single();
+        .maybeSingle();
 
       if (error) throw error;
       return data;

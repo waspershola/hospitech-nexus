@@ -19,7 +19,21 @@ serve(async (req) => {
 
     const { tenant_id, audit_date } = await req.json();
 
-    // Create audit run
+    console.log('[night-audit-run] NIGHT-AUDIT-V2-MULTI-FOLIO: Starting', { tenant_id, audit_date });
+
+    // Calculate folio statistics by type
+    const { data: folioStats, error: statsError } = await supabase.rpc(
+      'calculate_folio_stats_by_type',
+      { p_tenant_id: tenant_id, p_audit_date: audit_date }
+    );
+
+    if (statsError) {
+      console.error('[night-audit-run] NIGHT-AUDIT-V2: Stats calculation failed', statsError);
+    }
+
+    console.log('[night-audit-run] NIGHT-AUDIT-V2: Folio stats by type', folioStats);
+
+    // Create audit run with multi-folio data
     const { data: auditRun, error: runError } = await supabase
       .from('night_audit_runs')
       .insert({
@@ -27,7 +41,8 @@ serve(async (req) => {
         audit_date,
         cutoff_time: new Date(`${audit_date}T23:59:59Z`),
         status: 'running',
-        run_by: req.headers.get('user-id')
+        run_by: req.headers.get('user-id'),
+        folios_by_type: folioStats || {},
       })
       .select()
       .single();
@@ -53,6 +68,14 @@ serve(async (req) => {
         .eq('tenant_id', tenant_id)
         .eq('status', 'open');
 
+      // Calculate revenue by folio type
+      const revenueByType: Record<string, number> = {};
+      if (folioStats && typeof folioStats === 'object') {
+        for (const [type, stats] of Object.entries(folioStats as Record<string, any>)) {
+          revenueByType[type] = stats.revenue || 0;
+        }
+      }
+
       // Mark complete
       await supabase
         .from('night_audit_runs')
@@ -60,13 +83,20 @@ serve(async (req) => {
           status: 'completed', 
           completed_at: new Date(),
           total_revenue: totalRevenue,
-          total_folios_processed: folioCount || 0
+          total_folios_processed: folioCount || 0,
+          revenue_by_folio_type: revenueByType,
         })
         .eq('id', auditRun.id);
 
+      console.log('[night-audit-run] NIGHT-AUDIT-V2: Completed', { 
+        total_revenue: totalRevenue,
+        folios: folioCount,
+        revenue_by_type: revenueByType
+      });
+
       return new Response(JSON.stringify({ 
         success: true, 
-        auditRun: { ...auditRun, total_revenue: totalRevenue }
+        auditRun: { ...auditRun, total_revenue: totalRevenue, revenue_by_folio_type: revenueByType }
       }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';

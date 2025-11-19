@@ -65,7 +65,7 @@ export async function convertHtmlToPdfAndDownload(
   filename = 'folio.pdf',
   timeoutMs = 10000
 ) {
-  console.log('[convertHtmlToPdf] PDF-TEMPLATE-V3: Starting conversion', { htmlUrl, filename });
+  console.log('[convertHtmlToPdf] PDF-TEMPLATE-V3-MULTI-FOLIO: Starting conversion', { htmlUrl, filename });
 
   const { iframe, doc } = await fetchHtmlIntoIframe(htmlUrl, timeoutMs);
 
@@ -103,7 +103,7 @@ export async function convertHtmlToPdfAndDownload(
 
     pdf.save(filename);
 
-    console.log('[convertHtmlToPdf] PDF-TEMPLATE-V3: Conversion complete');
+    console.log('[convertHtmlToPdf] PDF-TEMPLATE-V3-MULTI-FOLIO: Conversion complete');
   } catch (error) {
     console.error('[convertHtmlToPdf] PDF-TEMPLATE-V3: Conversion failed', error);
     throw error;

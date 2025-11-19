@@ -2036,6 +2036,8 @@ export type Database = {
         Row: {
           audit_run_id: string
           created_at: string | null
+          folio_count: number | null
+          folio_type: string | null
           id: string
           pdf_url: string | null
           report_data: Json
@@ -2045,6 +2047,8 @@ export type Database = {
         Insert: {
           audit_run_id: string
           created_at?: string | null
+          folio_count?: number | null
+          folio_type?: string | null
           id?: string
           pdf_url?: string | null
           report_data: Json
@@ -2054,6 +2058,8 @@ export type Database = {
         Update: {
           audit_run_id?: string
           created_at?: string | null
+          folio_count?: number | null
+          folio_type?: string | null
           id?: string
           pdf_url?: string | null
           report_data?: Json
@@ -2084,8 +2090,10 @@ export type Database = {
           created_at: string | null
           cutoff_time: string
           error_message: string | null
+          folios_by_type: Json | null
           id: string
           metadata: Json | null
+          revenue_by_folio_type: Json | null
           run_by: string | null
           started_at: string | null
           status: string
@@ -2099,8 +2107,10 @@ export type Database = {
           created_at?: string | null
           cutoff_time: string
           error_message?: string | null
+          folios_by_type?: Json | null
           id?: string
           metadata?: Json | null
+          revenue_by_folio_type?: Json | null
           run_by?: string | null
           started_at?: string | null
           status?: string
@@ -2114,8 +2124,10 @@ export type Database = {
           created_at?: string | null
           cutoff_time?: string
           error_message?: string | null
+          folios_by_type?: Json | null
           id?: string
           metadata?: Json | null
+          revenue_by_folio_type?: Json | null
           run_by?: string | null
           started_at?: string | null
           status?: string
@@ -7267,6 +7279,10 @@ export type Database = {
     Functions: {
       attach_booking_payments_to_folio: {
         Args: { p_booking_id: string; p_folio_id: string; p_tenant_id: string }
+        Returns: Json
+      }
+      calculate_folio_stats_by_type: {
+        Args: { p_audit_date: string; p_tenant_id: string }
         Returns: Json
       }
       check_tenant_access: { Args: { _tenant_id: string }; Returns: Json }
