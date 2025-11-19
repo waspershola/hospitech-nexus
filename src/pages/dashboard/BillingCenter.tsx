@@ -1,7 +1,8 @@
-import { useParams } from 'react-router-dom';
+import { useParams, useSearchParams } from 'react-router-dom';
 import { useFolioById } from '@/hooks/useFolioById';
+import { useMultiFolios } from '@/hooks/useMultiFolios';
 import { useFolioPDF } from '@/hooks/useFolioPDF';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useQueryClient } from '@tanstack/react-query';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -9,16 +10,17 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { formatCurrency } from '@/lib/finance/tax';
 import { format } from 'date-fns';
-import { FileText, Mail, Printer, ArrowLeft } from 'lucide-react';
+import { FileText, Mail, Printer, ArrowLeft, Plus } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { FolioTransactionHistory } from '@/modules/billing/FolioTransactionHistory';
+import { FolioSwitcher } from '@/components/folio/FolioSwitcher';
 import { AddChargeDialog } from '@/modules/billing/AddChargeDialog';
 import { CloseFolioDialog } from '@/modules/billing/CloseFolioDialog';
 import { useAuth } from '@/contexts/AuthContext';
-import { useState } from 'react';
 
 export default function BillingCenter() {
   const { folioId } = useParams<{ folioId: string }>();
+  const [searchParams, setSearchParams] = useSearchParams();
   const { tenantId } = useAuth();
   const { data: folio, isLoading } = useFolioById(folioId || null);
   const queryClient = useQueryClient();
@@ -26,7 +28,14 @@ export default function BillingCenter() {
   const [addChargeOpen, setAddChargeOpen] = useState(false);
   const [closeFolioOpen, setCloseFolioOpen] = useState(false);
 
-  console.log('[BillingCenter] BILLING-CENTER-V2: Route accessed', { folioId, tenantId });
+  // Get multi-folio support if we have a booking
+  const { folios, createFolio, isCreatingFolio } = useMultiFolios(folio?.booking_id || null);
+
+  console.log('[BillingCenter] BILLING-CENTER-V2-MULTI-FOLIO: Route accessed', { 
+    folioId, 
+    tenantId, 
+    folioCount: folios.length 
+  });
   
   const { 
     generatePDF, 
@@ -52,7 +61,8 @@ export default function BillingCenter() {
         filter: `folio_id=eq.${folioId}`
       }, () => {
         console.log('[BillingCenter] Transaction update');
-        queryClient.invalidateQueries({ queryKey: ['folio-by-id', folioId, tenantId] });
+        queryClient.invalidateQueries({ queryKey: ['folio', folioId, tenantId] });
+        queryClient.invalidateQueries({ queryKey: ['folio-transactions', folioId, tenantId] });
       })
       .on('postgres_changes', {
         event: '*',
@@ -61,7 +71,10 @@ export default function BillingCenter() {
         filter: `id=eq.${folioId}`
       }, () => {
         console.log('[BillingCenter] Folio update');
-        queryClient.invalidateQueries({ queryKey: ['folio-by-id', folioId, tenantId] });
+        queryClient.invalidateQueries({ queryKey: ['folio', folioId, tenantId] });
+        if (folio?.booking_id) {
+          queryClient.invalidateQueries({ queryKey: ['multi-folios', folio.booking_id, tenantId] });
+        }
       })
       .on('postgres_changes', {
         event: '*',
@@ -69,14 +82,14 @@ export default function BillingCenter() {
         table: 'payments',
       }, (payload) => {
         console.log('[BillingCenter] Payment update');
-        queryClient.invalidateQueries({ queryKey: ['folio-by-id', folioId, tenantId] });
+        queryClient.invalidateQueries({ queryKey: ['folio', folioId, tenantId] });
       })
       .subscribe();
 
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [folioId, tenantId, queryClient]);
+  }, [folioId, tenantId, queryClient, folio?.booking_id]);
 
   if (isLoading) {
     return (
@@ -121,21 +134,27 @@ export default function BillingCenter() {
     <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
       {/* Main Content - 3 columns */}
       <div className="lg:col-span-3 space-y-6">
-      {/* Header */}
+      {/* Header with Folio Switcher */}
       <div className="flex items-center justify-between">
-        <div>
-          <div className="flex items-center gap-3">
-            <Button variant="ghost" size="sm" onClick={() => navigate('/dashboard/finance-center')}>
-              <ArrowLeft className="w-4 h-4" />
-            </Button>
-            <div>
-              <h1 className="text-3xl font-bold">Billing Center</h1>
-              <p className="text-muted-foreground">
-                {folio.booking?.booking_reference} • {folio.guest?.name}
-              </p>
-            </div>
+        <div className="flex items-center gap-3">
+          <Button variant="ghost" size="sm" onClick={() => navigate('/dashboard/finance-center')}>
+            <ArrowLeft className="w-4 h-4" />
+          </Button>
+          <div>
+            <h1 className="text-3xl font-bold">Billing Center</h1>
+            <p className="text-muted-foreground">
+              {folio.booking?.booking_reference} • {folio.guest?.name}
+            </p>
           </div>
         </div>
+        {folios.length > 1 && (
+          <FolioSwitcher
+            folios={folios}
+            currentFolioId={folioId!}
+            onSwitch={(newFolioId) => navigate(`/dashboard/billing/${newFolioId}`)}
+          />
+        )}
+      </div>
         <div className="space-y-2">
           <div className="flex gap-2">
             <Button 
@@ -239,6 +258,7 @@ export default function BillingCenter() {
 
       {/* Transaction History */}
       <FolioTransactionHistory folioId={folioId} />
+      </div>
       </div>
 
       {/* Sidebar - 1 column */}

@@ -86,7 +86,23 @@ serve(async (req) => {
       )
     }
 
-    // Create new folio
+    // Create new folio with multi-folio support
+    console.log('[checkin] CHECKIN-V4-MULTI-FOLIO: Generating folio number');
+    const { data: folioNumber, error: numberError } = await supabaseServiceClient.rpc(
+      'generate_folio_number',
+      {
+        p_tenant_id: booking.tenant_id,
+        p_booking_id: booking.id,
+        p_folio_type: 'room'
+      }
+    );
+
+    if (numberError) {
+      console.error('[checkin] CHECKIN-V4: Failed to generate folio number:', numberError);
+    }
+
+    console.log('[checkin] CHECKIN-V4-MULTI-FOLIO: Folio number generated:', folioNumber);
+
     const { data: folio, error: folioError } = await supabaseServiceClient
       .from('stay_folios')
       .insert({
@@ -94,6 +110,9 @@ serve(async (req) => {
         booking_id: booking.id,
         room_id: booking.room_id,
         guest_id: booking.guest_id,
+        folio_type: 'room',
+        folio_number: folioNumber,
+        is_primary: true,
         total_charges: booking.total_amount || 0,
         balance: booking.total_amount || 0,
         metadata: {
