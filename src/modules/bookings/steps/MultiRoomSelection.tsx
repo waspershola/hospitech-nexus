@@ -3,6 +3,7 @@ import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useFinancials } from '@/hooks/useFinancials';
+import { useRoomAvailability } from '@/hooks/useRoomAvailability';
 import { calculateGroupBookingTotal } from '@/lib/finance/groupBookingCalculator';
 import { Card } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
@@ -11,7 +12,7 @@ import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Separator } from '@/components/ui/separator';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Calendar, Check, AlertCircle, Bed } from 'lucide-react';
+import { Calendar, Check, AlertCircle, Bed, XCircle } from 'lucide-react';
 import type { BookingData } from '../BookingFlow';
 
 interface MultiRoomSelectionProps {
@@ -50,31 +51,29 @@ export function MultiRoomSelection({ bookingData, onChange }: MultiRoomSelection
     enabled: !!tenantId,
   });
 
-  // Check availability for each room based on selected dates
-  const { data: overlappingBookings } = useQuery({
-    queryKey: ['bookings-overlap', tenantId, checkIn.toISOString(), checkOut.toISOString()],
-    queryFn: async () => {
-      if (!tenantId) return [];
-      const { data, error } = await supabase
-        .from('bookings')
-        .select('id, room_id')
-        .eq('tenant_id', tenantId)
-        .in('status', ['reserved', 'checked_in'])
-        .lt('check_in', checkOut.toISOString())
-        .gt('check_out', checkIn.toISOString());
+  // Get all room IDs for availability check
+  const allRoomIds = allRooms?.map(r => r.id) || [];
+  
+  // Use the new availability hook
+  const { availabilityMap, isLoading: checkingAvailability } = useRoomAvailability(
+    allRoomIds,
+    checkIn,
+    checkOut
+  );
 
-      if (error) throw error;
-      return data;
-    },
-    enabled: !!tenantId && !!checkIn && !!checkOut,
-  });
+  // Separate available and unavailable rooms
+  const availableRooms = allRooms?.filter((room) => {
+    const status = availabilityMap.get(room.id);
+    return status?.isAvailable !== false;
+  }) || [];
 
-  // Filter rooms to only show available ones for the selected date range
-  const rooms = allRooms?.filter((room) => {
-    // Check if room has overlapping bookings
-    const hasConflict = overlappingBookings?.some(booking => booking.room_id === room.id);
-    return !hasConflict;
-  });
+  const unavailableRooms = allRooms?.filter((room) => {
+    const status = availabilityMap.get(room.id);
+    return status?.isAvailable === false;
+  }) || [];
+
+  // Use available rooms for selection
+  const rooms = availableRooms;
 
   const nights = Math.ceil((checkOut.getTime() - checkIn.getTime()) / (1000 * 60 * 60 * 24));
 
@@ -216,14 +215,45 @@ export function MultiRoomSelection({ bookingData, onChange }: MultiRoomSelection
           })}
         </div>
 
-        {rooms?.length === 0 && (
+        {checkingAvailability ? (
           <Alert>
             <AlertCircle className="h-4 w-4" />
             <AlertDescription>
-              No available rooms found. Please try different dates.
+              Checking room availability...
             </AlertDescription>
           </Alert>
-        )}
+        ) : rooms?.length === 0 ? (
+          <div className="space-y-4">
+            <Alert variant="destructive">
+              <XCircle className="h-4 w-4" />
+              <AlertDescription>
+                No rooms available for the selected dates ({checkIn.toLocaleDateString()} - {checkOut.toLocaleDateString()}).
+                {unavailableRooms.length > 0 && (
+                  <div className="mt-2">
+                    <strong>Unavailable rooms:</strong>
+                    <ul className="list-disc list-inside mt-1">
+                      {unavailableRooms.slice(0, 5).map(room => {
+                        const status = availabilityMap.get(room.id);
+                        return (
+                          <li key={room.id}>
+                            Room {room.number} {room.category?.name && `(${room.category.name})`}
+                            {status?.conflictingBookingRef && ` - Booking: ${status.conflictingBookingRef}`}
+                          </li>
+                        );
+                      })}
+                      {unavailableRooms.length > 5 && (
+                        <li>...and {unavailableRooms.length - 5} more</li>
+                      )}
+                    </ul>
+                  </div>
+                )}
+              </AlertDescription>
+            </Alert>
+            <p className="text-sm text-muted-foreground">
+              Please adjust your date range or contact the front desk for assistance.
+            </p>
+          </div>
+        ) : null}
       </div>
 
       <Separator />

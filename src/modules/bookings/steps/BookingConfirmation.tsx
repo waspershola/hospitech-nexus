@@ -7,6 +7,7 @@ import { usePrintReceipt } from '@/hooks/usePrintReceipt';
 import { useReceiptData } from '@/hooks/useReceiptData';
 import { useReceiptSettings } from '@/hooks/useReceiptSettings';
 import { usePlatformFee } from '@/hooks/usePlatformFee';
+import { useRoomAvailability, getUnavailableRooms } from '@/hooks/useRoomAvailability';
 import { calculateBookingTotal } from '@/lib/finance/tax';
 import { calculateGroupBookingTotal } from '@/lib/finance/groupBookingCalculator';
 import { calculatePlatformFee } from '@/lib/finance/platformFee';
@@ -16,7 +17,7 @@ import { Card } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Loader2, Check, Building2, AlertCircle, Users, CheckCircle, Printer } from 'lucide-react';
+import { Loader2, Check, Building2, AlertCircle, Users, CheckCircle, Printer, XCircle } from 'lucide-react';
 import { toast } from 'sonner';
 import { useOrganizationWallet } from '@/hooks/useOrganizationWallet';
 import { PaymentStep } from '../components/PaymentStep';
@@ -55,6 +56,19 @@ export function BookingConfirmation({ bookingData, onComplete }: BookingConfirma
   
   // Fetch organization wallet if booking for org
   const { data: orgWallet } = useOrganizationWallet(bookingData.organizationId);
+
+  // Pre-validate room availability before submission
+  const roomIdsToCheck = isGroupBooking 
+    ? bookingData.selectedRoomIds || []
+    : bookingData.roomId ? [bookingData.roomId] : [];
+
+  const { availabilityMap, isLoading: checkingAvailability } = useRoomAvailability(
+    roomIdsToCheck,
+    bookingData.checkIn,
+    bookingData.checkOut
+  );
+
+  const unavailableRooms = getUnavailableRooms(availabilityMap, roomIdsToCheck);
 
   const { data: guest } = useQuery({
     queryKey: ['guest', bookingData.guestId],
@@ -101,6 +115,23 @@ export function BookingConfirmation({ bookingData, onComplete }: BookingConfirma
 
   const createBookingMutation = useMutation({
     mutationFn: async () => {
+      // Final availability check before creating bookings
+      if (unavailableRooms.length > 0) {
+        const roomNumbers = await Promise.all(
+          unavailableRooms.map(async (status) => {
+            const { data } = await supabase
+              .from('rooms')
+              .select('number')
+              .eq('id', status.roomId)
+              .single();
+            return data?.number || status.roomId;
+          })
+        );
+        throw new Error(
+          `Room(s) no longer available: ${roomNumbers.join(', ')}. ` +
+          `${unavailableRooms[0].conflictingBookingRef ? `Conflicting booking: ${unavailableRooms[0].conflictingBookingRef}` : ''}`
+        );
+      }
       if (!tenantId || !bookingData.guestId || !bookingData.checkIn || !bookingData.checkOut) {
         throw new Error('Missing required booking information');
       }
@@ -508,6 +539,30 @@ export function BookingConfirmation({ bookingData, onComplete }: BookingConfirma
         </div>
       )}
 
+      {/* Room Availability Warning */}
+      {unavailableRooms.length > 0 && (
+        <Alert variant="destructive">
+          <XCircle className="h-4 w-4" />
+          <AlertDescription>
+            <strong>Room(s) No Longer Available:</strong>
+            <ul className="list-disc list-inside mt-2">
+              {unavailableRooms.map((status) => {
+                const roomNumber = roomIdsToCheck.find(id => id === status.roomId);
+                return (
+                  <li key={status.roomId}>
+                    Room ID: {roomNumber?.substring(0, 8)}...
+                    {status.conflictingBookingRef && ` (Booking: ${status.conflictingBookingRef})`}
+                  </li>
+                );
+              })}
+            </ul>
+            <p className="mt-2">
+              Please go back and select different rooms or dates.
+            </p>
+          </AlertDescription>
+        </Alert>
+      )}
+
       <Card className="p-6 space-y-4">
         <div>
           <h3 className="font-semibold text-lg mb-3">Guest Details</h3>
@@ -724,19 +779,29 @@ export function BookingConfirmation({ bookingData, onComplete }: BookingConfirma
       <div className="flex gap-2">
         <Button
           onClick={() => createBookingMutation.mutate()}
-          disabled={createBookingMutation.isPending}
+          disabled={createBookingMutation.isPending || checkingAvailability || unavailableRooms.length > 0}
           className="flex-1"
           size="lg"
         >
           {createBookingMutation.isPending ? (
             <>
               <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-              {isGroupBooking ? 'Creating Group Bookings...' : 'Creating Booking...'}
+              Creating Booking...
+            </>
+          ) : checkingAvailability ? (
+            <>
+              <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+              Checking Availability...
+            </>
+          ) : unavailableRooms.length > 0 ? (
+            <>
+              <XCircle className="w-4 h-4 mr-2" />
+              Room(s) Not Available
             </>
           ) : (
             <>
               <Check className="w-4 h-4 mr-2" />
-              {isGroupBooking ? `Confirm ${bookingData.selectedRoomIds?.length} Room Bookings` : 'Confirm Booking'}
+              Confirm Booking
             </>
           )}
         </Button>
