@@ -23,7 +23,7 @@ export function BookingConfirmationDocument({ bookingId }: BookingConfirmationDo
         .select(`
           *,
           guest:guests(*),
-          room:rooms(*, category:room_categories(*)),
+          room:rooms!bookings_room_id_fkey(*, category:room_categories(*)),
           organization:organizations(*)
         `)
         .eq('id', bookingId)
