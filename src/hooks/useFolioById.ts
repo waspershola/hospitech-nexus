@@ -24,7 +24,8 @@ export function useFolioById(folioId: string | null) {
             check_out,
             total_amount,
             status,
-            metadata
+            metadata,
+            organization_id
           ),
           guest:guests(
             name,

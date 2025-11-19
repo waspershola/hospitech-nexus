@@ -63,7 +63,7 @@ export function SplitChargeDialog({
           <Alert>
             <AlertCircle className="h-4 w-4" />
             <AlertDescription>
-              Split amounts must total ₦{transactionAmount.toLocaleString()}
+              Split amounts must total ₦{transactionAmount.toLocaleString()}. Organization credit limits will be validated for each target folio.
             </AlertDescription>
           </Alert>
 
