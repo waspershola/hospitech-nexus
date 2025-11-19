@@ -278,7 +278,27 @@ export default function BillingCenter() {
       </div>
 
         {/* Transaction History */}
-        <FolioTransactionHistory folioId={folioId} />
+        <FolioTransactionHistory 
+          folioId={folioId} 
+          onTransfer={(txnId, amount) => {
+            console.log('[BillingCenter] TRANSACTION-ROW-ACTIONS-V1: Transfer', txnId, amount);
+            setSelectedTransactionId(txnId);
+            setSelectedTransactionAmount(amount);
+            setTransferDialogOpen(true);
+          }}
+          onSplit={(txnId, amount, description) => {
+            console.log('[BillingCenter] TRANSACTION-ROW-ACTIONS-V1: Split', txnId, amount);
+            setSelectedTransactionId(txnId);
+            setSelectedTransactionAmount(amount);
+            setSelectedTransactionDescription(description);
+            setSplitDialogOpen(true);
+          }}
+          onReverse={(txnId) => {
+            console.log('[BillingCenter] TRANSACTION-ROW-ACTIONS-V1: Reverse', txnId);
+            // TODO: Implement reverse transaction
+          }}
+          availableFoliosCount={folios.length}
+        />
       </div>
 
       {/* Sidebar - 1 column */}

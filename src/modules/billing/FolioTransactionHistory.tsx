@@ -13,18 +13,28 @@ import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { formatCurrency } from '@/lib/finance/tax';
 import { format } from 'date-fns';
-import { Filter } from 'lucide-react';
+import { Filter, ArrowLeftRight, Split, Undo2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useState } from 'react';
 import { Skeleton } from '@/components/ui/skeleton';
 
 interface FolioTransactionHistoryProps {
   folioId: string;
+  onTransfer?: (transactionId: string, amount: number) => void;
+  onSplit?: (transactionId: string, amount: number, description: string) => void;
+  onReverse?: (transactionId: string) => void;
+  availableFoliosCount?: number;
 }
 
 type TransactionFilter = 'all' | 'charge' | 'payment';
 
-export function FolioTransactionHistory({ folioId }: FolioTransactionHistoryProps) {
+export function FolioTransactionHistory({ 
+  folioId, 
+  onTransfer, 
+  onSplit, 
+  onReverse,
+  availableFoliosCount = 1 
+}: FolioTransactionHistoryProps) {
   const { tenantId } = useAuth();
   const [filter, setFilter] = useState<TransactionFilter>('all');
 
@@ -124,10 +134,11 @@ export function FolioTransactionHistory({ folioId }: FolioTransactionHistoryProp
                 <TableHead>Date/Time</TableHead>
                 <TableHead>Type</TableHead>
                 <TableHead>Description</TableHead>
-                <TableHead>Reference</TableHead>
-                <TableHead>Created By</TableHead>
                 <TableHead className="text-right">Amount</TableHead>
                 <TableHead className="text-right">Balance</TableHead>
+                {(onTransfer || onSplit || onReverse) && (
+                  <TableHead className="text-right">Actions</TableHead>
+                )}
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -142,12 +153,6 @@ export function FolioTransactionHistory({ folioId }: FolioTransactionHistoryProp
                     </Badge>
                   </TableCell>
                   <TableCell>{txn.description}</TableCell>
-                  <TableCell className="text-xs text-muted-foreground">
-                    {txn.reference_id || '-'}
-                  </TableCell>
-                  <TableCell className="text-sm">
-                    {txn.created_by || 'System'}
-                  </TableCell>
                   <TableCell className={`text-right font-medium ${
                     txn.transaction_type === 'charge' ? 'text-destructive' : 'text-green-600'
                   }`}>
@@ -157,6 +162,42 @@ export function FolioTransactionHistory({ folioId }: FolioTransactionHistoryProp
                   <TableCell className="text-right font-semibold">
                     {formatCurrency(txn.balance, 'NGN')}
                   </TableCell>
+                  {(onTransfer || onSplit || onReverse) && (
+                    <TableCell className="text-right">
+                      <div className="flex gap-1 justify-end">
+                        {txn.transaction_type === 'charge' && availableFoliosCount > 1 && onTransfer && (
+                          <Button 
+                            variant="ghost" 
+                            size="sm"
+                            onClick={() => onTransfer(txn.id, txn.amount)}
+                            title="Transfer to another folio"
+                          >
+                            <ArrowLeftRight className="w-4 h-4" />
+                          </Button>
+                        )}
+                        {txn.transaction_type === 'charge' && availableFoliosCount > 1 && onSplit && (
+                          <Button 
+                            variant="ghost" 
+                            size="sm"
+                            onClick={() => onSplit(txn.id, txn.amount, txn.description)}
+                            title="Split across folios"
+                          >
+                            <Split className="w-4 h-4" />
+                          </Button>
+                        )}
+                        {onReverse && (
+                          <Button 
+                            variant="ghost" 
+                            size="sm"
+                            onClick={() => onReverse(txn.id)}
+                            title="Reverse transaction"
+                          >
+                            <Undo2 className="w-4 h-4" />
+                          </Button>
+                        )}
+                      </div>
+                    </TableCell>
+                  )}
                 </TableRow>
               ))}
             </TableBody>
