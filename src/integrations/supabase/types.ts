@@ -5445,10 +5445,14 @@ export type Database = {
           closed_by: string | null
           created_at: string | null
           created_by: string | null
+          folio_number: string | null
+          folio_type: string
           group_id: string | null
           guest_id: string | null
           id: string
+          is_primary: boolean
           metadata: Json | null
+          parent_folio_id: string | null
           room_id: string | null
           status: string
           tenant_id: string
@@ -5463,10 +5467,14 @@ export type Database = {
           closed_by?: string | null
           created_at?: string | null
           created_by?: string | null
+          folio_number?: string | null
+          folio_type?: string
           group_id?: string | null
           guest_id?: string | null
           id?: string
+          is_primary?: boolean
           metadata?: Json | null
+          parent_folio_id?: string | null
           room_id?: string | null
           status?: string
           tenant_id: string
@@ -5481,10 +5489,14 @@ export type Database = {
           closed_by?: string | null
           created_at?: string | null
           created_by?: string | null
+          folio_number?: string | null
+          folio_type?: string
           group_id?: string | null
           guest_id?: string | null
           id?: string
+          is_primary?: boolean
           metadata?: Json | null
+          parent_folio_id?: string | null
           room_id?: string | null
           status?: string
           tenant_id?: string
@@ -5519,6 +5531,13 @@ export type Database = {
             columns: ["guest_id"]
             isOneToOne: false
             referencedRelation: "v_guests"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "stay_folios_parent_folio_id_fkey"
+            columns: ["parent_folio_id"]
+            isOneToOne: false
+            referencedRelation: "stay_folios"
             referencedColumns: ["id"]
           },
           {
@@ -7235,6 +7254,14 @@ export type Database = {
       folio_post_payment: {
         Args: { p_amount: number; p_folio_id: string; p_payment_id: string }
         Returns: Json
+      }
+      generate_folio_number: {
+        Args: {
+          p_booking_id: string
+          p_folio_type: string
+          p_tenant_id: string
+        }
+        Returns: string
       }
       generate_invoice_number: { Args: never; Returns: string }
       generate_receipt_number: {
