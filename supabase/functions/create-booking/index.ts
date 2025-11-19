@@ -405,20 +405,55 @@ serve(async (req) => {
     if (overlappingBookings && overlappingBookings.length > 0) {
       console.error('Room not available - overlapping bookings detected:', overlappingBookings);
       
+      // PHASE 2: Group Booking Rollback - If this is part of a group, delete all group bookings
+      if (group_id) {
+        console.log(`[ROLLBACK-V1] Room ${room?.number} not available. Rolling back group: ${group_id}`);
+        
+        // Find all bookings in this group that were already created
+        const { data: groupBookings } = await supabaseClient
+          .from('bookings')
+          .select('id, booking_reference')
+          .eq('tenant_id', tenant_id)
+          .eq('metadata->>group_id', group_id);
+        
+        if (groupBookings && groupBookings.length > 0) {
+          console.log(`[ROLLBACK-V1] Found ${groupBookings.length} group bookings to rollback:`, groupBookings.map(b => b.booking_reference));
+          
+          // Delete all bookings in this group
+          const { error: deleteError } = await supabaseClient
+            .from('bookings')
+            .delete()
+            .eq('metadata->>group_id', group_id)
+            .eq('tenant_id', tenant_id);
+          
+          if (deleteError) {
+            console.error('[ROLLBACK-V1] Error deleting group bookings:', deleteError);
+          } else {
+            console.log(`[ROLLBACK-V1] ✅ Successfully rolled back ${groupBookings.length} bookings for group ${group_id}`);
+          }
+        }
+      }
+      
       const conflictDetails = overlappingBookings.map(b => 
         `${b.booking_reference || b.id.substring(0, 8)} (${b.check_in.split('T')[0]} to ${b.check_out.split('T')[0]})`
       ).join(', ');
+      
+      const errorMessage = group_id
+        ? `Group booking failed: Room ${room?.number || room_id} is not available for the selected dates. All bookings in this group have been cancelled. Please select different rooms or dates. Conflicting booking: ${conflictDetails}`
+        : `Room ${room?.number || room_id} is already booked for the selected dates. Conflicting bookings: ${conflictDetails}`;
       
       return new Response(
         JSON.stringify({ 
           success: false, 
           error: 'ROOM_NOT_AVAILABLE',
-          message: `Room ${room?.number || room_id} is already booked for the selected dates. Conflicting bookings: ${conflictDetails}`,
+          message: errorMessage,
           conflicting_bookings: overlappingBookings,
           requested_dates: {
             check_in: checkInDate.toISOString().split('T')[0],
             check_out: checkOutDate.toISOString().split('T')[0]
-          }
+          },
+          rollback_performed: !!group_id,
+          group_id: group_id || null
         }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 409 }
       );
@@ -483,6 +518,42 @@ serve(async (req) => {
 
     if (createError) {
       console.error('Error creating booking:', createError);
+      
+      // PHASE 2: Group Booking Rollback - If booking creation fails and this is part of a group, rollback
+      if (group_id) {
+        console.log(`[ROLLBACK-V1] Booking creation failed for group ${group_id}. Rolling back all group bookings.`);
+        
+        // Find and delete all bookings in this group
+        const { data: groupBookings } = await supabaseClient
+          .from('bookings')
+          .select('id, booking_reference')
+          .eq('tenant_id', tenant_id)
+          .eq('metadata->>group_id', group_id);
+        
+        if (groupBookings && groupBookings.length > 0) {
+          console.log(`[ROLLBACK-V1] Deleting ${groupBookings.length} group bookings:`, groupBookings.map(b => b.booking_reference));
+          
+          await supabaseClient
+            .from('bookings')
+            .delete()
+            .eq('metadata->>group_id', group_id)
+            .eq('tenant_id', tenant_id);
+          
+          console.log(`[ROLLBACK-V1] ✅ Rolled back group ${group_id}`);
+        }
+        
+        return new Response(
+          JSON.stringify({ 
+            success: false, 
+            error: 'GROUP_BOOKING_FAILED',
+            message: `Group booking failed: ${createError.message}. All bookings in this group have been cancelled.`,
+            rollback_performed: true,
+            group_id
+          }),
+          { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 500 }
+        );
+      }
+      
       throw createError;
     }
 
@@ -511,21 +582,43 @@ serve(async (req) => {
       if (folioError || !folioData?.folio) {
         console.error('[create-booking] Folio creation failed - rolling back booking:', folioError);
         
-        // Rollback: delete the booking we just created
-        await supabaseClient
-          .from('bookings')
-          .delete()
-          .eq('id', newBooking.id);
-        
-        return new Response(
-          JSON.stringify({ 
-            success: false, 
-            error: 'FOLIO_CREATION_FAILED',
-            message: `Cannot create folio: ${folioError?.message || 'Unknown error'}. Booking rolled back.`,
-            booking_id: newBooking.id
-          }),
-          { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 500 }
-        );
+        // PHASE 2: Enhanced Rollback - Delete this booking and all group bookings if applicable
+        if (group_id) {
+          console.log(`[ROLLBACK-V1] Folio creation failed for group ${group_id}. Rolling back all group bookings.`);
+          
+          await supabaseClient
+            .from('bookings')
+            .delete()
+            .eq('metadata->>group_id', group_id)
+            .eq('tenant_id', tenant_id);
+          
+          return new Response(
+            JSON.stringify({ 
+              success: false, 
+              error: 'FOLIO_CREATION_FAILED',
+              message: `Group booking failed: Cannot create folio (${folioError?.message || 'Unknown error'}). All bookings in this group have been cancelled.`,
+              rollback_performed: true,
+              group_id
+            }),
+            { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 500 }
+          );
+        } else {
+          // Single booking rollback
+          await supabaseClient
+            .from('bookings')
+            .delete()
+            .eq('id', newBooking.id);
+          
+          return new Response(
+            JSON.stringify({ 
+              success: false, 
+              error: 'FOLIO_CREATION_FAILED',
+              message: `Cannot create folio: ${folioError?.message || 'Unknown error'}. Booking rolled back.`,
+              booking_id: newBooking.id
+            }),
+            { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 500 }
+          );
+        }
       }
       
       console.log('[create-booking] ✅ Folio created successfully:', folioData.folio.id);
@@ -557,22 +650,44 @@ serve(async (req) => {
       if (walletError || !wallet) {
         console.error('Organization wallet not found:', walletError);
         
-        // Delete the booking we just created
-        await supabaseClient
-          .from('bookings')
-          .delete()
-          .eq('id', newBooking.id);
-        
-        // Return error response
-        return new Response(
-          JSON.stringify({ 
-            success: false, 
-            error: 'WALLET_NOT_FOUND',
-            message: 'Organization does not have a wallet configured. Please contact administrator.',
-            organization_id: organization_id
-          }),
-          { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 400 }
-        );
+        // PHASE 2: Enhanced Rollback - Delete this booking and all group bookings if applicable
+        if (group_id) {
+          console.log(`[ROLLBACK-V1] Wallet not found for group ${group_id}. Rolling back all group bookings.`);
+          
+          await supabaseClient
+            .from('bookings')
+            .delete()
+            .eq('metadata->>group_id', group_id)
+            .eq('tenant_id', tenant_id);
+          
+          return new Response(
+            JSON.stringify({ 
+              success: false, 
+              error: 'WALLET_NOT_FOUND',
+              message: 'Group booking failed: Organization does not have a wallet configured. All bookings in this group have been cancelled. Please contact administrator.',
+              organization_id: organization_id,
+              rollback_performed: true,
+              group_id
+            }),
+            { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 400 }
+          );
+        } else {
+          // Single booking rollback
+          await supabaseClient
+            .from('bookings')
+            .delete()
+            .eq('id', newBooking.id);
+          
+          return new Response(
+            JSON.stringify({ 
+              success: false, 
+              error: 'WALLET_NOT_FOUND',
+              message: 'Organization does not have a wallet configured. Please contact administrator.',
+              organization_id: organization_id
+            }),
+            { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 400 }
+          );
+        }
       }
       
       // Validate organization has sufficient credit/balance
