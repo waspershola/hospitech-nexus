@@ -197,16 +197,16 @@ export function PaymentMethodDrawer({ open, onClose, methodId }: PaymentMethodDr
           <div className="space-y-2">
             <Label htmlFor="provider_id">Link to Provider (Optional)</Label>
             <Select
-              value={form.watch('provider_id') || ''}
+              value={form.watch('provider_id') || undefined}
               onValueChange={(value) =>
-                form.setValue('provider_id', value || null)
+                form.setValue('provider_id', value === 'none' ? null : value)
               }
             >
               <SelectTrigger id="provider_id">
                 <SelectValue placeholder="No provider linked" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">No provider</SelectItem>
+                <SelectItem value="none">No provider</SelectItem>
                 {providers.map((provider) => (
                   <SelectItem key={provider.id} value={provider.id}>
                     {provider.name}
