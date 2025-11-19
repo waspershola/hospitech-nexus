@@ -12,7 +12,10 @@ import { format } from 'date-fns';
 import { FileText, Mail, Printer, ArrowLeft } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { FolioTransactionHistory } from '@/modules/billing/FolioTransactionHistory';
+import { AddChargeDialog } from '@/modules/billing/AddChargeDialog';
+import { CloseFolioDialog } from '@/modules/billing/CloseFolioDialog';
 import { useAuth } from '@/contexts/AuthContext';
+import { useState } from 'react';
 
 export default function BillingCenter() {
   const { folioId } = useParams<{ folioId: string }>();
@@ -20,6 +23,8 @@ export default function BillingCenter() {
   const { data: folio, isLoading } = useFolioById(folioId || null);
   const queryClient = useQueryClient();
   const navigate = useNavigate();
+  const [addChargeOpen, setAddChargeOpen] = useState(false);
+  const [closeFolioOpen, setCloseFolioOpen] = useState(false);
 
   console.log('[BillingCenter] BILLING-CENTER-V2: Route accessed', { folioId, tenantId });
   
@@ -270,6 +275,16 @@ export default function BillingCenter() {
             <CardTitle className="text-lg">Quick Actions</CardTitle>
           </CardHeader>
           <CardContent className="space-y-2">
+            {folio.status === 'open' && (
+              <Button 
+                variant="outline" 
+                className="w-full justify-start"
+                onClick={() => setAddChargeOpen(true)}
+              >
+                <FileText className="w-4 h-4 mr-2" />
+                Add Charge
+              </Button>
+            )}
             <Button 
               variant="outline" 
               className="w-full justify-start"
@@ -302,8 +317,35 @@ export default function BillingCenter() {
               <Mail className="w-4 h-4 mr-2" />
               Email Invoice
             </Button>
+            <div className="pt-2 border-t">
+              <Button 
+                variant={folio.status === 'open' ? 'outline' : 'default'}
+                className="w-full justify-start"
+                onClick={() => setCloseFolioOpen(true)}
+              >
+                {folio.status === 'open' ? 'Close Folio' : 'Reopen Folio'}
+              </Button>
+            </div>
           </CardContent>
         </Card>
+
+        {/* Dialogs */}
+        {folioId && (
+          <>
+            <AddChargeDialog
+              open={addChargeOpen}
+              onOpenChange={setAddChargeOpen}
+              folioId={folioId}
+            />
+            <CloseFolioDialog
+              open={closeFolioOpen}
+              onOpenChange={setCloseFolioOpen}
+              folioId={folioId}
+              currentStatus={folio.status}
+              folioBalance={folio.balance || 0}
+            />
+          </>
+        )}
 
         {/* Folio Status */}
         <Card>
