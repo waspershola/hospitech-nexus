@@ -203,15 +203,19 @@ Deno.serve(async (req) => {
       duration_ms: duration 
     });
 
+    // Return success with 200 status
+    const responseData = {
+      success: true,
+      message: 'Folio email sent successfully',
+      message_id: data.id,
+      duration_ms: duration
+    };
+
     return new Response(
-      JSON.stringify({ 
-        success: true,
-        message_id: data.id,
-        duration_ms: duration
-      }),
+      JSON.stringify(responseData),
       { 
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        status: 200 
+        status: 200,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
       }
     );
 

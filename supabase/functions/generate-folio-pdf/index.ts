@@ -282,24 +282,33 @@ Deno.serve(async (req) => {
       storage_path: storagePath
     });
 
+    // Return success with both html_url and pdf_url (same for now)
+    const responseData = {
+      success: true,
+      html_url: urlData.publicUrl,
+      pdf_url: urlData.publicUrl, // Client will convert to PDF
+      version,
+      metadata: {
+        template_version: 'PDF-TEMPLATE-V3',
+        storage_path: storagePath,
+        generated_at: new Date().toISOString(),
+        folio_id,
+        tenant_id
+      }
+    };
+
+    console.log('PDF-TEMPLATE-V3: Success response', {
+      html_url: urlData.publicUrl,
+      version,
+      duration_ms: duration
+    });
+
     return new Response(
-      JSON.stringify({
-        success: true,
-        pdf_url: urlData.publicUrl,
-        html: folioHtml,
-        metadata: {
-          folio_id,
-          tenant_id,
-          storage_path: storagePath,
-          template_version: 'PDF-TEMPLATE-V3',
-          version,
-          generated_at: new Date().toISOString()
-        },
-        version,
-        duration_ms: duration,
-        message: 'Folio PDF generated successfully'
-      }),
-      { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      JSON.stringify(responseData),
+      { 
+        status: 200,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+      }
     );
 
   } catch (error) {
