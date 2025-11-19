@@ -10,7 +10,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { formatCurrency } from '@/lib/finance/tax';
 import { format } from 'date-fns';
-import { FileText, Mail, Printer, ArrowLeft, Plus } from 'lucide-react';
+import { FileText, Mail, Printer, ArrowLeft, Plus, ArrowLeftRight, Merge, DollarSign } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { FolioTransactionHistory } from '@/modules/billing/FolioTransactionHistory';
 import { FolioSwitcher } from '@/components/folio/FolioSwitcher';
@@ -18,6 +18,10 @@ import { AddChargeDialog } from '@/modules/billing/AddChargeDialog';
 import { CloseFolioDialog } from '@/modules/billing/CloseFolioDialog';
 import { CreateFolioDialog } from '@/components/folio/CreateFolioDialog';
 import { RelatedFoliosPanel } from '@/components/folio/RelatedFoliosPanel';
+import { TransferChargeDialog } from '@/components/folio/TransferChargeDialog';
+import { SplitChargeDialog } from '@/components/folio/SplitChargeDialog';
+import { MergeFolioDialog } from '@/components/folio/MergeFolioDialog';
+import { AddPaymentDialog } from '@/components/folio/AddPaymentDialog';
 import { useAuth } from '@/contexts/AuthContext';
 
 export default function BillingCenter() {
@@ -30,6 +34,13 @@ export default function BillingCenter() {
   const [addChargeOpen, setAddChargeOpen] = useState(false);
   const [closeFolioOpen, setCloseFolioOpen] = useState(false);
   const [createFolioOpen, setCreateFolioOpen] = useState(false);
+  const [transferDialogOpen, setTransferDialogOpen] = useState(false);
+  const [splitDialogOpen, setSplitDialogOpen] = useState(false);
+  const [mergeFolioOpen, setMergeFolioOpen] = useState(false);
+  const [addPaymentOpen, setAddPaymentOpen] = useState(false);
+  const [selectedTransactionId, setSelectedTransactionId] = useState<string | null>(null);
+  const [selectedTransactionAmount, setSelectedTransactionAmount] = useState(0);
+  const [selectedTransactionDescription, setSelectedTransactionDescription] = useState('');
 
   // Get multi-folio support if we have a booking
   const { folios, createFolio, isCreatingFolio } = useMultiFolios(folio?.booking_id || null);
@@ -328,16 +339,47 @@ export default function BillingCenter() {
           </CardHeader>
           <CardContent className="space-y-2">
             {folio.status === 'open' && (
-              <Button 
-                variant="outline" 
-                className="w-full justify-start"
-                onClick={() => setAddChargeOpen(true)}
-              >
-                <FileText className="w-4 h-4 mr-2" />
-                Add Charge
-              </Button>
+              <>
+                <Button 
+                  variant="outline" 
+                  className="w-full justify-start"
+                  onClick={() => setAddChargeOpen(true)}
+                >
+                  <FileText className="w-4 h-4 mr-2" />
+                  Add Charge
+                </Button>
+                <Button 
+                  variant="outline" 
+                  className="w-full justify-start"
+                  onClick={() => setAddPaymentOpen(true)}
+                >
+                  <DollarSign className="w-4 h-4 mr-2" />
+                  Add Payment
+                </Button>
+              </>
             )}
-            <Button 
+            {folio.status === 'open' && folios.length > 1 && (
+              <>
+                <Button 
+                  variant="outline" 
+                  className="w-full justify-start"
+                  onClick={() => setTransferDialogOpen(true)}
+                >
+                  <ArrowLeftRight className="w-4 h-4 mr-2" />
+                  Transfer Charges
+                </Button>
+                <Button 
+                  variant="outline" 
+                  className="w-full justify-start"
+                  onClick={() => setMergeFolioOpen(true)}
+                >
+                  <Merge className="w-4 h-4 mr-2" />
+                  Merge Folio
+                </Button>
+              </>
+            )}
+            <div className="pt-2 border-t" />
+            <Button
               variant="outline" 
               className="w-full justify-start"
               onClick={() => generatePDF({ folioId: folioId!, format: 'A4' })}
@@ -401,6 +443,43 @@ export default function BillingCenter() {
               onOpenChange={setCreateFolioOpen}
               bookingId={folio.booking_id}
               onSuccess={(newFolioId) => navigate(`/dashboard/billing/${newFolioId}`)}
+            />
+            <TransferChargeDialog
+              open={transferDialogOpen}
+              onOpenChange={setTransferDialogOpen}
+              bookingId={folio.booking_id}
+              transactionId={selectedTransactionId || ''}
+              transactionAmount={selectedTransactionAmount}
+              currentFolioId={folioId!}
+            />
+            <SplitChargeDialog
+              open={splitDialogOpen}
+              onOpenChange={setSplitDialogOpen}
+              transactionAmount={selectedTransactionAmount}
+              transactionDescription={selectedTransactionDescription}
+              onConfirm={(splits) => {
+                console.log('[BillingCenter] Split charges:', splits);
+                setSplitDialogOpen(false);
+              }}
+              availableFolios={folios}
+            />
+            <MergeFolioDialog
+              open={mergeFolioOpen}
+              onOpenChange={setMergeFolioOpen}
+              sourceFolioId={folioId!}
+              sourceFolioNumber={folio.folio_number}
+              availableFolios={folios.filter(f => f.id !== folioId)}
+              onConfirm={(targetId) => {
+                console.log('[BillingCenter] Merge folio to:', targetId);
+                setMergeFolioOpen(false);
+              }}
+              isLoading={false}
+            />
+            <AddPaymentDialog
+              open={addPaymentOpen}
+              onOpenChange={setAddPaymentOpen}
+              folioId={folioId!}
+              bookingId={folio.booking_id}
             />
           </>
         )}
