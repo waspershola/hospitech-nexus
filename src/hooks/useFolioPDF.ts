@@ -89,14 +89,20 @@ export function useFolioPDF() {
       // First generate the PDF
       const pdfData = await generatePDF.mutateAsync(params);
       
-      console.log('[useFolioPDF] BILLING-CENTER-V2: Opening PDF for print:', {
+      console.log('[useFolioPDF] BILLING-CENTER-V2: Fetching HTML for print:', {
         pdf_url: pdfData.pdf_url,
         version: pdfData.version,
         template_version: pdfData.metadata?.template_version
       });
       
-      // Open PDF in new window for printing
-      window.open(pdfData.pdf_url, '_blank');
+      // Fetch the HTML content and create a proper blob URL to ensure it renders
+      const response = await fetch(pdfData.pdf_url);
+      const htmlContent = await response.text();
+      const blob = new Blob([htmlContent], { type: 'text/html' });
+      const blobUrl = URL.createObjectURL(blob);
+      
+      // Open blob URL in new window for printing
+      window.open(blobUrl, '_blank');
       
       return pdfData;
     },
