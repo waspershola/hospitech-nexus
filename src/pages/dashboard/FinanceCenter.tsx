@@ -17,6 +17,7 @@ import { FoliosTab } from '@/modules/finance-center/FoliosTab';
 import { PostCheckoutLedgerTab } from '@/modules/finance-center/PostCheckoutLedgerTab';
 import { FinanceReportsTab } from '@/modules/finance-center/FinanceReportsTab';
 import { FinanceAuditTab } from '@/modules/finance-center/FinanceAuditTab';
+import { PaymentMethodsTab } from '@/modules/finance-center/PaymentMethodsTab';
 import { BackfillFoliosButton } from '@/components/admin/BackfillFoliosButton';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
 import { PlatformFeesTab } from '@/components/finance/PlatformFeesTab';
@@ -80,6 +81,10 @@ export default function FinanceCenter() {
             <TabsTrigger value="providers" className="flex items-center gap-2 whitespace-nowrap">
               <Building2 className="w-4 h-4" />
               <span>Providers</span>
+            </TabsTrigger>
+            <TabsTrigger value="payment-methods" className="flex items-center gap-2 whitespace-nowrap">
+              <CreditCard className="w-4 h-4" />
+              <span>Payment Methods</span>
             </TabsTrigger>
             <TabsTrigger value="locations" className="flex items-center gap-2 whitespace-nowrap">
               <MapPin className="w-4 h-4" />
@@ -159,6 +164,10 @@ export default function FinanceCenter() {
 
           <TabsContent value="providers" className="mt-0">
             <ProvidersTab />
+          </TabsContent>
+
+          <TabsContent value="payment-methods" className="mt-0">
+            <PaymentMethodsTab />
           </TabsContent>
 
           <TabsContent value="locations" className="mt-0">
