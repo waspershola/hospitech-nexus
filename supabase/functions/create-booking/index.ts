@@ -140,6 +140,14 @@ serve(async (req) => {
       requiresApproval = false,
       approvalStatus,
       overriddenRate,
+      // Group booking fields
+      group_booking,
+      group_id,
+      group_name,
+      group_size,
+      group_leader,
+      is_part_of_group,
+      total_rooms_in_group,
     } = body;
 
     if (!guest_id || !room_id || !check_in || !check_out || !tenant_id) {
@@ -155,6 +163,15 @@ serve(async (req) => {
       requiresApproval: requiresApproval || false,
       approvalStatus: approvalStatus || (requiresApproval ? 'pending' : 'approved'),
       overriddenRate: overriddenRate || null,
+      // Group booking metadata
+      group_booking,
+      group_id,
+      group_name,
+      group_size,
+      group_leader,
+      isGroupBooking: group_booking,
+      is_part_of_group,
+      total_rooms_in_group,
       createdAt: new Date().toISOString(),
       version: 'CREATE-BOOKING-V3'
     };
