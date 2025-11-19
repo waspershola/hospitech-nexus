@@ -34,11 +34,32 @@ export function GroupMasterActions({
     printFolio({ folioId: masterFolioId });
   };
 
-  const handleBatchPDF = () => {
-    toast({
-      title: "Coming Soon",
-      description: "Batch PDF export for all child folios.",
-    });
+  const handleBatchPDF = async () => {
+    try {
+      toast({
+        title: "Generating PDFs",
+        description: `Exporting ${childFolios.length} child folios...`,
+      });
+
+      // Generate PDFs for all child folios in parallel
+      const pdfPromises = childFolios.map(child => 
+        generatePDF({ folioId: child.id })
+      );
+
+      await Promise.all(pdfPromises);
+
+      toast({
+        title: "Batch Export Complete",
+        description: `Successfully exported ${childFolios.length} folio PDFs.`,
+      });
+    } catch (error) {
+      console.error("Batch PDF export failed:", error);
+      toast({
+        title: "Export Failed",
+        description: "Some PDFs could not be generated.",
+        variant: "destructive",
+      });
+    }
   };
 
   return (
@@ -87,9 +108,10 @@ export function GroupMasterActions({
             size="sm"
             className="w-full justify-start"
             onClick={handleBatchPDF}
+            disabled={isGenerating || childFolios.length === 0}
           >
             <FileText className="mr-2 h-4 w-4" />
-            Batch Export All
+            {isGenerating ? "Exporting..." : `Batch Export All (${childFolios.length})`}
           </Button>
         </div>
 
