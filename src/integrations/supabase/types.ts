@@ -7370,6 +7370,15 @@ export type Database = {
         Args: { p_audit_date: string; p_tenant_id: string }
         Returns: Json
       }
+      calculate_org_remaining_limit: {
+        Args: {
+          p_amount: number
+          p_department: string
+          p_guest_id: string
+          p_org_id: string
+        }
+        Returns: Json
+      }
       check_tenant_access: { Args: { _tenant_id: string }; Returns: Json }
       complete_night_audit_for_folio: {
         Args: { p_folio_id: string }

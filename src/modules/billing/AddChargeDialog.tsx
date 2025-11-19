@@ -2,6 +2,8 @@ import { useState } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
+import { useFolioById } from '@/hooks/useFolioById';
+import { useOrgCreditCheck } from '@/hooks/useOrgCreditCheck';
 import {
   Dialog,
   DialogContent,
@@ -21,8 +23,9 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 import { toast } from 'sonner';
-import { Loader2 } from 'lucide-react';
+import { Loader2, AlertTriangle, CheckCircle2 } from 'lucide-react';
 
 interface AddChargeDialogProps {
   open: boolean;
@@ -47,6 +50,20 @@ export function AddChargeDialog({ open, onOpenChange, folioId }: AddChargeDialog
   const [amount, setAmount] = useState('');
   const [description, setDescription] = useState('');
   const [department, setDepartment] = useState('');
+
+  // Fetch folio to get organization info
+  const { data: folio } = useFolioById(folioId);
+  const organizationId = folio?.booking?.organization_id;
+  const guestId = folio?.guest_id;
+
+  // Check organization credit limits
+  const { data: creditCheck } = useOrgCreditCheck({
+    organizationId: organizationId || null,
+    guestId: guestId || null,
+    department: department || null,
+    amount: parseFloat(amount) || 0,
+    enabled: !!organizationId && !!amount && parseFloat(amount) > 0,
+  });
 
   const addChargeMutation = useMutation({
     mutationFn: async () => {
@@ -154,6 +171,55 @@ export function AddChargeDialog({ open, onOpenChange, folioId }: AddChargeDialog
               </Select>
             </div>
           </div>
+
+          {/* Organization Credit Status */}
+          {creditCheck && organizationId && (
+            <div className="bg-muted/50 rounded-lg p-3 space-y-2 mb-4">
+              <div className="text-sm font-medium">Organization Credit Status</div>
+              
+              <div className="space-y-1 text-sm">
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Total Remaining:</span>
+                  <span className="font-medium">
+                    ₦{creditCheck.total_credit_remaining.toLocaleString()} / ₦{creditCheck.total_credit_limit.toLocaleString()}
+                  </span>
+                </div>
+                
+                {creditCheck.guest_limit && (
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Guest {creditCheck.guest_period} Remaining:</span>
+                    <span className="font-medium">
+                      ₦{(creditCheck.guest_remaining || 0).toLocaleString()}
+                    </span>
+                  </div>
+                )}
+                
+                {creditCheck.department_limit && (
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Department {creditCheck.department_period} Remaining:</span>
+                    <span className="font-medium">
+                      ₦{(creditCheck.department_remaining || 0).toLocaleString()}
+                    </span>
+                  </div>
+                )}
+              </div>
+              
+              {creditCheck.will_exceed ? (
+                <Alert variant="destructive" className="mt-2">
+                  <AlertTriangle className="h-4 w-4" />
+                  <AlertDescription>
+                    This charge will exceed organization credit limits
+                  </AlertDescription>
+                </Alert>
+              ) : (
+                <div className="flex items-center gap-2 text-sm text-green-600 mt-2">
+                  <CheckCircle2 className="h-4 w-4" />
+                  <span>Sufficient credit available</span>
+                </div>
+              )}
+            </div>
+          )}
+
           <DialogFooter>
             <Button
               type="button"
