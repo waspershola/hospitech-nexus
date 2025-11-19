@@ -5,7 +5,9 @@ import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useRecordPayment } from '@/hooks/useRecordPayment';
+import { usePaymentMethods } from '@/hooks/usePaymentMethods';
 import { toast } from 'sonner';
+import { Skeleton } from '@/components/ui/skeleton';
 
 interface AddPaymentDialogProps {
   open: boolean;
@@ -14,19 +16,14 @@ interface AddPaymentDialogProps {
   bookingId: string;
 }
 
-const PAYMENT_METHODS = [
-  { value: 'cash', label: 'Cash' },
-  { value: 'card', label: 'Card' },
-  { value: 'bank_transfer', label: 'Bank Transfer' },
-  { value: 'mobile_money', label: 'Mobile Money' },
-  { value: 'cheque', label: 'Cheque' },
-];
-
 export function AddPaymentDialog({ open, onOpenChange, folioId, bookingId }: AddPaymentDialogProps) {
   const [amount, setAmount] = useState('');
   const [paymentMethod, setPaymentMethod] = useState('');
   const [reference, setReference] = useState('');
+  const { paymentMethods, isLoading: loadingMethods } = usePaymentMethods();
   const mutation = useRecordPayment();
+  
+  const selectedMethod = paymentMethods.find(m => m.id === paymentMethod);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -82,29 +79,38 @@ export function AddPaymentDialog({ open, onOpenChange, folioId, bookingId }: Add
           </div>
           <div className="space-y-2">
             <Label htmlFor="payment-method">Payment Method *</Label>
-            <Select value={paymentMethod} onValueChange={setPaymentMethod} required>
-              <SelectTrigger id="payment-method">
-                <SelectValue placeholder="Select payment method" />
-              </SelectTrigger>
-              <SelectContent>
-                {PAYMENT_METHODS.map((method) => (
-                  <SelectItem key={method.value} value={method.value}>
-                    {method.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            {loadingMethods ? (
+              <Skeleton className="h-10 w-full" />
+            ) : paymentMethods.length === 0 ? (
+              <p className="text-sm text-muted-foreground">No payment methods configured. Contact administrator.</p>
+            ) : (
+              <Select value={paymentMethod} onValueChange={setPaymentMethod} required>
+                <SelectTrigger id="payment-method">
+                  <SelectValue placeholder="Select payment method" />
+                </SelectTrigger>
+                <SelectContent>
+                  {paymentMethods.map((method) => (
+                    <SelectItem key={method.id} value={method.id}>
+                      {method.method_name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
           </div>
-          <div className="space-y-2">
-            <Label htmlFor="reference">Reference</Label>
-            <Input
-              id="reference"
-              type="text"
-              placeholder="Transaction reference (optional)"
-              value={reference}
-              onChange={(e) => setReference(e.target.value)}
-            />
-          </div>
+          {selectedMethod?.requires_reference && (
+            <div className="space-y-2">
+              <Label htmlFor="reference">Reference {selectedMethod.requires_reference ? '*' : ''}</Label>
+              <Input
+                id="reference"
+                type="text"
+                placeholder={selectedMethod.requires_reference ? "Transaction reference (required)" : "Transaction reference (optional)"}
+                value={reference}
+                onChange={(e) => setReference(e.target.value)}
+                required={selectedMethod.requires_reference}
+              />
+            </div>
+          )}
           <div className="flex justify-end gap-2 pt-4">
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={mutation.isPending}>
               Cancel
