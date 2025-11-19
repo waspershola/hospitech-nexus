@@ -70,21 +70,24 @@ export default function BillingCenter() {
     isDownloading
   } = useFolioPDF();
 
-  // Real-time subscription for folio updates
+  // Real-time subscription using standardized cache keys (HOOKS-REFACTOR-V5)
   useEffect(() => {
     if (!folioId || !tenantId) return;
 
+    console.log('[BillingCenter] HOOKS-REFACTOR-V5: Setting up unified real-time subscription');
+
     const channel = supabase
-      .channel(`folio-${folioId}`)
+      .channel(`billing-center-${folioId}`)
       .on('postgres_changes', {
         event: '*',
         schema: 'public',
         table: 'folio_transactions',
         filter: `folio_id=eq.${folioId}`
       }, () => {
-        console.log('[BillingCenter] Transaction update');
+        console.log('[BillingCenter] HOOKS-REFACTOR-V5: Transaction update');
         queryClient.invalidateQueries({ queryKey: ['folio', folioId, tenantId] });
         queryClient.invalidateQueries({ queryKey: ['folio-transactions', folioId, tenantId] });
+        queryClient.invalidateQueries({ queryKey: ['folio-ledger', folioId, tenantId] });
       })
       .on('postgres_changes', {
         event: '*',
@@ -92,7 +95,7 @@ export default function BillingCenter() {
         table: 'stay_folios',
         filter: `id=eq.${folioId}`
       }, () => {
-        console.log('[BillingCenter] Folio update');
+        console.log('[BillingCenter] HOOKS-REFACTOR-V5: Folio update');
         queryClient.invalidateQueries({ queryKey: ['folio', folioId, tenantId] });
         if (folio?.booking_id) {
           queryClient.invalidateQueries({ queryKey: ['multi-folios', folio.booking_id, tenantId] });
@@ -102,16 +105,18 @@ export default function BillingCenter() {
         event: '*',
         schema: 'public',
         table: 'payments',
-      }, (payload) => {
-        console.log('[BillingCenter] Payment update');
+        filter: `booking_id=eq.${folio?.booking_id}`
+      }, () => {
+        console.log('[BillingCenter] HOOKS-REFACTOR-V5: Payment update');
         queryClient.invalidateQueries({ queryKey: ['folio', folioId, tenantId] });
       })
       .subscribe();
 
     return () => {
+      console.log('[BillingCenter] HOOKS-REFACTOR-V5: Cleaning up subscription');
       supabase.removeChannel(channel);
     };
-  }, [folioId, tenantId, queryClient, folio?.booking_id]);
+  }, [folioId, tenantId, folio?.booking_id, queryClient]);
 
   if (isLoading) {
     return (
