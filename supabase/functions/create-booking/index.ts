@@ -250,12 +250,18 @@ serve(async (req) => {
       }
     }
 
+    // GROUP-FIX-V1: Return group-aware response with correct totals
     const response = {
       success: true,
       booking: newBooking,
       platform_fee: platformFeeResult,
       master_folio: masterFolioResult,
-      message: 'Booking created successfully'
+      // Add group totals for frontend payment step
+      group_total_amount: isGroupBooking ? total_amount : null,
+      balance_due: isGroupBooking ? total_amount : total_amount,
+      is_group_booking: isGroupBooking,
+      message: 'Booking created successfully',
+      version: 'CREATE-BOOKING-V3.2-GROUP-FIX'
     };
 
     return new Response(
