@@ -168,3 +168,5 @@ verify_jwt = true
 [functions.send-folio-email]
 verify_jwt = true
 
+[functions.extend-stay]
+verify_jwt = true
