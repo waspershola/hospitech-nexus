@@ -253,6 +253,39 @@ serve(async (req) => {
             already_existed: masterFolio?.already_existed || masterFolio?.existing
           });
           masterFolioResult = masterFolio;
+          
+          // BUG-FIX-V2: Post initial charges to master folio
+          if (masterFolio?.success && masterFolio?.folio_id) {
+            try {
+              const totalRooms = enrichedMetadata.total_rooms_in_group || 1;
+              const groupTotalCharges = total_amount * totalRooms;
+              
+              console.log('[BUG-FIX-V2] Posting charges to master folio:', {
+                folio_id: masterFolio.folio_id,
+                amount: groupTotalCharges,
+                total_rooms: totalRooms,
+                per_room_amount: total_amount
+              });
+              
+              const { data: chargeResult, error: chargeError } = await supabase
+                .rpc('folio_post_charge', {
+                  p_folio_id: masterFolio.folio_id,
+                  p_amount: groupTotalCharges,
+                  p_description: `Group Reservation - ${totalRooms} rooms`,
+                  p_reference_type: 'booking',
+                  p_reference_id: newBooking.id,
+                  p_department: 'front_desk'
+                });
+              
+              if (chargeError) {
+                console.error('[BUG-FIX-V2] Failed to post charges (non-blocking):', chargeError);
+              } else {
+                console.log('[BUG-FIX-V2] Charges posted successfully:', chargeResult);
+              }
+            } catch (chargeError) {
+              console.error('[BUG-FIX-V2] Exception posting charges (non-blocking):', chargeError);
+            }
+          }
         }
       } catch (groupError) {
         console.error('[GROUP-FIX-V3] Exception (non-blocking):', groupError);
@@ -268,7 +301,7 @@ serve(async (req) => {
       platform_fee: platformFeeResult,
       master_folio: masterFolioResult,
       message: 'Booking created successfully',
-      version: 'CREATE-BOOKING-V3.4-GROUP-FIX-V3-TEXT-RPC'
+      version: 'CREATE-BOOKING-V3.5-BUG-FIX-ALL'
     };
 
     return new Response(
