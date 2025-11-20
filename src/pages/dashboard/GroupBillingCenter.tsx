@@ -1,17 +1,17 @@
-import { useParams, useNavigate } from 'react-router-dom';
-import { useGroupMasterFolio } from '@/hooks/useGroupMasterFolio';
-import { Button } from '@/components/ui/button';
-import { Card } from '@/components/ui/card';
-import { Skeleton } from '@/components/ui/skeleton';
-import { ArrowLeft } from 'lucide-react';
-import { GroupFolioSummaryCard } from '@/components/billing/GroupFolioSummaryCard';
-import { GroupMasterActions } from '@/components/billing/GroupMasterActions';
-import { GroupChildFolioCard } from '@/components/billing/GroupChildFolioCard';
-import { FolioTransactionHistory } from '@/components/billing/FolioTransactionHistory';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { useEffect, useState } from 'react';
-import { supabase } from '@/integrations/supabase/client';
-import { useAuth } from '@/contexts/AuthContext';
+import { useParams, useNavigate } from "react-router-dom";
+import { ArrowLeft, Clock } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { useGroupMasterFolio } from "@/hooks/useGroupMasterFolio";
+import { GroupFolioSummaryCard } from "@/components/groups/GroupFolioSummaryCard";
+import { GroupChildFolioCard } from "@/components/groups/GroupChildFolioCard";
+import { GroupMasterActions } from "@/components/groups/GroupMasterActions";
+import { FolioTransactionHistory } from "@/modules/billing/FolioTransactionHistory";
+import { Skeleton } from "@/components/ui/skeleton";
+import { useEffect, useState } from "react";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/contexts/AuthContext";
 
 export default function GroupBillingCenter() {
   const { groupId } = useParams<{ groupId: string }>();
@@ -67,7 +67,7 @@ export default function GroupBillingCenter() {
     resolveGroupId();
   }, [groupId, tenantId]);
 
-  const { data: groupData, isLoading, error } = useGroupMasterFolio(actualGroupId);
+  const { data, isLoading } = useGroupMasterFolio(actualGroupId);
 
   if (isLoading || !actualGroupId) {
     return (
@@ -86,7 +86,7 @@ export default function GroupBillingCenter() {
     );
   }
 
-  if (error || !groupData) {
+  if (!data?.master_folio) {
     return (
       <div className="container mx-auto py-8">
         <Card className="p-8 text-center">
@@ -94,7 +94,7 @@ export default function GroupBillingCenter() {
             Error Loading Group Billing
           </h2>
           <p className="text-muted-foreground mb-6">
-            {error?.message || 'No group master folio found for this booking'}
+            No group master folio found for this booking
           </p>
           <p className="text-sm text-muted-foreground mb-4">
             Group ID: {actualGroupId}
@@ -108,7 +108,7 @@ export default function GroupBillingCenter() {
     );
   }
 
-  if (!groupData.master_folio) {
+  if (!data.master_folio) {
     return (
       <div className="container mx-auto py-8">
         <Card className="p-8 text-center">
@@ -125,7 +125,7 @@ export default function GroupBillingCenter() {
     );
   }
 
-  const { master_folio, child_folios, aggregated_balances } = groupData;
+  const { master_folio, child_folios, aggregated_balances } = data;
 
   return (
     <div className="container mx-auto py-8 space-y-6">
@@ -148,6 +148,7 @@ export default function GroupBillingCenter() {
         </div>
         <GroupMasterActions
           masterFolioId={master_folio.id}
+          groupBookingId={groupId || ''}
           childFolios={child_folios}
         />
       </div>
@@ -156,6 +157,7 @@ export default function GroupBillingCenter() {
       <GroupFolioSummaryCard
         masterFolio={master_folio}
         aggregatedBalances={aggregated_balances}
+        childFoliosCount={child_folios.length}
       />
 
       {/* Child Folios Grid */}
@@ -163,7 +165,11 @@ export default function GroupBillingCenter() {
         <h2 className="text-2xl font-semibold mb-4">Room Folios</h2>
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
           {child_folios.map((childFolio) => (
-            <GroupChildFolioCard key={childFolio.id} folio={childFolio} />
+            <GroupChildFolioCard 
+              key={childFolio.id} 
+              folio={childFolio}
+              masterFolioId={master_folio.id}
+            />
           ))}
         </div>
       </div>
