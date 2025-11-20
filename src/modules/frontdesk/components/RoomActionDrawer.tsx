@@ -331,99 +331,25 @@ export function RoomActionDrawer({ roomId, contextDate, open, onClose, onOpenAss
 
   // GROUP-UX-V1: Fetch group booking info if this room is part of a group
   const groupMetadata = activeBooking?.metadata as any;
-  
-  // GROUP-UX-V2.1: Debug logging for group metadata
-  useEffect(() => {
-    if (activeBooking) {
-      console.log('[GROUP-UX-V2.1] Active booking metadata check:', {
-        bookingId: activeBooking.id,
-        hasMetadata: !!activeBooking.metadata,
-        metadata: activeBooking.metadata,
-        is_part_of_group: groupMetadata?.is_part_of_group,
-        group_id: groupMetadata?.group_id,
-        willQueryRun: !!groupMetadata?.is_part_of_group && !!groupMetadata?.group_id && !!tenantId
-      });
-    }
-  }, [activeBooking?.id, activeBooking?.metadata]);
-  
-  const { data: groupInfo, isLoading: isGroupInfoLoading, error: groupInfoError } = useQuery({
+  const { data: groupInfo } = useQuery({
     queryKey: ['group-booking-info', groupMetadata?.group_id, tenantId],
     queryFn: async () => {
-      console.log('[GROUP-UX-V2.1] Query function executing for group:', groupMetadata.group_id);
-      
       if (!groupMetadata?.is_part_of_group || !groupMetadata?.group_id || !tenantId) {
-        console.log('[GROUP-UX-V2.1] Query skipped - missing requirements');
         return null;
       }
       
-      // Fetch group details
-      const { data: groupData, error: groupError } = await supabase
+      const { data, error } = await supabase
         .from('group_bookings')
         .select('group_id, group_name, group_size, group_leader')
         .eq('group_id', groupMetadata.group_id)
         .eq('tenant_id', tenantId)
         .maybeSingle();
       
-      if (groupError) {
-        console.error('[GROUP-UX-V2.1] Error fetching group data:', groupError);
-        throw groupError;
-      }
-      
-      if (!groupData) {
-        console.warn('[GROUP-UX-V2.1] No group data found for group_id:', groupMetadata.group_id);
-        return null;
-      }
-      
-      console.log('[GROUP-UX-V2.1] Group data fetched:', groupData);
-      
-      // GROUP-UX-V2: Fetch all room numbers in this group
-      const { data: bookings, error: bookingsError } = await supabase
-        .from('bookings')
-        .select(`
-          id,
-          status,
-          room_id,
-          rooms!inner (
-            number
-          )
-        `)
-        .eq('tenant_id', tenantId)
-        .eq('metadata->>group_id', groupMetadata.group_id)
-        .order('rooms(number)', { ascending: true });
-      
-      if (bookingsError) {
-        console.error('[GROUP-UX-V2.1] Error fetching bookings:', bookingsError);
-        throw bookingsError;
-      }
-      
-      // Extract room numbers and sort numerically
-      const roomNumbers = bookings?.map((b: any) => b.rooms.number).sort((a: string, b: string) => {
-        const numA = parseInt(a);
-        const numB = parseInt(b);
-        return numA - numB;
-      }) || [];
-      
-      console.log('[GROUP-UX-V2.1] Fetched room numbers for group:', groupMetadata.group_id, roomNumbers);
-      
-      return {
-        ...groupData,
-        room_numbers: roomNumbers,
-      };
+      if (error) throw error;
+      return data;
     },
     enabled: !!groupMetadata?.is_part_of_group && !!groupMetadata?.group_id && !!tenantId,
-    staleTime: 30000, // Cache for 30 seconds
-    retry: 1,
   });
-  
-  // GROUP-UX-V2.1: Log query state changes
-  useEffect(() => {
-    if (groupInfoError) {
-      console.error('[GROUP-UX-V2.1] Group info query error:', groupInfoError);
-    }
-    if (groupInfo) {
-      console.log('[GROUP-UX-V2.1] Group info loaded:', groupInfo);
-    }
-  }, [groupInfo, groupInfoError]);
 
   // Use activeBooking consistently throughout component
   const currentBooking = activeBooking;
@@ -937,65 +863,35 @@ export function RoomActionDrawer({ roomId, contextDate, open, onClose, onOpenAss
                       </>
                     )}
 
-                      {/* GROUP-UX-V1: Group booking section with debugging */}
-                      {(groupInfo || isGroupInfoLoading || (groupMetadata?.is_part_of_group && !groupInfoError)) && (
+                      {/* GROUP-UX-V1: Group booking section */}
+                      {groupInfo && (
                         <>
                           <div className="space-y-3">
                             <h3 className="font-semibold flex items-center gap-2">
                               <Users className="w-4 h-4" />
                               Group Booking
-                              {isGroupInfoLoading && <Loader2 className="w-3 h-3 animate-spin text-muted-foreground" />}
                             </h3>
-                            
-                            {isGroupInfoLoading && (
-                              <div className="text-sm text-muted-foreground py-2">
-                                Loading group information...
+                            <div className="text-sm space-y-2">
+                              <p className="font-medium">{groupInfo.group_name}</p>
+                              <div className="flex items-center justify-between py-2 px-3 bg-muted/30 rounded-lg">
+                                <span className="text-xs text-muted-foreground">Total Rooms</span>
+                                <span className="font-semibold">{groupInfo.group_size}</span>
                               </div>
-                            )}
-                            
-                            {groupInfoError && (
-                              <Alert variant="destructive" className="text-xs">
-                                <AlertCircle className="h-3 w-3" />
-                                <AlertDescription>
-                                  Failed to load group information. Please refresh.
-                                </AlertDescription>
-                              </Alert>
-                            )}
-                            
-                            {groupInfo && !isGroupInfoLoading && (
-                              <div className="text-sm space-y-2">
-                                <p className="font-medium">{groupInfo.group_name}</p>
-                                
-                                {/* GROUP-UX-V2: Display room numbers */}
-                                {groupInfo.room_numbers && groupInfo.room_numbers.length > 0 && (
-                                  <div className="flex items-center justify-between py-2 px-3 bg-blue-50 dark:bg-blue-950 rounded-lg border border-blue-200 dark:border-blue-800">
-                                    <span className="text-xs text-muted-foreground">Rooms</span>
-                                    <span className="font-semibold text-blue-700 dark:text-blue-300">
-                                      {groupInfo.room_numbers.join(', ')}
-                                    </span>
-                                  </div>
-                                )}
-                                
+                              {groupInfo.group_leader && (
                                 <div className="flex items-center justify-between py-2 px-3 bg-muted/30 rounded-lg">
-                                  <span className="text-xs text-muted-foreground">Total Rooms</span>
-                                  <span className="font-semibold">{groupInfo.group_size}</span>
+                                  <span className="text-xs text-muted-foreground">Group Leader</span>
+                                  <span className="font-medium text-xs">{groupInfo.group_leader}</span>
                                 </div>
-                                {groupInfo.group_leader && (
-                                  <div className="flex items-center justify-between py-2 px-3 bg-muted/30 rounded-lg">
-                                    <span className="text-xs text-muted-foreground">Group Leader</span>
-                                    <span className="font-medium text-xs">{groupInfo.group_leader}</span>
-                                  </div>
-                                )}
-                                <Button 
-                                  variant="outline" 
-                                  className="w-full gap-2 mt-2"
-                                  onClick={() => navigate(`/dashboard/group-billing/${groupInfo.group_id}`)}
-                                >
-                                  <Building2 className="w-4 h-4" />
-                                  View Master Folio
-                                </Button>
-                              </div>
-                            )}
+                              )}
+                              <Button 
+                                variant="outline" 
+                                className="w-full gap-2 mt-2"
+                                onClick={() => navigate(`/dashboard/group-billing/${groupInfo.group_id}`)}
+                              >
+                                <Building2 className="w-4 h-4" />
+                                View Master Folio
+                              </Button>
+                            </div>
                           </div>
                           <Separator />
                         </>
