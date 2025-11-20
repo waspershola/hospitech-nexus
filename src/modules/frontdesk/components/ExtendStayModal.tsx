@@ -34,19 +34,42 @@ export function ExtendStayModal({
         throw new Error('New check-out date must be after current check-out');
       }
 
-      // TENANT-ISOLATION-FIX-V1: Update booking with tenant isolation
-      const { error } = await supabase
-        .from('bookings')
-        .update({ check_out: newCheckOut })
-        .eq('id', bookingId)
-        .eq('tenant_id', tenantId);
+      console.log('[extend-stay-modal] EXTEND-STAY-V1: Calling extend-stay edge function');
 
-      if (error) throw error;
+      // EXTEND-STAY-V1: Call edge function for proper folio integration
+      const { data, error } = await supabase.functions.invoke('extend-stay', {
+        body: {
+          booking_id: bookingId,
+          new_checkout: newCheckOut,
+          staff_id: null, // Will use authenticated user in edge function
+          reason: 'Staff extended stay via front desk'
+        }
+      });
+
+      console.log('[extend-stay-modal] EXTEND-STAY-V1: Edge function response:', { data, error });
+
+      if (error) {
+        console.error('[extend-stay-modal] EXTEND-STAY-V1: Edge function error:', error);
+        throw error;
+      }
+
+      if (!data?.success) {
+        console.error('[extend-stay-modal] EXTEND-STAY-V1: Extension failed:', data);
+        throw new Error(data?.error || 'Failed to extend stay');
+      }
+
+      return data;
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['rooms-grid'] });
       queryClient.invalidateQueries({ queryKey: ['frontdesk-kpis'] });
-      toast.success(`Stay extended for Room ${roomNumber}`);
+      queryClient.invalidateQueries({ queryKey: ['booking', bookingId] });
+      queryClient.invalidateQueries({ queryKey: ['booking-folio', bookingId] });
+      queryClient.invalidateQueries({ queryKey: ['folio-by-id'] });
+      
+      toast.success(
+        `Stay extended for Room ${roomNumber}. ${data?.data?.additional_nights} additional night(s) charged.`
+      );
       onClose();
     },
     onError: (error: Error) => {
