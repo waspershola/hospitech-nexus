@@ -69,7 +69,7 @@ serve(async (req) => {
     // Get booking details
     const { data: booking, error: bookingError } = await supabaseServiceClient
       .from('bookings')
-      .select('*, guest:guests(*), room:rooms(*)')
+      .select('*, guest:guests(*), room:rooms!bookings_room_id_fkey(*)')
       .eq('id', booking_id)
       .single()
 
