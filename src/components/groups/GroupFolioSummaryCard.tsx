@@ -97,7 +97,7 @@ export function GroupFolioSummaryCard({
         </div>
 
         {/* Breakdown by Folio Type */}
-        {aggregatedBalances.children_breakdown.length > 0 && (
+        {aggregatedBalances.children_breakdown?.length > 0 && (
           <div className="space-y-2">
             <h4 className="text-sm font-medium text-muted-foreground">Breakdown by Room</h4>
             <div className="space-y-2">
