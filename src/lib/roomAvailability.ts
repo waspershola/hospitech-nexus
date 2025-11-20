@@ -41,23 +41,7 @@ export function getRoomStatusNow(
     return room.status as any;
   }
 
-  // DEFENSIVE: If room is occupied in DB but booking data missing, preserve occupied status
-  // This prevents flickering to "available" when real-time updates don't include booking data
-  if (!booking) {
-    if (room.status === 'occupied') {
-      console.log(`[getRoomStatusNow] Room ${room.number} is occupied in DB but no booking data - preserving occupied status`);
-      return 'occupied'; // Preserve database status to prevent auto-reset
-    }
-    return 'available';
-  }
-
-  // PHASE 4: Verify booking belongs to same tenant as room (defensive check)
-  if ((booking as any).tenant_id && room.tenant_id && (booking as any).tenant_id !== room.tenant_id) {
-    console.error(`[getRoomStatusNow] TENANT MISMATCH: Room ${room.number} (${room.tenant_id}) has booking from different tenant (${(booking as any).tenant_id})`);
-    return 'available'; // Treat as available if tenant mismatch
-  }
-
-  if (booking.status === 'cancelled' || booking.status === 'completed') {
+  if (!booking || booking.status === 'cancelled' || booking.status === 'completed') {
     return 'available';
   }
 

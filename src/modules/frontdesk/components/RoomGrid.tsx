@@ -1,5 +1,4 @@
-import { useEffect } from 'react';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { RoomTile } from './RoomTile';
@@ -24,41 +23,11 @@ interface RoomGridProps {
 export function RoomGrid({ searchQuery, statusFilter, categoryFilter, floorFilter, organizationFilter, onRoomClick, isSelectionMode, selectedRoomIds = [], onRoomSelectionChange }: RoomGridProps) {
   const { tenantId } = useAuth();
   const { data: operationsHours } = useOperationsHours();
-  const queryClient = useQueryClient();
-
-  // PHASE 1: Tenant context debugging
-  console.log('[RoomGrid] Current tenantId:', tenantId);
-  console.log('[RoomGrid] Auth context:', { tenantId });
-  
-  // PHASE 4: React Query cache hardening - remove stale cross-tenant caches
-  useEffect(() => {
-    if (!tenantId) return;
-    
-    const allRoomsCaches = queryClient.getQueryCache().findAll({ queryKey: ['rooms-grid'] });
-    allRoomsCaches.forEach(query => {
-      const key = query.queryKey as [string, string | undefined, ...any[]];
-      const cacheTenantId = key[1];
-      
-      if (cacheTenantId && cacheTenantId !== tenantId) {
-        console.error('[RoomGrid] CACHE HARDENING: Removing stale cross-tenant cache:', {
-          cacheKey: key,
-          cacheTenantId,
-          currentTenantId: tenantId
-        });
-        queryClient.removeQueries({ queryKey: key });
-      }
-    });
-  }, [tenantId, queryClient]);
 
   const { data: rooms, isLoading, error } = useQuery({
     queryKey: ['rooms-grid', tenantId, searchQuery, statusFilter, categoryFilter, floorFilter, organizationFilter],
     queryFn: async () => {
-      if (!tenantId) {
-        console.error('[RoomGrid] No tenantId - cannot fetch rooms');
-        return [];
-      }
-      
-      console.log('[RoomGrid] Fetching rooms for tenantId:', tenantId);
+      if (!tenantId) return [];
       
       let query = supabase
         .from('rooms')
@@ -82,17 +51,6 @@ export function RoomGrid({ searchQuery, statusFilter, categoryFilter, floorFilte
 
       const { data, error } = await query;
       if (error) throw error;
-      
-      // PHASE 4: Verify all rooms belong to current tenant
-      const invalidRooms = (data || []).filter(room => room.tenant_id !== tenantId);
-      if (invalidRooms.length > 0) {
-        console.error('[RoomGrid] TENANT ISOLATION BREACH: Found rooms from other tenants!', {
-          currentTenantId: tenantId,
-          invalidRooms: invalidRooms.map(r => ({ id: r.id, number: r.number, tenant_id: r.tenant_id }))
-        });
-      }
-      
-      console.log(`[RoomGrid] Loaded ${data?.length || 0} rooms for tenant ${tenantId}`);
       
       const checkInTime = operationsHours?.checkInTime || '14:00';
       const checkOutTime = operationsHours?.checkOutTime || '12:00';
