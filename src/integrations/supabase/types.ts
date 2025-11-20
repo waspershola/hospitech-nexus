@@ -7440,6 +7440,10 @@ export type Database = {
         Args: { p_booking_id: string; p_folio_id: string; p_tenant_id: string }
         Returns: Json
       }
+      booking_room_integrity_diagnostics: {
+        Args: { p_tenant_id: string }
+        Returns: Json
+      }
       calculate_folio_stats_by_type: {
         Args: { p_audit_date: string; p_tenant_id: string }
         Returns: Json
