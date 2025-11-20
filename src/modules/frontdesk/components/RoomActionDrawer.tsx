@@ -338,15 +338,46 @@ export function RoomActionDrawer({ roomId, contextDate, open, onClose, onOpenAss
         return null;
       }
       
-      const { data, error } = await supabase
+      // Fetch group details
+      const { data: groupData, error: groupError } = await supabase
         .from('group_bookings')
         .select('group_id, group_name, group_size, group_leader')
         .eq('group_id', groupMetadata.group_id)
         .eq('tenant_id', tenantId)
         .maybeSingle();
       
-      if (error) throw error;
-      return data;
+      if (groupError) throw groupError;
+      
+      // GROUP-UX-V2: Fetch all room numbers in this group
+      const { data: bookings, error: bookingsError } = await supabase
+        .from('bookings')
+        .select(`
+          id,
+          status,
+          room_id,
+          rooms!inner (
+            number
+          )
+        `)
+        .eq('tenant_id', tenantId)
+        .eq('metadata->>group_id', groupMetadata.group_id)
+        .order('rooms(number)', { ascending: true });
+      
+      if (bookingsError) throw bookingsError;
+      
+      // Extract room numbers and sort numerically
+      const roomNumbers = bookings?.map((b: any) => b.rooms.number).sort((a: string, b: string) => {
+        const numA = parseInt(a);
+        const numB = parseInt(b);
+        return numA - numB;
+      }) || [];
+      
+      console.log('[GROUP-UX-V2] Fetched room numbers for group:', groupMetadata.group_id, roomNumbers);
+      
+      return {
+        ...groupData,
+        room_numbers: roomNumbers,
+      };
     },
     enabled: !!groupMetadata?.is_part_of_group && !!groupMetadata?.group_id && !!tenantId,
   });
@@ -873,6 +904,17 @@ export function RoomActionDrawer({ roomId, contextDate, open, onClose, onOpenAss
                             </h3>
                             <div className="text-sm space-y-2">
                               <p className="font-medium">{groupInfo.group_name}</p>
+                              
+                              {/* GROUP-UX-V2: Display room numbers */}
+                              {groupInfo.room_numbers && groupInfo.room_numbers.length > 0 && (
+                                <div className="flex items-center justify-between py-2 px-3 bg-blue-50 dark:bg-blue-950 rounded-lg border border-blue-200 dark:border-blue-800">
+                                  <span className="text-xs text-muted-foreground">Rooms</span>
+                                  <span className="font-semibold text-blue-700 dark:text-blue-300">
+                                    {groupInfo.room_numbers.join(', ')}
+                                  </span>
+                                </div>
+                              )}
+                              
                               <div className="flex items-center justify-between py-2 px-3 bg-muted/30 rounded-lg">
                                 <span className="text-xs text-muted-foreground">Total Rooms</span>
                                 <span className="font-semibold">{groupInfo.group_size}</span>
