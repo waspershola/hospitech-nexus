@@ -170,3 +170,6 @@ verify_jwt = true
 
 [functions.extend-stay]
 verify_jwt = true
+
+[functions.amend-booking]
+verify_jwt = true
