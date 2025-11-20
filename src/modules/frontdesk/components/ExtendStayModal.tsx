@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/contexts/AuthContext';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
@@ -24,6 +25,7 @@ export function ExtendStayModal({
   roomNumber 
 }: ExtendStayModalProps) {
   const queryClient = useQueryClient();
+  const { tenantId } = useAuth();
   const [newCheckOut, setNewCheckOut] = useState(currentCheckOut);
 
   const extendMutation = useMutation({
@@ -32,10 +34,12 @@ export function ExtendStayModal({
         throw new Error('New check-out date must be after current check-out');
       }
 
+      // TENANT-ISOLATION-FIX-V1: Update booking with tenant isolation
       const { error } = await supabase
         .from('bookings')
         .update({ check_out: newCheckOut })
-        .eq('id', bookingId);
+        .eq('id', bookingId)
+        .eq('tenant_id', tenantId);
 
       if (error) throw error;
     },
