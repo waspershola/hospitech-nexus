@@ -7635,6 +7635,17 @@ export type Database = {
         }
         Returns: Json
       }
+      post_group_master_charge_direct: {
+        Args: {
+          p_amount: number
+          p_description: string
+          p_group_id: string
+          p_reference_id: string
+          p_reference_type: string
+          p_tenant_id: string
+        }
+        Returns: Json
+      }
       prepare_folio_for_night_audit: {
         Args: { p_audit_day: string; p_folio_id: string }
         Returns: Json
