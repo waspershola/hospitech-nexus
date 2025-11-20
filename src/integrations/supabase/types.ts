@@ -7624,6 +7624,17 @@ export type Database = {
       }
       is_platform_admin: { Args: { _user_id: string }; Returns: boolean }
       is_system_locked_user: { Args: { _user_id: string }; Returns: boolean }
+      post_group_master_charge: {
+        Args: {
+          p_amount: number
+          p_description: string
+          p_group_id: string
+          p_reference_id: string
+          p_reference_type: string
+          p_tenant_id: string
+        }
+        Returns: Json
+      }
       prepare_folio_for_night_audit: {
         Args: { p_audit_day: string; p_folio_id: string }
         Returns: Json

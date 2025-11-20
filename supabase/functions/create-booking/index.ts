@@ -268,44 +268,61 @@ serve(async (req) => {
           const groupTotalCharges = total_amount * totalRooms;
           const masterFolioId = masterFolio.folio_id;
           
-          console.log('[GROUP-MASTER-V4-CHARGE] Posting charges to master folio:', {
-            folio_id: masterFolioId,
+          console.log('[GROUP-MASTER-V5-CHARGE] Posting charges to master folio using wrapper:', {
+            group_id: group_id_text,
+            tenant_id,
             amount: groupTotalCharges,
             total_rooms: totalRooms,
             per_room_amount: total_amount
           });
           
+          // Use database wrapper to eliminate UUID serialization issues
           const { data: chargeResult, error: chargeError } = await supabase
-            .rpc('folio_post_charge', {
-              p_folio_id: masterFolioId,
+            .rpc('post_group_master_charge', {
+              p_tenant_id: tenant_id,
+              p_group_id: group_id_text,
               p_amount: groupTotalCharges,
               p_description: `Group Reservation - ${totalRooms} rooms`,
               p_reference_type: 'booking',
-              p_reference_id: newBooking.id,
-              p_department: 'front_desk'
+              p_reference_id: newBooking.id
             });
           
           if (chargeError) {
-            console.error('[GROUP-MASTER-V4-CHARGE] Charge posting FAILED:', chargeError);
+            console.error('[GROUP-MASTER-V5-CHARGE] Charge posting FAILED:', chargeError);
             
             // ROLLBACK: Delete the master folio we just created
-            console.log('[GROUP-MASTER-V4-ROLLBACK] Deleting master folio due to charge failure');
+            console.log('[GROUP-MASTER-V5-ROLLBACK] Deleting master folio due to charge failure');
             await supabase
               .from('stay_folios')
               .delete()
-              .eq('id', masterFolioId);
+              .eq('id', masterFolio.folio_id)
+              .eq('tenant_id', tenant_id);
             
             throw new Error(`Failed to post charges to master folio: ${chargeError.message}`);
           }
           
-          console.log('[GROUP-MASTER-V4-CHARGE] Charges posted successfully:', {
+          if (!chargeResult?.success) {
+            console.error('[GROUP-MASTER-V5-CHARGE] Charge result indicates failure:', chargeResult);
+            
+            // ROLLBACK: Delete the master folio
+            console.log('[GROUP-MASTER-V5-ROLLBACK] Deleting master folio due to unsuccessful charge result');
+            await supabase
+              .from('stay_folios')
+              .delete()
+              .eq('id', masterFolio.folio_id)
+              .eq('tenant_id', tenant_id);
+            
+            throw new Error(`Failed to post charges: ${chargeResult?.error || 'Unknown error'}`);
+          }
+          
+          console.log('[GROUP-MASTER-V5-CHARGE] Charges posted successfully:', {
             success: chargeResult?.success,
             transaction_id: chargeResult?.transaction_id,
-            new_balance: chargeResult?.folio?.balance
+            folio_id: chargeResult?.folio_id
           });
         }
         
-        console.log('[GROUP-MASTER-V4-SUCCESS] Master folio complete:', {
+        console.log('[GROUP-MASTER-V5-SUCCESS] Master folio complete:', {
           folio_id: masterFolio.folio_id,
           folio_number: masterFolio.folio_number,
           charges_posted: true,
@@ -313,7 +330,7 @@ serve(async (req) => {
         });
         
       } catch (groupError: any) {
-        console.error('[GROUP-MASTER-V4-ERROR] Group booking error:', {
+        console.error('[GROUP-MASTER-V5-ERROR] Group booking error:', {
           message: groupError?.message,
           stack: groupError?.stack
         });
@@ -321,15 +338,15 @@ serve(async (req) => {
       }
     }
 
-    // GROUP-MASTER-V4: Return booking with master folio info and group_id
+    // GROUP-MASTER-V5: Return booking with master folio info and group_id
     const response = {
       success: true,
       booking: newBooking,
       platform_fee: platformFeeResult,
       master_folio: masterFolioResult,
-      group_id: groupId, // GROUP-MASTER-V4: Return group_id for navigation
+      group_id: groupId, // GROUP-MASTER-V5: Return group_id for navigation
       message: 'Booking created successfully',
-      version: 'CREATE-BOOKING-V4-BLOCKING-CHARGES'
+      version: 'CREATE-BOOKING-V5-WRAPPER-RPC'
     };
 
     return new Response(
@@ -338,8 +355,8 @@ serve(async (req) => {
     );
 
   } catch (error: any) {
-    console.error('[CREATE-BOOKING-V4] FATAL ERROR:', error);
-    console.error('[CREATE-BOOKING-V4] Stack:', error?.stack);
+    console.error('[CREATE-BOOKING-V5] FATAL ERROR:', error);
+    console.error('[CREATE-BOOKING-V5] Stack:', error?.stack);
     
     return new Response(
       JSON.stringify({ 

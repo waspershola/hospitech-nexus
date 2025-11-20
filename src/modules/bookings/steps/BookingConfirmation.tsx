@@ -359,6 +359,13 @@ export function BookingConfirmation({ bookingData, onChange, onComplete }: Booki
       queryClient.invalidateQueries({ queryKey: ['wallet-transactions'] });
       queryClient.invalidateQueries({ queryKey: ['payments'] });
       
+      // Invalidate group master folio queries for group bookings
+      if (isGroupBooking && data.group_id) {
+        console.log('[GROUP-MASTER-V5] Invalidating folio queries for group:', data.group_id);
+        queryClient.invalidateQueries({ queryKey: ['group-master-folio', data.group_id] });
+        queryClient.invalidateQueries({ queryKey: ['folio-transactions'] });
+      }
+      
       // For organization bookings, complete immediately (auto-charged to wallet)
       if (bookingData.organizationId) {
         if (isGroupBooking && data.group_id) {
