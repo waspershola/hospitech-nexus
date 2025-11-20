@@ -219,93 +219,117 @@ serve(async (req) => {
     }
 
     let masterFolioResult = null;
+    let groupId = null;
+    
     if (isGroupBooking) {
       try {
-        console.log('[GROUP-FIX-V3] Group booking detected:', enrichedMetadata.group_id);
-        
-        // GROUP-FIX-V3: Pass group_id as TEXT to match RPC signature
-        // No UUID validation needed - group_id is TEXT in metadata
+        // GROUP-MASTER-V4: Pass group_id as TEXT to match RPC signature
         const group_id_text = String(enrichedMetadata.group_id);
+        groupId = group_id_text;
         
-        console.log('[GROUP-FIX-V3] Creating master folio with TEXT group_id:', group_id_text);
+        console.log('[GROUP-MASTER-V4-CREATE] Creating master folio:', {
+          group_id: group_id_text,
+          tenant_id,
+          master_booking_id: newBooking.id,
+          guest_id
+        });
         
         const { data: masterFolio, error: masterFolioError } = await supabase
           .rpc('create_group_master_folio', {
             p_tenant_id: tenant_id,
-            p_group_id: group_id_text, // Pass as TEXT not UUID
+            p_group_id: group_id_text,
             p_master_booking_id: newBooking.id,
             p_guest_id: guest_id,
             p_group_name: enrichedMetadata.group_name || 'Group Booking'
           });
 
         if (masterFolioError) {
-          console.error('[GROUP-FIX-V3] Master folio failed (non-blocking):', {
+          console.error('[GROUP-MASTER-V4-CREATE] Master folio creation FAILED:', {
             message: masterFolioError.message,
             code: masterFolioError.code,
             details: masterFolioError.details,
             hint: masterFolioError.hint
           });
-        } else {
-          console.log('[GROUP-FIX-V3] Master folio result:', {
-            success: masterFolio?.success,
-            master_folio_id: masterFolio?.master_folio_id || masterFolio?.id,
-            folio_number: masterFolio?.folio_number,
-            already_existed: masterFolio?.already_existed || masterFolio?.existing
-          });
-          masterFolioResult = masterFolio;
-          
-          // PHASE-2-FIX: Post initial charges to master folio
-          // Extract folio_id (UUID) from result, don't pass entire object
-          if (masterFolio?.success && masterFolio?.folio_id) {
-            try {
-              const totalRooms = enrichedMetadata.total_rooms_in_group || 1;
-              const groupTotalCharges = total_amount * totalRooms;
-              
-              // 🔥 FIX: Extract UUID string from result
-              const masterFolioId = masterFolio.folio_id;
-              
-              console.log('[PHASE-2-FIX] Posting charges to master folio:', {
-                folio_id: masterFolioId,
-                amount: groupTotalCharges,
-                total_rooms: totalRooms,
-                per_room_amount: total_amount
-              });
-              
-              const { data: chargeResult, error: chargeError } = await supabase
-                .rpc('folio_post_charge', {
-                  p_folio_id: masterFolioId, // Pass UUID, not object
-                  p_amount: groupTotalCharges,
-                  p_description: `Group Reservation - ${totalRooms} rooms`,
-                  p_reference_type: 'booking',
-                  p_reference_id: newBooking.id,
-                  p_department: 'front_desk'
-                });
-              
-              if (chargeError) {
-                console.error('[PHASE-2-FIX] Failed to post charges (non-blocking):', chargeError);
-              } else {
-                console.log('[PHASE-2-FIX] Charges posted successfully:', chargeResult);
-              }
-            } catch (chargeError) {
-              console.error('[PHASE-2-FIX] Exception posting charges (non-blocking):', chargeError);
-            }
-          }
+          throw new Error(`Master folio creation failed: ${masterFolioError.message}`);
         }
-      } catch (groupError) {
-        console.error('[GROUP-FIX-V3] Exception (non-blocking):', groupError);
+
+        console.log('[GROUP-MASTER-V4-CREATE] Master folio created:', {
+          success: masterFolio?.success,
+          folio_id: masterFolio?.folio_id,
+          folio_number: masterFolio?.folio_number,
+          existing: masterFolio?.existing
+        });
+        
+        masterFolioResult = masterFolio;
+        
+        // GROUP-MASTER-V4-CHARGE: Post initial charges to master folio (BLOCKING)
+        if (masterFolio?.success && masterFolio?.folio_id) {
+          const totalRooms = enrichedMetadata.total_rooms_in_group || 1;
+          const groupTotalCharges = total_amount * totalRooms;
+          const masterFolioId = masterFolio.folio_id;
+          
+          console.log('[GROUP-MASTER-V4-CHARGE] Posting charges to master folio:', {
+            folio_id: masterFolioId,
+            amount: groupTotalCharges,
+            total_rooms: totalRooms,
+            per_room_amount: total_amount
+          });
+          
+          const { data: chargeResult, error: chargeError } = await supabase
+            .rpc('folio_post_charge', {
+              p_folio_id: masterFolioId,
+              p_amount: groupTotalCharges,
+              p_description: `Group Reservation - ${totalRooms} rooms`,
+              p_reference_type: 'booking',
+              p_reference_id: newBooking.id,
+              p_department: 'front_desk'
+            });
+          
+          if (chargeError) {
+            console.error('[GROUP-MASTER-V4-CHARGE] Charge posting FAILED:', chargeError);
+            
+            // ROLLBACK: Delete the master folio we just created
+            console.log('[GROUP-MASTER-V4-ROLLBACK] Deleting master folio due to charge failure');
+            await supabase
+              .from('stay_folios')
+              .delete()
+              .eq('id', masterFolioId);
+            
+            throw new Error(`Failed to post charges to master folio: ${chargeError.message}`);
+          }
+          
+          console.log('[GROUP-MASTER-V4-CHARGE] Charges posted successfully:', {
+            success: chargeResult?.success,
+            transaction_id: chargeResult?.transaction_id,
+            new_balance: chargeResult?.folio?.balance
+          });
+        }
+        
+        console.log('[GROUP-MASTER-V4-SUCCESS] Master folio complete:', {
+          folio_id: masterFolio.folio_id,
+          folio_number: masterFolio.folio_number,
+          charges_posted: true,
+          group_id: group_id_text
+        });
+        
+      } catch (groupError: any) {
+        console.error('[GROUP-MASTER-V4-ERROR] Group booking error:', {
+          message: groupError?.message,
+          stack: groupError?.stack
+        });
+        throw groupError;
       }
     }
 
-    // GROUP-FIX-V3: Return booking with master folio info
-    // Note: Do NOT return group_total_amount here as each booking is individual
-    // Frontend aggregates these correctly
+    // GROUP-MASTER-V4: Return booking with master folio info and group_id
     const response = {
       success: true,
       booking: newBooking,
       platform_fee: platformFeeResult,
       master_folio: masterFolioResult,
+      group_id: groupId, // GROUP-MASTER-V4: Return group_id for navigation
       message: 'Booking created successfully',
-      version: 'CREATE-BOOKING-V3.7-COMPREHENSIVE-FIX'
+      version: 'CREATE-BOOKING-V4-BLOCKING-CHARGES'
     };
 
     return new Response(
@@ -314,8 +338,8 @@ serve(async (req) => {
     );
 
   } catch (error: any) {
-    console.error('[CREATE-BOOKING-V3.1-UUID-CAST] FATAL ERROR:', error);
-    console.error('[CREATE-BOOKING-V3.1-UUID-CAST] Stack:', error?.stack);
+    console.error('[CREATE-BOOKING-V4] FATAL ERROR:', error);
+    console.error('[CREATE-BOOKING-V4] Stack:', error?.stack);
     
     return new Response(
       JSON.stringify({ 

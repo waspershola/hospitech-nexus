@@ -554,10 +554,20 @@ export function BookingConfirmation({ bookingData, onChange, onComplete }: Booki
     queryClient.invalidateQueries({ queryKey: ['bookings'] });
     toast.success('Payment recorded successfully!');
     
+    // GROUP-MASTER-V4-NAV: Use window.__groupId from mutation result, not stale state
+    const actualGroupId = (window as any).__groupId;
+    
+    console.log('[GROUP-MASTER-V4-NAV] Payment complete navigation:', {
+      isGroupBooking,
+      windowGroupId: actualGroupId,
+      stateGroupId: bookingData.groupId,
+      willNavigate: isGroupBooking && actualGroupId
+    });
+    
     // Navigate to Group Billing Center for group bookings
-    if (isGroupBooking && bookingData.groupId) {
+    if (isGroupBooking && actualGroupId) {
       setTimeout(() => {
-        navigate(`/dashboard/group-billing/${bookingData.groupId}`);
+        navigate(`/dashboard/group-billing/${actualGroupId}`);
         onComplete();
       }, 1500);
     } else {
@@ -570,10 +580,20 @@ export function BookingConfirmation({ bookingData, onChange, onComplete }: Booki
   const handleSkipPayment = () => {
     toast.info('Payment skipped. Booking recorded as accounts receivable.');
     
+    // GROUP-MASTER-V4-NAV: Use window.__groupId from mutation result, not stale state
+    const actualGroupId = (window as any).__groupId;
+    
+    console.log('[GROUP-MASTER-V4-NAV] Skip payment navigation:', {
+      isGroupBooking,
+      windowGroupId: actualGroupId,
+      stateGroupId: bookingData.groupId,
+      willNavigate: isGroupBooking && actualGroupId
+    });
+    
     // Navigate to Group Billing Center for group bookings
-    if (isGroupBooking && bookingData.groupId) {
+    if (isGroupBooking && actualGroupId) {
       setTimeout(() => {
-        navigate(`/dashboard/group-billing/${bookingData.groupId}`);
+        navigate(`/dashboard/group-billing/${actualGroupId}`);
         onComplete();
       }, 1500);
     } else {
