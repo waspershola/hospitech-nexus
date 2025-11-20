@@ -173,3 +173,6 @@ verify_jwt = true
 
 [functions.amend-booking]
 verify_jwt = true
+
+[functions.transfer-room]
+verify_jwt = true

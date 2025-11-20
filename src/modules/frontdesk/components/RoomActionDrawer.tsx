@@ -25,6 +25,7 @@ import { useReceiptSettings } from '@/hooks/useReceiptSettings';
 import { getRoomStatusNow } from '@/lib/roomAvailability';
 import { useOperationsHours } from '@/hooks/useOperationsHours';
 import { ExtendStayModal } from './ExtendStayModal';
+import { TransferRoomModal } from './TransferRoomModal';
 import { AddChargeModal } from './AddChargeModal';
 import { ChargeToOrgModal } from './ChargeToOrgModal';
 import { RoomAuditTrail } from './RoomAuditTrail';
@@ -38,7 +39,7 @@ import { toast } from '@/hooks/use-toast';
 import { Switch } from '@/components/ui/switch';
 import { 
   Loader2, User, CreditCard, Calendar, AlertCircle, Clock, Building2, AlertTriangle, 
-  Wallet, Zap, Coffee, BellOff, UserPlus, LogIn, LogOut, Wrench, Sparkles, FileText, Receipt, Edit, Printer, MessageSquare, Users
+  Wallet, Zap, Coffee, BellOff, UserPlus, LogIn, LogOut, Wrench, Sparkles, FileText, Receipt, Edit, Printer, MessageSquare, Users, MoveRight
 } from 'lucide-react';
 
 interface RoomActionDrawerProps {
@@ -61,6 +62,7 @@ export function RoomActionDrawer({ roomId, contextDate, open, onClose, onOpenAss
   const { print: printReceiptFn } = usePrintReceipt();
   const { settings: receiptSettings } = useReceiptSettings();
   const [extendModalOpen, setExtendModalOpen] = useState(false);
+  const [transferRoomOpen, setTransferRoomOpen] = useState(false);
   const [chargeModalOpen, setChargeModalOpen] = useState(false);
   const [chargeToOrgModalOpen, setChargeToOrgModalOpen] = useState(false);
   const [quickPaymentOpen, setQuickPaymentOpen] = useState(false);
@@ -94,6 +96,7 @@ export function RoomActionDrawer({ roomId, contextDate, open, onClose, onOpenAss
             status,
             total_amount,
             guest_id,
+            room_id,
             organization_id,
             metadata,
             guest:guests(id, name, email, phone),
@@ -633,7 +636,7 @@ export function RoomActionDrawer({ roomId, contextDate, open, onClose, onOpenAss
         const actions = [
           { label: 'Check-Out', action: handleExpressCheckout, variant: 'default' as const, icon: LogOut, tooltip: 'Complete guest checkout' },
           { label: 'Extend Stay', action: () => setExtendModalOpen(true), variant: 'outline' as const, icon: Calendar, tooltip: 'Extend checkout date' },
-          { label: 'Transfer Room', action: () => toast({ title: 'Transfer Room', description: 'Feature coming soon' }), variant: 'outline' as const, icon: UserPlus, tooltip: 'Transfer to different room' },
+          { label: 'Transfer Room', action: () => setTransferRoomOpen(true), variant: 'outline' as const, icon: MoveRight, tooltip: 'Transfer to different room' },
           { label: 'Add Service', action: handleRoomService, variant: 'outline' as const, icon: Sparkles, tooltip: 'Add room service charge' },
           { label: 'Post Payment', action: () => setQuickPaymentOpen(true), variant: 'outline' as const, icon: CreditCard, tooltip: 'Record payment' },
           { label: hasDND ? 'Remove DND' : 'Do Not Disturb', action: handleToggleDND, variant: hasDND ? 'secondary' : 'ghost' as const, icon: BellOff, tooltip: 'Toggle Do Not Disturb' },
@@ -1119,6 +1122,13 @@ export function RoomActionDrawer({ roomId, contextDate, open, onClose, onOpenAss
                 bookingId={currentBooking.id}
                 currentCheckOut={currentBooking.check_out}
                 roomNumber={room.number}
+              />
+              <TransferRoomModal
+                open={transferRoomOpen}
+                onClose={() => setTransferRoomOpen(false)}
+                bookingId={currentBooking.id}
+                currentRoomId={currentBooking.room_id}
+                currentRoomNumber={room.number}
               />
               <AddChargeModal
                 open={chargeModalOpen}
