@@ -221,36 +221,45 @@ serve(async (req) => {
     let masterFolioResult = null;
     if (isGroupBooking) {
       try {
-        console.log('[GROUP-MASTER-V1] Group booking detected:', enrichedMetadata.group_id);
+        console.log('[GROUP-FIX-V3] Group booking detected:', enrichedMetadata.group_id);
         
-        // Validate group_id is a valid UUID format
-        if (enrichedMetadata.group_id && !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(enrichedMetadata.group_id)) {
-          throw new Error(`Invalid group_id UUID format: ${enrichedMetadata.group_id}`);
-        }
+        // GROUP-FIX-V3: Pass group_id as TEXT to match RPC signature
+        // No UUID validation needed - group_id is TEXT in metadata
+        const group_id_text = String(enrichedMetadata.group_id);
         
-        console.log('[GROUP-MASTER-V1] Creating master folio...');
+        console.log('[GROUP-FIX-V3] Creating master folio with TEXT group_id:', group_id_text);
         
         const { data: masterFolio, error: masterFolioError } = await supabase
           .rpc('create_group_master_folio', {
             p_tenant_id: tenant_id,
-            p_group_id: enrichedMetadata.group_id,
+            p_group_id: group_id_text, // Pass as TEXT not UUID
             p_master_booking_id: newBooking.id,
             p_guest_id: guest_id,
             p_group_name: enrichedMetadata.group_name || 'Group Booking'
           });
 
         if (masterFolioError) {
-          console.error('[GROUP-MASTER-V1] Master folio failed (non-blocking):', masterFolioError);
+          console.error('[GROUP-FIX-V3] Master folio failed (non-blocking):', {
+            message: masterFolioError.message,
+            code: masterFolioError.code,
+            details: masterFolioError.details,
+            hint: masterFolioError.hint
+          });
         } else {
-          console.log('[GROUP-MASTER-V1] Master folio created:', masterFolio);
+          console.log('[GROUP-FIX-V3] Master folio result:', {
+            success: masterFolio?.success,
+            master_folio_id: masterFolio?.master_folio_id || masterFolio?.id,
+            folio_number: masterFolio?.folio_number,
+            already_existed: masterFolio?.already_existed || masterFolio?.existing
+          });
           masterFolioResult = masterFolio;
         }
       } catch (groupError) {
-        console.error('[GROUP-MASTER-V1] Exception (non-blocking):', groupError);
+        console.error('[GROUP-FIX-V3] Exception (non-blocking):', groupError);
       }
     }
 
-    // GROUP-FIX-V2: Return booking with master folio info
+    // GROUP-FIX-V3: Return booking with master folio info
     // Note: Do NOT return group_total_amount here as each booking is individual
     // Frontend aggregates these correctly
     const response = {
@@ -259,7 +268,7 @@ serve(async (req) => {
       platform_fee: platformFeeResult,
       master_folio: masterFolioResult,
       message: 'Booking created successfully',
-      version: 'CREATE-BOOKING-V3.3-GROUP-FIX-V2'
+      version: 'CREATE-BOOKING-V3.4-GROUP-FIX-V3-TEXT-RPC'
     };
 
     return new Response(
