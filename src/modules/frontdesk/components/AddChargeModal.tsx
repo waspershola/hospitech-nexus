@@ -21,10 +21,12 @@ import { useFinanceProviders } from '@/hooks/useFinanceProviders';
 import { useFinanceLocations } from '@/hooks/useFinanceLocations';
 import { useWallets } from '@/hooks/useWallets';
 import { useOrgServiceRules } from '@/hooks/useOrgServiceRules';
+import { useHotelServices } from '@/hooks/useHotelServices'; // HOTEL-SERVICES-V1
 import { useState, useEffect } from 'react';
 
 const chargeSchema = z.object({
-  service_type: z.string().min(1, 'Service type is required'),
+  service_category: z.string().min(1, 'Service category is required'), // HOTEL-SERVICES-V1: Changed from service_type
+  service_id: z.string().min(1, 'Service is required'), // HOTEL-SERVICES-V1: Service ID
   amount: z.number().positive('Amount must be greater than 0'),
   provider_id: z.string().min(1, 'Payment provider is required'),
   location_id: z.string().optional(),
@@ -54,21 +56,8 @@ export function AddChargeModal({
   const { locations } = useFinanceLocations();
   const { wallets } = useWallets('department');
   const { serviceRules } = useOrgServiceRules(organizationId);
+  const { data: hotelServices = [], isLoading: loadingServices } = useHotelServices(); // HOTEL-SERVICES-V1
   const [serviceError, setServiceError] = useState<string | null>(null);
-
-  const AVAILABLE_SERVICES = [
-    { id: 'room', label: 'Room Charge' },
-    { id: 'breakfast', label: 'Breakfast' },
-    { id: 'lunch', label: 'Lunch' },
-    { id: 'dinner', label: 'Dinner' },
-    { id: 'bar', label: 'Bar' },
-    { id: 'spa', label: 'Spa & Wellness' },
-    { id: 'laundry', label: 'Laundry' },
-    { id: 'room_service', label: 'Room Service' },
-    { id: 'minibar', label: 'Minibar' },
-    { id: 'events', label: 'Events & Conferences' },
-    { id: 'other', label: 'Other' },
-  ];
 
   const {
     register,
@@ -83,26 +72,46 @@ export function AddChargeModal({
 
   const selectedProviderId = watch('provider_id');
   const selectedLocationId = watch('location_id');
-  const selectedServiceType = watch('service_type');
+  const selectedCategory = watch('service_category'); // HOTEL-SERVICES-V1
+  const selectedServiceId = watch('service_id'); // HOTEL-SERVICES-V1
   const activeProviders = providers.filter(p => p.status === 'active');
   const activeLocations = locations.filter(l => l.status === 'active');
+
+  // HOTEL-SERVICES-V1: Get unique categories and filter services
+  const serviceCategories = Array.from(
+    new Set(hotelServices.map(s => s.category))
+  ).sort();
+  
+  const availableServices = selectedCategory 
+    ? hotelServices.filter(s => s.category === selectedCategory)
+    : [];
+
+  // HOTEL-SERVICES-V1: Auto-fill amount when service selected
+  useEffect(() => {
+    if (selectedServiceId) {
+      const service = hotelServices.find(s => s.id === selectedServiceId);
+      if (service && service.default_amount > 0) {
+        setValue('amount', service.default_amount);
+      }
+    }
+  }, [selectedServiceId, hotelServices, setValue]);
 
   // Check service restrictions
   useEffect(() => {
     setServiceError(null);
     
-    if (!organizationId || !selectedServiceType || !serviceRules) return;
+    if (!organizationId || !selectedCategory || !serviceRules) return;
 
     const allowedServices = serviceRules.allowed_services || [];
     
     // If no restrictions are set, allow all
     if (allowedServices.length === 0) return;
     
-    // Check if selected service is allowed
-    if (!allowedServices.includes(selectedServiceType)) {
-      setServiceError(`This organization is not allowed to use ${AVAILABLE_SERVICES.find(s => s.id === selectedServiceType)?.label} service.`);
+    // Check if selected category is allowed
+    if (!allowedServices.includes(selectedCategory)) {
+      setServiceError(`This organization is not allowed to use ${selectedCategory.replace('_', ' ')} service.`);
     }
-  }, [selectedServiceType, serviceRules, organizationId]);
+  }, [selectedCategory, serviceRules, organizationId]);
 
   const onSubmit = (data: ChargeForm) => {
     // Block if service restriction error exists
@@ -112,6 +121,7 @@ export function AddChargeModal({
 
     const transaction_ref = `CHG-${Date.now()}-${Math.random().toString(36).substring(7)}`;
     const selectedProvider = activeProviders.find(p => p.id === data.provider_id);
+    const selectedService = hotelServices.find(s => s.id === data.service_id); // HOTEL-SERVICES-V1
 
     recordPayment(
       {
@@ -127,7 +137,9 @@ export function AddChargeModal({
           notes: data.notes,
           room_number: roomNumber,
           charge_type: 'manual',
-          service_type: data.service_type,
+          service_category: data.service_category, // HOTEL-SERVICES-V1
+          service_id: data.service_id, // HOTEL-SERVICES-V1
+          service_name: selectedService?.name, // HOTEL-SERVICES-V1
         },
       },
       {
@@ -157,27 +169,67 @@ export function AddChargeModal({
             </Alert>
           )}
 
+          {/* HOTEL-SERVICES-V1: Category selector */}
           <div className="space-y-2">
-            <Label htmlFor="service_type">Service Type</Label>
+            <Label htmlFor="service_category">Service Category</Label>
             <Select
-              value={selectedServiceType}
-              onValueChange={(value) => setValue('service_type', value)}
+              value={selectedCategory}
+              onValueChange={(value) => {
+                setValue('service_category', value);
+                setValue('service_id', ''); // Reset service when category changes
+              }}
             >
               <SelectTrigger>
-                <SelectValue placeholder="Select service type" />
+                <SelectValue placeholder="Select category" />
               </SelectTrigger>
               <SelectContent>
-                {AVAILABLE_SERVICES.map((service) => (
-                  <SelectItem key={service.id} value={service.id}>
-                    {service.label}
-                  </SelectItem>
-                ))}
+                {loadingServices ? (
+                  <SelectItem value="loading" disabled>Loading services...</SelectItem>
+                ) : serviceCategories.length === 0 ? (
+                  <SelectItem value="empty" disabled>No services configured</SelectItem>
+                ) : (
+                  serviceCategories.map((category) => (
+                    <SelectItem key={category} value={category}>
+                      {category.replace('_', ' ').toUpperCase()}
+                    </SelectItem>
+                  ))
+                )}
               </SelectContent>
             </Select>
-            {errors.service_type && (
-              <p className="text-sm text-destructive">{errors.service_type.message}</p>
+            {errors.service_category && (
+              <p className="text-sm text-destructive">{errors.service_category.message}</p>
             )}
           </div>
+
+          {/* HOTEL-SERVICES-V1: Service selector (only shown after category) */}
+          {selectedCategory && (
+            <div className="space-y-2">
+              <Label htmlFor="service_id">Service</Label>
+              <Select
+                value={selectedServiceId}
+                onValueChange={(value) => setValue('service_id', value)}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Select service" />
+                </SelectTrigger>
+                <SelectContent>
+                  {availableServices.length === 0 ? (
+                    <SelectItem value="empty" disabled>No services in this category</SelectItem>
+                  ) : (
+                    availableServices.map((service) => (
+                      <SelectItem key={service.id} value={service.id}>
+                        {service.name}
+                        {service.default_amount > 0 && ` - ₦${service.default_amount.toLocaleString()}`}
+                      </SelectItem>
+                    ))
+                  )}
+                </SelectContent>
+              </Select>
+              {errors.service_id && (
+                <p className="text-sm text-destructive">{errors.service_id.message}</p>
+              )}
+            </div>
+          )}
 
           <div className="space-y-2">
             <Label htmlFor="amount">Amount (₦)</Label>

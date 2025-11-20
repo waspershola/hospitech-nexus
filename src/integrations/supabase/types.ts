@@ -1839,6 +1839,59 @@ export type Database = {
           },
         ]
       }
+      hotel_services: {
+        Row: {
+          active: boolean
+          category: Database["public"]["Enums"]["service_category"]
+          created_at: string
+          default_amount: number
+          description: string | null
+          display_order: number
+          id: string
+          metadata: Json | null
+          name: string
+          taxable: boolean
+          tenant_id: string
+          updated_at: string
+        }
+        Insert: {
+          active?: boolean
+          category: Database["public"]["Enums"]["service_category"]
+          created_at?: string
+          default_amount?: number
+          description?: string | null
+          display_order?: number
+          id?: string
+          metadata?: Json | null
+          name: string
+          taxable?: boolean
+          tenant_id: string
+          updated_at?: string
+        }
+        Update: {
+          active?: boolean
+          category?: Database["public"]["Enums"]["service_category"]
+          created_at?: string
+          default_amount?: number
+          description?: string | null
+          display_order?: number
+          id?: string
+          metadata?: Json | null
+          name?: string
+          taxable?: boolean
+          tenant_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "hotel_services_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       inventory_items: {
         Row: {
           category: Database["public"]["Enums"]["item_category"]
@@ -7750,6 +7803,15 @@ export type Database = {
         | "issued"
         | "rejected"
         | "cancelled"
+      service_category:
+        | "room_service"
+        | "bar"
+        | "fb"
+        | "spa"
+        | "laundry"
+        | "minibar"
+        | "transport"
+        | "misc"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -7948,6 +8010,16 @@ export const Constants = {
         "issued",
         "rejected",
         "cancelled",
+      ],
+      service_category: [
+        "room_service",
+        "bar",
+        "fb",
+        "spa",
+        "laundry",
+        "minibar",
+        "transport",
+        "misc",
       ],
     },
   },
