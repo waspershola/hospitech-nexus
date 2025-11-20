@@ -71,12 +71,21 @@ export function PaymentStep({
     enabled: !!tenantId && !!guestId,
   });
 
-  // GROUP-FIX-V1: For group bookings at reservation time, use totalAmount (folio doesn't exist yet)
+  // GROUP-FIX-V3: For group bookings at reservation time, use totalAmount (folio doesn't exist yet)
   // For checked-in bookings, use folio balance
-  const balanceDue = folio?.balance ?? totalAmount;
+  // Read from window variables for group bookings
+  const windowGroupTotal = (window as any).__groupBookingTotal;
+  const windowGroupBalance = (window as any).__groupBalanceDue;
   
-  console.log('[PaymentStep GROUP-FIX-V1] Balance calculation:', {
+  // Determine balance due with priority: window variables (for groups) > folio balance > totalAmount prop
+  const balanceDue = isGroupBooking && windowGroupBalance != null
+    ? windowGroupBalance
+    : folio?.balance ?? totalAmount;
+  
+  console.log('[PaymentStep GROUP-FIX-V3] Balance calculation:', {
     isGroupBooking,
+    windowGroupTotal,
+    windowGroupBalance,
     folioBalance: folio?.balance,
     totalAmount,
     balanceDue,
