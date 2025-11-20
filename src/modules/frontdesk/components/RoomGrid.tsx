@@ -24,10 +24,19 @@ export function RoomGrid({ searchQuery, statusFilter, categoryFilter, floorFilte
   const { tenantId } = useAuth();
   const { data: operationsHours } = useOperationsHours();
 
+  // PHASE 1: Tenant context debugging
+  console.log('[RoomGrid] Current tenantId:', tenantId);
+  console.log('[RoomGrid] Auth context:', { tenantId });
+
   const { data: rooms, isLoading, error } = useQuery({
     queryKey: ['rooms-grid', tenantId, searchQuery, statusFilter, categoryFilter, floorFilter, organizationFilter],
     queryFn: async () => {
-      if (!tenantId) return [];
+      if (!tenantId) {
+        console.error('[RoomGrid] No tenantId - cannot fetch rooms');
+        return [];
+      }
+      
+      console.log('[RoomGrid] Fetching rooms for tenantId:', tenantId);
       
       let query = supabase
         .from('rooms')
@@ -51,6 +60,17 @@ export function RoomGrid({ searchQuery, statusFilter, categoryFilter, floorFilte
 
       const { data, error } = await query;
       if (error) throw error;
+      
+      // PHASE 4: Verify all rooms belong to current tenant
+      const invalidRooms = (data || []).filter(room => room.tenant_id !== tenantId);
+      if (invalidRooms.length > 0) {
+        console.error('[RoomGrid] TENANT ISOLATION BREACH: Found rooms from other tenants!', {
+          currentTenantId: tenantId,
+          invalidRooms: invalidRooms.map(r => ({ id: r.id, number: r.number, tenant_id: r.tenant_id }))
+        });
+      }
+      
+      console.log(`[RoomGrid] Loaded ${data?.length || 0} rooms for tenant ${tenantId}`);
       
       const checkInTime = operationsHours?.checkInTime || '14:00';
       const checkOutTime = operationsHours?.checkOutTime || '12:00';
