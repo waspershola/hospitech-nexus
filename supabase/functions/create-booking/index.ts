@@ -254,14 +254,18 @@ serve(async (req) => {
           });
           masterFolioResult = masterFolio;
           
-          // BUG-FIX-V2: Post initial charges to master folio
+          // PHASE-2-FIX: Post initial charges to master folio
+          // Extract folio_id (UUID) from result, don't pass entire object
           if (masterFolio?.success && masterFolio?.folio_id) {
             try {
               const totalRooms = enrichedMetadata.total_rooms_in_group || 1;
               const groupTotalCharges = total_amount * totalRooms;
               
-              console.log('[BUG-FIX-V2] Posting charges to master folio:', {
-                folio_id: masterFolio.folio_id,
+              // 🔥 FIX: Extract UUID string from result
+              const masterFolioId = masterFolio.folio_id;
+              
+              console.log('[PHASE-2-FIX] Posting charges to master folio:', {
+                folio_id: masterFolioId,
                 amount: groupTotalCharges,
                 total_rooms: totalRooms,
                 per_room_amount: total_amount
@@ -269,7 +273,7 @@ serve(async (req) => {
               
               const { data: chargeResult, error: chargeError } = await supabase
                 .rpc('folio_post_charge', {
-                  p_folio_id: masterFolio.folio_id,
+                  p_folio_id: masterFolioId, // Pass UUID, not object
                   p_amount: groupTotalCharges,
                   p_description: `Group Reservation - ${totalRooms} rooms`,
                   p_reference_type: 'booking',
@@ -278,12 +282,12 @@ serve(async (req) => {
                 });
               
               if (chargeError) {
-                console.error('[BUG-FIX-V2] Failed to post charges (non-blocking):', chargeError);
+                console.error('[PHASE-2-FIX] Failed to post charges (non-blocking):', chargeError);
               } else {
-                console.log('[BUG-FIX-V2] Charges posted successfully:', chargeResult);
+                console.log('[PHASE-2-FIX] Charges posted successfully:', chargeResult);
               }
             } catch (chargeError) {
-              console.error('[BUG-FIX-V2] Exception posting charges (non-blocking):', chargeError);
+              console.error('[PHASE-2-FIX] Exception posting charges (non-blocking):', chargeError);
             }
           }
         }
@@ -301,7 +305,7 @@ serve(async (req) => {
       platform_fee: platformFeeResult,
       master_folio: masterFolioResult,
       message: 'Booking created successfully',
-      version: 'CREATE-BOOKING-V3.5-BUG-FIX-ALL'
+      version: 'CREATE-BOOKING-V3.7-COMPREHENSIVE-FIX'
     };
 
     return new Response(
