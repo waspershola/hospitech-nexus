@@ -30,7 +30,7 @@ interface BookingConfirmationProps {
   onComplete: () => void;
 }
 
-export function BookingConfirmation({ bookingData, onComplete }: BookingConfirmationProps) {
+export function BookingConfirmation({ bookingData, onChange, onComplete }: BookingConfirmationProps) {
   const { tenantId, user } = useAuth();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
@@ -361,11 +361,11 @@ export function BookingConfirmation({ bookingData, onComplete }: BookingConfirma
       
       // For organization bookings, complete immediately (auto-charged to wallet)
       if (bookingData.organizationId) {
-        if (isGroupBooking && bookingData.groupId) {
+        if (isGroupBooking && data.group_id) {
           toast.success(`Group booking created and charged to organization! ${bookingData.selectedRoomIds?.length} rooms reserved.`);
-          // Navigate to Group Billing Center for group bookings
+          // BUG-FIX-V1: Use data.group_id from mutation result for navigation
           setTimeout(() => {
-            navigate(`/dashboard/group-billing/${bookingData.groupId}`);
+            navigate(`/dashboard/group-billing/${data.group_id}`);
             onComplete();
           }, 1500);
         } else {
@@ -403,6 +403,12 @@ export function BookingConfirmation({ bookingData, onComplete }: BookingConfirma
         (window as any).__groupBookingTotal = groupTotal;
         (window as any).__groupBalanceDue = groupBalance;
         (window as any).__groupId = data.group_id;
+        
+        // BUG-FIX-V1: Update bookingData state with actual group_id from response
+        onChange({ 
+          ...bookingData, 
+          groupId: data.group_id 
+        });
         
         toast.success(`Group booking created! ${data.bookings.length} rooms reserved. Proceed to payment.`);
       } else if (Array.isArray(data)) {
