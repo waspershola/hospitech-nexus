@@ -9,13 +9,61 @@ import { GroupChildFolioCard } from "@/components/groups/GroupChildFolioCard";
 import { GroupMasterActions } from "@/components/groups/GroupMasterActions";
 import { FolioTransactionHistory } from "@/modules/billing/FolioTransactionHistory";
 import { Skeleton } from "@/components/ui/skeleton";
+import { useEffect, useState } from "react";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/contexts/AuthContext";
 
 export default function GroupBillingCenter() {
   const { groupId } = useParams<{ groupId: string }>();
   const navigate = useNavigate();
-  const { data, isLoading } = useGroupMasterFolio(groupId || null);
+  const { tenantId } = useAuth();
+  const [actualGroupId, setActualGroupId] = useState<string | null>(null);
 
-  if (isLoading) {
+  // FIX: Extract actual group_id from metadata if groupId is a bookingId
+  useEffect(() => {
+    async function resolveGroupId() {
+      if (!groupId || !tenantId) return;
+
+      console.log('[GroupBillingCenter-FIX] Resolving group ID from param:', groupId);
+
+      // Try direct group_bookings table lookup first
+      const { data: directGroupData } = await supabase
+        .from('group_bookings')
+        .select('group_id')
+        .eq('group_id', groupId)
+        .eq('tenant_id', tenantId)
+        .maybeSingle();
+
+      if (directGroupData) {
+        console.log('[GroupBillingCenter-FIX] Direct group ID found:', directGroupData.group_id);
+        setActualGroupId(directGroupData.group_id);
+        return;
+      }
+
+      // If not found, try resolving from bookings metadata
+      const { data: booking } = await supabase
+        .from('bookings')
+        .select('metadata')
+        .eq('id', groupId)
+        .eq('tenant_id', tenantId)
+        .maybeSingle();
+
+      if (booking?.metadata && typeof booking.metadata === 'object' && 'group_id' in booking.metadata) {
+        const resolvedGroupId = (booking.metadata as any).group_id;
+        console.log('[GroupBillingCenter-FIX] Resolved group ID from booking:', resolvedGroupId);
+        setActualGroupId(resolvedGroupId);
+      } else {
+        // Use original groupId as fallback
+        setActualGroupId(groupId);
+      }
+    }
+
+    resolveGroupId();
+  }, [groupId, tenantId]);
+
+  const { data, isLoading } = useGroupMasterFolio(actualGroupId);
+
+  if (isLoading || !actualGroupId) {
     return (
       <div className="container mx-auto p-6 space-y-6">
         <Skeleton className="h-8 w-64" />
