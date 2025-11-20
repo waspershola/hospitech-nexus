@@ -7577,9 +7577,10 @@ export type Database = {
           status: string
         }[]
       }
-      get_group_master_folio:
-        | { Args: { p_group_id: string; p_tenant_id: string }; Returns: Json }
-        | { Args: { p_group_id: string; p_tenant_id: string }; Returns: Json }
+      get_group_master_folio: {
+        Args: { p_group_id: string; p_tenant_id: string }
+        Returns: Json
+      }
       get_low_stock_items: {
         Args: { p_tenant_id: string }
         Returns: {
