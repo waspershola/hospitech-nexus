@@ -14,6 +14,8 @@ export function useRoomRealtime() {
   useEffect(() => {
     if (!tenantId) return;
 
+    console.log('[useRoomRealtime] Setting up real-time subscription for tenantId:', tenantId);
+
     const channel = supabase
       .channel('rooms-realtime')
       .on(
@@ -25,10 +27,19 @@ export function useRoomRealtime() {
           filter: `tenant_id=eq.${tenantId}`,
         },
         (payload) => {
-          console.log('Room change detected:', payload);
+          console.log('[useRoomRealtime] Room change detected for tenant:', tenantId, payload);
           
-          // Invalidate relevant queries to refetch data
-          queryClient.invalidateQueries({ queryKey: ['rooms-grid'] });
+          // PHASE 2: Verify payload belongs to current tenant before invalidating
+          if (payload.new && (payload.new as any).tenant_id !== tenantId) {
+            console.error('[useRoomRealtime] IGNORED: Room change from different tenant', {
+              currentTenantId: tenantId,
+              payloadTenantId: (payload.new as any).tenant_id
+            });
+            return; // Don't invalidate cache for other tenants
+          }
+          
+          // Invalidate relevant queries to refetch data (tenant-scoped)
+          queryClient.invalidateQueries({ queryKey: ['rooms-grid', tenantId] });
           queryClient.invalidateQueries({ queryKey: ['room-detail'] });
           queryClient.invalidateQueries({ queryKey: ['frontdesk-kpis'] });
         }
@@ -36,6 +47,7 @@ export function useRoomRealtime() {
       .subscribe();
 
     return () => {
+      console.log('[useRoomRealtime] Cleaning up subscription for tenantId:', tenantId);
       supabase.removeChannel(channel);
     };
   }, [tenantId, queryClient]);
@@ -51,6 +63,8 @@ export function useBookingRealtime() {
   useEffect(() => {
     if (!tenantId) return;
 
+    console.log('[useBookingRealtime] Setting up real-time subscription for tenantId:', tenantId);
+
     const channel = supabase
       .channel('bookings-realtime')
       .on(
@@ -62,9 +76,19 @@ export function useBookingRealtime() {
           filter: `tenant_id=eq.${tenantId}`,
         },
         (payload) => {
-          console.log('Booking change detected:', payload);
+          console.log('[useBookingRealtime] Booking change detected for tenant:', tenantId, payload);
           
-          queryClient.invalidateQueries({ queryKey: ['rooms-grid'] });
+          // PHASE 2: Verify payload belongs to current tenant before invalidating
+          if (payload.new && (payload.new as any).tenant_id !== tenantId) {
+            console.error('[useBookingRealtime] IGNORED: Booking change from different tenant', {
+              currentTenantId: tenantId,
+              payloadTenantId: (payload.new as any).tenant_id
+            });
+            return; // Don't invalidate cache for other tenants
+          }
+          
+          // Invalidate tenant-scoped queries only
+          queryClient.invalidateQueries({ queryKey: ['rooms-grid', tenantId] });
           queryClient.invalidateQueries({ queryKey: ['room-detail'] });
           queryClient.invalidateQueries({ queryKey: ['frontdesk-kpis'] });
           queryClient.invalidateQueries({ queryKey: ['overstay-rooms'] });
@@ -73,6 +97,7 @@ export function useBookingRealtime() {
       .subscribe();
 
     return () => {
+      console.log('[useBookingRealtime] Cleaning up subscription for tenantId:', tenantId);
       supabase.removeChannel(channel);
     };
   }, [tenantId, queryClient]);
