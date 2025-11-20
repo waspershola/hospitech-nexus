@@ -36,13 +36,23 @@ export function getRoomStatusNow(
   checkInTime: string = '14:00',
   checkOutTime: string = '12:00'
 ): 'available' | 'reserved' | 'occupied' | 'checking_in' | 'checking_out' | 'overstay' | 'maintenance' | 'out_of_order' | 'cleaning' {
+  // CRITICAL FIX: Use database room status as authoritative source
+  // DO NOT auto-derive availability from time-based logic
+  
   // Preserve manual maintenance/cleaning/out_of_order statuses
   if (['maintenance', 'out_of_order', 'cleaning'].includes(room.status)) {
     return room.status as any;
   }
 
-  if (!booking || booking.status === 'cancelled' || booking.status === 'completed') {
+  // If room database status is 'available', trust it
+  if (room.status === 'available') {
     return 'available';
+  }
+
+  // If no active booking (cancelled/completed), trust room status
+  if (!booking || booking.status === 'cancelled' || booking.status === 'completed') {
+    // Return database status - DO NOT override to 'available'
+    return room.status as any;
   }
 
   const now = new Date();
@@ -75,7 +85,9 @@ export function getRoomStatusNow(
       if (booking.status === 'checked_in') {
         return 'overstay'; // Still occupied after checkout time
       }
-      return 'available'; // Already checked out
+      // CRITICAL FIX: DO NOT auto-derive 'available' - use room database status
+      // Staff must explicitly check out guest via proper checkout flow
+      return room.status as any;
     }
     return 'checking_out'; // Still before checkout time
   }
