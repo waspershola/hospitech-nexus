@@ -38,7 +38,7 @@ import { toast } from '@/hooks/use-toast';
 import { Switch } from '@/components/ui/switch';
 import { 
   Loader2, User, CreditCard, Calendar, AlertCircle, Clock, Building2, AlertTriangle, 
-  Wallet, Zap, Coffee, BellOff, UserPlus, LogIn, LogOut, Wrench, Sparkles, FileText, Receipt, Edit, Printer, MessageSquare
+  Wallet, Zap, Coffee, BellOff, UserPlus, LogIn, LogOut, Wrench, Sparkles, FileText, Receipt, Edit, Printer, MessageSquare, Users
 } from 'lucide-react';
 
 interface RoomActionDrawerProps {
@@ -95,6 +95,7 @@ export function RoomActionDrawer({ roomId, contextDate, open, onClose, onOpenAss
             total_amount,
             guest_id,
             organization_id,
+            metadata,
             guest:guests(id, name, email, phone),
             organization:organizations(id, name, credit_limit, allow_negative_balance)
           )
@@ -327,6 +328,28 @@ export function RoomActionDrawer({ roomId, contextDate, open, onClose, onOpenAss
   
   // Fetch organization wallet info if organization exists
   const { data: orgWallet } = useOrganizationWallet(activeBooking?.organization_id);
+
+  // GROUP-UX-V1: Fetch group booking info if this room is part of a group
+  const groupMetadata = activeBooking?.metadata as any;
+  const { data: groupInfo } = useQuery({
+    queryKey: ['group-booking-info', groupMetadata?.group_id, tenantId],
+    queryFn: async () => {
+      if (!groupMetadata?.is_part_of_group || !groupMetadata?.group_id || !tenantId) {
+        return null;
+      }
+      
+      const { data, error } = await supabase
+        .from('group_bookings')
+        .select('group_id, group_name, group_size, group_leader')
+        .eq('group_id', groupMetadata.group_id)
+        .eq('tenant_id', tenantId)
+        .maybeSingle();
+      
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!groupMetadata?.is_part_of_group && !!groupMetadata?.group_id && !!tenantId,
+  });
 
   // Use activeBooking consistently throughout component
   const currentBooking = activeBooking;
@@ -676,37 +699,73 @@ export function RoomActionDrawer({ roomId, contextDate, open, onClose, onOpenAss
                 <div className="flex items-center justify-between">
                   <div>
                     <SheetTitle className="text-2xl font-display">Room {room.number}</SheetTitle>
-                    <div className="flex items-center gap-2 mt-1">
+                    <div className="flex items-center gap-2 mt-1 flex-wrap">
                       <Badge className="capitalize">{computedStatus.replace('_', ' ')}</Badge>
+                      
+                      {/* GROUP-UX-V1: Group booking indicator */}
+                      {groupInfo && (
+                        <Badge variant="secondary" className="bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-100">
+                          <Users className="w-3 h-3 mr-1" />
+                          Group: {groupInfo.group_name}
+                        </Badge>
+                      )}
+                      
                       <span className="text-sm text-muted-foreground">
                         {room.category?.name || room.type}
                       </span>
                     </div>
                   </div>
-                  {/* VIEW-FOLIO-BUTTON-V1: Navigate to Billing Center */}
-                  {folio?.folioId && (
-                    <TooltipProvider>
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => {
-                              console.log('VIEW-FOLIO-BUTTON-V1: Navigating to billing center', folio.folioId);
-                              navigate(`/dashboard/billing/${folio.folioId}`);
-                            }}
-                            className="gap-2"
-                          >
-                            <FileText className="w-4 h-4" />
-                            View Folio
-                          </Button>
-                        </TooltipTrigger>
-                        <TooltipContent>
-                          <p>Open full billing center for advanced folio management</p>
-                        </TooltipContent>
-                      </Tooltip>
-                    </TooltipProvider>
-                  )}
+                  <div className="flex gap-2">
+                    {/* VIEW-FOLIO-BUTTON-V1: Navigate to individual folio */}
+                    {folio?.folioId && (
+                      <TooltipProvider>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => {
+                                console.log('VIEW-FOLIO-BUTTON-V1: Navigating to billing center', folio.folioId);
+                                navigate(`/dashboard/billing/${folio.folioId}`);
+                              }}
+                              className="gap-2"
+                            >
+                              <FileText className="w-4 h-4" />
+                              View Folio
+                            </Button>
+                          </TooltipTrigger>
+                          <TooltipContent>
+                            <p>View individual room folio</p>
+                          </TooltipContent>
+                        </Tooltip>
+                      </TooltipProvider>
+                    )}
+                    
+                    {/* GROUP-UX-V1: Navigate to group billing center */}
+                    {groupInfo && (
+                      <TooltipProvider>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Button
+                              variant="default"
+                              size="sm"
+                              onClick={() => {
+                                console.log('GROUP-UX-V1: Navigating to group billing center', groupInfo.group_id);
+                                navigate(`/dashboard/group-billing/${groupInfo.group_id}`);
+                              }}
+                              className="gap-2"
+                            >
+                              <Users className="w-4 h-4" />
+                              View Group Billing
+                            </Button>
+                          </TooltipTrigger>
+                          <TooltipContent>
+                            <p>View master folio for entire group ({groupInfo.group_size} rooms)</p>
+                          </TooltipContent>
+                        </Tooltip>
+                      </TooltipProvider>
+                    )}
+                  </div>
                 </div>
               </SheetHeader>
 
@@ -798,6 +857,40 @@ export function RoomActionDrawer({ roomId, contextDate, open, onClose, onOpenAss
                                   Negative Balance Allowed
                                 </Badge>
                               )}
+                          </div>
+                        </div>
+                        <Separator />
+                      </>
+                    )}
+
+                      {/* GROUP-UX-V1: Group booking section */}
+                      {groupInfo && (
+                        <>
+                          <div className="space-y-3">
+                            <h3 className="font-semibold flex items-center gap-2">
+                              <Users className="w-4 h-4" />
+                              Group Booking
+                            </h3>
+                            <div className="text-sm space-y-2">
+                              <p className="font-medium">{groupInfo.group_name}</p>
+                              <div className="flex items-center justify-between py-2 px-3 bg-muted/30 rounded-lg">
+                                <span className="text-xs text-muted-foreground">Total Rooms</span>
+                                <span className="font-semibold">{groupInfo.group_size}</span>
+                              </div>
+                              {groupInfo.group_leader && (
+                                <div className="flex items-center justify-between py-2 px-3 bg-muted/30 rounded-lg">
+                                  <span className="text-xs text-muted-foreground">Group Leader</span>
+                                  <span className="font-medium text-xs">{groupInfo.group_leader}</span>
+                                </div>
+                              )}
+                              <Button 
+                                variant="outline" 
+                                className="w-full gap-2 mt-2"
+                                onClick={() => navigate(`/dashboard/group-billing/${groupInfo.group_id}`)}
+                              >
+                                <Building2 className="w-4 h-4" />
+                                View Master Folio
+                              </Button>
                             </div>
                           </div>
                           <Separator />
