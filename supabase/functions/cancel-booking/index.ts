@@ -58,10 +58,12 @@ serve(async (req) => {
       )
     }
 
-    console.log('[cancel-booking] Processing cancellation:', { 
+    console.log('[CANCEL-V2] Processing cancellation:', { 
       booking_id, 
       force_cancel, 
-      admin_approval 
+      admin_approval,
+      user_id: user.id,
+      timestamp: new Date().toISOString()
     })
 
     // Get booking details
@@ -72,7 +74,11 @@ serve(async (req) => {
       .single()
 
     if (bookingError || !booking) {
-      console.error('[cancel-booking] Booking not found:', bookingError)
+      console.error('[CANCEL-V2] Booking not found:', {
+        booking_id,
+        error: bookingError?.message,
+        code: bookingError?.code
+      })
       return new Response(
         JSON.stringify({ success: false, error: 'Booking not found' }),
         { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -87,14 +93,20 @@ serve(async (req) => {
       .eq('status', 'open')
       .maybeSingle()
 
-    console.log('[cancel-booking] Folio check:', { 
+    console.log('[CANCEL-V2] Folio check:', { 
       has_folio: !!folio, 
-      balance: folio?.balance 
+      folio_id: folio?.id,
+      balance: folio?.balance,
+      status: folio?.status
     })
 
     // Rule 1: Check folio balance if folio exists
     if (folio && folio.balance > 0 && !force_cancel) {
-      console.warn('[cancel-booking] Outstanding folio balance detected')
+      console.warn('[CANCEL-V2] Outstanding folio balance detected:', {
+        folio_id: folio.id,
+        balance: folio.balance,
+        booking_id
+      })
       return new Response(
         JSON.stringify({
           success: false,
@@ -110,7 +122,11 @@ serve(async (req) => {
 
     // Rule 2: Force cancel requires admin approval
     if (force_cancel && !admin_approval) {
-      console.warn('[cancel-booking] Force cancel attempted without approval')
+      console.warn('[CANCEL-V2] Force cancel attempted without approval:', {
+        user_id: user.id,
+        booking_id,
+        folio_balance: folio?.balance
+      })
       return new Response(
         JSON.stringify({
           success: false,
@@ -123,11 +139,15 @@ serve(async (req) => {
     }
 
     // Proceed with cancellation
-    console.log('[cancel-booking] Proceeding with cancellation')
+    console.log('[CANCEL-V2] Proceeding with cancellation')
 
     // If force cancel with folio, mark folio as cancelled
     if (force_cancel && folio) {
-      console.log('[cancel-booking] Force cancelling folio:', folio.id)
+      console.log('[CANCEL-V2] Force cancelling folio:', {
+        folio_id: folio.id,
+        outstanding_balance: folio.balance,
+        booking_reference: booking.booking_reference
+      })
       
       const { error: folioError } = await supabaseServiceClient
         .from('stay_folios')
@@ -146,7 +166,11 @@ serve(async (req) => {
         .eq('id', folio.id)
 
       if (folioError) {
-        console.error('[cancel-booking] Failed to cancel folio:', folioError)
+        console.error('[CANCEL-V2] Failed to cancel folio:', {
+          folio_id: folio.id,
+          error: folioError.message,
+          code: folioError.code
+        })
       }
 
       // Create finance audit event for force cancellation
@@ -165,8 +189,10 @@ serve(async (req) => {
         }
       })
     } else if (folio && folio.balance === 0) {
-      // Close folio if balance is zero
-      console.log('[cancel-booking] Closing balanced folio:', folio.id)
+      console.log('[CANCEL-V2] Closing balanced folio:', {
+        folio_id: folio.id,
+        balance: 0
+      })
       await supabaseServiceClient
         .from('stay_folios')
         .update({
@@ -178,7 +204,7 @@ serve(async (req) => {
     }
 
     // Handle platform fees reversal
-    console.log('[cancel-booking] Checking for platform fees to reverse')
+    console.log('[CANCEL-V2] Checking for platform fees to reverse:', { booking_id })
     const { data: platformFees } = await supabaseServiceClient
       .from('platform_fee_ledger')
       .select('*')
@@ -188,7 +214,10 @@ serve(async (req) => {
       .is('waived_at', null)
 
     if (platformFees && platformFees.length > 0) {
-      console.log(`[cancel-booking] Waiving ${platformFees.length} platform fees`)
+      console.log(`[CANCEL-V2] Waiving ${platformFees.length} platform fees:`, {
+        fee_ids: platformFees.map(f => f.id),
+        total_fee_amount: platformFees.reduce((sum, f) => sum + f.fee_amount, 0)
+      })
       
       for (const fee of platformFees) {
         await supabaseServiceClient
@@ -223,7 +252,13 @@ serve(async (req) => {
       })
     }
 
-    console.log('[cancel-booking] Cancellation completed successfully')
+    console.log('[CANCEL-V2] Cancellation completed successfully:', {
+      booking_id,
+      folio_handled: !!folio,
+      platform_fees_waived: platformFees?.length || 0,
+      force_cancel,
+      admin_approval
+    })
 
     return new Response(
       JSON.stringify({
@@ -237,7 +272,10 @@ serve(async (req) => {
     )
 
   } catch (error) {
-    console.error('[cancel-booking] Error:', error)
+    console.error('[CANCEL-V2] Error:', {
+      error: error instanceof Error ? error.message : 'Unknown error',
+      stack: error instanceof Error ? error.stack : undefined
+    })
     return new Response(
       JSON.stringify({ 
         success: false, 
