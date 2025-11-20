@@ -1,4 +1,5 @@
-import { useQuery } from '@tanstack/react-query';
+import { useEffect } from 'react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { RoomTile } from './RoomTile';
@@ -23,10 +24,31 @@ interface RoomGridProps {
 export function RoomGrid({ searchQuery, statusFilter, categoryFilter, floorFilter, organizationFilter, onRoomClick, isSelectionMode, selectedRoomIds = [], onRoomSelectionChange }: RoomGridProps) {
   const { tenantId } = useAuth();
   const { data: operationsHours } = useOperationsHours();
+  const queryClient = useQueryClient();
 
   // PHASE 1: Tenant context debugging
   console.log('[RoomGrid] Current tenantId:', tenantId);
   console.log('[RoomGrid] Auth context:', { tenantId });
+  
+  // PHASE 4: React Query cache hardening - remove stale cross-tenant caches
+  useEffect(() => {
+    if (!tenantId) return;
+    
+    const allRoomsCaches = queryClient.getQueryCache().findAll({ queryKey: ['rooms-grid'] });
+    allRoomsCaches.forEach(query => {
+      const key = query.queryKey as [string, string | undefined, ...any[]];
+      const cacheTenantId = key[1];
+      
+      if (cacheTenantId && cacheTenantId !== tenantId) {
+        console.error('[RoomGrid] CACHE HARDENING: Removing stale cross-tenant cache:', {
+          cacheKey: key,
+          cacheTenantId,
+          currentTenantId: tenantId
+        });
+        queryClient.removeQueries({ queryKey: key });
+      }
+    });
+  }, [tenantId, queryClient]);
 
   const { data: rooms, isLoading, error } = useQuery({
     queryKey: ['rooms-grid', tenantId, searchQuery, statusFilter, categoryFilter, floorFilter, organizationFilter],

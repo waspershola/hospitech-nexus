@@ -105,6 +105,17 @@ export function RoomActionDrawer({ roomId, contextDate, open, onClose, onOpenAss
 
       if (error) throw error;
       
+      // PHASE 3: Verify room belongs to current tenant
+      if (data && data.tenant_id !== tenantId) {
+        console.error('[RoomActionDrawer] CRITICAL: Cross-tenant room access blocked!', {
+          roomId: data.id,
+          roomNumber: data.number,
+          roomTenantId: data.tenant_id,
+          userTenantId: tenantId
+        });
+        throw new Error('Room not found in your property');
+      }
+      
       // Filter bookings based on filterDate (contextDate or today)
       if (data && data.bookings) {
         const activeBookings = Array.isArray(data.bookings) 
