@@ -82,13 +82,13 @@ export function BookingPaymentManager({ bookingId }: BookingPaymentManagerProps)
     enabled: !!tenantId && !!bookingId,
   });
 
-  // Fetch folio to check check-in status
+  // FOLIO-FIX-V1: Fetch full folio data including balances for display
   const { data: folio, isLoading: folioLoading, error: folioError } = useQuery({
     queryKey: ['booking-folio-check', bookingId, tenantId],
     queryFn: async () => {
       const { data, error } = await supabase
         .from('stay_folios')
-        .select('id, status')
+        .select('id, status, total_charges, total_payments, balance, folio_number')
         .eq('booking_id', bookingId)
         .eq('tenant_id', tenantId!)
         .maybeSingle();
@@ -322,8 +322,11 @@ export function BookingPaymentManager({ bookingId }: BookingPaymentManagerProps)
     );
   }
 
-  const totalPaid = payments.reduce((sum, p) => sum + (p.status === 'completed' ? Number(p.amount) : 0), 0);
-  const balance = Number(booking.total_amount) - totalPaid;
+  // FOLIO-FIX-V1: Use folio database totals as single source of truth
+  // Never calculate from payments array - folio already has correct totals
+  const totalCharges = Number(folio.total_charges) || 0;
+  const totalPaid = Number(folio.total_payments) || 0;
+  const balance = Number(folio.balance) || 0;
 
   return (
     <div className="space-y-6">
@@ -347,10 +350,11 @@ export function BookingPaymentManager({ bookingId }: BookingPaymentManagerProps)
           </div>
         </CardHeader>
         <CardContent className="space-y-4">
+          {/* FOLIO-FIX-V1: Display folio totals from database */}
           <div className="grid grid-cols-3 gap-4">
             <div>
               <p className="text-sm text-muted-foreground">Total Charges</p>
-              <p className="text-2xl font-bold">₦{Number(booking.total_amount).toLocaleString()}</p>
+              <p className="text-2xl font-bold">₦{totalCharges.toLocaleString()}</p>
             </div>
             <div>
               <p className="text-sm text-muted-foreground">Total Paid</p>
