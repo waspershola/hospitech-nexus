@@ -268,7 +268,7 @@ serve(async (req) => {
           const groupTotalCharges = total_amount * totalRooms;
           const masterFolioId = masterFolio.folio_id;
           
-          console.log('[GROUP-MASTER-V5-CHARGE] Posting charges to master folio using wrapper:', {
+          console.log('[GROUP-MASTER-V5.1-DIRECT] Posting charges to master folio using direct wrapper:', {
             group_id: group_id_text,
             tenant_id,
             amount: groupTotalCharges,
@@ -276,9 +276,9 @@ serve(async (req) => {
             per_room_amount: total_amount
           });
           
-          // Use database wrapper to eliminate UUID serialization issues
+          // GROUP-MASTER-V5.1-DIRECT: Use direct wrapper with NO nested RPC calls
           const { data: chargeResult, error: chargeError } = await supabase
-            .rpc('post_group_master_charge', {
+            .rpc('post_group_master_charge_direct', {
               p_tenant_id: tenant_id,
               p_group_id: group_id_text,
               p_amount: groupTotalCharges,
@@ -288,10 +288,10 @@ serve(async (req) => {
             });
           
           if (chargeError) {
-            console.error('[GROUP-MASTER-V5-CHARGE] Charge posting FAILED:', chargeError);
+            console.error('[GROUP-MASTER-V5.1-DIRECT] Charge posting FAILED:', chargeError);
             
             // ROLLBACK: Delete the master folio we just created
-            console.log('[GROUP-MASTER-V5-ROLLBACK] Deleting master folio due to charge failure');
+            console.log('[GROUP-MASTER-V5.1-DIRECT-ROLLBACK] Deleting master folio due to charge failure');
             await supabase
               .from('stay_folios')
               .delete()
@@ -302,10 +302,10 @@ serve(async (req) => {
           }
           
           if (!chargeResult?.success) {
-            console.error('[GROUP-MASTER-V5-CHARGE] Charge result indicates failure:', chargeResult);
+            console.error('[GROUP-MASTER-V5.1-DIRECT] Charge result indicates failure:', chargeResult);
             
             // ROLLBACK: Delete the master folio
-            console.log('[GROUP-MASTER-V5-ROLLBACK] Deleting master folio due to unsuccessful charge result');
+            console.log('[GROUP-MASTER-V5.1-DIRECT-ROLLBACK] Deleting master folio due to unsuccessful charge result');
             await supabase
               .from('stay_folios')
               .delete()
@@ -315,7 +315,7 @@ serve(async (req) => {
             throw new Error(`Failed to post charges: ${chargeResult?.error || 'Unknown error'}`);
           }
           
-          console.log('[GROUP-MASTER-V5-CHARGE] Charges posted successfully:', {
+          console.log('[GROUP-MASTER-V5.1-DIRECT] Charges posted successfully:', {
             success: chargeResult?.success,
             transaction_id: chargeResult?.transaction_id,
             folio_id: chargeResult?.folio_id
