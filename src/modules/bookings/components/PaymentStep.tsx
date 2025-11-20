@@ -17,6 +17,8 @@ interface PaymentStepProps {
   bookingId: string;
   guestId: string;
   totalAmount: number;
+  groupId?: string;
+  isGroupBooking?: boolean;
   onPaymentComplete: () => void;
   onSkip: () => void;
 }
@@ -33,6 +35,8 @@ export function PaymentStep({
   bookingId,
   guestId,
   totalAmount,
+  groupId,
+  isGroupBooking = false,
   onPaymentComplete,
   onSkip,
 }: PaymentStepProps) {
@@ -43,7 +47,8 @@ export function PaymentStep({
   const [walletApplied, setWalletApplied] = useState(false);
   const [isApplyingWallet, setIsApplyingWallet] = useState(false);
 
-  // Fetch actual booking folio to get current balance
+  // GROUP-FIX-V1: For reserved bookings, folio doesn't exist yet
+  // Only fetch folio for checked-in bookings
   const { data: folio, isLoading: folioLoading } = useBookingFolio(bookingId);
 
   // Check for available wallet balance
@@ -66,8 +71,17 @@ export function PaymentStep({
     enabled: !!tenantId && !!guestId,
   });
 
-  // Use actual folio balance if available, otherwise use totalAmount
+  // GROUP-FIX-V1: For group bookings at reservation time, use totalAmount (folio doesn't exist yet)
+  // For checked-in bookings, use folio balance
   const balanceDue = folio?.balance ?? totalAmount;
+  
+  console.log('[PaymentStep GROUP-FIX-V1] Balance calculation:', {
+    isGroupBooking,
+    folioBalance: folio?.balance,
+    totalAmount,
+    balanceDue,
+    groupId
+  });
 
   // Auto-apply wallet credit AFTER folio is loaded
   useEffect(() => {
@@ -168,8 +182,8 @@ export function PaymentStep({
         <div className="mb-4">
           <h3 className="text-lg font-semibold">Collect Payment</h3>
           <p className="text-sm text-muted-foreground">
-            {folio?.isGroupBooking 
-              ? `Balance Due (from ${folio.numberOfBookings} room group)`
+            {isGroupBooking 
+              ? 'Balance Due (from group booking)'
               : 'Balance Due (from booking)'}
           </p>
           

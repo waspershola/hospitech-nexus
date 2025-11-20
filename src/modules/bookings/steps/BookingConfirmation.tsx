@@ -188,11 +188,15 @@ export function BookingConfirmation({ bookingData, onComplete }: BookingConfirma
         finalTotalAmount = groupDisplayTotal?.totalAmount || calculation.totalAmount;
         console.log('Group booking final total:', finalTotalAmount, 'with add-ons:', bookingData.selectedAddons, 'platform fee:', groupDisplayTotal?.platformFee);
 
+        // GROUP-FIX-V1: Calculate per-room amount for individual bookings
         const numRooms = bookingData.selectedRoomIds.length;
+        const perRoomAmount = groupDisplayTotal?.totalAmount 
+          ? (groupDisplayTotal.totalAmount / numRooms) 
+          : (finalTotalAmount / numRooms);
 
-        // Create bookings for each room
+        // Create bookings for each room with proper metadata
         const results = await Promise.all(
-          bookingData.selectedRoomIds.map(async (roomId) => {
+          bookingData.selectedRoomIds.map(async (roomId, index) => {
             const { data: createResult, error: createError } = await supabase.functions.invoke('create-booking', {
               body: {
                 tenant_id: tenantId,
@@ -201,7 +205,7 @@ export function BookingConfirmation({ bookingData, onComplete }: BookingConfirma
                 organization_id: bookingData.organizationId,
                 check_in: bookingData.checkIn!.toISOString(),
                 check_out: bookingData.checkOut!.toISOString(),
-                total_amount: groupDisplayTotal?.totalAmount ? (groupDisplayTotal.totalAmount / numRooms) : (finalTotalAmount / numRooms), // Use platform fee adjusted total
+                total_amount: perRoomAmount,
                 action_id: `${actionId}-${roomId}`,
                 department: 'front_desk',
                 created_by: user?.id,
@@ -216,6 +220,15 @@ export function BookingConfirmation({ bookingData, onComplete }: BookingConfirma
                 rate_override: bookingData.rateOverride,
                 approval_status: bookingData.approvalStatus,
                 total_rooms_in_group: bookingData.selectedRoomIds.length,
+                metadata: {
+                  group_id: groupId,
+                  group_name: bookingData.groupName,
+                  group_size: bookingData.groupSize,
+                  group_leader: bookingData.groupLeaderName,
+                  is_part_of_group: true,
+                  room_index: index,
+                  version: 'GROUP-FIX-V1-FRONTEND'
+                }
               },
             });
 
@@ -227,11 +240,18 @@ export function BookingConfirmation({ bookingData, onComplete }: BookingConfirma
               throw new Error(createResult?.error || 'Booking creation failed');
             }
 
-            return createResult.booking;
+            return createResult;
           })
         );
 
-        return results;
+        // GROUP-FIX-V1: Return group-aware result with correct totals
+        return {
+          bookings: results.map(r => r.booking),
+          group_total_amount: groupDisplayTotal?.totalAmount || finalTotalAmount,
+          balance_due: groupDisplayTotal?.totalAmount || finalTotalAmount,
+          group_id: groupId,
+          is_group: true
+        };
       }
 
       // Single booking
@@ -345,8 +365,26 @@ export function BookingConfirmation({ bookingData, onComplete }: BookingConfirma
       }
 
       // For non-organization bookings, show payment step
-      if (Array.isArray(data)) {
-        // Group booking
+      // GROUP-FIX-V1: Handle group booking response correctly
+      if (data.is_group && data.bookings && Array.isArray(data.bookings)) {
+        // Group booking response
+        const bookingsForPayment = data.bookings.map((b: any) => ({
+          id: b.id,
+          guestId: b.guest_id,
+          amount: b.total_amount,
+        }));
+        
+        // Store group-aware data with CORRECT group total
+        setCreatedBookings(bookingsForPayment);
+        
+        // Store the actual group total for payment step
+        (window as any).__groupBookingTotal = data.group_total_amount;
+        (window as any).__groupBalanceDue = data.balance_due;
+        (window as any).__groupId = data.group_id;
+        
+        toast.success(`Group booking created! ${data.bookings.length} rooms reserved. Proceed to payment.`);
+      } else if (Array.isArray(data)) {
+        // Legacy array response (fallback)
         const bookingsForPayment = data.map((b: any) => ({
           id: b.id,
           guestId: b.guest_id,
@@ -357,9 +395,9 @@ export function BookingConfirmation({ bookingData, onComplete }: BookingConfirma
       } else {
         // Single booking
         setCreatedBookings([{
-          id: data.id,
-          guestId: data.guest_id,
-          amount: data.total_amount,
+          id: data.booking?.id || data.id,
+          guestId: data.booking?.guest_id || data.guest_id,
+          amount: data.booking?.total_amount || data.total_amount,
         }]);
         toast.success('Booking created successfully! Proceed to payment.');
       }
@@ -531,7 +569,24 @@ export function BookingConfirmation({ bookingData, onComplete }: BookingConfirma
 
   // Show payment step after booking creation (for non-org bookings)
   if (showPayment && createdBookings.length > 0) {
-    const totalPaymentAmount = createdBookings.reduce((sum, b) => sum + b.amount, 0);
+    // GROUP-FIX-V1: Use correct group total if available from backend
+    const groupTotal = (window as any).__groupBookingTotal;
+    const groupBalanceDue = (window as any).__groupBalanceDue;
+    const groupId = (window as any).__groupId;
+    
+    // For group bookings, use the stored group total; otherwise sum individual amounts
+    const totalPaymentAmount = isGroupBooking && groupTotal 
+      ? groupTotal
+      : createdBookings.reduce((sum, b) => sum + b.amount, 0);
+    
+    console.log('[GROUP-FIX-V1] Payment Step Data:', {
+      isGroupBooking,
+      groupTotal,
+      groupBalanceDue,
+      totalPaymentAmount,
+      createdBookings: createdBookings.length
+    });
+    
     return (
       <div className="space-y-6">
         <Alert className="bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800">
@@ -548,6 +603,8 @@ export function BookingConfirmation({ bookingData, onComplete }: BookingConfirma
           bookingId={createdBookings[0].id}
           guestId={createdBookings[0].guestId}
           totalAmount={totalPaymentAmount}
+          groupId={isGroupBooking ? groupId : undefined}
+          isGroupBooking={isGroupBooking}
           onPaymentComplete={handlePaymentComplete}
           onSkip={handleSkipPayment}
         />
