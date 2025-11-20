@@ -141,10 +141,12 @@ export function BookingAmendmentDrawer({ open, onClose, bookingId }: BookingAmen
         updates.total_amount = nights * rate + (metadata?.addons_total || 0);
       }
 
+      // TENANT-ISOLATION-FIX-V1: Update booking with tenant isolation
       const { error } = await supabase
         .from('bookings')
         .update(updates)
-        .eq('id', bookingId);
+        .eq('id', bookingId)
+        .eq('tenant_id', tenantId);
 
       if (error) throw error;
 

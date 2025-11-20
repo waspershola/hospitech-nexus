@@ -199,7 +199,7 @@ export function CancelBookingModal({ open, onClose, bookingId }: CancelBookingMo
 
       console.log('[cancel] Edge function succeeded, processing refunds and local updates')
 
-      // Update booking status to cancelled
+      // TENANT-ISOLATION-FIX-V1: Update booking status to cancelled
       const { error: bookingError } = await supabase
         .from('bookings')
         .update({
@@ -214,7 +214,8 @@ export function CancelBookingModal({ open, onClose, bookingId }: CancelBookingMo
             cancellation_fee: cancellationFee,
           },
         })
-        .eq('id', bookingId);
+        .eq('id', bookingId)
+        .eq('tenant_id', tenantId);
 
       if (bookingError) throw bookingError;
 
@@ -274,12 +275,13 @@ export function CancelBookingModal({ open, onClose, bookingId }: CancelBookingMo
         }
       }
 
-      // Update room status back to available if it was reserved/occupied
+      // TENANT-ISOLATION-FIX-V1: Update room status back to available if it was reserved/occupied
       if (booking?.room_id && ['reserved', 'occupied'].includes(booking.status)) {
         const { error: roomError } = await supabase
           .from('rooms')
           .update({ status: 'available' })
-          .eq('id', booking.room_id);
+          .eq('id', booking.room_id)
+          .eq('tenant_id', tenantId);
 
         if (roomError) throw roomError;
       }
