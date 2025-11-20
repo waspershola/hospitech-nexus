@@ -244,13 +244,24 @@ export function BookingConfirmation({ bookingData, onComplete }: BookingConfirma
           })
         );
 
-        // GROUP-FIX-V1: Return group-aware result with correct totals
+        // GROUP-FIX-V2: Return group-aware result with correct totals
+        // Use nullish coalescing to ensure 0 values don't trigger fallback
+        const groupTotalForPayment = groupDisplayTotal?.totalAmount ?? finalTotalAmount;
+        
+        console.log('[GROUP-FIX-V2] Calculated group totals:', {
+          groupDisplayTotal: groupDisplayTotal?.totalAmount,
+          finalTotalAmount,
+          groupTotalForPayment,
+          numRooms: bookingData.selectedRoomIds.length
+        });
+        
         return {
           bookings: results.map(r => r.booking),
-          group_total_amount: groupDisplayTotal?.totalAmount || finalTotalAmount,
-          balance_due: groupDisplayTotal?.totalAmount || finalTotalAmount,
+          group_total_amount: groupTotalForPayment,
+          balance_due: groupTotalForPayment,
           group_id: groupId,
-          is_group: true
+          is_group: true,
+          version: 'GROUP-FIX-V2-FRONTEND'
         };
       }
 
@@ -377,9 +388,20 @@ export function BookingConfirmation({ bookingData, onComplete }: BookingConfirma
         // Store group-aware data with CORRECT group total
         setCreatedBookings(bookingsForPayment);
         
-        // Store the actual group total for payment step
-        (window as any).__groupBookingTotal = data.group_total_amount;
-        (window as any).__groupBalanceDue = data.balance_due;
+        // GROUP-FIX-V2: Store the actual group total for payment step with validation
+        const groupTotal = Number(data.group_total_amount) || 0;
+        const groupBalance = Number(data.balance_due) || groupTotal;
+        
+        console.log('[GROUP-FIX-V2] Storing group payment data:', {
+          group_total_amount: data.group_total_amount,
+          balance_due: data.balance_due,
+          group_id: data.group_id,
+          calculatedTotal: groupTotal,
+          calculatedBalance: groupBalance
+        });
+        
+        (window as any).__groupBookingTotal = groupTotal;
+        (window as any).__groupBalanceDue = groupBalance;
         (window as any).__groupId = data.group_id;
         
         toast.success(`Group booking created! ${data.bookings.length} rooms reserved. Proceed to payment.`);
@@ -569,22 +591,25 @@ export function BookingConfirmation({ bookingData, onComplete }: BookingConfirma
 
   // Show payment step after booking creation (for non-org bookings)
   if (showPayment && createdBookings.length > 0) {
-    // GROUP-FIX-V1: Use correct group total if available from backend
+    // GROUP-FIX-V2: Use correct group total with fallback validation
     const groupTotal = (window as any).__groupBookingTotal;
     const groupBalanceDue = (window as any).__groupBalanceDue;
     const groupId = (window as any).__groupId;
     
-    // For group bookings, use the stored group total; otherwise sum individual amounts
-    const totalPaymentAmount = isGroupBooking && groupTotal 
+    // For group bookings, prefer stored group total; fallback to summing individual amounts
+    // Use nullish coalescing to ensure 0 values are preserved
+    const totalPaymentAmount = isGroupBooking && groupTotal != null
       ? groupTotal
-      : createdBookings.reduce((sum, b) => sum + b.amount, 0);
+      : createdBookings.reduce((sum, b) => sum + Number(b.amount || 0), 0);
     
-    console.log('[GROUP-FIX-V1] Payment Step Data:', {
+    console.log('[GROUP-FIX-V2] Payment Step Data:', {
       isGroupBooking,
       groupTotal,
       groupBalanceDue,
       totalPaymentAmount,
-      createdBookings: createdBookings.length
+      createdBookingsCount: createdBookings.length,
+      individualAmounts: createdBookings.map(b => b.amount),
+      version: 'GROUP-FIX-V2-PAYMENT-STEP'
     });
     
     return (

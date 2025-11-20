@@ -250,18 +250,16 @@ serve(async (req) => {
       }
     }
 
-    // GROUP-FIX-V1: Return group-aware response with correct totals
+    // GROUP-FIX-V2: Return booking with master folio info
+    // Note: Do NOT return group_total_amount here as each booking is individual
+    // Frontend aggregates these correctly
     const response = {
       success: true,
       booking: newBooking,
       platform_fee: platformFeeResult,
       master_folio: masterFolioResult,
-      // Add group totals for frontend payment step
-      group_total_amount: isGroupBooking ? total_amount : null,
-      balance_due: isGroupBooking ? total_amount : total_amount,
-      is_group_booking: isGroupBooking,
       message: 'Booking created successfully',
-      version: 'CREATE-BOOKING-V3.2-GROUP-FIX'
+      version: 'CREATE-BOOKING-V3.3-GROUP-FIX-V2'
     };
 
     return new Response(
