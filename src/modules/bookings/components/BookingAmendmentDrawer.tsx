@@ -108,68 +108,48 @@ export function BookingAmendmentDrawer({ open, onClose, bookingId }: BookingAmen
         throw new Error('Please provide a reason for the amendment');
       }
 
-      const metadata = booking?.metadata as any;
-      const updates: any = {
-        check_in: checkIn?.toISOString(),
-        check_out: checkOut?.toISOString(),
-        room_id: selectedRoomId,
-        metadata: {
-          ...(typeof metadata === 'object' ? metadata : {}),
-          rate_override: rateOverride ? parseFloat(rateOverride) : null,
-          special_requests: notes,
-          amendments: [
-            ...(metadata?.amendments || []),
-            {
-              amended_at: new Date().toISOString(),
-              amended_by: user?.id,
-              reason: amendmentReason,
-              changes: {
-                check_in: checkIn?.toISOString() !== booking?.check_in,
-                check_out: checkOut?.toISOString() !== booking?.check_out,
-                room_id: selectedRoomId !== booking?.room_id,
-                rate_override: rateOverride !== (metadata?.rate_override?.toString() || ''),
-              },
-            },
-          ],
-        },
-      };
+      console.log('[amend-booking-drawer] AMEND-BOOKING-V1: Calling amend-booking edge function');
 
-      // Recalculate total if dates or rate changed
-      if (checkIn && checkOut && (rateOverride || booking?.room?.rate)) {
-        const nights = Math.ceil((checkOut.getTime() - checkIn.getTime()) / (1000 * 60 * 60 * 24));
-        const rate = rateOverride ? parseFloat(rateOverride) : Number(booking?.room?.rate || 0);
-        updates.total_amount = nights * rate + (metadata?.addons_total || 0);
+      // AMEND-BOOKING-V1: Call edge function for proper folio integration
+      const { data, error } = await supabase.functions.invoke('amend-booking', {
+        body: {
+          booking_id: bookingId,
+          check_in: checkIn?.toISOString(),
+          check_out: checkOut?.toISOString(),
+          room_id: selectedRoomId,
+          rate_override: rateOverride ? parseFloat(rateOverride) : null,
+          notes,
+          amendment_reason: amendmentReason,
+          staff_id: user?.id
+        }
+      });
+
+      console.log('[amend-booking-drawer] AMEND-BOOKING-V1: Edge function response:', { data, error });
+
+      if (error) {
+        console.error('[amend-booking-drawer] AMEND-BOOKING-V1: Edge function error:', error);
+        throw error;
       }
 
-      // TENANT-ISOLATION-FIX-V1: Update booking with tenant isolation
-      const { error } = await supabase
-        .from('bookings')
-        .update(updates)
-        .eq('id', bookingId)
-        .eq('tenant_id', tenantId);
+      if (!data?.success) {
+        console.error('[amend-booking-drawer] AMEND-BOOKING-V1: Amendment failed:', data);
+        throw new Error(data?.error || 'Failed to amend booking');
+      }
 
-      if (error) throw error;
-
-      // Log the amendment in audit trail
-      await supabase.from('hotel_audit_logs').insert({
-        tenant_id: tenantId,
-        table_name: 'bookings',
-        record_id: bookingId,
-        action: 'update',
-        user_id: user?.id,
-        before_data: {
-          check_in: booking?.check_in,
-          check_out: booking?.check_out,
-          room_id: booking?.room_id,
-        },
-        after_data: updates,
-      });
+      return data;
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['booking', bookingId] });
       queryClient.invalidateQueries({ queryKey: ['bookings'] });
       queryClient.invalidateQueries({ queryKey: ['rooms'] });
-      toast.success('Booking amended successfully');
+      queryClient.invalidateQueries({ queryKey: ['booking-folio', bookingId] });
+      queryClient.invalidateQueries({ queryKey: ['folio-by-id'] });
+      
+      const message = data?.data?.folio_adjusted 
+        ? `Booking amended. Price ${data.data.price_difference > 0 ? 'increase' : 'decrease'} of ₦${Math.abs(data.data.price_difference).toLocaleString()} posted to folio.`
+        : 'Booking amended successfully';
+      
+      toast.success(message);
       onClose();
     },
     onError: (error: Error) => {
