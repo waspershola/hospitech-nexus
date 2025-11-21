@@ -8,10 +8,14 @@ import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
 import { differenceInDays } from 'date-fns';
 import { AlertCircle, MessageSquare } from 'lucide-react';
+import { useState } from 'react';
+import { ManagerApprovalModal } from '@/modules/payments/ManagerApprovalModal';
 
 export function ReceivablesTab() {
   const { tenantId } = useAuth();
   const queryClient = useQueryClient();
+  const [showManagerApproval, setShowManagerApproval] = useState(false);
+  const [pendingWriteOffReceivable, setPendingWriteOffReceivable] = useState<any>(null);
 
   const { data: receivables, isLoading } = useQuery({
     queryKey: ['receivables', tenantId],
@@ -76,16 +80,28 @@ export function ReceivablesTab() {
   });
 
   const writeOffMutation = useMutation({
-    mutationFn: async (receivableId: string) => {
+    mutationFn: async ({ receivableId, approvalToken }: { receivableId: string; approvalToken?: string }) => {
       const { error } = await supabase
         .from('receivables')
-        .update({ status: 'written_off' })
+        .update({ 
+          status: 'written_off',
+          metadata: {
+            written_off_at: new Date().toISOString(),
+            manager_approved: !!approvalToken,
+            approval_token_used: !!approvalToken,
+          }
+        })
         .eq('id', receivableId);
       
       if (error) throw error;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['receivables', tenantId] });
+      
+      // Reset states
+      setShowManagerApproval(false);
+      setPendingWriteOffReceivable(null);
+      
       toast.success('Receivable written off');
     },
     onError: (error: Error) => {
@@ -344,9 +360,8 @@ export function ReceivablesTab() {
                               size="sm" 
                               variant="destructive" 
                               onClick={() => {
-                                if (confirm('Are you sure you want to write off this receivable? This action cannot be undone.')) {
-                                  writeOffMutation.mutate(ar.id);
-                                }
+                                setPendingWriteOffReceivable(ar);
+                                setShowManagerApproval(true);
                               }}
                               disabled={writeOffMutation.isPending}
                             >
@@ -363,6 +378,28 @@ export function ReceivablesTab() {
           )}
         </div>
       </Card>
+
+      {/* Manager Approval Modal */}
+      <ManagerApprovalModal
+        open={showManagerApproval}
+        amount={pendingWriteOffReceivable?.amount || 0}
+        type="write_off"
+        actionReference={pendingWriteOffReceivable?.id}
+        onApprove={(reason, approvalToken) => {
+          console.log('[ReceivablesTab] Manager approved write-off', { reason, approvalToken });
+          if (pendingWriteOffReceivable) {
+            writeOffMutation.mutate({ 
+              receivableId: pendingWriteOffReceivable.id, 
+              approvalToken 
+            });
+          }
+        }}
+        onReject={() => {
+          setShowManagerApproval(false);
+          setPendingWriteOffReceivable(null);
+          toast.info('Write-off cancelled - manager approval denied');
+        }}
+      />
     </div>
   );
 }
