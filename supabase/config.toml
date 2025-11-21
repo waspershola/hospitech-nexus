@@ -179,3 +179,6 @@ verify_jwt = true
 
 [functions.post-room-rebate]
 verify_jwt = true
+
+[functions.validate-manager-pin]
+verify_jwt = true
