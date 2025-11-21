@@ -302,7 +302,7 @@ export function PaymentForm({
     }
 
     // Submit payment
-    submitPayment(data, selectedProvider, transactionRef, paymentType, false);
+    submitPayment(data, selectedProvider, transactionRef, paymentType);
   };
   
   const submitPayment = (
@@ -310,7 +310,7 @@ export function PaymentForm({
     selectedProvider: any, 
     transactionRef: string, 
     paymentType: any,
-    forceApprove: boolean
+    approvalToken?: string
   ) => {
     recordPayment(
       {
@@ -327,7 +327,7 @@ export function PaymentForm({
         department: data.department,
         wallet_id: data.wallet_id,
         overpayment_action: paymentType === 'overpayment' ? overpaymentAction : undefined,
-        force_approve: forceApprove,
+        approval_token: approvalToken,
         metadata: {
           notes: data.notes,
           provider_name: selectedProvider.name,
@@ -825,7 +825,7 @@ export function PaymentForm({
               const selectedProvider = activeProviders.find(p => p.id === data.provider_id);
               if (selectedProvider) {
                 const transactionRef = `PAY-${Date.now()}-${Math.random().toString(36).substring(7).toUpperCase()}`;
-                submitPayment(data, selectedProvider, transactionRef, getPaymentType(), false);
+                submitPayment(data, selectedProvider, transactionRef, getPaymentType());
               }
             }}>
               Continue Payment
@@ -839,13 +839,14 @@ export function PaymentForm({
         open={showManagerApproval}
         amount={requiresApprovalAmount}
         type={managerApprovalType}
-        onApprove={(reason) => {
-          console.log('Manager approved with reason:', reason);
+        actionReference={bookingId}
+        onApprove={(reason, approvalToken) => {
+          console.log('[MANAGER-APPROVAL-V1] Manager approved with reason:', reason, 'token:', approvalToken);
           const data = watch();
           const selectedProvider = activeProviders.find(p => p.id === data.provider_id);
           if (selectedProvider) {
             const transactionRef = `PAY-${Date.now()}-${Math.random().toString(36).substring(7).toUpperCase()}`;
-            submitPayment(data, selectedProvider, transactionRef, getPaymentType(), true);
+            submitPayment(data, selectedProvider, transactionRef, getPaymentType(), approvalToken);
           }
         }}
         onReject={() => {

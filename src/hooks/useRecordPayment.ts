@@ -17,7 +17,7 @@ interface RecordPaymentParams {
   department?: string;
   wallet_id?: string;
   overpayment_action?: 'wallet' | 'refund';
-  force_approve?: boolean;
+  approval_token?: string;
   metadata?: Record<string, any>;
 }
 
