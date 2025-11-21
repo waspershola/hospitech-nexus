@@ -32,7 +32,8 @@ const validatePinSchema = z.object({
     'reverse_transaction',
     'stock_adjustment',
     'checkout_with_debt',
-    'manual_rate_override'
+    'manual_rate_override',
+    'room_rebate' // Backward compatibility alias for 'rebate'
   ]),
   action_reference: z.string().uuid().optional().nullable(),
   amount: z.number().positive().optional().nullable(),
@@ -103,7 +104,12 @@ serve(async (req) => {
       );
     }
 
-    const { pin, action_type, action_reference, amount, reason } = validationResult.data;
+    const { pin, action_type: rawActionType, action_reference, amount, reason } = validationResult.data;
+    
+    // Normalize 'room_rebate' to 'rebate' for internal use (backward compatibility)
+    const action_type = rawActionType === 'room_rebate' ? 'rebate' : rawActionType;
+    
+    console.log(`[PIN-VALIDATION-V1] Action type: received="${rawActionType}", normalized="${action_type}"`);
 
     // ========== Step 3: Fetch Staff Record ==========
     const { data: staff, error: staffError } = await supabase
