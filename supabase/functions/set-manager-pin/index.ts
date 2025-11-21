@@ -102,9 +102,9 @@ serve(async (req) => {
       );
     }
 
-    // Hash PIN with bcrypt
-    console.log('[SET-PIN-V1] Hashing PIN...');
-    const hashedPin = await bcrypt.hash(pin);
+    // Hash PIN with bcrypt (synchronous to avoid Worker issues in edge runtime)
+    console.log('[SET-PIN-V1] Hashing PIN (sync)...');
+    const hashedPin = bcrypt.hashSync(pin);
     console.log('[SET-PIN-V1] PIN hashed successfully');
 
     // Store hashed PIN
