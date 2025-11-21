@@ -37,6 +37,7 @@ import { BookingAmendmentDrawer } from '@/modules/bookings/components/BookingAme
 import { CancelBookingModal } from '@/modules/bookings/components/CancelBookingModal';
 import { BookingConfirmationDocument } from '@/modules/bookings/components/BookingConfirmationDocument';
 import { BookingPaymentManager } from '@/modules/bookings/components/BookingPaymentManager';
+import { ManagerApprovalModal } from '@/modules/payments/ManagerApprovalModal';
 import { toast } from '@/hooks/use-toast';
 import { Switch } from '@/components/ui/switch';
 import { 
@@ -76,6 +77,8 @@ export function RoomActionDrawer({ roomId, contextDate, open, onClose, onOpenAss
   const [realtimeDebounceTimer, setRealtimeDebounceTimer] = useState<NodeJS.Timeout | null>(null);
   const [printReceipt, setPrintReceipt] = useState(false);
   const [selectedBookingId, setSelectedBookingId] = useState<string | null>(null);
+  const [showManagerApproval, setShowManagerApproval] = useState(false);
+  const [pendingCheckoutData, setPendingCheckoutData] = useState<{ balance: number } | null>(null);
 
   const { data: room, isLoading } = useQuery({
     queryKey: ['room-detail', roomId, contextDate ? format(contextDate, 'yyyy-MM-dd') : 'today'],
@@ -403,6 +406,14 @@ export function RoomActionDrawer({ roomId, contextDate, open, onClose, onOpenAss
     const hasDebt = folio && folio.balance > 0;
     const allowDebt = preferences?.allow_checkout_with_debt ?? false;
     const hasOrgPayment = activeBooking.organization_id && orgWallet;
+    const managerThreshold = preferences?.manager_approval_threshold || 5000;
+
+    // Check if manager approval is required for outstanding debt
+    if (hasDebt && folio.balance >= managerThreshold) {
+      setPendingCheckoutData({ balance: folio.balance });
+      setShowManagerApproval(true);
+      return;
+    }
 
     // Option A: Honor allow_checkout_with_debt preference
     if (hasDebt && !allowDebt) {
@@ -1396,6 +1407,42 @@ export function RoomActionDrawer({ roomId, contextDate, open, onClose, onOpenAss
             </>
           )}
         </>
+      )}
+      
+      {/* Manager Approval Modal for Checkout with Debt */}
+      {activeBooking && pendingCheckoutData && (
+        <ManagerApprovalModal
+          open={showManagerApproval}
+          amount={pendingCheckoutData.balance}
+          type="checkout_with_debt"
+          actionReference={activeBooking.id}
+          onApprove={(approvalToken) => {
+            setShowManagerApproval(false);
+            setPendingCheckoutData(null);
+            
+            // Proceed with checkout after approval
+            onClose();
+            completeCheckout({ 
+              bookingId: activeBooking.id,
+              autoChargeToWallet: false
+            }, {
+              onSuccess: () => {
+                const defaultSettings = receiptSettings?.[0];
+                if (printReceipt && defaultSettings) {
+                  printReceiptFn({
+                    receiptType: 'checkout',
+                    bookingId: activeBooking.id,
+                    settingsId: defaultSettings.id,
+                  }, defaultSettings);
+                }
+              }
+            });
+          }}
+          onReject={() => {
+            setShowManagerApproval(false);
+            setPendingCheckoutData(null);
+          }}
+        />
       )}
     </>
   );
