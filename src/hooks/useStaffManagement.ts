@@ -40,6 +40,11 @@ export interface Staff {
   branch?: string;
   status: 'active' | 'suspended' | 'inactive';
   metadata?: StaffMetadata;
+  manager_pin_hash?: string | null;
+  pin_set_at?: string | null;
+  pin_attempts?: number;
+  pin_locked_until?: string | null;
+  pin_last_changed?: string | null;
   created_at: string;
   updated_at: string;
 }

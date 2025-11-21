@@ -182,3 +182,12 @@ verify_jwt = true
 
 [functions.validate-manager-pin]
 verify_jwt = true
+
+[functions.set-manager-pin]
+verify_jwt = true
+
+[functions.change-manager-pin]
+verify_jwt = true
+
+[functions.reset-manager-pin]
+verify_jwt = true
