@@ -58,39 +58,49 @@ export function RoomGrid({ searchQuery, statusFilter, categoryFilter, floorFilte
       const now = new Date();
       const today = format(now, 'yyyy-MM-dd');
       
-      // Process rooms with time-aware status logic
+      // ROOM-STATUS-OVERLAP-V1: Process rooms with date-parameterized overlap logic
       let filteredData = (data || []).map(room => {
         if (!room.bookings || room.bookings.length === 0) return room;
         
-        // Find the active booking for TODAY (not future bookings)
-        const activeBookings = room.bookings.filter((b: any) => !['completed', 'cancelled'].includes(b.status));
+        // For Room Status view, viewDate is always "today"
+        const viewDate = today;
         
-        // Priority 1: Find bookings that are ACTIVE today (checked in and still here)
-        let activeBooking = activeBookings.find((b: any) => {
+        // Find ALL bookings that overlap with viewDate using the overlap rule:
+        // checkInDate <= viewDate AND checkOutDate >= viewDate
+        // This naturally excludes future reservations (check_in > today) while including:
+        // - Checked-in guests (multi-day stays)
+        // - Arrivals today (check_in = today)
+        // - Departures today (check_out = today)
+        const overlappingBookings = room.bookings.filter((b: any) => {
+          if (['completed', 'cancelled'].includes(b.status)) return false;
+          
           const checkInDate = format(new Date(b.check_in), 'yyyy-MM-dd');
           const checkOutDate = format(new Date(b.check_out), 'yyyy-MM-dd');
           
-          // Booking is active if:
-          // - Guest checked in AND
-          // - Check-in date <= today AND
-          // - Check-out date >= today (includes departing-today)
-          return b.status === 'checked_in' && 
-                 checkInDate <= today && 
-                 checkOutDate >= today;
+          // Booking overlaps viewDate if it spans the date (inclusive on both ends)
+          return checkInDate <= viewDate && checkOutDate >= viewDate;
         });
         
-        // Priority 2: If no active booking, find bookings ARRIVING today
+        // Priority-based selection from overlapping bookings:
+        let activeBooking;
+        
+        // Priority 1: Checked-in guests (currently occupying the room)
+        activeBooking = overlappingBookings.find((b: any) => b.status === 'checked_in');
+        
+        // Priority 2: Arrivals today (reserved status, check-in today)
         if (!activeBooking) {
-          activeBooking = activeBookings.find((b: any) => {
+          activeBooking = overlappingBookings.find((b: any) => {
             const checkInDate = format(new Date(b.check_in), 'yyyy-MM-dd');
-            return b.status === 'reserved' && checkInDate === today;
+            return b.status === 'reserved' && checkInDate === viewDate;
           });
         }
         
-        // Priority 3: IGNORE future bookings (tomorrow or later)
-        // If no active or arriving-today booking, show room as available
+        // Priority 3: Other overlapping bookings (reserved multi-day stays spanning today)
+        if (!activeBooking) {
+          activeBooking = overlappingBookings[0] ?? null;
+        }
         
-        // GRID-LIFECYCLE-V1: Use unified lifecycle helper
+        // Calculate lifecycle state using the active booking
         const lifecycle = calculateStayLifecycleState(
           now,
           checkInTime,
