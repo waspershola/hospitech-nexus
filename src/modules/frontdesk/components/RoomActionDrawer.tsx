@@ -110,42 +110,62 @@ export function RoomActionDrawer({ roomId, contextDate, open, onClose, onOpenAss
 
       if (error) throw error;
       
+      // PHASE-3-FIX: Use same overlap rule as RoomGrid for consistency
       // Filter bookings based on filterDate (contextDate or today)
       if (data && data.bookings) {
-        const activeBookings = Array.isArray(data.bookings) 
-          ? data.bookings.filter((b: any) => {
-              if (['completed', 'cancelled'].includes(b.status)) return false;
-              
-              const checkInDate = format(new Date(b.check_in), 'yyyy-MM-dd');
-              const checkOutDate = format(new Date(b.check_out), 'yyyy-MM-dd');
-              
-              // DRAWER-BOOKING-FIX-V1: Include checkout-today bookings
-              // Show booking if it overlaps with the filter date:
-              // 1. Checked in and still active on filter date (including checkout day)
-              if (b.status === 'checked_in' && checkInDate <= filterDateStr && checkOutDate >= filterDateStr) {
-                return true;
-              }
-              
-              // 2. Reserved and arriving on filter date
-              if (b.status === 'reserved' && checkInDate === filterDateStr) {
-                return true;
-              }
-              
-              // 3. For any date, also include reserved bookings that span the filter date
-              if (b.status === 'reserved' && checkInDate <= filterDateStr && checkOutDate > filterDateStr) {
-                return true;
-              }
-              
-              return false;
-            })
-          : [];
+        const allBookings = Array.isArray(data.bookings) ? data.bookings : [];
+        
+        // Apply the same overlap rule as RoomGrid: checkInDate <= filterDate AND checkOutDate >= filterDate
+        const overlappingBookings = allBookings.filter((b: any) => {
+          if (['completed', 'cancelled'].includes(b.status)) return false;
+          
+          const checkInDate = format(new Date(b.check_in), 'yyyy-MM-dd');
+          const checkOutDate = format(new Date(b.check_out), 'yyyy-MM-dd');
+          
+          // Booking overlaps filterDate if it spans the date (inclusive on both ends)
+          return checkInDate <= filterDateStr && checkOutDate >= filterDateStr;
+        });
+        
+        // Use same priority selection as RoomGrid
+        let activeBooking;
+        
+        // Priority 1: Checked-in guests (currently occupying the room)
+        activeBooking = overlappingBookings.find((b: any) => b.status === 'checked_in');
+        
+        // Priority 2: Arrivals on filter date (reserved status, check-in on filter date)
+        if (!activeBooking) {
+          activeBooking = overlappingBookings.find((b: any) => {
+            const checkInDate = format(new Date(b.check_in), 'yyyy-MM-dd');
+            return b.status === 'reserved' && checkInDate === filterDateStr;
+          });
+        }
+        
+        // Priority 3: Other overlapping bookings (reserved multi-day stays spanning filter date)
+        if (!activeBooking) {
+          activeBooking = overlappingBookings[0] ?? null;
+        }
+        
+        // PHASE-1-DEBUG: Log drawer booking resolution
+        console.log('DRAWER-DEBUG', {
+          roomId: data.id,
+          roomNumber: data.number,
+          filterDate: filterDateStr,
+          isContextDate: !!contextDate,
+          overlappingCount: overlappingBookings.length,
+          selectedBookingId: activeBooking?.id,
+          bookings: overlappingBookings.map((b: any) => ({
+            id: b.id,
+            status: b.status,
+            checkIn: format(new Date(b.check_in), 'yyyy-MM-dd'),
+            checkOut: format(new Date(b.check_out), 'yyyy-MM-dd'),
+            guestName: b.guest?.name
+          }))
+        });
         
         // Sort by check_in date (earliest first) to prioritize today's arrivals
-        activeBookings.sort((a: any, b: any) => 
-          new Date(a.check_in).getTime() - new Date(b.check_in).getTime()
-        );
+        const sortedBookings = activeBooking ? [activeBooking] : [];
         
-        return { ...data, bookings: activeBookings };
+        return { ...data, bookings: sortedBookings };
       }
       
       return data;

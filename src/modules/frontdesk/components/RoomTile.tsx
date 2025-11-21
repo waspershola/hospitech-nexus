@@ -45,34 +45,34 @@ const statusBorderColors = {
 export function RoomTile({ room, onClick, isSelectionMode, isSelected, onSelectionChange }: RoomTileProps) {
   const { data: operationsHours } = useOperationsHours();
   
-  // Phase 2: Prioritize TODAY's active booking over canonical fields
+  // PHASE-2-FIX: Use canonical status from RoomGrid instead of recomputing
+  // RoomGrid already provides room.status from calculateStayLifecycleState
+  // and room.bookings contains only the selected activeBooking
+  
   const bookingsArray = Array.isArray(room.bookings) ? room.bookings : room.bookings ? [room.bookings] : [];
-  const today = new Date().toISOString().split('T')[0];
+  const activeBooking = bookingsArray[0] ?? null;
   
-  // Priority 1: Checked-in booking (INCLUDING overstays - remove date filter!)
-  let activeBooking = bookingsArray.find(
-    (b: any) => b.status === 'checked_in'
-  );
-  
-  // Priority 2: Reserved booking arriving today OR should have checked in
-  if (!activeBooking) {
-    activeBooking = bookingsArray.find(
-      (b: any) => b.status === 'reserved' && 
-      b.check_in?.split('T')[0] <= today &&
-      b.check_out?.split('T')[0] >= today
-    );
-  }
-  
-  // Priority 3: DO NOT use canonical booking if it's in the future
-  // This prevents showing future bookings on today's room status view
-  
-  // Calculate current status using centralized logic
-  const currentStatus = getRoomStatusNow(
+  // Prefer canonical status from RoomGrid, fallback to getRoomStatusNow for legacy callers
+  const currentStatus = room.status ?? getRoomStatusNow(
     room,
     activeBooking,
     operationsHours?.checkInTime,
     operationsHours?.checkOutTime
   );
+  
+  // PHASE-1-DEBUG: Log tile rendering for diagnostics
+  console.log('ROOMTILE-DEBUG', {
+    roomId: room.id,
+    roomNumber: room.number,
+    canonicalStatus: room.status,
+    computedStatus: currentStatus,
+    hasCanonicalStatus: !!room.status,
+    bookingsCount: bookingsArray.length,
+    activeBookingId: activeBooking?.id,
+    activeBookingStatus: activeBooking?.status,
+    activeBookingCheckIn: activeBooking?.check_in,
+    activeBookingCheckOut: activeBooking?.check_out
+  });
   
   const statusColor = statusColors[currentStatus as keyof typeof statusColors] || statusColors.available;
   const borderColor = statusBorderColors[currentStatus as keyof typeof statusBorderColors] || statusBorderColors.available;
