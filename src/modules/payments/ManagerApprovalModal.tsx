@@ -12,7 +12,7 @@ import { useToast } from '@/hooks/use-toast';
 interface ManagerApprovalModalProps {
   open: boolean;
   amount: number;
-  type: 'overpayment' | 'underpayment' | 'refund' | 'write_off' | 'room_rebate' | 'force_cancel';
+  type: 'overpayment' | 'underpayment' | 'refund' | 'write_off' | 'room_rebate' | 'force_cancel' | 'checkout_with_debt' | 'transfer_charge' | 'split_charge' | 'merge_folios' | 'reverse_transaction';
   actionReference?: string;
   onApprove: (reason: string, approvalToken: string) => void;
   onReject: () => void;
@@ -86,6 +86,11 @@ export function ManagerApprovalModal({
       case 'write_off': return 'Write-off';
       case 'room_rebate': return 'Room Rebate';
       case 'force_cancel': return 'Force Cancel';
+      case 'checkout_with_debt': return 'Checkout with Outstanding Debt';
+      case 'transfer_charge': return 'Transfer Charge';
+      case 'split_charge': return 'Split Charge';
+      case 'merge_folios': return 'Merge Folios';
+      case 'reverse_transaction': return 'Reverse Transaction';
       default: return 'Transaction';
     }
   };
@@ -138,6 +143,46 @@ export function ManagerApprovalModal({
             Force cancelling booking with amount <strong>₦{amount.toLocaleString()}</strong>.
             <br />
             This cancellation requires manager approval before processing.
+          </>
+        );
+      case 'checkout_with_debt':
+        return (
+          <>
+            Checking out guest with outstanding balance of <strong>₦{amount.toLocaleString()}</strong>.
+            <br />
+            This checkout with debt requires manager approval before processing.
+          </>
+        );
+      case 'transfer_charge':
+        return (
+          <>
+            Transferring charge of <strong>₦{amount.toLocaleString()}</strong> between folios.
+            <br />
+            This transfer requires manager approval before processing.
+          </>
+        );
+      case 'split_charge':
+        return (
+          <>
+            Splitting charge of <strong>₦{amount.toLocaleString()}</strong> across folios.
+            <br />
+            This split requires manager approval before processing.
+          </>
+        );
+      case 'merge_folios':
+        return (
+          <>
+            Merging folios with total amount <strong>₦{amount.toLocaleString()}</strong>.
+            <br />
+            This merge requires manager approval before processing.
+          </>
+        );
+      case 'reverse_transaction':
+        return (
+          <>
+            Reversing transaction of <strong>₦{amount.toLocaleString()}</strong>.
+            <br />
+            This reversal requires manager approval before processing.
           </>
         );
       default:

@@ -37,6 +37,8 @@ serve(async (req) => {
 
     // Authenticate user
     const authHeader = req.headers.get('Authorization');
+    console.log('[SET-PIN-V1] Auth header present:', !!authHeader);
+    
     if (!authHeader) {
       return new Response(
         JSON.stringify({ error: 'Authentication required' }),
@@ -47,6 +49,8 @@ serve(async (req) => {
     const token = authHeader.replace('Bearer ', '');
     const { data: { user }, error: authError } = await supabase.auth.getUser(token);
     
+    console.log('[SET-PIN-V1] User authenticated:', !!user, 'Error:', authError?.message);
+    
     if (authError || !user) {
       return new Response(
         JSON.stringify({ error: 'Invalid authentication token' }),
@@ -56,9 +60,12 @@ serve(async (req) => {
 
     // Validate request
     const body = await req.json();
+    console.log('[SET-PIN-V1] Request body received');
+    
     const validationResult = setPinSchema.safeParse(body);
 
     if (!validationResult.success) {
+      console.error('[SET-PIN-V1] Validation failed:', validationResult.error.errors);
       return new Response(
         JSON.stringify({ 
           error: validationResult.error.errors[0].message 
@@ -68,6 +75,7 @@ serve(async (req) => {
     }
 
     const { pin } = validationResult.data;
+    console.log('[SET-PIN-V1] PIN validated successfully');
 
     // Fetch staff record
     const { data: staff, error: staffError } = await supabase
@@ -75,6 +83,8 @@ serve(async (req) => {
       .select('id, tenant_id, manager_pin_hash, role')
       .eq('user_id', user.id)
       .single();
+
+    console.log('[SET-PIN-V1] Staff record found:', !!staff, 'Error:', staffError?.message);
 
     if (staffError || !staff) {
       return new Response(
@@ -85,6 +95,7 @@ serve(async (req) => {
 
     // Check if PIN already set
     if (staff.manager_pin_hash) {
+      console.log('[SET-PIN-V1] PIN already set for staff');
       return new Response(
         JSON.stringify({ error: 'PIN already set. Use "Change PIN" to update your PIN.' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -92,7 +103,9 @@ serve(async (req) => {
     }
 
     // Hash PIN with bcrypt
+    console.log('[SET-PIN-V1] Hashing PIN...');
     const hashedPin = await bcrypt.hash(pin);
+    console.log('[SET-PIN-V1] PIN hashed successfully');
 
     // Store hashed PIN
     const { error: updateError } = await supabase
