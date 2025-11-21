@@ -129,28 +129,87 @@ checkin-guest edge function
 4. **Aggregation Not Duplication**: Master totals = SUM(child totals), not separate charges
 5. **Payment Scoping**: Payments attach to specific child folios, not floating
 
+## UI Architecture (GROUP-BILLING-UI-V1)
+
+### Shared Formatting Utilities ✅
+**Location**: `src/lib/folio/formatters.ts`
+- `formatFolioMoney()` - Consistent currency formatting
+- `isCredit()` - Detect negative balances (overpayments)
+- `getCreditLabel()` - Format credit balances with "Credit: ₦X"
+- `getBalanceColor()` - Consistent color coding (red=debt, green=credit)
+- `getFolioStatusVariant()` - Badge styling
+
+### Updated Components ✅
+
+**GroupFolioSummaryCard**:
+- Shows single "Outstanding Balance" (not separate Master Balance)
+- Includes subtitle explaining aggregation
+- Credit badges in breakdown rows
+- Consistent formatting via shared utilities
+
+**GroupChildFolioCard**:
+- "Credit Folio" badge for overpayments (with tooltip)
+- Consistent charges/payments/balance display
+- Matches breakdown rows exactly
+
+**RoomActionDrawer**:
+- Enhanced folio section with charges/payments breakdown
+- "View Group Billing" button for group rooms
+- Credit balance handling
+- Links to `/dashboard/group-billing/:groupId`
+
+### UI Consistency Rules
+
+1. **Same Folio = Same Numbers**: Child folio card and room drawer show identical values
+2. **Same Formatting**: All currency uses `formatFolioMoney()`, colors use `getBalanceColor()`
+3. **Credit Handling**: Negative balances labeled "Credit: ₦X" in green
+4. **No Frontend Calculations**: All totals from `useGroupMasterFolio` hook
+
+### Additional QA Scenarios
+
+#### Scenario: Group with Overpayment (Credit)
+```
+Setup:
+- Room 1: ₦50,000 charges, ₦80,000 payments = -₦30,000
+- Room 2: ₦50,000 charges, ₦0 payments = ₦50,000
+- Room 3: ₦50,000 charges, ₦50,000 payments = ₦0
+
+Expected:
+✅ Master: Charges ₦150,000, Payments ₦130,000, Balance ₦20,000
+✅ Room 1 child card: Shows "Credit Folio" badge, balance "Credit: ₦30,000.00" in green
+✅ Room 1 drawer: Matches child card exactly (charges/payments/balance)
+✅ Breakdown: Room 1 shows green credit indicator
+✅ No confusion about negative balances
+```
+
+#### Scenario: UI Consistency Cross-Check
+```
+Action: Open Group Billing Center + Room 1 Drawer simultaneously
+Expected:
+✅ Room 1 child card balance matches drawer balance exactly
+✅ Room 1 charges match across both views
+✅ Room 1 payments match across both views
+✅ Formatting identical (currency symbol, decimals, colors)
+```
+
 ## Remaining Work
-
-### Phase 4: Payment Association (UI)
-- [ ] Ensure `AddPaymentDialog` attaches payments to correct child folio
-- [ ] Update `useRecordPayment` to pass `folio_id` explicitly
-
-### Phase 5: Totals Standardization (UI)
-- [ ] Update `useGroupMasterFolio` to use canonical DB aggregations
-- [ ] Update `GroupFolioSummaryCard` to display RPC results directly
-- [ ] Remove any `roomRate × nights × rooms` calculations in UI
 
 ### Phase 7: End-to-End Testing
 - [ ] Complete full testing checklist above
+- [ ] Test all new UI scenarios (credit balances, formatting consistency)
 - [ ] Verify no regression in single-booking flows
 - [ ] Document any edge cases discovered
 
 ## Version Markers
 
-All changes marked with: `GROUP-BILLING-FIX-V1-PHASE-{N}`
-- Phase 1: `GROUP-BILLING-FIX-V1-PHASE-1` (create-booking)
-- Phase 3: `GROUP-BILLING-FIX-V1-PHASE-3` (checkin-guest)
-- Migrations: `GROUP-BILLING-FIX-V1`
+All changes marked with version identifiers:
+- Backend: `GROUP-BILLING-FIX-V1-PHASE-{N}`
+  - Phase 1: `GROUP-BILLING-FIX-V1-PHASE-1` (create-booking)
+  - Phase 3: `GROUP-BILLING-FIX-V1-PHASE-3` (checkin-guest)
+  - Migrations: `GROUP-BILLING-FIX-V1`
+- UI: `GROUP-BILLING-UI-V1`
+  - Formatters: `src/lib/folio/formatters.ts`
+  - Components: GroupFolioSummaryCard, GroupChildFolioCard, RoomActionDrawer
 
 ## Edge Function Deployment Status
 
@@ -160,5 +219,12 @@ All changes marked with: `GROUP-BILLING-FIX-V1-PHASE-{N}`
 
 ---
 
+## Related Documentation
+
+- [Group Billing UI Architecture](./GROUP_BILLING_UI_ARCHITECTURE.md) - Complete UI architecture and data flow
+- [Billing Center QA Checklist](./BILLING_CENTER_QA_CHECKLIST.md) - Testing procedures
+
+---
+
 **Last Updated**: 2025-11-21
-**Status**: Backend Complete, Ready for Testing
+**Status**: Backend Complete ✅ | UI Complete ✅ | Ready for End-to-End Testing
