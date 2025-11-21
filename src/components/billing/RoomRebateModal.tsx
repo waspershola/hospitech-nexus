@@ -21,6 +21,7 @@ import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Loader2, AlertCircle } from 'lucide-react';
 import { toast } from 'sonner';
 import { formatCurrency } from '@/lib/finance/tax';
+import { ManagerApprovalModal } from '@/modules/payments/ManagerApprovalModal';
 
 const rebateSchema = z.object({
   rebate_type: z.enum(['flat', 'percent']),
@@ -48,6 +49,8 @@ export function RoomRebateModal({
   const { tenantId } = useAuth();
   const queryClient = useQueryClient();
   const [calculatedRebate, setCalculatedRebate] = useState<number>(0);
+  const [showManagerApproval, setShowManagerApproval] = useState(false);
+  const [pendingRebateData, setPendingRebateData] = useState<RebateForm | null>(null);
 
   const {
     register,
@@ -78,15 +81,16 @@ export function RoomRebateModal({
   }, [rebateType, amount, totalCharges]);
 
   const postRebateMutation = useMutation({
-    mutationFn: async (data: RebateForm) => {
-      console.log('[RoomRebateModal] REBATE-UI-V1: Posting rebate', data);
+    mutationFn: async ({ data, approvalToken }: { data: RebateForm; approvalToken?: string }) => {
+      console.log('[RoomRebateModal] REBATE-V1-PIN: Posting rebate', data);
 
       const { data: result, error } = await supabase.functions.invoke('post-room-rebate', {
         body: {
           folio_id: folioId,
           rebate_type: data.rebate_type,
           amount: data.amount,
-          reason: data.reason
+          reason: data.reason,
+          approval_token: approvalToken
         }
       });
 
@@ -102,12 +106,15 @@ export function RoomRebateModal({
       queryClient.invalidateQueries({ queryKey: ['folio', folioId, tenantId] });
       queryClient.invalidateQueries({ queryKey: ['folio-transactions', folioId, tenantId] });
       queryClient.invalidateQueries({ queryKey: ['folio-ledger', folioId, tenantId] });
+      queryClient.invalidateQueries({ queryKey: ['folio-by-id'] });
 
       reset();
+      setShowManagerApproval(false);
+      setPendingRebateData(null);
       onOpenChange(false);
     },
     onError: (error: Error) => {
-      console.error('[RoomRebateModal] REBATE-UI-V1: Error', error);
+      console.error('[RoomRebateModal] REBATE-V1-PIN: Error', error);
       toast.error(`Failed to apply rebate: ${error.message}`);
     }
   });
@@ -120,136 +127,159 @@ export function RoomRebateModal({
       return;
     }
 
-    postRebateMutation.mutate(data);
+    // Room rebates always require manager approval (high-risk financial operation)
+    setPendingRebateData(data);
+    setShowManagerApproval(true);
   };
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[500px]">
-        <DialogHeader>
-          <DialogTitle>Apply Room Rebate</DialogTitle>
-          <DialogDescription>
-            Reduce the room charges for this folio. This cannot be reversed.
-          </DialogDescription>
-        </DialogHeader>
+    <>
+      <Dialog open={open && !showManagerApproval} onOpenChange={onOpenChange}>
+        <DialogContent className="sm:max-w-[500px]">
+          <DialogHeader>
+            <DialogTitle>Apply Room Rebate</DialogTitle>
+            <DialogDescription>
+              Reduce the room charges for this folio. Requires manager approval.
+            </DialogDescription>
+          </DialogHeader>
 
-        <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-          {/* Rebate Type */}
-          <div>
-            <Label>Rebate Type</Label>
-            <RadioGroup
-              value={rebateType}
-              onValueChange={(value) => {
-                register('rebate_type').onChange({ target: { value } });
-              }}
-              className="flex gap-4 mt-2"
-            >
-              <div className="flex items-center space-x-2">
-                <RadioGroupItem value="flat" id="flat" />
-                <Label htmlFor="flat" className="font-normal cursor-pointer">
-                  Flat Amount (₦)
-                </Label>
-              </div>
-              <div className="flex items-center space-x-2">
-                <RadioGroupItem value="percent" id="percent" />
-                <Label htmlFor="percent" className="font-normal cursor-pointer">
-                  Percentage (%)
-                </Label>
-              </div>
-            </RadioGroup>
-          </div>
-
-          {/* Amount */}
-          <div>
-            <Label htmlFor="amount">
-              {rebateType === 'flat' ? 'Amount (₦)' : 'Percentage (%)'}
-            </Label>
-            <Input
-              id="amount"
-              type="number"
-              step={rebateType === 'flat' ? '0.01' : '0.1'}
-              {...register('amount', { valueAsNumber: true })}
-              placeholder={rebateType === 'flat' ? '5000.00' : '10'}
-            />
-            {errors.amount && (
-              <p className="text-sm text-destructive mt-1">{errors.amount.message}</p>
-            )}
-          </div>
-
-          {/* Reason */}
-          <div>
-            <Label htmlFor="reason">Reason for Rebate *</Label>
-            <Textarea
-              id="reason"
-              {...register('reason')}
-              placeholder="e.g., AC malfunction compensation, noise disturbance, service recovery"
-              rows={3}
-            />
-            {errors.reason && (
-              <p className="text-sm text-destructive mt-1">{errors.reason.message}</p>
-            )}
-          </div>
-
-          {/* Preview */}
-          {calculatedRebate > 0 && (
-            <div className="p-4 bg-muted rounded-lg space-y-2">
-              <div className="flex justify-between text-sm">
-                <span className="text-muted-foreground">Current Charges:</span>
-                <span className="font-medium">{formatCurrency(totalCharges, 'NGN')}</span>
-              </div>
-              <div className="flex justify-between text-sm">
-                <span className="text-muted-foreground">Rebate Amount:</span>
-                <span className="font-medium text-destructive">
-                  -{formatCurrency(calculatedRebate, 'NGN')}
-                </span>
-              </div>
-              <div className="flex justify-between text-sm pt-2 border-t">
-                <span className="font-semibold">New Charges:</span>
-                <span className="font-bold">
-                  {formatCurrency(totalCharges - calculatedRebate, 'NGN')}
-                </span>
-              </div>
-              <div className="flex justify-between text-sm">
-                <span className="font-semibold">New Balance:</span>
-                <span className={`font-bold ${(currentBalance - calculatedRebate) > 0 ? 'text-destructive' : 'text-green-600'}`}>
-                  {formatCurrency(currentBalance - calculatedRebate, 'NGN')}
-                </span>
-              </div>
+          <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+            {/* Rebate Type */}
+            <div>
+              <Label>Rebate Type</Label>
+              <RadioGroup
+                value={rebateType}
+                onValueChange={(value) => {
+                  register('rebate_type').onChange({ target: { value } });
+                }}
+                className="flex gap-4 mt-2"
+              >
+                <div className="flex items-center space-x-2">
+                  <RadioGroupItem value="flat" id="flat" />
+                  <Label htmlFor="flat" className="font-normal cursor-pointer">
+                    Flat Amount (₦)
+                  </Label>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <RadioGroupItem value="percent" id="percent" />
+                  <Label htmlFor="percent" className="font-normal cursor-pointer">
+                    Percentage (%)
+                  </Label>
+                </div>
+              </RadioGroup>
             </div>
-          )}
 
-          {/* Warning */}
-          <div className="flex gap-2 p-3 bg-warning/10 border border-warning/20 rounded-lg">
-            <AlertCircle className="h-5 w-5 text-warning flex-shrink-0 mt-0.5" />
-            <div className="text-sm">
-              <p className="font-semibold text-warning">Warning</p>
-              <p className="text-muted-foreground">
-                This rebate cannot be reversed. Ensure the amount and reason are correct.
-              </p>
-            </div>
-          </div>
-
-          <DialogFooter>
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => onOpenChange(false)}
-              disabled={postRebateMutation.isPending}
-            >
-              Cancel
-            </Button>
-            <Button
-              type="submit"
-              disabled={postRebateMutation.isPending || calculatedRebate === 0}
-            >
-              {postRebateMutation.isPending && (
-                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+            {/* Amount */}
+            <div>
+              <Label htmlFor="amount">
+                {rebateType === 'flat' ? 'Amount (₦)' : 'Percentage (%)'}
+              </Label>
+              <Input
+                id="amount"
+                type="number"
+                step={rebateType === 'flat' ? '0.01' : '0.1'}
+                {...register('amount', { valueAsNumber: true })}
+                placeholder={rebateType === 'flat' ? '5000.00' : '10'}
+              />
+              {errors.amount && (
+                <p className="text-sm text-destructive mt-1">{errors.amount.message}</p>
               )}
-              Apply Rebate
-            </Button>
-          </DialogFooter>
-        </form>
-      </DialogContent>
-    </Dialog>
+            </div>
+
+            {/* Reason */}
+            <div>
+              <Label htmlFor="reason">Reason for Rebate *</Label>
+              <Textarea
+                id="reason"
+                {...register('reason')}
+                placeholder="e.g., AC malfunction compensation, noise disturbance, service recovery"
+                rows={3}
+              />
+              {errors.reason && (
+                <p className="text-sm text-destructive mt-1">{errors.reason.message}</p>
+              )}
+            </div>
+
+            {/* Preview */}
+            {calculatedRebate > 0 && (
+              <div className="p-4 bg-muted rounded-lg space-y-2">
+                <div className="flex justify-between text-sm">
+                  <span className="text-muted-foreground">Current Charges:</span>
+                  <span className="font-medium">{formatCurrency(totalCharges, 'NGN')}</span>
+                </div>
+                <div className="flex justify-between text-sm">
+                  <span className="text-muted-foreground">Rebate Amount:</span>
+                  <span className="font-medium text-destructive">
+                    -{formatCurrency(calculatedRebate, 'NGN')}
+                  </span>
+                </div>
+                <div className="flex justify-between text-sm pt-2 border-t">
+                  <span className="font-semibold">New Charges:</span>
+                  <span className="font-bold">
+                    {formatCurrency(totalCharges - calculatedRebate, 'NGN')}
+                  </span>
+                </div>
+                <div className="flex justify-between text-sm">
+                  <span className="font-semibold">New Balance:</span>
+                  <span className={`font-bold ${(currentBalance - calculatedRebate) > 0 ? 'text-destructive' : 'text-green-600'}`}>
+                    {formatCurrency(currentBalance - calculatedRebate, 'NGN')}
+                  </span>
+                </div>
+              </div>
+            )}
+
+            {/* Warning */}
+            <div className="flex gap-2 p-3 bg-warning/10 border border-warning/20 rounded-lg">
+              <AlertCircle className="h-5 w-5 text-warning flex-shrink-0 mt-0.5" />
+              <div className="text-sm">
+                <p className="font-semibold text-warning">Manager Approval Required</p>
+                <p className="text-muted-foreground">
+                  This rebate cannot be reversed and requires manager PIN authorization.
+                </p>
+              </div>
+            </div>
+
+            <DialogFooter>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => onOpenChange(false)}
+                disabled={postRebateMutation.isPending}
+              >
+                Cancel
+              </Button>
+              <Button
+                type="submit"
+                disabled={postRebateMutation.isPending || calculatedRebate === 0}
+              >
+                {postRebateMutation.isPending && (
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                )}
+                Request Approval
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Manager Approval Modal */}
+      <ManagerApprovalModal
+        open={showManagerApproval}
+        amount={calculatedRebate}
+        type="room_rebate"
+        actionReference={folioId}
+        onApprove={(reason, approvalToken) => {
+          console.log('[RoomRebateModal] REBATE-V1-PIN: Manager approved', { reason, approvalToken });
+          if (pendingRebateData) {
+            postRebateMutation.mutate({ data: pendingRebateData, approvalToken });
+          }
+        }}
+        onReject={() => {
+          setShowManagerApproval(false);
+          setPendingRebateData(null);
+          toast.info('Room rebate cancelled');
+        }}
+      />
+    </>
   );
 }

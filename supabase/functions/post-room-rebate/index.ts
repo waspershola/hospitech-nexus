@@ -1,3 +1,9 @@
+/**
+ * post-room-rebate Edge Function
+ * Version: 2.0.0 - MANAGER-PIN-V1
+ * Applies room rebate with manager PIN approval validation
+ */
+
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
@@ -12,6 +18,7 @@ interface RebateRequest {
   amount: number;
   reason: string;
   nights?: number[];
+  approval_token?: string;
 }
 
 serve(async (req) => {
@@ -21,7 +28,7 @@ serve(async (req) => {
   }
 
   try {
-    console.log('[post-room-rebate] REBATE-V1: Request received');
+    console.log('[post-room-rebate] MANAGER-PIN-V1: Request received');
     
     const supabase = createClient(
       Deno.env.get('SUPABASE_URL')!,
@@ -40,9 +47,9 @@ serve(async (req) => {
     if (authError || !user) throw new Error('Unauthorized');
 
     const body: RebateRequest = await req.json();
-    const { folio_id, rebate_type, amount, reason, nights } = body;
+    const { folio_id, rebate_type, amount, reason, nights, approval_token } = body;
 
-    console.log('[post-room-rebate] REBATE-V1: Validated input', { folio_id, rebate_type, amount });
+    console.log('[post-room-rebate] MANAGER-PIN-V1: Validated input', { folio_id, rebate_type, amount });
 
     // 1. Fetch folio with tenant check
     const { data: folio, error: folioError } = await supabase
@@ -66,30 +73,58 @@ serve(async (req) => {
       throw new Error('Unauthorized: Tenant mismatch');
     }
 
-    // 3. Validate folio type is 'room'
-    if (folio.folio_type !== 'room') {
-      throw new Error('Rebates can only be applied to Room folios');
-    }
-
-    // 4. Validate folio is open
-    if (folio.status !== 'open') {
-      throw new Error('Cannot post rebate to closed folio');
-    }
-
-    // 5. Calculate final rebate amount
+    // 3. Calculate final rebate amount early for approval validation
     let finalRebateAmount = amount;
     if (rebate_type === 'percent') {
-      // Calculate percentage of room charges
       const roomCharges = folio.total_charges || 0;
       finalRebateAmount = (roomCharges * amount) / 100;
     }
 
-    // 6. Validate rebate doesn't exceed total charges
+    // 4. MANAGER PIN APPROVAL - Room rebates always require approval
+    if (!approval_token) {
+      throw new Error('Manager approval required for room rebates');
+    }
+
+    // Validate approval token
+    const { data: validationResult, error: validationError } = await supabase.rpc(
+      'validate_approval_token',
+      {
+        p_token: approval_token,
+        p_user_id: user.id,
+        p_tenant_id: userRole.tenant_id,
+        p_action_type: 'room_rebate',
+        p_action_reference: folio_id,
+        p_amount: finalRebateAmount
+      }
+    );
+
+    if (validationError) {
+      console.error('[post-room-rebate] MANAGER-PIN-V1: Token validation error:', validationError);
+      throw new Error('Failed to validate approval token');
+    }
+
+    if (!validationResult) {
+      throw new Error('Invalid or expired approval token');
+    }
+
+    console.log('[post-room-rebate] MANAGER-PIN-V1: Approval validated');
+
+    // 5. Validate folio type is 'room'
+    if (folio.folio_type !== 'room') {
+      throw new Error('Rebates can only be applied to Room folios');
+    }
+
+    // 6. Validate folio is open
+    if (folio.status !== 'open') {
+      throw new Error('Cannot post rebate to closed folio');
+    }
+
+    // 7. Validate rebate doesn't exceed total charges
     if (finalRebateAmount > folio.total_charges) {
       throw new Error(`Rebate amount (₦${finalRebateAmount.toFixed(2)}) exceeds total room charges (₦${folio.total_charges})`);
     }
 
-    // 7. Insert rebate transaction (negative amount)
+    // 8. Insert rebate transaction (negative amount)
     const { data: transaction, error: txError } = await supabase
       .from('folio_transactions')
       .insert({
@@ -108,7 +143,9 @@ serve(async (req) => {
           raw_input_amount: amount,
           nights: nights || [],
           posted_by: user.email,
-          posted_at: new Date().toISOString()
+          posted_at: new Date().toISOString(),
+          approval_token_used: true,
+          manager_pin_version: 'MANAGER-PIN-V1'
         }
       })
       .select()
@@ -116,7 +153,7 @@ serve(async (req) => {
 
     if (txError) throw txError;
 
-    // 8. Update folio balance (rebate reduces balance)
+    // 9. Update folio balance (rebate reduces balance)
     const newTotalCharges = folio.total_charges - Math.abs(finalRebateAmount);
     const newBalance = folio.balance - Math.abs(finalRebateAmount);
 
@@ -131,7 +168,13 @@ serve(async (req) => {
 
     if (updateError) throw updateError;
 
-    // 9. Insert audit log
+    // 10. Clear the approval token after successful use
+    await supabase.rpc('clear_approval_token', {
+      p_user_id: user.id,
+      p_tenant_id: userRole.tenant_id
+    });
+
+    // 11. Insert audit log
     await supabase
       .from('finance_audit_events')
       .insert({
@@ -147,11 +190,13 @@ serve(async (req) => {
           rebate_type,
           reason,
           before_balance: folio.balance,
-          after_balance: newBalance
+          after_balance: newBalance,
+          manager_approved: true,
+          version: 'MANAGER-PIN-V1'
         }
       });
 
-    console.log('[post-room-rebate] REBATE-V1: Success', {
+    console.log('[post-room-rebate] MANAGER-PIN-V1: Success', {
       transaction_id: transaction.id,
       rebate_amount: finalRebateAmount,
       new_balance: newBalance
@@ -170,7 +215,7 @@ serve(async (req) => {
 
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-    console.error('[post-room-rebate] REBATE-V1: Error:', errorMessage);
+    console.error('[post-room-rebate] MANAGER-PIN-V1: Error:', errorMessage);
     return new Response(
       JSON.stringify({
         success: false,
