@@ -67,17 +67,37 @@ export function useRoomActions() {
       if (bookingFetchError) throw bookingFetchError;
       if (!booking) throw new Error('No active booking found for this room today');
 
-      // Call checkin-guest edge function FIRST (it handles booking status update + folio creation atomically)
+      // FOLIO-FIX-V1-DIAG: Call checkin-guest edge function FIRST
+      console.log('[useRoomActions] FOLIO-FIX-V1-DIAG Starting check-in', {
+        roomId,
+        bookingId: booking.id,
+        bookingStatus: booking.status,
+      });
+
       const { data: folioResult, error: folioError } = await supabase.functions.invoke('checkin-guest', {
         body: { booking_id: booking.id }
       });
       
-      if (folioError || !folioResult?.folio) {
-        const errMsg = folioError?.message || (!folioResult?.folio ? 'Folio not returned' : 'Unknown error');
-        throw new Error(`Check-in failed: ${errMsg}`);
+      if (folioError) {
+        console.error('[useRoomActions] FOLIO-FIX-V1-DIAG checkin-guest error', { 
+          bookingId: booking.id, 
+          folioError 
+        });
+        throw new Error(`Check-in failed: ${folioError.message}`);
       }
 
-      console.log('[checkin] ✅ Folio created successfully:', folioResult.folio.id);
+      if (!folioResult?.folio?.id) {
+        console.error('[useRoomActions] FOLIO-FIX-V1-DIAG checkin-guest returned no folio', { 
+          bookingId: booking.id, 
+          folioResult 
+        });
+        throw new Error('Folio creation failed (no folio returned from checkin-guest)');
+      }
+
+      console.log('[useRoomActions] FOLIO-FIX-V1-DIAG Check-in successful', {
+        bookingId: booking.id,
+        folioId: folioResult.folio.id,
+      });
 
       // Log booking status change for audit trail
       logAction({
