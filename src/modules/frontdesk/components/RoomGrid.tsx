@@ -73,10 +73,10 @@ export function RoomGrid({ searchQuery, statusFilter, categoryFilter, floorFilte
           // Booking is active if:
           // - Guest checked in AND
           // - Check-in date <= today AND
-          // - Check-out date > today
+          // - Check-out date >= today (includes departing-today)
           return b.status === 'checked_in' && 
                  checkInDate <= today && 
-                 checkOutDate > today;
+                 checkOutDate >= today;
         });
         
         // Priority 2: If no active booking, find bookings ARRIVING today
