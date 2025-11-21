@@ -1,8 +1,10 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { formatCurrency } from "@/lib/finance/tax";
-import { ExternalLink, User, Hotel, CreditCard, DollarSign } from "lucide-react";
+import { formatFolioMoney, getBalanceColor, getCreditLabel, isCredit, getFolioStatusVariant } from "@/lib/folio/formatters";
+import { ExternalLink, User, Hotel, CreditCard, DollarSign, Info } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import type { GroupChildFolio } from "@/hooks/useGroupMasterFolio";
 
@@ -19,9 +21,25 @@ export function GroupChildFolioCard({ folio }: GroupChildFolioCardProps) {
       <CardHeader className="pb-3">
         <div className="flex items-center justify-between">
           <CardTitle className="text-sm font-medium">{folio.folio_number}</CardTitle>
-          <Badge variant={folio.status === 'open' ? 'default' : 'secondary'}>
-            {folio.status}
-          </Badge>
+          <div className="flex items-center gap-2">
+            {isCredit(folio.balance) && (
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">
+                      Credit Folio
+                    </Badge>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <p className="text-xs">This folio has been overpaid</p>
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+            )}
+            <Badge variant={getFolioStatusVariant(folio.status)}>
+              {folio.status}
+            </Badge>
+          </div>
         </div>
       </CardHeader>
       <CardContent className="space-y-3">
@@ -51,7 +69,7 @@ export function GroupChildFolioCard({ folio }: GroupChildFolioCardProps) {
               <CreditCard className="h-3.5 w-3.5" />
               <span>Charges</span>
             </div>
-            <span className="font-medium">{formatCurrency(folio.total_charges, 'NGN')}</span>
+            <span className="font-medium">{formatFolioMoney(folio.total_charges, 'NGN')}</span>
           </div>
           
           <div className="flex items-center justify-between text-sm">
@@ -60,16 +78,17 @@ export function GroupChildFolioCard({ folio }: GroupChildFolioCardProps) {
               <span>Payments</span>
             </div>
             <span className="font-medium text-green-600">
-              {formatCurrency(folio.total_payments, 'NGN')}
+              {formatFolioMoney(folio.total_payments, 'NGN')}
             </span>
           </div>
           
           <div className="flex items-center justify-between text-sm pt-2 border-t">
             <span className="font-medium">Balance</span>
-            <span className={`font-bold ${
-              folio.balance > 0 ? 'text-destructive' : 'text-green-600'
-            }`}>
-              {formatCurrency(folio.balance, 'NGN')}
+            <span className={`font-bold ${getBalanceColor(folio.balance)}`}>
+              {isCredit(folio.balance) 
+                ? getCreditLabel(folio.balance, 'NGN')
+                : formatFolioMoney(folio.balance, 'NGN')
+              }
             </span>
           </div>
         </div>

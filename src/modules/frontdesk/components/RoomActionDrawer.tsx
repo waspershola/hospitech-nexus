@@ -1101,12 +1101,28 @@ export function RoomActionDrawer({ roomId, contextDate, open, onClose, onOpenAss
                           />
                         ) : (
                           <>
-                            <p className={`text-2xl font-bold ${folio && folio.balance > 0 ? 'text-warning' : 'text-success'}`}>
-                              {folio 
-                                ? `${folio.currency === 'NGN' ? '₦' : folio.currency}${folio.balance.toFixed(2)}`
-                                : '₦0.00'
-                              }
-                            </p>
+                            {folio && (
+                              <div className="space-y-2 p-3 bg-muted/50 rounded-lg">
+                                <div className="flex justify-between text-sm">
+                                  <span className="text-muted-foreground">Charges:</span>
+                                  <span className="font-medium">{folio.currency === 'NGN' ? '₦' : folio.currency}{folio.totalCharges.toFixed(2)}</span>
+                                </div>
+                                <div className="flex justify-between text-sm">
+                                  <span className="text-muted-foreground">Payments:</span>
+                                  <span className="font-medium text-green-600">{folio.currency === 'NGN' ? '₦' : folio.currency}{folio.totalPayments.toFixed(2)}</span>
+                                </div>
+                                <Separator />
+                                <div className="flex justify-between">
+                                  <span className="font-semibold">Balance:</span>
+                                  <span className={`text-lg font-bold ${folio.balance > 0 ? 'text-destructive' : folio.balance < 0 ? 'text-green-600' : 'text-muted-foreground'}`}>
+                                    {folio.balance < 0 ? `Credit: ${folio.currency === 'NGN' ? '₦' : folio.currency}${Math.abs(folio.balance).toFixed(2)}` : `${folio.currency === 'NGN' ? '₦' : folio.currency}${folio.balance.toFixed(2)}`}
+                                  </span>
+                                </div>
+                              </div>
+                            )}
+                            {!folio && (
+                              <p className="text-muted-foreground">No folio data available</p>
+                            )}
                             {folio && folio.balance > 0 && (
                               <>
                                 <Button
@@ -1158,6 +1174,17 @@ export function RoomActionDrawer({ roomId, contextDate, open, onClose, onOpenAss
                               <FileText className="w-4 h-4 mr-2" />
                               Booking Confirmation
                             </Button>
+                            {groupInfo && (
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => navigate(`/dashboard/group-billing/${groupInfo.group_id}`)}
+                                className="w-full"
+                              >
+                                <Users className="w-4 h-4 mr-2" />
+                                View Group Billing
+                              </Button>
+                            )}
                           </>
                         )}
                       </div>

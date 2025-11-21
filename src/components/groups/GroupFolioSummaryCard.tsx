@@ -1,6 +1,7 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { formatCurrency } from "@/lib/finance/tax";
+import { formatFolioMoney, getBalanceColor, getCreditLabel, isCredit } from "@/lib/folio/formatters";
 import { Building2, Users, TrendingUp, TrendingDown, DollarSign } from "lucide-react";
 import type { AggregatedBalances } from "@/hooks/useGroupMasterFolio";
 
@@ -41,14 +42,16 @@ export function GroupFolioSummaryCard({
         {/* Grand Total */}
         <div className="p-4 bg-muted rounded-lg">
           <div className="flex items-center justify-between">
-            <div>
+            <div className="flex-1">
               <p className="text-sm text-muted-foreground">Outstanding Balance</p>
-              <p className={`text-3xl font-bold ${
-              aggregatedBalances.outstanding_balance > 0 
-                  ? 'text-destructive' 
-                  : 'text-green-600'
-              }`}>
-                {formatCurrency(aggregatedBalances.outstanding_balance, 'NGN')}
+              <p className="text-xs text-muted-foreground mt-0.5">
+                Totals are aggregated from all child folios for this group
+              </p>
+              <p className={`text-3xl font-bold mt-2 ${getBalanceColor(aggregatedBalances.outstanding_balance)}`}>
+                {isCredit(aggregatedBalances.outstanding_balance) 
+                  ? getCreditLabel(aggregatedBalances.outstanding_balance, 'NGN')
+                  : formatFolioMoney(aggregatedBalances.outstanding_balance, 'NGN')
+                }
               </p>
             </div>
             <DollarSign className="h-12 w-12 text-muted-foreground/20" />
@@ -88,11 +91,9 @@ export function GroupFolioSummaryCard({
           <div className="space-y-1">
             <div className="flex items-center gap-2 text-muted-foreground">
               <Building2 className="h-4 w-4" />
-              <span className="text-sm">Master Balance</span>
+              <span className="text-sm">Total Rooms</span>
             </div>
-            <p className="text-2xl font-semibold">
-              {formatCurrency(masterFolio.balance, 'NGN')}
-            </p>
+            <p className="text-2xl font-semibold">{childFoliosCount}</p>
           </div>
         </div>
 
@@ -109,18 +110,26 @@ export function GroupFolioSummaryCard({
                   <div className="flex items-center gap-3">
                     <div className="w-2 h-2 rounded-full bg-primary" />
                     <div>
-                      <p className="font-medium text-sm">Room {child.room_number}</p>
+                      <p className="font-medium text-sm flex items-center gap-2">
+                        Room {child.room_number}
+                        {isCredit(child.balance) && (
+                          <Badge variant="outline" className="text-xs bg-green-50 text-green-700 border-green-200">
+                            Credit
+                          </Badge>
+                        )}
+                      </p>
                       <p className="text-xs text-muted-foreground">{child.guest_name}</p>
                     </div>
                   </div>
                   <div className="text-right">
-                    <p className={`font-semibold ${
-                      child.balance > 0 ? 'text-destructive' : 'text-green-600'
-                    }`}>
-                      {formatCurrency(child.balance, 'NGN')}
+                    <p className={`font-semibold ${getBalanceColor(child.balance)}`}>
+                      {isCredit(child.balance) 
+                        ? getCreditLabel(child.balance, 'NGN')
+                        : formatFolioMoney(child.balance, 'NGN')
+                      }
                     </p>
                     <p className="text-xs text-muted-foreground">
-                      {formatCurrency(child.charges, 'NGN')} - {formatCurrency(child.payments, 'NGN')}
+                      {formatFolioMoney(child.charges, 'NGN')} - {formatFolioMoney(child.payments, 'NGN')}
                     </p>
                   </div>
                 </div>
