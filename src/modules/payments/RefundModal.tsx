@@ -19,6 +19,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { AlertCircle, RotateCcw, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
+import { ManagerApprovalModal } from '@/modules/payments/ManagerApprovalModal';
 
 const refundSchema = z.object({
   amount: z.number().positive('Amount must be greater than 0'),
@@ -38,6 +39,8 @@ export function RefundModal({ open, onClose, payment, bookingId }: RefundModalPr
   const { user } = useAuth();
   const queryClient = useQueryClient();
   const [isPartialRefund, setIsPartialRefund] = useState(false);
+  const [showManagerApproval, setShowManagerApproval] = useState(false);
+  const [pendingRefundData, setPendingRefundData] = useState<RefundForm | null>(null);
 
   const {
     register,
@@ -56,7 +59,7 @@ export function RefundModal({ open, onClose, payment, bookingId }: RefundModalPr
   const maxRefund = Number(payment?.amount) || 0;
 
   const refundMutation = useMutation({
-    mutationFn: async (data: RefundForm) => {
+    mutationFn: async ({ data, approvalToken }: { data: RefundForm; approvalToken?: string }) => {
       if (!payment?.id) throw new Error('Payment ID is missing');
 
       // Create a refund payment record
@@ -80,6 +83,8 @@ export function RefundModal({ open, onClose, payment, bookingId }: RefundModalPr
             refund_reason: data.reason,
             refund_type: data.amount === maxRefund ? 'full' : 'partial',
             refunded_at: new Date().toISOString(),
+            manager_approved: !!approvalToken,
+            approval_token_used: !!approvalToken,
           },
         })
         .select()
@@ -136,6 +141,11 @@ export function RefundModal({ open, onClose, payment, bookingId }: RefundModalPr
       queryClient.invalidateQueries({ queryKey: ['payments'] });
       queryClient.invalidateQueries({ queryKey: ['wallets'] });
       queryClient.invalidateQueries({ queryKey: ['wallet-transactions'] });
+      
+      // Reset states
+      setShowManagerApproval(false);
+      setPendingRefundData(null);
+      
       toast.success('Refund processed successfully');
       onClose();
     },
@@ -149,7 +159,10 @@ export function RefundModal({ open, onClose, payment, bookingId }: RefundModalPr
       toast.error('Refund amount cannot exceed original payment amount');
       return;
     }
-    refundMutation.mutate(data);
+    
+    // All refunds require manager PIN approval
+    setPendingRefundData(data);
+    setShowManagerApproval(true);
   };
 
   return (
@@ -248,11 +261,30 @@ export function RefundModal({ open, onClose, payment, bookingId }: RefundModalPr
               {refundMutation.isPending && (
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
               )}
-              Process Refund
+              Request Manager Approval
             </Button>
           </div>
         </form>
       </DialogContent>
+
+      {/* Manager Approval Modal */}
+      <ManagerApprovalModal
+        open={showManagerApproval}
+        amount={pendingRefundData?.amount || 0}
+        type="refund"
+        actionReference={payment?.id}
+        onApprove={(reason, approvalToken) => {
+          console.log('[RefundModal] Manager approved refund', { reason, approvalToken });
+          if (pendingRefundData) {
+            refundMutation.mutate({ data: pendingRefundData, approvalToken });
+          }
+        }}
+        onReject={() => {
+          setShowManagerApproval(false);
+          setPendingRefundData(null);
+          toast.info('Refund cancelled - manager approval denied');
+        }}
+      />
     </Dialog>
   );
 }
