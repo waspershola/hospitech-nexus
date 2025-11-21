@@ -39,10 +39,13 @@ export function RoomGrid({ searchQuery, statusFilter, categoryFilter, floorFilte
             id,
             check_in,
             check_out,
+            checked_in_at,
+            checked_out_at,
             status,
             total_amount,
             guest_id,
             organization_id,
+            metadata,
             guest:guests(id, name, email, phone),
             organization:organizations(id, name, credit_limit, allow_negative_balance)
           )
