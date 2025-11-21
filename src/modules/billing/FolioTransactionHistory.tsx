@@ -143,14 +143,26 @@ export function FolioTransactionHistory({
             </TableHeader>
             <TableBody>
               {transactionsWithBalance.map((txn) => (
-                <TableRow key={txn.id}>
+                <TableRow 
+                  key={txn.id}
+                  className={txn.transaction_type === 'rebate' ? 'bg-orange-50' : ''}
+                >
                   <TableCell className="whitespace-nowrap">
                     {format(new Date(txn.created_at), 'MMM dd, yyyy HH:mm')}
                   </TableCell>
                   <TableCell>
-                    <Badge variant={txn.transaction_type === 'charge' ? 'destructive' : 'default'}>
-                      {txn.transaction_type}
-                    </Badge>
+                    {txn.transaction_type === 'charge' && (
+                      <Badge variant="destructive">Charge</Badge>
+                    )}
+                    {txn.transaction_type === 'payment' && (
+                      <Badge variant="default" className="bg-green-600">Payment</Badge>
+                    )}
+                    {txn.transaction_type === 'rebate' && (
+                      <Badge variant="default" className="bg-orange-600">Rebate</Badge>
+                    )}
+                    {txn.transaction_type !== 'charge' && txn.transaction_type !== 'payment' && txn.transaction_type !== 'rebate' && (
+                      <Badge variant="outline">{txn.transaction_type}</Badge>
+                    )}
                   </TableCell>
                   <TableCell>{txn.description}</TableCell>
                   <TableCell className={`text-right font-medium ${

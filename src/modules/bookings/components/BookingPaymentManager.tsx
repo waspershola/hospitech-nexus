@@ -21,6 +21,7 @@ import { usePrintReceipt } from '@/hooks/usePrintReceipt';
 import { useReceiptData } from '@/hooks/useReceiptData';
 import { useReceiptSettings } from '@/hooks/useReceiptSettings';
 import { useFolioById } from '@/hooks/useFolioById';
+import { useEffect } from 'react';
 
 interface BookingPaymentManagerProps {
   bookingId: string;
@@ -116,6 +117,21 @@ export function BookingPaymentManager({ bookingId }: BookingPaymentManagerProps)
 
   const isLoading = bookingLoading || folioLoading || paymentsLoading;
   const hasError = bookingError || folioError || paymentsError;
+
+  // PAYMENT-TAB-FIX-V2: Add timeout for stuck queries
+  const [isStuck, setIsStuck] = useState(false);
+  
+  useEffect(() => {
+    if (isLoading) {
+      const timer = setTimeout(() => {
+        console.log('[BookingPaymentManager] PAYMENT-TAB-FIX-V2: Query timeout - loader stuck');
+        setIsStuck(true);
+      }, 10000); // 10s timeout
+      return () => clearTimeout(timer);
+    } else {
+      setIsStuck(false);
+    }
+  }, [isLoading]);
 
   // Fetch charges from metadata
   const metadata = booking?.metadata as any;
@@ -243,21 +259,69 @@ export function BookingPaymentManager({ bookingId }: BookingPaymentManagerProps)
     }
   };
 
-  // Show unified loading state
-  if (isLoading) {
+  // PAYMENT-TAB-FIX-V2: Show specific loading message
+  if (bookingLoading) {
     return (
       <div className="space-y-4">
         <Card>
-          <CardHeader>
-            <Skeleton className="h-8 w-64" />
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <Skeleton className="h-20 w-full" />
-            <Skeleton className="h-20 w-full" />
-            <Skeleton className="h-20 w-full" />
+          <CardContent className="py-8">
+            <div className="text-center space-y-2">
+              <Loader2 className="h-12 w-12 mx-auto animate-spin text-primary" />
+              <p className="font-semibold">Loading booking details...</p>
+            </div>
           </CardContent>
         </Card>
       </div>
+    );
+  }
+
+  if (folioLoading) {
+    return (
+      <div className="space-y-4">
+        <Card>
+          <CardContent className="py-8">
+            <div className="text-center space-y-2">
+              <Loader2 className="h-12 w-12 mx-auto animate-spin text-primary" />
+              <p className="font-semibold">Checking folio status...</p>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  if (paymentsLoading) {
+    return (
+      <div className="space-y-4">
+        <Card>
+          <CardContent className="py-8">
+            <div className="text-center space-y-2">
+              <Loader2 className="h-12 w-12 mx-auto animate-spin text-primary" />
+              <p className="font-semibold">Loading payment history...</p>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  // PAYMENT-TAB-FIX-V2: Show timeout state if stuck
+  if (isStuck) {
+    return (
+      <Card>
+        <CardContent className="py-8">
+          <div className="text-center space-y-4">
+            <AlertCircle className="h-12 w-12 mx-auto text-warning" />
+            <p className="font-semibold">Loading is taking longer than expected</p>
+            <p className="text-sm text-muted-foreground">
+              The payment tab seems to be stuck. This might be a temporary issue.
+            </p>
+            <Button onClick={() => queryClient.invalidateQueries()}>
+              Retry Loading
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
     );
   }
 
@@ -300,10 +364,32 @@ export function BookingPaymentManager({ bookingId }: BookingPaymentManagerProps)
     );
   }
 
+  // PAYMENT-TAB-FIX-V2: Display payment errors properly
+  if (paymentsError) {
+    console.error('[BookingPaymentManager] PAYMENT-TAB-FIX-V2: Payments error:', paymentsError);
+    return (
+      <Card>
+        <CardContent className="py-8">
+          <div className="text-center space-y-4">
+            <AlertCircle className="h-12 w-12 mx-auto text-destructive" />
+            <p className="font-semibold text-destructive">Error Loading Payments</p>
+            <p className="text-sm text-muted-foreground">
+              {paymentsError.message || 'Unable to load payment history'}
+            </p>
+            <Button onClick={() => queryClient.invalidateQueries({ queryKey: ['booking-payments'] })}>
+              Retry
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
+
   if (folioError) {
     console.error('BookingPaymentManager - Folio error:', folioError);
   }
 
+  // PAYMENT-TAB-FIX-V2: Pre-check-in handling - show any existing payments
   if (!folio) {
     return (
       <div className="space-y-4">
@@ -311,13 +397,42 @@ export function BookingPaymentManager({ bookingId }: BookingPaymentManagerProps)
           <CardContent className="py-8">
             <div className="text-center space-y-2">
               <Receipt className="h-12 w-12 mx-auto text-muted-foreground opacity-50" />
-              <p className="font-semibold">Folio Not Available</p>
+              <p className="font-semibold">Folio Not Created Yet</p>
               <p className="text-sm text-muted-foreground">
-                This booking hasn't been checked in yet. Folio will be available after check-in.
+                Check-in this guest to create their folio and track charges.
               </p>
             </div>
           </CardContent>
         </Card>
+        
+        {/* Show pre-check-in payments if any exist */}
+        {payments.length > 0 && (
+          <Card>
+            <CardHeader>
+              <CardTitle>Pre-Check-In Payments</CardTitle>
+              <p className="text-sm text-muted-foreground">
+                These payments will be automatically linked to the folio upon check-in.
+              </p>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-2">
+                {payments.map(payment => (
+                  <div key={payment.id} className="flex justify-between p-3 border rounded">
+                    <div>
+                      <p className="font-medium">{payment.method_provider || payment.method}</p>
+                      <p className="text-xs text-muted-foreground">
+                        {format(new Date(payment.created_at), 'PPp')}
+                      </p>
+                    </div>
+                    <p className="font-semibold text-green-600">
+                      ₦{Number(payment.amount).toLocaleString()}
+                    </p>
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        )}
       </div>
     );
   }

@@ -26,6 +26,7 @@ import { AddPaymentDialog } from '@/components/folio/AddPaymentDialog';
 import { ReopenFolioDialog } from '@/components/folio/ReopenFolioDialog';
 import { FolioTypeBadge } from '@/components/folio/FolioTypeBadge';
 import { RealTimeSyncIndicator } from '@/components/folio/RealTimeSyncIndicator';
+import { RoomRebateModal } from '@/components/billing/RoomRebateModal';
 import { useAuth } from '@/contexts/AuthContext';
 import { Eye } from 'lucide-react';
 
@@ -45,6 +46,7 @@ export default function BillingCenter() {
   const [mergeFolioOpen, setMergeFolioOpen] = useState(false);
   const [addPaymentOpen, setAddPaymentOpen] = useState(false);
   const [reopenDialogOpen, setReopenDialogOpen] = useState(false);
+  const [roomRebateOpen, setRoomRebateOpen] = useState(false);
   const [selectedTransactionId, setSelectedTransactionId] = useState<string | null>(null);
   const [selectedTransactionAmount, setSelectedTransactionAmount] = useState(0);
   const [selectedTransactionDescription, setSelectedTransactionDescription] = useState('');
@@ -435,6 +437,17 @@ export default function BillingCenter() {
                   <DollarSign className="w-4 h-4 mr-2" />
                   Add Payment
                 </Button>
+                {/* REBATE-INTEGRATION-V1: Room Rebate - Only for Room folios */}
+                {folio.folio_type === 'room' && (
+                  <Button 
+                    variant="outline" 
+                    className="w-full justify-start"
+                    onClick={() => setRoomRebateOpen(true)}
+                  >
+                    <DollarSign className="w-4 h-4 mr-2" />
+                    Apply Room Rebate
+                  </Button>
+                )}
                 {folios.length > 1 && (
                   <>
                     <Button 
@@ -570,11 +583,25 @@ export default function BillingCenter() {
               }}
               isLoading={isMerging}
             />
+            <ReopenFolioDialog
+              open={reopenDialogOpen}
+              onOpenChange={setReopenDialogOpen}
+              folioId={folioId!}
+              folioNumber={folio.folio_number}
+            />
             <AddPaymentDialog
               open={addPaymentOpen}
               onOpenChange={setAddPaymentOpen}
               folioId={folioId!}
               bookingId={folio.booking_id}
+            />
+            {/* REBATE-INTEGRATION-V1: Room Rebate Modal */}
+            <RoomRebateModal
+              open={roomRebateOpen}
+              onOpenChange={setRoomRebateOpen}
+              folioId={folioId!}
+              totalCharges={folio.total_charges || 0}
+              currentBalance={folio.balance || 0}
             />
           </>
         )}
