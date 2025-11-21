@@ -201,10 +201,15 @@ export function AssignRoomDrawer({ open, onClose, roomId, roomNumber }: AssignRo
       queryClient.invalidateQueries({ queryKey: ['frontdesk-kpis'] });
       queryClient.invalidateQueries({ queryKey: ['bookings'] });
       
-      // FOLIO-FIX-V1: If user selected "Check In Now", immediately call checkin-guest
+      // FOLIO-FIX-V1-DIAG: If user selected "Check In Now", immediately call checkin-guest
       if (actionType === 'checkin' && data.booking?.id) {
         try {
-          console.log('[AssignRoomDrawer] FOLIO-FIX-V1: Calling checkin-guest for immediate occupancy');
+          console.log('[AssignRoomDrawer] FOLIO-FIX-V1-DIAG Starting check-in', {
+            actionType,
+            bookingId: data.booking.id,
+            bookingStatus: data.booking.status,
+            roomId,
+          });
           
           // Call checkin-guest edge function to create folio
           const { data: folioResult, error: folioError } = await supabase.functions.invoke('checkin-guest', {
@@ -213,8 +218,21 @@ export function AssignRoomDrawer({ open, onClose, roomId, roomNumber }: AssignRo
             }
           });
           
-          if (folioError) throw folioError;
-          if (!folioResult?.folio?.id) throw new Error('Folio creation failed');
+          if (folioError) {
+            console.error('[AssignRoomDrawer] FOLIO-FIX-V1-DIAG checkin-guest error', { 
+              bookingId: data.booking.id, 
+              folioError 
+            });
+            throw new Error(`Check-in failed: ${folioError.message}`);
+          }
+
+          if (!folioResult?.folio?.id) {
+            console.error('[AssignRoomDrawer] FOLIO-FIX-V1-DIAG checkin-guest returned no folio', { 
+              bookingId: data.booking.id, 
+              folioResult 
+            });
+            throw new Error('Folio creation failed (no folio returned from checkin-guest)');
+          }
           
           // Update room status to occupied
           await supabase
@@ -224,15 +242,19 @@ export function AssignRoomDrawer({ open, onClose, roomId, roomNumber }: AssignRo
             .eq('tenant_id', tenantId);
           
           toast.success(`Guest checked in to Room ${roomNumber} - Folio created`);
-          console.log('[AssignRoomDrawer] FOLIO-FIX-V1: Check-in successful', {
-            booking_id: data.booking.id,
-            folio_id: folioResult.folio.id
+          console.log('[AssignRoomDrawer] FOLIO-FIX-V1-DIAG Check-in successful', {
+            bookingId: data.booking.id,
+            folioId: folioResult.folio.id,
           });
           
-        } catch (error) {
-          console.error('[AssignRoomDrawer] FOLIO-FIX-V1: Check-in failed', error);
+        } catch (error: any) {
+          console.error('[AssignRoomDrawer] FOLIO-FIX-V1-DIAG Check-in failed', { 
+            bookingId: data.booking.id, 
+            error: error.message,
+            stack: error.stack 
+          });
           toast.error('Booking created but check-in failed', {
-            description: 'Please check-in manually from Room Actions to create folio.',
+            description: `Error: ${error.message}. Please check-in manually from Room Actions.`,
             duration: 8000
           });
         }
