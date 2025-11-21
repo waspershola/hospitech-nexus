@@ -107,8 +107,10 @@ Deno.serve(async (req) => {
       transaction_count: folio.transactions?.length || 0
     });
     
-    // Validate required folio relationships
-    if (!folio.booking) {
+    // Validate required folio relationships (skip for group master folios)
+    const isGroupMaster = folio.folio_type === 'group_master';
+    
+    if (!isGroupMaster && !folio.booking) {
       console.error('PDF-TEMPLATE-V4: Missing booking data', { folio_id });
       throw new Error('Folio has no associated booking');
     }
@@ -118,10 +120,15 @@ Deno.serve(async (req) => {
       throw new Error('Folio has no associated guest');
     }
     
-    if (!folio.room) {
+    if (!isGroupMaster && !folio.room) {
       console.error('PDF-TEMPLATE-V4: Missing room data', { folio_id });
       throw new Error('Folio has no associated room');
     }
+    
+    console.log('PDF-TEMPLATE-V4: Folio type check', {
+      folio_type: folio.folio_type,
+      is_group_master: isGroupMaster
+    });
 
     // 2. Fetch hotel branding
     console.log('PDF-TEMPLATE-V4: Fetching hotel branding...');
@@ -161,16 +168,26 @@ Deno.serve(async (req) => {
       throw new Error('Failed to fetch tenant details');
     }
 
-    // 5. Calculate nights and format dates
+    // 5. Calculate nights and format dates (use folio creation date for master folios)
     console.log('PDF-TEMPLATE-V4: Calculating stay duration...');
-    const checkIn = new Date(folio.booking.check_in);
-    const checkOut = new Date(folio.booking.check_out);
-    const nights = Math.ceil((checkOut.getTime() - checkIn.getTime()) / (1000 * 60 * 60 * 24));
+    let checkIn: Date, checkOut: Date, nights: number;
+    
+    if (isGroupMaster) {
+      // For master folios, use folio created date and show as "N/A" for checkout
+      checkIn = new Date(folio.created_at);
+      checkOut = new Date(folio.created_at); // Same as check-in
+      nights = 0; // Will display as "Multiple" in template
+    } else {
+      checkIn = new Date(folio.booking.check_in);
+      checkOut = new Date(folio.booking.check_out);
+      nights = Math.ceil((checkOut.getTime() - checkIn.getTime()) / (1000 * 60 * 60 * 24));
+    }
     
     console.log('PDF-TEMPLATE-V4: Stay details', {
       check_in: checkIn.toISOString(),
       check_out: checkOut.toISOString(),
-      nights
+      nights,
+      is_group_master: isGroupMaster
     });
 
     // 6. Calculate running balance for transactions
@@ -696,8 +713,8 @@ function generateLuxuryFolioHTML(params: {
       </div>
     </div>
     <div class="folio-title">
-      <h1>GUEST FOLIO</h1>
-      <div class="folio-number">#${folio.booking.booking_reference}</div>
+      <h1>${folio.folio_type === 'group_master' ? 'GROUP MASTER FOLIO' : 'GUEST FOLIO'}</h1>
+      <div class="folio-number">#${folio.booking?.booking_reference || folio.folio_number}</div>
       <span class="folio-status">${folio.status || 'OPEN'}</span>
     </div>
   </div>
@@ -718,26 +735,38 @@ function generateLuxuryFolioHTML(params: {
         <div class="summary-value">${folio.guest.phone || 'N/A'}</div>
       </div>
       <div class="summary-item">
-        <div class="summary-label">Room Number</div>
-        <div class="summary-value">${folio.room.number} (${folio.room.type})</div>
+        <div class="summary-label">${folio.folio_type === 'group_master' ? 'Group Name' : 'Room Number'}</div>
+        <div class="summary-value">${
+          folio.folio_type === 'group_master' 
+            ? (folio.metadata?.group_name || 'Group Booking')
+            : `${folio.room.number} (${folio.room.type})`
+        }</div>
       </div>
     </div>
     <div class="summary-block">
       <div class="summary-item">
-        <div class="summary-label">Check-In Date</div>
-        <div class="summary-value">${formatDate(folio.booking.check_in)}</div>
+        <div class="summary-label">${folio.folio_type === 'group_master' ? 'Created Date' : 'Check-In Date'}</div>
+        <div class="summary-value">${formatDate(folio.booking?.check_in || folio.created_at)}</div>
       </div>
       <div class="summary-item">
-        <div class="summary-label">Check-Out Date</div>
-        <div class="summary-value">${formatDate(folio.booking.check_out)}</div>
+        <div class="summary-label">${folio.folio_type === 'group_master' ? 'Group Status' : 'Check-Out Date'}</div>
+        <div class="summary-value">${
+          folio.folio_type === 'group_master'
+            ? (folio.status === 'open' ? 'Active' : 'Closed')
+            : formatDate(folio.booking.check_out)
+        }</div>
       </div>
       <div class="summary-item">
-        <div class="summary-label">Number of Nights</div>
-        <div class="summary-value">${nights} ${nights === 1 ? 'Night' : 'Nights'}</div>
+        <div class="summary-label">${folio.folio_type === 'group_master' ? 'Total Rooms' : 'Number of Nights'}</div>
+        <div class="summary-value">${
+          folio.folio_type === 'group_master'
+            ? (folio.metadata?.total_rooms || 'Multiple')
+            : `${nights} ${nights === 1 ? 'Night' : 'Nights'}`
+        }</div>
       </div>
       <div class="summary-item">
-        <div class="summary-label">Booking Reference</div>
-        <div class="summary-value">${folio.booking.booking_reference}</div>
+        <div class="summary-label">${folio.folio_type === 'group_master' ? 'Master Folio Number' : 'Booking Reference'}</div>
+        <div class="summary-value">${folio.booking?.booking_reference || folio.folio_number}</div>
       </div>
     </div>
   </div>
