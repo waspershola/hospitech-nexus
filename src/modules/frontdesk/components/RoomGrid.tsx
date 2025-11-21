@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import { getRoomStatusNow } from '@/lib/roomAvailability';
 import { useOperationsHours } from '@/hooks/useOperationsHours';
 import { format } from 'date-fns';
+import { calculateStayLifecycleState } from '@/lib/stayLifecycle';
 
 interface RoomGridProps {
   searchQuery?: string;
@@ -89,9 +90,15 @@ export function RoomGrid({ searchQuery, statusFilter, categoryFilter, floorFilte
         // Priority 3: IGNORE future bookings (tomorrow or later)
         // If no active or arriving-today booking, show room as available
         
-        // Use centralized status logic (pass the booking with room_id added)
-        const bookingWithRoomId = activeBooking ? { ...activeBooking, room_id: room.id } : null;
-        const currentStatus = getRoomStatusNow(room, bookingWithRoomId, checkInTime, checkOutTime);
+        // GRID-LIFECYCLE-V1: Use unified lifecycle helper
+        const lifecycle = calculateStayLifecycleState(
+          now,
+          checkInTime,
+          checkOutTime,
+          activeBooking,
+          room
+        );
+        const currentStatus = lifecycle.displayStatus;
         
         return { 
           ...room, 
