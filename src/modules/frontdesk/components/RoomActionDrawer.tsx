@@ -22,6 +22,7 @@ import { useForceCheckout } from '@/hooks/useForceCheckout';
 import { usePaymentPreferences } from '@/hooks/usePaymentPreferences';
 import { usePrintReceipt } from '@/hooks/usePrintReceipt';
 import { useReceiptSettings } from '@/hooks/useReceiptSettings';
+import { useFolioPDF } from '@/hooks/useFolioPDF';
 import { getRoomStatusNow } from '@/lib/roomAvailability';
 import { useOperationsHours } from '@/hooks/useOperationsHours';
 import { calculateStayLifecycleState, isActionAllowed } from '@/lib/stayLifecycle';
@@ -62,6 +63,7 @@ export function RoomActionDrawer({ roomId, contextDate, open, onClose, onOpenAss
   const { preferences } = usePaymentPreferences();
   const { print: printReceiptFn } = usePrintReceipt();
   const { settings: receiptSettings } = useReceiptSettings();
+  const { printFolio, isPrinting } = useFolioPDF();
   const [extendModalOpen, setExtendModalOpen] = useState(false);
   const [transferRoomOpen, setTransferRoomOpen] = useState(false);
   const [chargeModalOpen, setChargeModalOpen] = useState(false);
@@ -893,6 +895,32 @@ export function RoomActionDrawer({ roomId, contextDate, open, onClose, onOpenAss
                           </TooltipTrigger>
                           <TooltipContent>
                             <p>View individual room folio</p>
+                          </TooltipContent>
+                        </Tooltip>
+                      </TooltipProvider>
+                    )}
+                    
+                    {/* PRINT-FOLIO-DRAWER-V1: Print folio button */}
+                    {folio?.folioId && (
+                      <TooltipProvider>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => {
+                                console.log('PRINT-FOLIO-DRAWER-V1: Printing folio', folio.folioId);
+                                printFolio({ folioId: folio.folioId });
+                              }}
+                              disabled={isPrinting}
+                              className="gap-2"
+                            >
+                              <Printer className="w-4 h-4" />
+                              {isPrinting ? 'Preparing...' : 'Print Folio'}
+                            </Button>
+                          </TooltipTrigger>
+                          <TooltipContent>
+                            <p>Print guest folio PDF</p>
                           </TooltipContent>
                         </Tooltip>
                       </TooltipProvider>
