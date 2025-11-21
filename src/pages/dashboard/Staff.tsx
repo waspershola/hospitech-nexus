@@ -10,7 +10,11 @@ import { StaffFormModal } from '@/modules/staff/StaffFormModal';
 import { InviteStaffModal } from '@/modules/staff/InviteStaffModal';
 import { ResetPasswordModal } from '@/modules/staff/ResetPasswordModal';
 import { PendingInvitationsWidget } from '@/modules/staff/PendingInvitationsWidget';
-import { Users, Search, Plus, Edit, UserX, Mail, KeyRound } from 'lucide-react';
+import { SetPinModal } from '@/modules/staff/SetPinModal';
+import { ChangePinModal } from '@/modules/staff/ChangePinModal';
+import { useManagerPin } from '@/hooks/useManagerPin';
+import { useAuth } from '@/contexts/AuthContext';
+import { Users, Search, Plus, Edit, UserX, Mail, KeyRound, ShieldCheck, ShieldOff, Lock } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 
@@ -26,8 +30,13 @@ export default function StaffPage() {
   const [editingStaff, setEditingStaff] = useState<Staff | undefined>();
   const [removingStaffId, setRemovingStaffId] = useState<string | null>(null);
   const [resettingPasswordStaff, setResettingPasswordStaff] = useState<Staff | null>(null);
+  const [showSetPinModal, setShowSetPinModal] = useState(false);
+  const [showChangePinModal, setShowChangePinModal] = useState(false);
+  const [resettingPinStaffId, setResettingPinStaffId] = useState<string | null>(null);
 
   const { staff, isLoading, changeStatus, removeStaff } = useStaffManagement(filters);
+  const { resetPin } = useManagerPin();
+  const { user } = useAuth();
 
   const handleEdit = (staff: Staff) => {
     setEditingStaff(staff);
@@ -51,7 +60,17 @@ export default function StaffPage() {
     }
   };
 
+  const handleResetPin = async () => {
+    if (resettingPinStaffId) {
+      await resetPin.mutateAsync(resettingPinStaffId);
+      setResettingPinStaffId(null);
+    }
+  };
+
   const supervisors = staff?.filter(s => s.role === 'supervisor' || s.role === 'manager') || [];
+  const currentStaff = staff?.find(s => s.user_id === user?.id);
+  const canManagePin = currentStaff && ['owner', 'manager', 'finance_manager', 'accounting'].includes(currentStaff.role);
+  const hasPinSet = currentStaff?.manager_pin_hash;
 
   return (
     <>
@@ -66,6 +85,21 @@ export default function StaffPage() {
             <p className="text-muted-foreground">Manage your team members and their roles</p>
           </div>
           <div className="flex gap-2">
+            {canManagePin && (
+              <>
+                {!hasPinSet ? (
+                  <Button onClick={() => setShowSetPinModal(true)} variant="outline" className="gap-2">
+                    <ShieldOff className="w-4 h-4" />
+                    Set Manager PIN
+                  </Button>
+                ) : (
+                  <Button onClick={() => setShowChangePinModal(true)} variant="outline" className="gap-2">
+                    <ShieldCheck className="w-4 h-4" />
+                    Change PIN
+                  </Button>
+                )}
+              </>
+            )}
             <Button onClick={() => setShowInviteModal(true)} variant="outline">
               <Mail className="w-4 h-4 mr-2" />
               Invite Staff
@@ -134,6 +168,7 @@ export default function StaffPage() {
                 <TableHead>Department</TableHead>
                 <TableHead>Role</TableHead>
                 <TableHead>Branch</TableHead>
+                <TableHead>PIN Status</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead>Created</TableHead>
                 <TableHead className="text-right">Actions</TableHead>
@@ -155,6 +190,15 @@ export default function StaffPage() {
                     <TableCell className="capitalize">{staffMember.department?.replace('_', ' ')}</TableCell>
                     <TableCell className="capitalize">{staffMember.role?.replace('_', ' ')}</TableCell>
                     <TableCell>{staffMember.branch || '-'}</TableCell>
+                    <TableCell>
+                      {['owner', 'manager', 'finance_manager', 'accounting'].includes(staffMember.role) ? (
+                        <Badge variant={staffMember.manager_pin_hash ? 'default' : 'secondary'}>
+                          {staffMember.manager_pin_hash ? '✓ PIN Set' : '⚠ No PIN'}
+                        </Badge>
+                      ) : (
+                        <span className="text-muted-foreground text-sm">-</span>
+                      )}
+                    </TableCell>
                     <TableCell>
                       <Badge
                         variant={staffMember.status === 'active' ? 'default' : 'secondary'}
@@ -185,6 +229,16 @@ export default function StaffPage() {
                         >
                           <KeyRound className="w-4 h-4 text-amber-600" />
                         </Button>
+                        {canManagePin && ['owner', 'manager', 'finance_manager', 'accounting'].includes(staffMember.role) && staffMember.manager_pin_hash && (
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={() => setResettingPinStaffId(staffMember.id)}
+                            title="Reset manager PIN"
+                          >
+                            <Lock className="w-4 h-4 text-purple-600" />
+                          </Button>
+                        )}
                         <Button
                           size="sm"
                           variant="ghost"
@@ -235,6 +289,18 @@ export default function StaffPage() {
         onClose={() => setResettingPasswordStaff(null)}
       />
 
+      {/* Set PIN Modal */}
+      <SetPinModal
+        open={showSetPinModal}
+        onClose={() => setShowSetPinModal(false)}
+      />
+
+      {/* Change PIN Modal */}
+      <ChangePinModal
+        open={showChangePinModal}
+        onClose={() => setShowChangePinModal(false)}
+      />
+
       {/* Remove Confirmation Dialog */}
       <AlertDialog open={!!removingStaffId} onOpenChange={() => setRemovingStaffId(null)}>
         <AlertDialogContent>
@@ -248,6 +314,24 @@ export default function StaffPage() {
             <AlertDialogCancel>Cancel</AlertDialogCancel>
             <AlertDialogAction onClick={handleRemove} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
               Remove
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Reset PIN Confirmation Dialog */}
+      <AlertDialog open={!!resettingPinStaffId} onOpenChange={() => setResettingPinStaffId(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Reset Manager PIN</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to reset this staff member's manager PIN? They will need to set a new PIN before they can approve high-risk transactions.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleResetPin}>
+              Reset PIN
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
