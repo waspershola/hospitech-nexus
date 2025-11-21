@@ -14,6 +14,69 @@ export type Database = {
   }
   public: {
     Tables: {
+      approval_logs: {
+        Row: {
+          action_reference: string | null
+          action_type: string
+          amount: number | null
+          approver_id: string
+          created_at: string | null
+          id: string
+          ip_address: string | null
+          metadata: Json | null
+          pin_attempts: number | null
+          pin_valid: boolean
+          reason: string
+          tenant_id: string
+          user_agent: string | null
+        }
+        Insert: {
+          action_reference?: string | null
+          action_type: string
+          amount?: number | null
+          approver_id: string
+          created_at?: string | null
+          id?: string
+          ip_address?: string | null
+          metadata?: Json | null
+          pin_attempts?: number | null
+          pin_valid: boolean
+          reason: string
+          tenant_id: string
+          user_agent?: string | null
+        }
+        Update: {
+          action_reference?: string | null
+          action_type?: string
+          amount?: number | null
+          approver_id?: string
+          created_at?: string | null
+          id?: string
+          ip_address?: string | null
+          metadata?: Json | null
+          pin_attempts?: number | null
+          pin_valid?: boolean
+          reason?: string
+          tenant_id?: string
+          user_agent?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "approval_logs_approver_id_fkey"
+            columns: ["approver_id"]
+            isOneToOne: false
+            referencedRelation: "staff"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "approval_logs_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       booking_charges: {
         Row: {
           amount: number
@@ -5535,9 +5598,14 @@ export type Database = {
           email: string
           full_name: string
           id: string
+          manager_pin_hash: string | null
           metadata: Json | null
           password_reset_required: boolean | null
           phone: string | null
+          pin_attempts: number | null
+          pin_last_changed: string | null
+          pin_locked_until: string | null
+          pin_set_at: string | null
           role: string | null
           status: string | null
           supervisor_id: string | null
@@ -5552,9 +5620,14 @@ export type Database = {
           email: string
           full_name: string
           id?: string
+          manager_pin_hash?: string | null
           metadata?: Json | null
           password_reset_required?: boolean | null
           phone?: string | null
+          pin_attempts?: number | null
+          pin_last_changed?: string | null
+          pin_locked_until?: string | null
+          pin_set_at?: string | null
           role?: string | null
           status?: string | null
           supervisor_id?: string | null
@@ -5569,9 +5642,14 @@ export type Database = {
           email?: string
           full_name?: string
           id?: string
+          manager_pin_hash?: string | null
           metadata?: Json | null
           password_reset_required?: boolean | null
           phone?: string | null
+          pin_attempts?: number | null
+          pin_last_changed?: string | null
+          pin_locked_until?: string | null
+          pin_set_at?: string | null
           role?: string | null
           status?: string | null
           supervisor_id?: string | null
@@ -7511,6 +7589,10 @@ export type Database = {
         Returns: Json
       }
       check_tenant_access: { Args: { _tenant_id: string }; Returns: Json }
+      clear_approval_token: {
+        Args: { p_approver_id: string; p_tenant_id: string }
+        Returns: undefined
+      }
       close_child_folio_to_master: {
         Args: { p_child_folio_id: string; p_master_folio_id: string }
         Returns: Json
@@ -7589,6 +7671,16 @@ export type Database = {
           p_transaction_id: string
         }
         Returns: Json
+      }
+      generate_approval_token: {
+        Args: {
+          p_action_reference?: string
+          p_action_type: string
+          p_amount?: number
+          p_approver_id: string
+          p_tenant_id: string
+        }
+        Returns: string
       }
       generate_folio_number: {
         Args: {
@@ -7713,6 +7805,15 @@ export type Database = {
       }
       user_has_permission: {
         Args: { _permission_key: string; _tenant_id: string; _user_id: string }
+        Returns: boolean
+      }
+      validate_approval_token: {
+        Args: {
+          p_action_type: string
+          p_approver_id: string
+          p_tenant_id: string
+          p_token: string
+        }
         Returns: boolean
       }
       validate_org_limits: {
