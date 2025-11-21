@@ -172,7 +172,7 @@ export function AssignRoomDrawer({ open, onClose, roomId, roomNumber }: AssignRo
         check_in: checkIn,
         check_out: checkOut,
         total_amount: finalTotal,
-        status: actionType === 'reserve' ? 'reserved' : 'checked_in',
+        status: 'reserved',  // FOLIO-FIX-V1: Always create reservation first
         metadata: {
           tax_breakdown: pricing ? {
             base_amount: pricing.baseAmount,
@@ -196,16 +196,50 @@ export function AssignRoomDrawer({ open, onClose, roomId, roomNumber }: AssignRo
 
       return data;
     },
-    onSuccess: (data) => {
+    onSuccess: async (data) => {
       queryClient.invalidateQueries({ queryKey: ['rooms-grid'] });
       queryClient.invalidateQueries({ queryKey: ['frontdesk-kpis'] });
       queryClient.invalidateQueries({ queryKey: ['bookings'] });
       
-      toast.success(
-        actionType === 'reserve' 
-          ? `Room ${roomNumber} reserved successfully` 
-          : `Guest checked in to Room ${roomNumber}`
-      );
+      // FOLIO-FIX-V1: If user selected "Check In Now", immediately call checkin-guest
+      if (actionType === 'checkin' && data.booking?.id) {
+        try {
+          console.log('[AssignRoomDrawer] FOLIO-FIX-V1: Calling checkin-guest for immediate occupancy');
+          
+          // Call checkin-guest edge function to create folio
+          const { data: folioResult, error: folioError } = await supabase.functions.invoke('checkin-guest', {
+            body: { 
+              booking_id: data.booking.id,
+            }
+          });
+          
+          if (folioError) throw folioError;
+          if (!folioResult?.folio?.id) throw new Error('Folio creation failed');
+          
+          // Update room status to occupied
+          await supabase
+            .from('rooms')
+            .update({ status: 'occupied' })
+            .eq('id', roomId)
+            .eq('tenant_id', tenantId);
+          
+          toast.success(`Guest checked in to Room ${roomNumber} - Folio created`);
+          console.log('[AssignRoomDrawer] FOLIO-FIX-V1: Check-in successful', {
+            booking_id: data.booking.id,
+            folio_id: folioResult.folio.id
+          });
+          
+        } catch (error) {
+          console.error('[AssignRoomDrawer] FOLIO-FIX-V1: Check-in failed', error);
+          toast.error('Booking created but check-in failed', {
+            description: 'Please check-in manually from Room Actions to create folio.',
+            duration: 8000
+          });
+        }
+      } else {
+        // Just a reservation
+        toast.success(`Room ${roomNumber} reserved successfully`);
+      }
       
       // If user wants to collect payment now, show payment dialog
       if (collectPaymentNow && data.booking) {
