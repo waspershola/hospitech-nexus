@@ -176,3 +176,6 @@ verify_jwt = true
 
 [functions.transfer-room]
 verify_jwt = true
+
+[functions.post-room-rebate]
+verify_jwt = true
