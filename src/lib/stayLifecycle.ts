@@ -112,7 +112,7 @@ export function calculateStayLifecycleState(
   }
 
   // Post-checkout - stay is complete
-  if (booking.checked_out_at) {
+  if (booking.status === 'completed') {
     return {
       state: 'post-stay',
       displayStatus: 'cleaning',
@@ -147,7 +147,7 @@ export function calculateStayLifecycleState(
   }
 
   // Expected arrival today (not yet checked in)
-  if (arrivalDate === today && !booking.checked_in_at) {
+  if (arrivalDate === today && booking.status !== 'checked_in') {
     const canCheckIn = currentTime >= checkInTime;
     return {
       state: 'expected-arrival-today',
@@ -162,7 +162,7 @@ export function calculateStayLifecycleState(
   }
 
   // Checked in - determine if in-house, departing today, or overstay
-  if (booking.checked_in_at && booking.status === 'checked_in') {
+  if (booking.status === 'checked_in') {
     // Departing today
     if (departureDate === today) {
       const isOverstay = currentTime >= checkOutTime;
