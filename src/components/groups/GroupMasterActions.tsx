@@ -1,5 +1,6 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { FileText, Mail, Printer, PlusCircle, ArrowLeftRight, XCircle } from "lucide-react";
 import { useFolioPDF } from "@/hooks/useFolioPDF";
 import { useToast } from "@/hooks/use-toast";
@@ -71,48 +72,84 @@ export function GroupMasterActions({
         {/* PDF Actions */}
         <div className="space-y-2 pb-4 border-b">
           <p className="text-xs text-muted-foreground uppercase tracking-wide">Master Folio PDF</p>
-          <Button
-            variant="outline"
-            size="sm"
-            className="w-full justify-start"
-            onClick={handleDownloadPDF}
-            disabled={isGenerating}
-          >
-            <FileText className="mr-2 h-4 w-4" />
-            {isGenerating ? "Generating..." : "Download PDF"}
-          </Button>
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="w-full justify-start"
+                  onClick={handleDownloadPDF}
+                  disabled={isGenerating}
+                >
+                  <FileText className="mr-2 h-4 w-4" />
+                  {isGenerating ? "Generating..." : "Download PDF"}
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>
+                <p>Download master folio as PDF</p>
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
           
-          <Button
-            variant="outline"
-            size="sm"
-            className="w-full justify-start"
-            onClick={handleEmailPDF}
-          >
-            <Mail className="mr-2 h-4 w-4" />
-            Email PDF
-          </Button>
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="w-full justify-start"
+                  onClick={handleEmailPDF}
+                >
+                  <Mail className="mr-2 h-4 w-4" />
+                  Email PDF
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>
+                <p>Email master folio to group leader</p>
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
           
-          <Button
-            variant="outline"
-            size="sm"
-            className="w-full justify-start"
-            onClick={handlePrintPDF}
-            disabled={isPrinting}
-          >
-            <Printer className="mr-2 h-4 w-4" />
-            {isPrinting ? "Printing..." : "Print PDF"}
-          </Button>
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="w-full justify-start"
+                  onClick={handlePrintPDF}
+                  disabled={isPrinting}
+                >
+                  <Printer className="mr-2 h-4 w-4" />
+                  {isPrinting ? "Printing..." : "Print PDF"}
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>
+                <p>Print master folio</p>
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
 
-          <Button
-            variant="outline"
-            size="sm"
-            className="w-full justify-start"
-            onClick={handleBatchPDF}
-            disabled={isGenerating || childFolios.length === 0}
-          >
-            <FileText className="mr-2 h-4 w-4" />
-            {isGenerating ? "Exporting..." : `Batch Export All (${childFolios.length})`}
-          </Button>
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="w-full justify-start"
+                  onClick={handleBatchPDF}
+                  disabled={isGenerating || childFolios.length === 0}
+                >
+                  <FileText className="mr-2 h-4 w-4" />
+                  {isGenerating ? "Exporting..." : `Batch Export All (${childFolios.length})`}
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>
+                <p>Generate PDFs for all {childFolios.length} child folios</p>
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
         </div>
 
         {/* Folio Operations */}
