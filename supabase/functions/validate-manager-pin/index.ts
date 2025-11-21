@@ -9,7 +9,8 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.46.1';
 import { z } from 'https://deno.land/x/zod@v3.22.4/mod.ts';
-import * as bcrypt from 'https://deno.land/x/bcrypt@v0.4.1/mod.ts';
+// Use bcryptjs (pure JS) instead of bcrypt (which relies on Worker API not available in Edge runtime)
+import bcrypt from 'https://esm.sh/bcryptjs@2.4.3';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -209,7 +210,7 @@ serve(async (req) => {
       staff.pin_attempts = 0;
     }
 
-    // ========== Step 7: Validate PIN using BCrypt ==========
+    // ========== Step 7: Validate PIN using BCrypt (via bcryptjs) ==========
     console.log('[PIN-VALIDATION-V1] Validating PIN...');
     const isValidPin = await bcrypt.compare(pin, staff.manager_pin_hash);
 
