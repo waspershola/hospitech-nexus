@@ -266,7 +266,7 @@ export function RoomRebateModal({
       <ManagerApprovalModal
         open={showManagerApproval}
         amount={calculatedRebate}
-        type="room_rebate"
+        type="rebate"
         actionReference={folioId}
         onApprove={(reason, approvalToken) => {
           console.log('[RoomRebateModal] REBATE-V1-PIN: Manager approved', { reason, approvalToken });

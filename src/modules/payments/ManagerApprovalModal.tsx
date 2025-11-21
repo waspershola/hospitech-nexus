@@ -12,7 +12,7 @@ import { useToast } from '@/hooks/use-toast';
 interface ManagerApprovalModalProps {
   open: boolean;
   amount: number;
-  type: 'overpayment' | 'underpayment' | 'refund' | 'write_off' | 'room_rebate' | 'force_cancel' | 'checkout_with_debt' | 'transfer_charge' | 'split_charge' | 'merge_folios' | 'reverse_transaction';
+  type: 'overpayment' | 'underpayment' | 'refund' | 'write_off' | 'rebate' | 'force_cancel' | 'checkout_with_debt' | 'transfer_charge' | 'split_charge' | 'merge_folios' | 'reverse_transaction';
   actionReference?: string;
   onApprove: (reason: string, approvalToken: string) => void;
   onReject: () => void;
@@ -84,7 +84,7 @@ export function ManagerApprovalModal({
       case 'underpayment': return 'Underpayment';
       case 'refund': return 'Refund';
       case 'write_off': return 'Write-off';
-      case 'room_rebate': return 'Room Rebate';
+      case 'rebate': return 'Room Rebate';
       case 'force_cancel': return 'Force Cancel';
       case 'checkout_with_debt': return 'Checkout with Outstanding Debt';
       case 'transfer_charge': return 'Transfer Charge';
@@ -129,7 +129,7 @@ export function ManagerApprovalModal({
             This write-off requires manager approval before processing.
           </>
         );
-      case 'room_rebate':
+      case 'rebate':
         return (
           <>
             Applying room rebate of <strong>₦{amount.toLocaleString()}</strong>.
