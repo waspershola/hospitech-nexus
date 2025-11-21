@@ -206,29 +206,32 @@ export function RoomActionDrawer({ roomId, contextDate, open, onClose, onOpenAss
     };
   }, [roomId, tenantId, queryClient]);
 
-  // Phase 7: Intelligent booking selection for overlapping bookings
+  // PHASE-3-FIX: Use identical overlap rule as RoomGrid for booking resolution
   const bookingsArray = Array.isArray(room?.bookings) ? room.bookings : room?.bookings ? [room.bookings] : [];
   
+  // Determine filter date: use contextDate if provided (By Date view), otherwise today (Room Status view)
+  const filterDate = contextDate || new Date();
+  const filterDateStr = format(filterDate, 'yyyy-MM-dd');
+  
   // Debug logging for booking resolution
-  console.log('RoomActionDrawer - Booking Resolution Debug:', {
+  console.log('DRAWER-BOOKING-DEBUG Phase-3', {
     roomId: room?.id,
     roomNumber: room?.number,
-    roomStatus: room?.status,
+    filterDate: filterDateStr,
     bookingsCount: bookingsArray.length,
-    bookings: bookingsArray.map((b: any) => ({
+    allBookings: bookingsArray.map((b: any) => ({
       id: b.id,
       status: b.status,
-      checkIn: b.check_in,
-      checkOut: b.check_out,
+      checkIn: format(new Date(b.check_in), 'yyyy-MM-dd'),
+      checkOut: format(new Date(b.check_out), 'yyyy-MM-dd'),
       guestName: b.guest?.name
-    })),
-    contextDate: contextDate ? format(contextDate, 'yyyy-MM-dd') : null
+    }))
   });
   
-  // Smart booking selection: prioritize by context date, then active bookings
+  // IDENTICAL OVERLAP RULE AS ROOMGRID: checkInDate <= viewDate AND checkOutDate >= viewDate
   const activeBooking = (() => {
     if (!bookingsArray.length) {
-      console.log('RoomActionDrawer - No bookings found for room');
+      console.log('DRAWER-BOOKING-DEBUG: No bookings found');
       return null;
     }
     
@@ -236,80 +239,48 @@ export function RoomActionDrawer({ roomId, contextDate, open, onClose, onOpenAss
     if (selectedBookingId) {
       const selected = bookingsArray.find((b: any) => b.id === selectedBookingId);
       if (selected) {
-        console.log('RoomActionDrawer - Using manually selected booking:', selected.id);
+        console.log('DRAWER-BOOKING-DEBUG: Using manually selected booking:', selected.id);
         return selected;
       }
     }
     
-    // Single booking - use it
-    if (bookingsArray.length === 1) {
-      console.log('RoomActionDrawer - Single booking found:', bookingsArray[0].id);
-      return bookingsArray[0];
-    }
-    
-    // CONTEXT DATE FILTERING: If viewing from date calendar, prioritize bookings overlapping that date
-    if (contextDate) {
-      const contextDay = new Date(contextDate);
-      contextDay.setHours(0, 0, 0, 0);
+    // Filter bookings that overlap with filterDate using IDENTICAL rule as RoomGrid
+    const overlappingBookings = bookingsArray.filter((b: any) => {
+      if (['completed', 'cancelled'].includes(b.status)) return false;
       
-      // Find bookings that overlap with the context date
-      const dateRelevantBookings = bookingsArray.filter((b: any) => {
-        const checkIn = new Date(b.check_in);
-        checkIn.setHours(0, 0, 0, 0);
-        const checkOut = new Date(b.check_out);
-        checkOut.setHours(0, 0, 0, 0);
-        
-        // Booking overlaps if: checkIn <= contextDate < checkOut
-        return checkIn <= contextDay && contextDay < checkOut;
+      const checkInDate = format(new Date(b.check_in), 'yyyy-MM-dd');
+      const checkOutDate = format(new Date(b.check_out), 'yyyy-MM-dd');
+      
+      // ROOM-STATUS-OVERLAP-V1: Same overlap rule as RoomGrid
+      return checkInDate <= filterDateStr && checkOutDate >= filterDateStr;
+    });
+    
+    console.log('DRAWER-BOOKING-DEBUG: Overlapping bookings:', {
+      overlappingCount: overlappingBookings.length,
+      selectedBookingId: overlappingBookings[0]?.id
+    });
+    
+    if (!overlappingBookings.length) return null;
+    
+    // IDENTICAL PRIORITY RULES AS ROOMGRID:
+    // Priority 1: Checked-in guests (currently occupying the room)
+    let activeBooking = overlappingBookings.find((b: any) => b.status === 'checked_in');
+    
+    // Priority 2: Arrivals today (reserved status, check-in today)
+    if (!activeBooking) {
+      activeBooking = overlappingBookings.find((b: any) => {
+        const checkInDate = format(new Date(b.check_in), 'yyyy-MM-dd');
+        return b.status === 'reserved' && checkInDate === filterDateStr;
       });
-      
-      // If we found bookings for this date, use the first one (most relevant)
-      if (dateRelevantBookings.length > 0) {
-        console.log('RoomActionDrawer - Using context date booking:', dateRelevantBookings[0].id);
-        return dateRelevantBookings[0];
-      }
     }
     
-    // FALLBACK: Multiple bookings without context date - use smart selection
-    const now = new Date();
-    now.setHours(0, 0, 0, 0);
-    
-    // Filter out bookings that have checked out or are in the past
-    const activeBookings = bookingsArray.filter((b: any) => {
-      const checkOut = new Date(b.check_out);
-      checkOut.setHours(0, 0, 0, 0);
-      return b.status !== 'checked_out' && checkOut >= now;
-    });
-    
-    if (!activeBookings.length) return bookingsArray[0]; // Fallback to any booking
-    
-    // 1. Checked-in bookings first
-    const checkedIn = activeBookings.filter((b: any) => b.status === 'checked_in');
-    if (checkedIn.length) {
-      console.log('RoomActionDrawer - Using checked-in booking:', checkedIn[0].id);
-      return checkedIn[0];
+    // Priority 3: Other overlapping bookings (reserved multi-day stays spanning today)
+    if (!activeBooking) {
+      activeBooking = overlappingBookings[0] ?? null;
     }
     
-    // 2. Reserved bookings checking in today
-    const checkingInToday = activeBookings.filter((b: any) => {
-      if (b.status !== 'reserved') return false;
-      const checkIn = new Date(b.check_in);
-      checkIn.setHours(0, 0, 0, 0);
-      return checkIn.getTime() === now.getTime();
-    });
-    if (checkingInToday.length) {
-      console.log('RoomActionDrawer - Using today check-in booking:', checkingInToday[0].id);
-      return checkingInToday[0];
-    }
-    
-    // 3. Earliest future check-in among reserved bookings
-    const upcomingBookings = activeBookings
-      .filter((b: any) => b.status === 'reserved')
-      .sort((a: any, b: any) => new Date(a.check_in).getTime() - new Date(b.check_in).getTime());
-    
-    const selectedBooking = upcomingBookings[0] || activeBookings[0];
-    console.log('RoomActionDrawer - Using fallback booking:', selectedBooking?.id);
-    return selectedBooking;
+    console.log('DRAWER-BOOKING-DEBUG: Selected booking:', activeBooking?.id);
+    return activeBooking;
   })();
   
   // Reset selected booking when room changes
