@@ -223,14 +223,14 @@ serve(async (req) => {
     
     if (isGroupBooking) {
       try {
-        // GROUP-MASTER-V4: Pass group_id as TEXT to match RPC signature
+        // GROUP-BILLING-FIX-V1-PHASE-1: Create master folio WITHOUT charge posting
+        // Charges will be posted ONCE per room at check-in time
         const group_id_text = String(enrichedMetadata.group_id);
         groupId = group_id_text;
         
-        console.log('[GROUP-MASTER-V4-CREATE] Creating master folio:', {
+        console.log('[GROUP-BILLING-FIX-V1] Creating master folio (no charges):', {
           group_id: group_id_text,
           tenant_id,
-          master_booking_id: newBooking.id,
           guest_id
         });
         
@@ -238,13 +238,12 @@ serve(async (req) => {
           .rpc('create_group_master_folio', {
             p_tenant_id: tenant_id,
             p_group_id: group_id_text,
-            p_master_booking_id: newBooking.id,
             p_guest_id: guest_id,
             p_group_name: enrichedMetadata.group_name || 'Group Booking'
           });
 
         if (masterFolioError) {
-          console.error('[GROUP-MASTER-V4-CREATE] Master folio creation FAILED:', {
+          console.error('[GROUP-BILLING-FIX-V1] Master folio creation FAILED:', {
             message: masterFolioError.message,
             code: masterFolioError.code,
             details: masterFolioError.details,
@@ -253,7 +252,7 @@ serve(async (req) => {
           throw new Error(`Master folio creation failed: ${masterFolioError.message}`);
         }
 
-        console.log('[GROUP-MASTER-V4-CREATE] Master folio created:', {
+        console.log('[GROUP-BILLING-FIX-V1] Master folio created (charges=0):', {
           success: masterFolio?.success,
           folio_id: masterFolio?.folio_id,
           folio_number: masterFolio?.folio_number,
@@ -262,75 +261,8 @@ serve(async (req) => {
         
         masterFolioResult = masterFolio;
         
-        // GROUP-MASTER-V4-CHARGE: Post initial charges to master folio (BLOCKING)
-        if (masterFolio?.success && masterFolio?.folio_id) {
-          const totalRooms = enrichedMetadata.total_rooms_in_group || 1;
-          const groupTotalCharges = total_amount * totalRooms;
-          const masterFolioId = masterFolio.folio_id;
-          
-          console.log('[GROUP-MASTER-V5.1-DIRECT] Posting charges to master folio using direct wrapper:', {
-            group_id: group_id_text,
-            tenant_id,
-            amount: groupTotalCharges,
-            total_rooms: totalRooms,
-            per_room_amount: total_amount
-          });
-          
-          // GROUP-MASTER-V5.1-DIRECT: Use direct wrapper with NO nested RPC calls
-          const { data: chargeResult, error: chargeError } = await supabase
-            .rpc('post_group_master_charge_direct', {
-              p_tenant_id: tenant_id,
-              p_group_id: group_id_text,
-              p_amount: groupTotalCharges,
-              p_description: `Group Reservation - ${totalRooms} rooms`,
-              p_reference_type: 'booking',
-              p_reference_id: newBooking.id
-            });
-          
-          if (chargeError) {
-            console.error('[GROUP-MASTER-V5.1-DIRECT] Charge posting FAILED:', chargeError);
-            
-            // ROLLBACK: Delete the master folio we just created
-            console.log('[GROUP-MASTER-V5.1-DIRECT-ROLLBACK] Deleting master folio due to charge failure');
-            await supabase
-              .from('stay_folios')
-              .delete()
-              .eq('id', masterFolio.folio_id)
-              .eq('tenant_id', tenant_id);
-            
-            throw new Error(`Failed to post charges to master folio: ${chargeError.message}`);
-          }
-          
-          if (!chargeResult?.success) {
-            console.error('[GROUP-MASTER-V5.1-DIRECT] Charge result indicates failure:', chargeResult);
-            
-            // ROLLBACK: Delete the master folio
-            console.log('[GROUP-MASTER-V5.1-DIRECT-ROLLBACK] Deleting master folio due to unsuccessful charge result');
-            await supabase
-              .from('stay_folios')
-              .delete()
-              .eq('id', masterFolio.folio_id)
-              .eq('tenant_id', tenant_id);
-            
-            throw new Error(`Failed to post charges: ${chargeResult?.error || 'Unknown error'}`);
-          }
-          
-          console.log('[GROUP-MASTER-V5.1-DIRECT] Charges posted successfully:', {
-            success: chargeResult?.success,
-            transaction_id: chargeResult?.transaction_id,
-            folio_id: chargeResult?.folio_id
-          });
-        }
-        
-        console.log('[GROUP-MASTER-V5-SUCCESS] Master folio complete:', {
-          folio_id: masterFolio.folio_id,
-          folio_number: masterFolio.folio_number,
-          charges_posted: true,
-          group_id: group_id_text
-        });
-        
       } catch (groupError: any) {
-        console.error('[GROUP-MASTER-V5-ERROR] Group booking error:', {
+        console.error('[GROUP-BILLING-FIX-V1] Group booking error:', {
           message: groupError?.message,
           stack: groupError?.stack
         });
@@ -338,15 +270,15 @@ serve(async (req) => {
       }
     }
 
-    // GROUP-MASTER-V5: Return booking with master folio info and group_id
+    // GROUP-BILLING-FIX-V1: Return booking with master folio info and group_id
     const response = {
       success: true,
       booking: newBooking,
       platform_fee: platformFeeResult,
       master_folio: masterFolioResult,
-      group_id: groupId, // GROUP-MASTER-V5: Return group_id for navigation
+      group_id: groupId,
       message: 'Booking created successfully',
-      version: 'CREATE-BOOKING-V5-WRAPPER-RPC'
+      version: 'GROUP-BILLING-FIX-V1-PHASE-1'
     };
 
     return new Response(

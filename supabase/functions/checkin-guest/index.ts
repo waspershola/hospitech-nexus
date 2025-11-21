@@ -133,10 +133,34 @@ serve(async (req) => {
 
     console.log('[checkin] Folio created successfully:', folio.id)
 
-    // GROUP-CHECKIN-V1: Link room folio to group master folio if booking is part of a group
+    // GROUP-BILLING-FIX-V1-PHASE-3: Post charges ONCE at check-in and link to master folio
     const groupId = booking.metadata?.group_id;
+    
+    // Post room charges via folio_post_charge RPC
+    console.log('[GROUP-BILLING-FIX-V1-PHASE-3] Posting room charges:', booking.total_amount);
+    try {
+      const { data: chargeResult, error: chargeError } = await supabaseServiceClient
+        .rpc('folio_post_charge', {
+          p_folio_id: folio.id,
+          p_amount: booking.total_amount || 0,
+          p_description: `Room charge - ${booking.booking_reference}`,
+          p_reference_type: 'booking',
+          p_reference_id: booking.id,
+          p_department: 'rooms'
+        });
+      
+      if (chargeError) {
+        console.error('[GROUP-BILLING-FIX-V1-PHASE-3] Charge posting failed:', chargeError);
+        // Non-blocking: folio already has total_charges set, transaction insert failed
+      } else {
+        console.log('[GROUP-BILLING-FIX-V1-PHASE-3] Charge posted:', chargeResult);
+      }
+    } catch (chargeErr) {
+      console.error('[GROUP-BILLING-FIX-V1-PHASE-3] Charge posting exception:', chargeErr);
+    }
+    
     if (groupId) {
-      console.log('[GROUP-CHECKIN-V1] Booking is part of group:', groupId, '- linking to master folio');
+      console.log('[GROUP-BILLING-FIX-V1-PHASE-3] Booking is part of group:', groupId, '- linking to master folio');
       
       try {
         // Get group master folio
@@ -147,10 +171,10 @@ serve(async (req) => {
           });
         
         if (groupError) {
-          console.error('[GROUP-CHECKIN-V1] Error fetching group master folio (non-blocking):', groupError);
+          console.error('[GROUP-BILLING-FIX-V1-PHASE-3] Error fetching group master folio (non-blocking):', groupError);
         } else if (groupData?.master_folio?.id) {
           const masterFolioId = groupData.master_folio.id;
-          console.log('[GROUP-CHECKIN-V1] Found master folio:', masterFolioId, '- linking room folio');
+          console.log('[GROUP-BILLING-FIX-V1-PHASE-3] Found master folio:', masterFolioId, '- linking room folio');
           
           // Update room folio to link to master
           const { error: linkError } = await supabaseServiceClient
@@ -159,15 +183,28 @@ serve(async (req) => {
             .eq('id', folio.id);
           
           if (linkError) {
-            console.error('[GROUP-CHECKIN-V1] Failed to link folio to master (non-blocking):', linkError);
+            console.error('[GROUP-BILLING-FIX-V1-PHASE-3] Failed to link folio to master (non-blocking):', linkError);
           } else {
-            console.log('[GROUP-CHECKIN-V1] ✅ Room folio linked to master folio');
+            console.log('[GROUP-BILLING-FIX-V1-PHASE-3] ✅ Room folio linked to master folio');
+            
+            // Sync master folio totals from all children
+            console.log('[GROUP-BILLING-FIX-V1-PHASE-3] Syncing master folio totals');
+            const { data: syncResult, error: syncError } = await supabaseServiceClient
+              .rpc('sync_master_folio_totals', {
+                p_master_folio_id: masterFolioId
+              });
+            
+            if (syncError) {
+              console.error('[GROUP-BILLING-FIX-V1-PHASE-3] Master folio sync failed (non-blocking):', syncError);
+            } else {
+              console.log('[GROUP-BILLING-FIX-V1-PHASE-3] ✅ Master folio synced:', syncResult);
+            }
           }
         } else {
-          console.warn('[GROUP-CHECKIN-V1] Master folio not found for group:', groupId);
+          console.warn('[GROUP-BILLING-FIX-V1-PHASE-3] Master folio not found for group:', groupId);
         }
       } catch (groupLinkError) {
-        console.error('[GROUP-CHECKIN-V1] Group folio linking exception (non-blocking):', groupLinkError);
+        console.error('[GROUP-BILLING-FIX-V1-PHASE-3] Group folio linking exception (non-blocking):', groupLinkError);
       }
     }
 
