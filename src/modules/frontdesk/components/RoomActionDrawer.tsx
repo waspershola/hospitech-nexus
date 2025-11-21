@@ -24,6 +24,7 @@ import { usePrintReceipt } from '@/hooks/usePrintReceipt';
 import { useReceiptSettings } from '@/hooks/useReceiptSettings';
 import { getRoomStatusNow } from '@/lib/roomAvailability';
 import { useOperationsHours } from '@/hooks/useOperationsHours';
+import { calculateStayLifecycleState, isActionAllowed } from '@/lib/stayLifecycle';
 import { ExtendStayModal } from './ExtendStayModal';
 import { TransferRoomModal } from './TransferRoomModal';
 import { AddChargeModal } from './AddChargeModal';
@@ -118,9 +119,10 @@ export function RoomActionDrawer({ roomId, contextDate, open, onClose, onOpenAss
               const checkInDate = format(new Date(b.check_in), 'yyyy-MM-dd');
               const checkOutDate = format(new Date(b.check_out), 'yyyy-MM-dd');
               
+              // DRAWER-BOOKING-FIX-V1: Include checkout-today bookings
               // Show booking if it overlaps with the filter date:
-              // 1. Checked in and still active on filter date
-              if (b.status === 'checked_in' && checkInDate <= filterDateStr && checkOutDate > filterDateStr) {
+              // 1. Checked in and still active on filter date (including checkout day)
+              if (b.status === 'checked_in' && checkInDate <= filterDateStr && checkOutDate >= filterDateStr) {
                 return true;
               }
               
@@ -298,8 +300,20 @@ export function RoomActionDrawer({ roomId, contextDate, open, onClose, onOpenAss
   // No longer need isTransitioning check since we filter bookings to TODAY only
   // If there's no activeBooking, it means the room genuinely has no TODAY-relevant booking
   
-  // Compute real-time status based on current time and operations hours
+  // DRAWER-LIFECYCLE-INTEGRATION-V1: Calculate lifecycle state
   const { data: operationsHours } = useOperationsHours();
+  
+  const lifecycle = activeBooking
+    ? calculateStayLifecycleState(
+        new Date(),
+        operationsHours?.checkInTime || '14:00',
+        operationsHours?.checkOutTime || '12:00',
+        activeBooking,
+        room
+      )
+    : null;
+  
+  // Use lifecycle display status for UI
   const computedStatus = (() => {
     if (!room) return 'available';
     
@@ -317,7 +331,12 @@ export function RoomActionDrawer({ roomId, contextDate, open, onClose, onOpenAss
       }
     }
     
-    // For today or no context date, use real-time status
+    // For today, use lifecycle display status if available
+    if (lifecycle) {
+      return lifecycle.displayStatus;
+    }
+    
+    // Fallback to legacy logic
     return getRoomStatusNow(
       room,
       activeBooking as any,
@@ -581,6 +600,7 @@ export function RoomActionDrawer({ roomId, contextDate, open, onClose, onOpenAss
     }
   };
 
+  // DRAWER-CONDITIONAL-ACTIONS-V1: Lifecycle-based action filtering
   const getActions = () => {
     if (!room) return [];
 
@@ -590,10 +610,160 @@ export function RoomActionDrawer({ roomId, contextDate, open, onClose, onOpenAss
     const isViewingToday = !contextDate || 
       format(contextDate, 'yyyy-MM-dd') === format(new Date(), 'yyyy-MM-dd');
 
-    // Use computedStatus instead of room.status for accurate, time-aware actions
+    // If we have a lifecycle state, use it for smarter actions
+    if (lifecycle && isViewingToday) {
+      const canCheckIn = isActionAllowed(lifecycle, 'check-in');
+      const canCheckout = isActionAllowed(lifecycle, 'checkout');
+      const canCollectPayment = isActionAllowed(lifecycle, 'collect-payment');
+      const canAddCharge = isActionAllowed(lifecycle, 'add-charge');
+      const canExtendStay = isActionAllowed(lifecycle, 'extend-stay');
+      const canTransferRoom = isActionAllowed(lifecycle, 'transfer-room');
+      const canAmendBooking = isActionAllowed(lifecycle, 'amend-booking');
+      const canCancelBooking = isActionAllowed(lifecycle, 'cancel-booking');
+
+      // Build actions array based on allowed actions
+      const actions = [];
+
+      // Check-in action
+      if (canCheckIn && activeBooking) {
+        actions.push({ 
+          label: 'Check-In Guest', 
+          action: handleCheckIn, 
+          variant: 'default' as const, 
+          icon: LogIn, 
+          tooltip: 'Complete guest check-in' 
+        });
+      }
+
+      // Checkout action
+      if (canCheckout && activeBooking) {
+        actions.push({ 
+          label: lifecycle.state === 'overstay' ? 'Force Checkout' : 'Check-Out', 
+          action: handleExpressCheckout, 
+          variant: lifecycle.state === 'overstay' ? 'destructive' as const : 'default' as const, 
+          icon: LogOut, 
+          tooltip: lifecycle.state === 'overstay' ? 'Checkout overstaying guest' : 'Complete guest checkout' 
+        });
+        
+        // Add Force Checkout option if there's debt
+        const hasOutstandingBalance = folio && folio.balance > 0;
+        if (hasOutstandingBalance && canForceCheckout && lifecycle.state !== 'overstay') {
+          actions.push({ 
+            label: 'Force Checkout', 
+            action: handleForceCheckout, 
+            variant: 'destructive' as const, 
+            icon: AlertTriangle, 
+            tooltip: 'Manager override - checkout with debt' 
+          });
+        }
+      }
+
+      // Extend stay
+      if (canExtendStay && activeBooking) {
+        actions.push({ 
+          label: 'Extend Stay', 
+          action: () => setExtendModalOpen(true), 
+          variant: 'outline' as const, 
+          icon: Calendar, 
+          tooltip: 'Extend checkout date' 
+        });
+      }
+
+      // Transfer room
+      if (canTransferRoom && activeBooking) {
+        actions.push({ 
+          label: 'Transfer Room', 
+          action: () => setTransferRoomOpen(true), 
+          variant: 'outline' as const, 
+          icon: MoveRight, 
+          tooltip: 'Transfer to different room' 
+        });
+      }
+
+      // Add service/charge
+      if (canAddCharge && activeBooking) {
+        actions.push({ 
+          label: lifecycle.state === 'overstay' ? 'Apply Overstay Charge' : 'Add Service', 
+          action: handleRoomService, 
+          variant: 'outline' as const, 
+          icon: Sparkles, 
+          tooltip: lifecycle.state === 'overstay' ? 'Apply overstay fees' : 'Add room service charge' 
+        });
+      }
+
+      // Collect payment
+      if (canCollectPayment && activeBooking) {
+        actions.push({ 
+          label: 'Post Payment', 
+          action: () => setQuickPaymentOpen(true), 
+          variant: 'outline' as const, 
+          icon: CreditCard, 
+          tooltip: 'Record payment' 
+        });
+      }
+
+      // Amend/View reservation
+      if (canAmendBooking && activeBooking) {
+        actions.push({ 
+          label: 'View Reservation', 
+          action: () => setAmendmentDrawerOpen(true), 
+          variant: 'outline' as const, 
+          icon: FileText, 
+          tooltip: 'View reservation details' 
+        });
+      }
+
+      // Cancel booking
+      if (canCancelBooking && activeBooking) {
+        actions.push({ 
+          label: 'Cancel Reservation', 
+          action: () => setCancelModalOpen(true), 
+          variant: 'destructive' as const, 
+          icon: AlertTriangle, 
+          tooltip: 'Cancel this reservation' 
+        });
+      }
+
+      // DND toggle (always available for occupied rooms)
+      if (lifecycle.state === 'in-house' || lifecycle.state === 'departing-today' || lifecycle.state === 'overstay') {
+        actions.push({ 
+          label: hasDND ? 'Remove DND' : 'Do Not Disturb', 
+          action: handleToggleDND, 
+          variant: hasDND ? 'secondary' : 'ghost' as const, 
+          icon: BellOff, 
+          tooltip: 'Toggle Do Not Disturb' 
+        });
+      }
+
+      // If no actions from lifecycle, show room management actions
+      if (actions.length === 0) {
+        if (lifecycle.state === 'vacant' || lifecycle.displayStatus === 'available') {
+          return [
+            { label: 'Assign Room', action: () => room && onOpenAssignDrawer?.(room.id, room.number), variant: 'default' as const, icon: UserPlus, tooltip: 'Full booking with guest details' },
+            { label: 'Walk-in Check-In', action: handleQuickCheckIn, variant: 'outline' as const, icon: LogIn, tooltip: 'Express walk-in check-in' },
+            { label: 'Set Out of Service', action: handleMarkMaintenance, variant: 'outline' as const, icon: Wrench, tooltip: 'Mark as out of service' },
+          ];
+        }
+        
+        if (lifecycle.displayStatus === 'cleaning') {
+          return [
+            { label: 'Mark Clean', action: handleMarkClean, variant: 'default' as const, icon: Sparkles, tooltip: 'Mark as clean and ready' },
+          ];
+        }
+        
+        if (lifecycle.displayStatus === 'maintenance') {
+          return [
+            { label: 'Mark as Available', action: handleMarkClean, variant: 'default' as const, icon: Sparkles, tooltip: 'Complete maintenance' },
+          ];
+        }
+      }
+
+      return actions;
+    }
+
+    // Fallback: Use old computedStatus logic if no lifecycle
     switch (computedStatus) {
       case 'available':
-        // Room is genuinely available - show new booking actions
         return [
           { label: 'Assign Room', action: () => room && onOpenAssignDrawer?.(room.id, room.number), variant: 'default' as const, icon: UserPlus, tooltip: 'Full booking with guest details' },
           { label: 'Walk-in Check-In', action: handleQuickCheckIn, variant: 'outline' as const, icon: LogIn, tooltip: 'Express walk-in check-in' },
@@ -601,10 +771,8 @@ export function RoomActionDrawer({ roomId, contextDate, open, onClose, onOpenAss
         ];
       case 'reserved':
       case 'checking_in':
-        // Reserved rooms
         if (!activeBooking) return [];
         
-        // For future dates, show informational actions only
         if (!isViewingToday) {
           return [
             { label: 'View Reservation', action: () => setAmendmentDrawerOpen(true), variant: 'default' as const, icon: FileText, tooltip: 'View reservation details' },
@@ -613,7 +781,6 @@ export function RoomActionDrawer({ roomId, contextDate, open, onClose, onOpenAss
           ];
         }
         
-        // For today, show check-in actions
         return [
           { label: 'Check-In Guest', action: handleCheckIn, variant: 'default' as const, icon: LogIn, tooltip: 'Complete guest check-in' },
           { label: 'View Reservation', action: () => setAmendmentDrawerOpen(true), variant: 'outline' as const, icon: FileText, tooltip: 'View reservation details' },
@@ -621,9 +788,9 @@ export function RoomActionDrawer({ roomId, contextDate, open, onClose, onOpenAss
         ];
       case 'occupied':
       case 'checking_out':
+      case 'departing-today':
         if (!activeBooking) return [];
         
-        // For future dates, show informational actions only
         if (!isViewingToday) {
           return [
             { label: 'View Booking', action: () => setAmendmentDrawerOpen(true), variant: 'default' as const, icon: FileText, tooltip: 'View booking details' },
@@ -631,7 +798,6 @@ export function RoomActionDrawer({ roomId, contextDate, open, onClose, onOpenAss
           ];
         }
         
-        // For today, show all checkout and service actions
         const hasOutstandingBalance = folio && folio.balance > 0;
         const actions = [
           { label: 'Check-Out', action: handleExpressCheckout, variant: 'default' as const, icon: LogOut, tooltip: 'Complete guest checkout' },
@@ -642,7 +808,6 @@ export function RoomActionDrawer({ roomId, contextDate, open, onClose, onOpenAss
           { label: hasDND ? 'Remove DND' : 'Do Not Disturb', action: handleToggleDND, variant: hasDND ? 'secondary' : 'ghost' as const, icon: BellOff, tooltip: 'Toggle Do Not Disturb' },
         ];
         
-        // Add Force Checkout ONLY if there's debt AND user has permission
         if (hasOutstandingBalance && canForceCheckout) {
           actions.splice(1, 0, { 
             label: 'Force Checkout', 
@@ -660,7 +825,7 @@ export function RoomActionDrawer({ roomId, contextDate, open, onClose, onOpenAss
           { label: 'Extend Stay', action: () => setExtendModalOpen(true), variant: 'default' as const, icon: Calendar, tooltip: 'Extend guest stay' },
           { label: 'Apply Overstay Charge', action: handleRoomService, variant: 'outline' as const, icon: CreditCard, tooltip: 'Apply overstay fees' },
           { label: 'Check-Out', action: handleExpressCheckout, variant: 'destructive' as const, icon: LogOut, tooltip: 'Force checkout' },
-          { label: 'Transfer Room', action: () => toast({ title: 'Transfer Room', description: 'Feature coming soon' }), variant: 'outline' as const, icon: UserPlus, tooltip: 'Transfer to different room' },
+          { label: 'Transfer Room', action: () => setTransferRoomOpen(true), variant: 'outline' as const, icon: MoveRight, tooltip: 'Transfer to different room' },
         ];
       case 'cleaning':
         return [
@@ -669,8 +834,6 @@ export function RoomActionDrawer({ roomId, contextDate, open, onClose, onOpenAss
       case 'maintenance':
         return [
           { label: 'Mark as Available', action: handleMarkClean, variant: 'default' as const, icon: Sparkles, tooltip: 'Complete maintenance' },
-          { label: 'Create Work Order', action: () => toast({ title: 'Work Order', description: 'Feature coming soon' }), variant: 'outline' as const, icon: Wrench, tooltip: 'Create maintenance work order' },
-          { label: 'Assign to Housekeeping', action: () => toast({ title: 'Assign Staff', description: 'Feature coming soon' }), variant: 'outline' as const, icon: Sparkles, tooltip: 'Assign housekeeping staff' },
         ];
       default:
         return [];
@@ -1036,6 +1199,26 @@ export function RoomActionDrawer({ roomId, contextDate, open, onClose, onOpenAss
                         onCheckedChange={setPrintReceipt}
                       />
                     </div>
+                  )}
+
+                  {/* DRAWER-STATUS-ALERTS-V1: Lifecycle-based status alerts */}
+                  {lifecycle && lifecycle.state === 'departing-today' && (
+                    <Alert className="border-orange-500 bg-orange-50 dark:bg-orange-950/20">
+                      <Clock className="h-4 w-4 text-orange-600" />
+                      <AlertDescription className="text-orange-700 dark:text-orange-300">
+                        <strong>Due Out Today</strong> — Checkout time: {operationsHours?.checkOutTime || '12:00'}
+                      </AlertDescription>
+                    </Alert>
+                  )}
+                  
+                  {lifecycle && lifecycle.state === 'overstay' && (
+                    <Alert variant="destructive">
+                      <AlertTriangle className="h-4 w-4" />
+                      <AlertDescription>
+                        <strong>Overstay Alert</strong> — Guest was due out at {operationsHours?.checkOutTime || '12:00'}
+                        {lifecycle.statusMessage && ` · ${lifecycle.statusMessage}`}
+                      </AlertDescription>
+                    </Alert>
                   )}
 
                   <div className="space-y-3">

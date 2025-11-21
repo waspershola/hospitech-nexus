@@ -23,6 +23,7 @@ const statusColors = {
   cleaning: 'bg-[hsl(var(--status-dirty))] text-white',
   maintenance: 'bg-[hsl(var(--status-oos))] text-white',
   overstay: 'bg-[hsl(var(--status-overstay))] text-white',
+  'departing-today': 'bg-orange-600 text-white', // DEPARTING-TODAY-BADGE-V1
   checking_in: 'bg-blue-600 text-white',
   checking_out: 'bg-purple-600 text-white',
   out_of_order: 'bg-[hsl(var(--status-oos))] text-white',
@@ -35,6 +36,7 @@ const statusBorderColors = {
   cleaning: 'border-[hsl(var(--status-dirty)/0.3)] hover:border-[hsl(var(--status-dirty))]',
   maintenance: 'border-[hsl(var(--status-oos)/0.3)] hover:border-[hsl(var(--status-oos))]',
   overstay: 'border-[hsl(var(--status-overstay)/0.3)] hover:border-[hsl(var(--status-overstay))]',
+  'departing-today': 'border-orange-600/30 hover:border-orange-600', // DEPARTING-TODAY-BADGE-V1
   checking_in: 'border-blue-600/30 hover:border-blue-600',
   checking_out: 'border-purple-600/30 hover:border-purple-600',
   out_of_order: 'border-[hsl(var(--status-oos)/0.3)] hover:border-[hsl(var(--status-oos))]',
