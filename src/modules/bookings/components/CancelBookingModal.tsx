@@ -18,6 +18,7 @@ import { Separator } from '@/components/ui/separator';
 import { AlertCircle, XCircle, Loader2, DollarSign, Info } from 'lucide-react';
 import { toast } from 'sonner';
 import { differenceInDays, format } from 'date-fns';
+import { ManagerApprovalModal } from '@/modules/payments/ManagerApprovalModal';
 
 interface CancelBookingModalProps {
   open: boolean;
@@ -52,6 +53,14 @@ export function CancelBookingModal({ open, onClose, bookingId }: CancelBookingMo
   const [customRefundPercent, setCustomRefundPercent] = useState(100);
   const [folioWarning, setFolioWarning] = useState<any>(null);
   const [forceCancel, setForceCancel] = useState(false);
+  const [showManagerApproval, setShowManagerApproval] = useState(false);
+  const [pendingCancelData, setPendingCancelData] = useState<{
+    force_cancel: boolean;
+    admin_approval: boolean;
+    cancellation_reason: string;
+    refund_policy: CancellationPolicy;
+    refund_amount: number;
+  } | null>(null);
 
   // Fetch folio for this booking
   const { data: folio } = useQuery({
@@ -160,7 +169,7 @@ export function CancelBookingModal({ open, onClose, bookingId }: CancelBookingMo
   const cancellationFee = totalPaid - refundAmount;
 
   const cancelMutation = useMutation({
-    mutationFn: async () => {
+    mutationFn: async (approvalToken?: string) => {
       if (booking?.status === 'cancelled') {
         throw new Error('Booking is already cancelled');
       }
@@ -170,7 +179,7 @@ export function CancelBookingModal({ open, onClose, bookingId }: CancelBookingMo
         throw new Error('Please provide a reason for cancellation');
       }
 
-      console.log('[cancel] Calling cancel-booking edge function')
+      console.log('[cancel] Calling cancel-booking edge function', { force_cancel: forceCancel, has_token: !!approvalToken })
 
       // Call edge function for folio validation and platform fee handling
       const { data: cancelResult, error: cancelError } = await supabase.functions.invoke('cancel-booking', {
@@ -180,7 +189,8 @@ export function CancelBookingModal({ open, onClose, bookingId }: CancelBookingMo
           admin_approval: forceCancel,
           cancellation_reason: cancellationReason,
           refund_policy: refundPolicy,
-          refund_amount: refundAmount
+          refund_amount: refundAmount,
+          approval_token: approvalToken
         }
       });
 
@@ -309,6 +319,10 @@ export function CancelBookingModal({ open, onClose, bookingId }: CancelBookingMo
       queryClient.invalidateQueries({ queryKey: ['rooms-grid'] });
       queryClient.invalidateQueries({ queryKey: ['payments'] });
       queryClient.invalidateQueries({ queryKey: ['wallets'] });
+      
+      // Reset states
+      setShowManagerApproval(false);
+      setPendingCancelData(null);
       
       toast.success(
         refundAmount > 0
@@ -572,7 +586,20 @@ export function CancelBookingModal({ open, onClose, bookingId }: CancelBookingMo
               variant="destructive"
               onClick={() => {
                 if (!cancelMutation.isPending) {
-                  cancelMutation.mutate();
+                  // If force cancel (outstanding balance), require manager approval
+                  if (folio && folio.balance > 0 && forceCancel) {
+                    setPendingCancelData({
+                      force_cancel: forceCancel,
+                      admin_approval: true,
+                      cancellation_reason: cancellationReason,
+                      refund_policy: refundPolicy,
+                      refund_amount: refundAmount
+                    });
+                    setShowManagerApproval(true);
+                  } else {
+                    // Normal cancellation without approval
+                    cancelMutation.mutate(undefined);
+                  }
                 }
               }}
               className="flex-1"
@@ -585,11 +612,30 @@ export function CancelBookingModal({ open, onClose, bookingId }: CancelBookingMo
               {cancelMutation.isPending && (
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
               )}
-              {folio && folio.balance > 0 && forceCancel ? 'Force Cancel Booking' : 'Cancel Booking'}
+              {folio && folio.balance > 0 && forceCancel ? 'Request Manager Approval' : 'Cancel Booking'}
             </Button>
           </div>
         </div>
       </DialogContent>
+
+      {/* Manager Approval Modal */}
+      <ManagerApprovalModal
+        open={showManagerApproval}
+        amount={folio?.balance || 0}
+        type="force_cancel"
+        actionReference={bookingId}
+        onApprove={(reason, approvalToken) => {
+          console.log('[CancelBookingModal] Manager approved force cancel', { reason, approvalToken });
+          if (pendingCancelData) {
+            cancelMutation.mutate(approvalToken);
+          }
+        }}
+        onReject={() => {
+          setShowManagerApproval(false);
+          setPendingCancelData(null);
+          toast.info('Force cancel cancelled - manager approval denied');
+        }}
+      />
     </Dialog>
   );
 }

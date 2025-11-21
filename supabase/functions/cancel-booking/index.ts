@@ -48,7 +48,8 @@ serve(async (req) => {
       admin_approval = false,
       cancellation_reason,
       refund_policy,
-      refund_amount
+      refund_amount,
+      approval_token
     } = await req.json()
 
     if (!booking_id) {
@@ -58,10 +59,11 @@ serve(async (req) => {
       )
     }
 
-    console.log('[CANCEL-V2] Processing cancellation:', { 
+    console.log('[CANCEL-V2-PIN] Processing cancellation:', { 
       booking_id, 
       force_cancel, 
       admin_approval,
+      has_approval_token: !!approval_token,
       user_id: user.id,
       timestamp: new Date().toISOString()
     })
@@ -120,22 +122,69 @@ serve(async (req) => {
       )
     }
 
-    // Rule 2: Force cancel requires admin approval
-    if (force_cancel && !admin_approval) {
-      console.warn('[CANCEL-V2] Force cancel attempted without approval:', {
-        user_id: user.id,
-        booking_id,
-        folio_balance: folio?.balance
-      })
-      return new Response(
-        JSON.stringify({
-          success: false,
-          error: 'ADMIN_APPROVAL_REQUIRED',
-          message: 'Force cancellation with outstanding balance requires manager approval',
-          requires_approval: true
-        }),
-        { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+    // Rule 2: Force cancel requires manager PIN approval
+    if (force_cancel) {
+      if (!approval_token) {
+        console.warn('[CANCEL-V2-PIN] Force cancel attempted without approval token:', {
+          user_id: user.id,
+          booking_id,
+          folio_balance: folio?.balance
+        })
+        return new Response(
+          JSON.stringify({
+            success: false,
+            error: 'MANAGER_APPROVAL_REQUIRED',
+            message: 'Force cancellation with outstanding balance requires manager PIN approval',
+            requires_approval: true
+          }),
+          { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        )
+      }
+
+      // Get user's tenant_id
+      const { data: userRole } = await supabaseServiceClient
+        .from('user_roles')
+        .select('tenant_id')
+        .eq('user_id', user.id)
+        .single()
+
+      if (!userRole) {
+        return new Response(
+          JSON.stringify({ success: false, error: 'User role not found' }),
+          { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        )
+      }
+
+      // Validate approval token using RPC
+      const { data: validationResult, error: validationError } = await supabaseServiceClient.rpc(
+        'validate_approval_token',
+        {
+          p_token: approval_token,
+          p_user_id: user.id,
+          p_tenant_id: userRole.tenant_id,
+          p_action_type: 'force_cancel',
+          p_action_reference: booking_id,
+          p_amount: folio?.balance || 0
+        }
       )
+
+      if (validationError) {
+        console.error('[CANCEL-V2-PIN] Token validation error:', validationError)
+        return new Response(
+          JSON.stringify({ success: false, error: 'Failed to validate approval token' }),
+          { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        )
+      }
+
+      if (!validationResult) {
+        console.warn('[CANCEL-V2-PIN] Invalid or expired approval token')
+        return new Response(
+          JSON.stringify({ success: false, error: 'Invalid or expired approval token' }),
+          { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        )
+      }
+
+      console.log('[CANCEL-V2-PIN] Manager approval validated successfully')
     }
 
     // Proceed with cancellation
@@ -185,9 +234,25 @@ serve(async (req) => {
           outstanding_balance: folio.balance,
           reason: cancellation_reason,
           admin_approval,
-          force_cancel
+          force_cancel,
+          manager_pin_approved: true,
+          version: 'CANCEL-V2-PIN'
         }
       })
+
+      // Clear the approval token after successful use
+      const { data: userRole } = await supabaseServiceClient
+        .from('user_roles')
+        .select('tenant_id')
+        .eq('user_id', user.id)
+        .single()
+
+      if (userRole && approval_token) {
+        await supabaseServiceClient.rpc('clear_approval_token', {
+          p_user_id: user.id,
+          p_tenant_id: userRole.tenant_id
+        })
+      }
     } else if (folio && folio.balance === 0) {
       console.log('[CANCEL-V2] Closing balanced folio:', {
         folio_id: folio.id,
