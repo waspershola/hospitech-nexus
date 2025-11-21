@@ -87,7 +87,7 @@ export function BulkCheckInDrawer({ open, onClose }: BulkCheckInDrawerProps) {
     enabled: !!tenantId && open,
   });
 
-  // Bulk check-in mutation
+  // Bulk check-in mutation - FOLIO-FIX-V2: Always use checkin-guest edge function
   const bulkCheckInMutation = useMutation({
     mutationFn: async (bookingIds: string[]) => {
       if (!tenantId) throw new Error('Not authenticated');
@@ -97,21 +97,17 @@ export function BulkCheckInDrawer({ open, onClose }: BulkCheckInDrawerProps) {
           const booking = arrivals.find(b => b.id === bookingId);
           if (!booking) throw new Error('Booking not found');
 
-          // Update booking status
-          const { error: bookingError } = await supabase
-            .from('bookings')
-            .update({
-              status: 'checked_in',
-              metadata: {
-                checked_in_at: new Date().toISOString(),
-                checked_in_by: 'bulk_checkin',
-              }
-            })
-            .eq('id', bookingId);
+          // FOLIO-FIX-V2: Call checkin-guest to create folio atomically
+          const { data: folioResult, error: folioError } = await supabase.functions.invoke('checkin-guest', {
+            body: { 
+              booking_id: bookingId,
+            }
+          });
 
-          if (bookingError) throw bookingError;
+          if (folioError) throw new Error(`Check-in failed: ${folioError.message}`);
+          if (!folioResult?.folio?.id) throw new Error('Folio creation failed');
 
-          // Update room status
+          // Update room status only AFTER folio is created
           const { error: roomError } = await supabase
             .from('rooms')
             .update({ 
@@ -123,7 +119,7 @@ export function BulkCheckInDrawer({ open, onClose }: BulkCheckInDrawerProps) {
 
           if (roomError) throw roomError;
 
-          return { bookingId, success: true };
+          return { bookingId, success: true, folioId: folioResult.folio.id };
         })
       );
 
