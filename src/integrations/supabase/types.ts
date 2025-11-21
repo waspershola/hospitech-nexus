@@ -7524,7 +7524,6 @@ export type Database = {
           p_group_id: string
           p_group_name: string
           p_guest_id: string
-          p_master_booking_id: string
           p_tenant_id: string
         }
         Returns: Json
@@ -7706,6 +7705,10 @@ export type Database = {
       restore_tenant: { Args: { _tenant_id: string }; Returns: Json }
       soft_delete_tenant: {
         Args: { _deleted_by: string; _tenant_id: string }
+        Returns: Json
+      }
+      sync_master_folio_totals: {
+        Args: { p_master_folio_id: string }
         Returns: Json
       }
       user_has_permission: {
