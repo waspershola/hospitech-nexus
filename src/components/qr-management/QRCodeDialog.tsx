@@ -31,16 +31,28 @@ import {
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { RoomDropdown } from '@/components/shared/RoomDropdown';
+import { useQRServicesCatalog } from '@/hooks/useQRServicesCatalog';
+import { supabase } from '@/integrations/supabase/client';
+import { Skeleton } from '@/components/ui/skeleton';
 
 const qrCodeSchema = z.object({
   display_name: z.string().min(1, 'Display name is required'),
-  assigned_to: z.string().min(1, 'Assignment is required'),
+  assigned_to: z.string().optional(),
   scope: z.enum(['room', 'common_area', 'facility', 'event']),
   services: z.array(z.string()).min(1, 'Select at least one service'),
   welcome_message: z.string().min(1, 'Welcome message is required'),
   room_id: z.string().optional(),
   expires_at: z.string().optional(),
   status: z.enum(['active', 'inactive', 'expired']).optional(),
+}).refine((data) => {
+  // Require assigned_to ONLY if scope is NOT 'room'
+  if (data.scope !== 'room') {
+    return !!data.assigned_to && data.assigned_to.length > 0;
+  }
+  return true;
+}, {
+  message: "Location name is required for non-room QR codes",
+  path: ["assigned_to"],
 });
 
 type QRCodeFormData = z.infer<typeof qrCodeSchema>;
@@ -52,21 +64,8 @@ interface QRCodeDialogProps {
   onSave: (data: QRCodeFormData) => Promise<void>;
 }
 
-const availableServices = [
-  { value: 'digital_menu', label: 'Digital Menu' },
-  { value: 'wifi', label: 'WiFi Access' },
-  { value: 'room_service', label: 'Room Service' },
-  { value: 'housekeeping', label: 'Housekeeping' },
-  { value: 'maintenance', label: 'Maintenance' },
-  { value: 'concierge', label: 'Concierge' },
-  { value: 'front_desk', label: 'Front Desk' },
-  { value: 'feedback', label: 'Share Feedback' },
-  { value: 'spa', label: 'Spa Services' },
-  { value: 'laundry', label: 'Laundry' },
-  { value: 'dining', label: 'Dining Reservations' },
-];
-
 export default function QRCodeDialog({ open, onOpenChange, qrCode, onSave }: QRCodeDialogProps) {
+  const { data: availableServices = [], isLoading: servicesLoading } = useQRServicesCatalog();
   const form = useForm<QRCodeFormData>({
     resolver: zodResolver(qrCodeSchema),
     defaultValues: {
@@ -80,6 +79,26 @@ export default function QRCodeDialog({ open, onOpenChange, qrCode, onSave }: QRC
       status: 'active',
     },
   });
+
+  // Auto-populate assigned_to from room selection when scope='room'
+  useEffect(() => {
+    const subscription = form.watch((value, { name }) => {
+      if (name === 'room_id' && value.scope === 'room' && value.room_id) {
+        // Fetch room details and auto-fill assigned_to
+        supabase
+          .from('rooms')
+          .select('number')
+          .eq('id', value.room_id)
+          .single()
+          .then(({ data }) => {
+            if (data) {
+              form.setValue('assigned_to', `Room ${data.number}`);
+            }
+          });
+      }
+    });
+    return () => subscription.unsubscribe();
+  }, [form]);
 
   useEffect(() => {
     if (qrCode) {
@@ -206,33 +225,45 @@ export default function QRCodeDialog({ open, onOpenChange, qrCode, onSave }: QRC
               render={() => (
                 <FormItem>
                   <FormLabel>Available Services</FormLabel>
-                  <div className="grid grid-cols-2 gap-3 mt-2">
-                    {availableServices.map((service) => (
-                      <FormField
-                        key={service.value}
-                        control={form.control}
-                        name="services"
-                        render={({ field }) => (
-                          <FormItem className="flex items-center space-x-2 space-y-0">
-                            <FormControl>
-                              <Checkbox
-                                checked={field.value?.includes(service.value)}
-                                onCheckedChange={(checked) => {
-                                  const updatedServices = checked
-                                    ? [...(field.value || []), service.value]
-                                    : field.value?.filter((val) => val !== service.value);
-                                  field.onChange(updatedServices);
-                                }}
-                              />
-                            </FormControl>
-                            <FormLabel className="font-normal cursor-pointer">
-                              {service.label}
-                            </FormLabel>
-                          </FormItem>
-                        )}
-                      />
-                    ))}
-                  </div>
+                  {servicesLoading ? (
+                    <div className="grid grid-cols-2 gap-3 mt-2">
+                      {[...Array(6)].map((_, i) => (
+                        <Skeleton key={i} className="h-6 w-full" />
+                      ))}
+                    </div>
+                  ) : availableServices.length === 0 ? (
+                    <p className="text-sm text-muted-foreground mt-2">
+                      No services configured. Contact your administrator to set up QR services.
+                    </p>
+                  ) : (
+                    <div className="grid grid-cols-2 gap-3 mt-2">
+                      {availableServices.map((service) => (
+                        <FormField
+                          key={service.service_key}
+                          control={form.control}
+                          name="services"
+                          render={({ field }) => (
+                            <FormItem className="flex items-center space-x-2 space-y-0">
+                              <FormControl>
+                                <Checkbox
+                                  checked={field.value?.includes(service.service_key)}
+                                  onCheckedChange={(checked) => {
+                                    const updatedServices = checked
+                                      ? [...(field.value || []), service.service_key]
+                                      : field.value?.filter((val) => val !== service.service_key);
+                                    field.onChange(updatedServices);
+                                  }}
+                                />
+                              </FormControl>
+                              <FormLabel className="font-normal cursor-pointer">
+                                {service.service_label}
+                              </FormLabel>
+                            </FormItem>
+                          )}
+                        />
+                      ))}
+                    </div>
+                  )}
                   <FormMessage />
                 </FormItem>
               )}
