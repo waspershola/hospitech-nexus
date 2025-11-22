@@ -11,8 +11,7 @@ const corsHeaders = {
 const createRequestSchema = z.object({
   action: z.literal('create_request'),
   qr_token: z.string().min(10, 'QR token too short').max(500, 'QR token too long'),
-  type: z.string().max(100).optional(),
-  service_category: z.string().min(1, 'Service category required').max(100),
+  type: z.string().min(1, 'Service type required').max(100),
   note: z.string().max(2000, 'Note too long (max 2000 characters)').optional(),
   priority: z.enum(['low', 'normal', 'high', 'urgent']).optional(),
   guest_name: z.string().max(200, 'Guest name too long').optional(),
@@ -38,8 +37,7 @@ const getMessagesSchema = z.object({
 
 interface ServiceRequest {
   qr_token: string;
-  type?: string;
-  service_category: string;
+  type: string;
   note?: string;
   priority?: 'low' | 'normal' | 'high' | 'urgent';
   guest_name?: string;
@@ -250,7 +248,7 @@ serve(async (req) => {
       // Phase 1: Enhanced validation with detailed logging
       console.log('[qr-request] Received request data:', {
         has_qr_token: !!requestData.qr_token,
-        service_category: requestData.service_category,
+        type: requestData.type,
         priority: requestData.priority,
         has_note: !!requestData.note,
       });
@@ -286,8 +284,8 @@ serve(async (req) => {
 
       // Validate service is allowed for this QR code
       const allowedServices = qr.services || [];
-      if (allowedServices.length > 0 && !allowedServices.includes(requestData.service_category)) {
-        console.error('[qr-request] Service not allowed:', requestData.service_category);
+      if (allowedServices.length > 0 && !allowedServices.includes(requestData.type)) {
+        console.error('[qr-request] Service not allowed:', requestData.type);
         return new Response(
           JSON.stringify({ success: false, error: 'Service not available for this location' }),
           { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -317,15 +315,15 @@ serve(async (req) => {
         'laundry': 'laundry',
       };
 
-      const assignedDepartment = SERVICE_DEPARTMENT_MAP[requestData.service_category.toLowerCase()];
+      const assignedDepartment = SERVICE_DEPARTMENT_MAP[requestData.type.toLowerCase()];
       
-      // Phase 1: Validate service_category mapping
+      // Phase 1: Validate type mapping
       if (!assignedDepartment) {
-        console.warn('[qr-request] Unknown service category:', requestData.service_category, '- defaulting to front_office');
+        console.warn('[qr-request] Unknown service type:', requestData.type, '- defaulting to front_office');
       }
       
       const finalDepartment = assignedDepartment || 'front_office';
-      console.log(`[qr-request] Phase 4: Routing ${requestData.service_category} → ${finalDepartment}`);
+      console.log(`[qr-request] Phase 4: Routing ${requestData.type} → ${finalDepartment}`);
 
       // Phase 2: Resolve room_id from QR code assignment
       let resolvedRoomId = qr.room_id;
@@ -515,10 +513,10 @@ serve(async (req) => {
       console.log('[idempotency] Generated transaction_ref:', requestTransactionRef);
       
       let paymentInfo: any = {
-        location: PAYMENT_LOCATION_MAP[requestData.service_category.toLowerCase()] || 'Front Desk',
+        location: PAYMENT_LOCATION_MAP[requestData.type.toLowerCase()] || 'Front Desk',
         status: 'pending',
         currency: 'NGN',
-        billable: billableServices.includes(requestData.service_category.toLowerCase()),
+        billable: billableServices.includes(requestData.type.toLowerCase()),
         transaction_ref: requestTransactionRef, // Store for future payment collection
       };
       
@@ -528,7 +526,7 @@ serve(async (req) => {
       }
       
       console.log('[qr-request] Using payment subtotal from frontend:', {
-        service_category: requestData.service_category,
+        type: requestData.type,
         subtotal: paymentInfo.subtotal,
         billable: paymentInfo.billable
       });
@@ -537,8 +535,7 @@ serve(async (req) => {
       const requestPayload = {
         tenant_id: qr.tenant_id,
         room_id: resolvedRoomId,
-        type: requestData.type || requestData.service_category,
-        service_category: requestData.service_category,
+        type: requestData.type,
         note: requestData.note || '',
         status: 'pending',
         priority: requestData.priority,
@@ -570,7 +567,7 @@ serve(async (req) => {
       
       console.log('[qr-request] Inserting request with payload:', {
         tenant_id: requestPayload.tenant_id,
-        service_category: requestPayload.service_category,
+        type: requestPayload.type,
         priority: requestPayload.priority,
         assigned_department: requestPayload.assigned_department,
         payment_amount: paymentInfo.amount,
@@ -696,7 +693,7 @@ serve(async (req) => {
           const { data: chargeResult, error: chargeError } = await supabase.rpc('folio_post_charge', {
             p_folio_id: attachedFolioId,
             p_amount: paymentInfo.subtotal,
-            p_description: `${requestData.service_category}: ${requestData.note || 'Service Request'}`,
+            p_description: `${requestData.type}: ${requestData.note || 'Service Request'}`,
             p_reference_type: 'request',
             p_reference_id: newRequest.id,
             p_department: finalDepartment
@@ -752,7 +749,7 @@ serve(async (req) => {
                 folio_id: attachedFolioId,
                 request_id: newRequest.id,
                 amount: paymentInfo.subtotal,
-                description: `${requestData.service_category}: ${requestData.note || 'Service Request'}`
+                description: `${requestData.type}: ${requestData.note || 'Service Request'}`
               }
             });
             
@@ -805,7 +802,7 @@ serve(async (req) => {
             supabase,
             qr.tenant_id,
             newRequest.id,
-            requestData.service_category,
+            requestData.type,
             paymentInfo.subtotal
           );
           console.log('[platform-fee] QR fee calculation result:', feeResult);
