@@ -85,16 +85,14 @@ serve(async (req) => {
       throw new Error('Manager approval required for room rebates');
     }
 
-    // Validate approval token
+    // Validate approval token using correct function signature
     const { data: validationResult, error: validationError } = await supabase.rpc(
       'validate_approval_token',
       {
         p_token: approval_token,
-        p_user_id: user.id,
-        p_tenant_id: userRole.tenant_id,
-        p_action_type: 'room_rebate',
-        p_action_reference: folio_id,
-        p_amount: finalRebateAmount
+        p_action_type: 'rebate',
+        p_approver_id: user.id,
+        p_tenant_id: userRole.tenant_id
       }
     );
 
