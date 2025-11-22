@@ -307,7 +307,7 @@ export function QRRequestDrawer({ open, onOpenChange }: QRRequestDrawerProps) {
           request_id: selectedRequest.id,
           tenant_id: tenantId,
           amount,
-          service_category: selectedRequest.type,
+          type: selectedRequest.type,
           description: `${selectedRequest.type} - QR Request`,
         },
       });
@@ -355,7 +355,7 @@ export function QRRequestDrawer({ open, onOpenChange }: QRRequestDrawerProps) {
     // Enhanced logging for debugging payment issues
     console.log('[Payment Collection] QR-PAYMENT-AUTO-FOLIO-V1 - Starting payment collection:', {
       request_id: selectedRequest.id,
-      service_category: selectedRequest.type,
+      type: selectedRequest.type,
       location_id: selectedLocationId,
       provider_id: selectedProviderId,
       payment_info: selectedRequest.metadata?.payment_info,
@@ -539,7 +539,7 @@ export function QRRequestDrawer({ open, onOpenChange }: QRRequestDrawerProps) {
               stay_folio_id: selectedRequest.stay_folio_id,
               metadata: {
                 request_id: selectedRequest.id,
-                service_category: selectedRequest.type,
+                type: selectedRequest.type,
                 qr_payment: true
               }
             })
@@ -575,7 +575,7 @@ export function QRRequestDrawer({ open, onOpenChange }: QRRequestDrawerProps) {
           body: {
             request_id: selectedRequest.id,
             tenant_id: selectedRequest.tenant_id,
-            service_category: selectedRequest.type,
+            type: selectedRequest.type,
             amount: amount,
             payment_location: selectedLocation?.name,
             payment_method: selectedProvider?.name,
@@ -1362,7 +1362,7 @@ export function QRRequestDrawer({ open, onOpenChange }: QRRequestDrawerProps) {
                         </CollapsibleTrigger>
                         <CollapsibleContent className="mt-2">
                           <div className="grid grid-cols-2 gap-2">
-                            {getQuickReplyTemplates(selectedRequest.service_category).map((template, idx) => (
+                            {getQuickReplyTemplates(selectedRequest.type).map((template, idx) => (
                               <Button
                                 key={idx}
                                 size="sm"
@@ -1386,7 +1386,7 @@ export function QRRequestDrawer({ open, onOpenChange }: QRRequestDrawerProps) {
                         <div className="flex items-center justify-between mb-2">
                           <div>
                             <p className="text-sm font-medium capitalize">
-                              {requestContext.service_category.replace('_', ' ')}
+                              {requestContext.type.replace('_', ' ')}
                             </p>
                             {requestContext.room && (
                               <p className="text-xs text-muted-foreground">
@@ -1605,7 +1605,7 @@ function RequestCard({ request, isSelected, onClick, orderDetails, isLoading }: 
       const reqData = orderDetails.data;
       const meta = reqData.metadata || {};
 
-      switch (reqData.service_category) {
+      switch (reqData.type) {
         case 'spa':
           return (
             <div className="space-y-1 mt-2 p-2 bg-purple-500/5 rounded border border-purple-500/20">
@@ -1706,7 +1706,7 @@ function RequestCard({ request, isSelected, onClick, orderDetails, isLoading }: 
         <div className="flex-1">
           <div className="flex items-center gap-2 mb-1">
             <Badge variant="secondary" className="text-xs">
-              {request.service_category?.replace('_', ' ')}
+              {request.type?.replace('_', ' ')}
             </Badge>
             <Icon className={`h-3 w-3 ${config.color}`} />
           </div>

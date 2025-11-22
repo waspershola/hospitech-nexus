@@ -9,7 +9,6 @@ interface StaffRequest {
   guest_id: string | null;
   room_id: string | null;
   type: string;
-  service_category: string;
   note: string;
   status: string;
   priority: string;

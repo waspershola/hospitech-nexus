@@ -14,7 +14,7 @@ interface ChatMessage {
 }
 
 interface RequestContext {
-  service_category: string;
+  type: string;
   status: string;
   room?: { number: string };
   priority: string;
@@ -33,7 +33,7 @@ export function useStaffChat(requestId: string | null) {
     try {
       const { data, error } = await supabase
         .from('requests')
-        .select('service_category, status, priority, room:rooms(number)')
+        .select('type, status, priority, room:rooms(number)')
         .eq('id', requestId)
         .single();
 
