@@ -100,6 +100,7 @@ export function QRLaundryService() {
       const { data: request, error } = await supabase.functions.invoke('qr-request', {
         body: {
           action: 'create_request',
+          type: 'laundry',
           qr_token: token,
           service_category: 'laundry',
           note: `Laundry Service: ${cart.length} items - ${items.map(i => `${i.quantity}x ${i.item_name} (${SERVICE_TYPE_LABELS[i.service_type]})`).join(', ')}${specialInstructions ? ` | Instructions: ${specialInstructions}` : ''}`,

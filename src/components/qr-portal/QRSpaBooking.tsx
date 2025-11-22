@@ -78,6 +78,7 @@ export function QRSpaBooking() {
       const { data: request, error } = await supabase.functions.invoke('qr-request', {
         body: {
           action: 'create_request',
+          type: 'spa',
           qr_token: token,
           service_category: 'spa',
           note: `Spa Booking: ${selectedService.service_name} (${selectedService.duration})${preferredDateTime ? ` | Preferred: ${preferredDateTime}` : ''}${specialRequests ? ` | Requests: ${specialRequests}` : ''}`,
