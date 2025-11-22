@@ -5,6 +5,7 @@ import { User, Shield, Info, AlertTriangle } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { formatPlatformRole } from '@/lib/roleFormatter';
+import { ManagerPinSection } from '@/components/settings/ManagerPinSection';
 
 export default function Settings() {
   const { user, role, tenantId, tenantName, platformRole } = useAuth();
@@ -43,7 +44,7 @@ export default function Settings() {
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Account Information */}
-        <Card className="p-6">
+        <Card className="p-6" id="account-info">
           <div className="flex items-center gap-3 mb-6">
             <div className="p-2 rounded-lg bg-primary/10">
               <User className="w-5 h-5 text-primary" />
@@ -128,6 +129,9 @@ export default function Settings() {
             )}
           </div>
         </Card>
+
+        {/* Manager PIN Section */}
+        <ManagerPinSection />
       </div>
 
       {/* Role Permissions Info */}

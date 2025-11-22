@@ -315,12 +315,19 @@ serve(async (req) => {
       });
 
     if (tokenError || !approvalToken) {
-      console.error('[PIN-VALIDATION-V1] Token generation failed:', tokenError);
+      console.error('[PIN-VALIDATION-V1] Token generation failed:', {
+        error: tokenError,
+        code: tokenError?.code,
+        message: tokenError?.message,
+        details: tokenError?.details,
+        hint: tokenError?.hint
+      });
       return new Response(
         JSON.stringify({
           valid: false,
           error: 'TOKEN_GENERATION_FAILED',
-          message: 'Failed to generate approval token'
+          message: 'Failed to generate approval token. Please contact system administrator.',
+          details: tokenError?.message || 'Unknown error during token generation'
         }),
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );

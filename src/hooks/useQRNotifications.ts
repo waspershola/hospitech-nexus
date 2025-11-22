@@ -4,6 +4,8 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
 
+const DEBUG_QR_NOTIFICATIONS = false;
+
 export function useQRNotifications() {
   const { playRingtone, permissionGranted } = useRingtone();
   const { tenantId } = useAuth();
@@ -11,14 +13,18 @@ export function useQRNotifications() {
   useEffect(() => {
     if (!tenantId) return;
 
-    console.log('[useQRNotifications] Setting up notification listeners for tenant:', tenantId);
+    if (DEBUG_QR_NOTIFICATIONS) {
+      console.log('[useQRNotifications] Setting up notification listeners for tenant:', tenantId);
+    }
 
     const channel = supabase
       .channel(`qr-notifications-${tenantId}`)
       // Phase 6: Listen to Realtime broadcast from edge function
       .on('broadcast', { event: 'new_qr_request' }, (payload) => {
         const data = payload.payload;
-        console.log('[useQRNotifications] Realtime broadcast received:', data);
+        if (DEBUG_QR_NOTIFICATIONS) {
+          console.log('[useQRNotifications] Realtime broadcast received:', data);
+        }
         
         if (data.request) {
           const request = data.request;
@@ -43,7 +49,9 @@ export function useQRNotifications() {
       }, (payload) => {
         const request = payload.new as any;
         
-        console.log('[useQRNotifications] Postgres fallback: New QR request detected:', request.id);
+        if (DEBUG_QR_NOTIFICATIONS) {
+          console.log('[useQRNotifications] Postgres fallback: New QR request detected:', request.id);
+        }
         
         // Play ringtone if permission granted
         if (permissionGranted) {
@@ -63,7 +71,9 @@ export function useQRNotifications() {
       }, (payload) => {
         const message = payload.new as any;
         
-        console.log('[useQRNotifications] New inbound message detected:', message.id);
+        if (DEBUG_QR_NOTIFICATIONS) {
+          console.log('[useQRNotifications] New inbound message detected:', message.id);
+        }
         
         // Play ringtone if permission granted
         if (permissionGranted) {
@@ -76,11 +86,20 @@ export function useQRNotifications() {
         });
       })
       .subscribe((status) => {
-        console.log('[useQRNotifications] Subscription status:', status);
+        // Only log errors and channel errors
+        if (status === 'CHANNEL_ERROR') {
+          console.error('[useQRNotifications] Channel error - connection failed');
+        } else if (status === 'TIMED_OUT') {
+          console.warn('[useQRNotifications] Connection timed out - will retry');
+        } else if (DEBUG_QR_NOTIFICATIONS) {
+          console.log('[useQRNotifications] Subscription status:', status);
+        }
       });
 
     return () => {
-      console.log('[useQRNotifications] Cleaning up notification listeners');
+      if (DEBUG_QR_NOTIFICATIONS) {
+        console.log('[useQRNotifications] Cleaning up notification listeners');
+      }
       supabase.removeChannel(channel);
     };
   }, [tenantId, permissionGranted, playRingtone]);
