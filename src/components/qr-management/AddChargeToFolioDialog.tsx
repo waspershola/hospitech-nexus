@@ -86,7 +86,7 @@ export function AddChargeToFolioDialog({
       const { data, error } = await supabase.rpc('folio_post_charge', {
         p_folio_id: selectedFolioId,
         p_amount: amount,
-        p_description: `${request.service_category} service - QR Request`,
+        p_description: `${request.type} service - QR Request`,
         p_reference_type: 'qr_request',
         p_reference_id: request.id,
         p_department: request.assigned_department || 'general',
@@ -134,7 +134,7 @@ export function AddChargeToFolioDialog({
           <Alert>
             <AlertCircle className="h-4 w-4" />
             <AlertDescription>
-              Select which guest folio to charge for this {request.service_category} request.
+              Select which guest folio to charge for this {request.type} request.
             </AlertDescription>
           </Alert>
 

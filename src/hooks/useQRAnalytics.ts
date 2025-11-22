@@ -42,7 +42,7 @@ export function useQRAnalytics(dateRange?: { from: Date; to: Date }) {
       // PHASE-5-ANALYTICS-V1: Fetch requests with responded_at for SLA tracking
       const { data: requests, error: requestsError } = await supabase
         .from('requests')
-        .select('id, service_category, status, priority, created_at, completed_at, responded_at, metadata')
+        .select('id, type, status, priority, created_at, completed_at, responded_at, metadata')
         .eq('tenant_id', tenantId)
         .gte('created_at', fromDate.toISOString())
         .lte('created_at', toDate.toISOString())
@@ -69,7 +69,7 @@ export function useQRAnalytics(dateRange?: { from: Date; to: Date }) {
       // Group by service category
       const serviceMap = new Map<string, number>();
       requests?.forEach(r => {
-        const service = r.service_category || 'other';
+        const service = r.type || 'other';
         serviceMap.set(service, (serviceMap.get(service) || 0) + 1);
       });
       const requestsByService = Array.from(serviceMap.entries())
@@ -112,7 +112,7 @@ export function useQRAnalytics(dateRange?: { from: Date; to: Date }) {
       // Top services with avg response time
       const serviceResponseMap = new Map<string, { count: number; totalTime: number }>();
       completedRequests.forEach(r => {
-        const service = r.service_category || 'other';
+        const service = r.type || 'other';
         const created = new Date(r.created_at).getTime();
         const completed = new Date(r.completed_at!).getTime();
         const responseTime = (completed - created) / (1000 * 60); // minutes

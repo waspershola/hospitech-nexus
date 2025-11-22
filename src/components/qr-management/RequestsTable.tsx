@@ -119,19 +119,19 @@ export default function RequestsTable({
               <TableCell>
                 <div className="space-y-1">
                   <div className="flex items-center gap-2">
-                    {request.service_category === 'menu_order' && (
+                    {request.type === 'menu_order' && (
                       <Badge variant="secondary" className="gap-1">
                         <UtensilsCrossed className="h-3 w-3" />
                         Menu Order
                       </Badge>
                     )}
                     <span className="font-medium capitalize">
-                      {request.service_category.replace('_', ' ')}
+                      {request.type.replace('_', ' ')}
                     </span>
                   </div>
                   {request.note && (
                     <div className="text-sm text-muted-foreground line-clamp-1">
-                      {request.service_category === 'housekeeping' 
+                      {request.type === 'housekeeping'
                         ? `${JSON.parse(request.note).length} services selected`
                         : request.note}
                     </div>

@@ -73,7 +73,7 @@ export default function StaffChatDialog({
             </div>
             <div className="flex items-center gap-2 text-sm">
               <Badge variant="outline" className="capitalize">
-                {request.service_category.replace('_', ' ')}
+                {request.type.replace('_', ' ')}
               </Badge>
               {request.room?.number && (
                 <span>Room {request.room.number}</span>

@@ -86,9 +86,9 @@ export function QRRequestDrawer({ open, onOpenChange }: QRRequestDrawerProps) {
 
   // Fetch order details if this is a menu/room service request
   const { data: orderDetails, isLoading: orderLoading } = useOrderDetails(
-    (selectedRequest?.service_category === 'digital_menu' || 
-     selectedRequest?.service_category === 'menu_order' || 
-     selectedRequest?.service_category === 'room_service') 
+    (selectedRequest?.type === 'digital_menu' || 
+     selectedRequest?.type === 'menu_order' || 
+     selectedRequest?.type === 'room_service') 
       ? selectedRequest?.id 
       : undefined
   );
@@ -170,7 +170,7 @@ export function QRRequestDrawer({ open, onOpenChange }: QRRequestDrawerProps) {
   // Auto-select payment location based on service category
   useEffect(() => {
     if (selectedRequest && !selectedLocationId) {
-      const serviceCategory = selectedRequest.service_category;
+      const serviceCategory = selectedRequest.type;
       const dashboardName = SERVICE_TO_DASHBOARD_MAP[serviceCategory];
       if (dashboardName) {
         const defaultLocationId = getDefaultLocation(dashboardName);
@@ -307,8 +307,8 @@ export function QRRequestDrawer({ open, onOpenChange }: QRRequestDrawerProps) {
           request_id: selectedRequest.id,
           tenant_id: tenantId,
           amount,
-          service_category: selectedRequest.service_category,
-          description: `${selectedRequest.service_category} - QR Request`,
+          service_category: selectedRequest.type,
+          description: `${selectedRequest.type} - QR Request`,
         },
       });
 
@@ -355,7 +355,7 @@ export function QRRequestDrawer({ open, onOpenChange }: QRRequestDrawerProps) {
     // Enhanced logging for debugging payment issues
     console.log('[Payment Collection] QR-PAYMENT-AUTO-FOLIO-V1 - Starting payment collection:', {
       request_id: selectedRequest.id,
-      service_category: selectedRequest.service_category,
+      service_category: selectedRequest.type,
       location_id: selectedLocationId,
       provider_id: selectedProviderId,
       payment_info: selectedRequest.metadata?.payment_info,
@@ -437,7 +437,7 @@ export function QRRequestDrawer({ open, onOpenChange }: QRRequestDrawerProps) {
       console.log('[Payment Collection] Payment metadata updated successfully');
 
       // Send payment confirmation message to guest
-      const serviceName = selectedRequest.service_category?.replace('_', ' ').toUpperCase();
+      const serviceName = selectedRequest.type?.replace('_', ' ').toUpperCase();
       
       // For menu/room service orders, include item details
       let receiptMessage = `✅ Payment Received\n\n${serviceName} Payment`;
@@ -533,13 +533,13 @@ export function QRRequestDrawer({ open, onOpenChange }: QRRequestDrawerProps) {
               status: 'completed',
               transaction_ref: transactionRef,
               recorded_by: user.id,
-              department: selectedRequest.assigned_department || selectedRequest.service_category,
+              department: selectedRequest.assigned_department || selectedRequest.type,
               location_id: selectedLocationId,
               provider_id: selectedProviderId,
               stay_folio_id: selectedRequest.stay_folio_id,
               metadata: {
                 request_id: selectedRequest.id,
-                service_category: selectedRequest.service_category,
+                service_category: selectedRequest.type,
                 qr_payment: true
               }
             })
@@ -575,7 +575,7 @@ export function QRRequestDrawer({ open, onOpenChange }: QRRequestDrawerProps) {
           body: {
             request_id: selectedRequest.id,
             tenant_id: selectedRequest.tenant_id,
-            service_category: selectedRequest.service_category,
+            service_category: selectedRequest.type,
             amount: amount,
             payment_location: selectedLocation?.name,
             payment_method: selectedProvider?.name,
@@ -777,7 +777,7 @@ export function QRRequestDrawer({ open, onOpenChange }: QRRequestDrawerProps) {
                   <div className="flex items-start justify-between">
                     <div>
                       <h3 className="font-semibold text-lg capitalize">
-                        {selectedRequest.service_category?.replace('_', ' ')}
+                        {selectedRequest.type?.replace('_', ' ')}
                       </h3>
                       <p className="text-sm text-muted-foreground">
                         {format(new Date(selectedRequest.created_at), 'MMM d, h:mm a')}
@@ -819,9 +819,9 @@ export function QRRequestDrawer({ open, onOpenChange }: QRRequestDrawerProps) {
                     )}
 
                     {/* Order Details Section */}
-                    {(selectedRequest.service_category === 'digital_menu' || 
-                      selectedRequest.service_category === 'menu_order' || 
-                      selectedRequest.service_category === 'room_service') && (
+                    {(selectedRequest.type === 'digital_menu' || 
+                      selectedRequest.type === 'menu_order' || 
+                      selectedRequest.type === 'room_service') && (
                       <div>
                         {orderLoading ? (
                           <div className="flex items-center justify-center py-4">
@@ -998,7 +998,7 @@ export function QRRequestDrawer({ open, onOpenChange }: QRRequestDrawerProps) {
                     <RequestFolioLink request={selectedRequest} />
                     
                     {/* Amount Adjustment for Dining Reservations */}
-                    {selectedRequest.service_category === 'dining_reservation' &&
+                    {selectedRequest.type === 'dining_reservation' &&
                      selectedRequest.metadata?.payment_info?.billable &&
                      selectedRequest.metadata?.payment_info?.amount === null &&
                      selectedRequest.metadata?.payment_info?.status !== 'paid' && (
@@ -1055,7 +1055,7 @@ export function QRRequestDrawer({ open, onOpenChange }: QRRequestDrawerProps) {
                     )}
 
                     {/* Payment Collection for Dining Reservations (after amount is set) */}
-                    {selectedRequest.service_category === 'dining_reservation' &&
+                    {selectedRequest.type === 'dining_reservation' &&
                      selectedRequest.metadata?.payment_info?.billable &&
                      selectedRequest.metadata?.payment_info?.amount !== null &&
                      selectedRequest.metadata?.payment_info?.status !== 'paid' && (
@@ -1138,7 +1138,7 @@ export function QRRequestDrawer({ open, onOpenChange }: QRRequestDrawerProps) {
                     )}
 
                     {/* Payment Collection for Spa Services */}
-                    {selectedRequest.service_category === 'spa' &&
+                    {selectedRequest.type === 'spa' &&
                      selectedRequest.metadata?.payment_info?.billable &&
                      selectedRequest.metadata?.payment_info?.status !== 'paid' && (
                       <div className="border border-border rounded-lg p-4 space-y-3">
@@ -1206,7 +1206,7 @@ export function QRRequestDrawer({ open, onOpenChange }: QRRequestDrawerProps) {
                     )}
 
                     {/* Payment Collection for Laundry Services */}
-                    {selectedRequest.service_category === 'laundry' &&
+                    {selectedRequest.type === 'laundry' &&
                      selectedRequest.metadata?.payment_info?.billable &&
                      selectedRequest.metadata?.payment_info?.status !== 'paid' && (
                       <div className="border border-border rounded-lg p-4 space-y-3">
@@ -1275,8 +1275,8 @@ export function QRRequestDrawer({ open, onOpenChange }: QRRequestDrawerProps) {
 
                     {/* Payment Collected Confirmation (for all services) */}
                     {selectedRequest.metadata?.payment_info?.status === 'paid' &&
-                     selectedRequest.service_category !== 'digital_menu' &&
-                     selectedRequest.service_category !== 'room_service' && (
+                     selectedRequest.type !== 'digital_menu' &&
+                     selectedRequest.type !== 'room_service' && (
                       <div className="space-y-2 p-3 bg-green-500/10 rounded-lg border border-green-500/20">
                         <div className="flex items-center gap-2">
                           <CheckCircle2 className="h-4 w-4 text-green-600" />

@@ -45,7 +45,7 @@ export function useNotifications() {
             id: `req-${newRequest.id}-${Date.now()}`,
             type: 'new_request',
             title: 'New Guest Request',
-            message: `${newRequest.service_category.replace('_', ' ')} request from ${guestName}`,
+            message: `${newRequest.type.replace('_', ' ')} request from ${guestName}`,
             request_id: newRequest.id,
             read: false,
             created_at: newRequest.created_at,
@@ -96,7 +96,7 @@ export function useNotifications() {
             // Fetch request details
             const { data: request } = await supabase
               .from('requests')
-              .select('service_category, metadata')
+              .select('type, metadata')
               .eq('id', requestId)
               .single();
 

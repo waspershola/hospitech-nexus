@@ -36,7 +36,7 @@ export function RequestDetailsDrawer({
   };
 
   const renderServiceDetails = () => {
-    switch (request.service_category) {
+    switch (request.type) {
       case 'spa':
         return <SpaBookingDetails metadata={request.metadata || {}} />;
       
@@ -78,7 +78,7 @@ export function RequestDetailsDrawer({
         <SheetHeader>
           <SheetTitle className="flex items-center justify-between">
             <span className="capitalize">
-              {request.service_category?.replace(/_/g, ' ')} Request
+              {request.type?.replace(/_/g, ' ')} Request
             </span>
             {getStatusBadge(request.status)}
           </SheetTitle>

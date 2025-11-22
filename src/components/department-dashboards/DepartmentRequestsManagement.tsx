@@ -143,7 +143,7 @@ export function DepartmentRequestsManagement({
         onUpdateStatus={updateRequestStatus}
         onViewOrder={(request) => {
           // Route to correct drawer based on service type
-          if (['digital_menu', 'room_service'].includes(request.service_category)) {
+          if (['digital_menu', 'room_service'].includes(request.type)) {
             setSelectedOrder(request);
           } else {
             setSelectedRequestDetails(request);

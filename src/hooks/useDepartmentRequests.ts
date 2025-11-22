@@ -12,7 +12,6 @@ export interface DepartmentRequest {
   guest_id: string | null;
   room_id: string | null;
   type: string;
-  service_category: string;
   note: string;
   status: string;
   priority: string;
@@ -111,7 +110,7 @@ export function useDepartmentRequests(department?: string) {
           // Show notification
           const newRequest = payload.new as DepartmentRequest;
           toast.info('New Request', {
-            description: `${newRequest.service_category} - ${newRequest.metadata?.guest_name || 'Guest'}`,
+            description: `${newRequest.type} - ${newRequest.metadata?.guest_name || 'Guest'}`,
           });
           
           // Play notification sound

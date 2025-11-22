@@ -92,8 +92,7 @@ export function QRDiningReservation() {
         .insert({
           tenant_id: qrData?.tenant_id,
           qr_token: token,
-          type: 'dining',
-          service_category: 'dining_reservation',
+          type: 'dining_reservation',
           assigned_department: 'restaurant',
           note: `Dining Reservation: ${guestName} - ${numberOfGuests} guests on ${reservationDate} at ${reservationTime}${specialRequests ? ` | Requests: ${specialRequests}` : ''}`,
           priority: 'normal',
