@@ -4590,6 +4590,84 @@ export type Database = {
           },
         ]
       }
+      qr_folio_matching_log: {
+        Row: {
+          created_at: string
+          failure_reason: string | null
+          guest_contact: string | null
+          id: string
+          match_method: string | null
+          match_success: boolean
+          matched_folio_id: string | null
+          qr_token: string
+          request_id: string | null
+          room_id: string | null
+          tenant_id: string
+        }
+        Insert: {
+          created_at?: string
+          failure_reason?: string | null
+          guest_contact?: string | null
+          id?: string
+          match_method?: string | null
+          match_success?: boolean
+          matched_folio_id?: string | null
+          qr_token: string
+          request_id?: string | null
+          room_id?: string | null
+          tenant_id: string
+        }
+        Update: {
+          created_at?: string
+          failure_reason?: string | null
+          guest_contact?: string | null
+          id?: string
+          match_method?: string | null
+          match_success?: boolean
+          matched_folio_id?: string | null
+          qr_token?: string
+          request_id?: string | null
+          room_id?: string | null
+          tenant_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "qr_folio_matching_log_matched_folio_id_fkey"
+            columns: ["matched_folio_id"]
+            isOneToOne: false
+            referencedRelation: "stay_folios"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "qr_folio_matching_log_request_id_fkey"
+            columns: ["request_id"]
+            isOneToOne: false
+            referencedRelation: "requests"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "qr_folio_matching_log_room_id_fkey"
+            columns: ["room_id"]
+            isOneToOne: false
+            referencedRelation: "rooms"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "qr_folio_matching_log_room_id_fkey"
+            columns: ["room_id"]
+            isOneToOne: false
+            referencedRelation: "v_rooms"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "qr_folio_matching_log_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       quick_reply_templates: {
         Row: {
           created_at: string
