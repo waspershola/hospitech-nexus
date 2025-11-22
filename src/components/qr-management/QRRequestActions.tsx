@@ -17,6 +17,7 @@ import { PaymentForm } from '@/modules/payments/PaymentForm';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { ManagerApprovalModal } from '@/modules/payments/ManagerApprovalModal';
 import { useQueryClient } from '@tanstack/react-query';
+import { AddChargeToFolioDialog } from './AddChargeToFolioDialog';
 
 interface QRRequestActionsProps {
   request: any;
@@ -30,8 +31,12 @@ export function QRRequestActions({ request, onStatusUpdate, onClose }: QRRequest
   const [isUpdating, setIsUpdating] = useState(false);
   const [showPaymentForm, setShowPaymentForm] = useState(false);
   const [showComplimentaryApproval, setShowComplimentaryApproval] = useState(false);
+  const [showAddCharge, setShowAddCharge] = useState(false);
+  const [selectedFolioId, setSelectedFolioId] = useState<string | null>(null);
 
   const isAssignedToMe = request.assigned_to === user?.id;
+  const isLocationQR = !request.metadata?.folio_id; // Location QRs don't have auto-attached folio
+  const hasCharge = request.metadata?.payment_info?.billable;
 
   const handleStatusChange = async (newStatus: string) => {
     if (!tenantId) return;
@@ -194,6 +199,20 @@ export function QRRequestActions({ request, onStatusUpdate, onClose }: QRRequest
           Financial Actions
         </h3>
         <div className="space-y-2">
+          {/* Location QR: Add Charge to Folio (staff selects folio) */}
+          {isLocationQR && hasCharge && (
+            <Button
+              onClick={() => setShowAddCharge(true)}
+              disabled={isUpdating}
+              className="w-full"
+              variant="default"
+            >
+              <FileText className="h-4 w-4 mr-2" />
+              Add Charge to Folio
+            </Button>
+          )}
+          
+          {/* Collect Payment (all QR types) */}
           <Button
             onClick={() => setShowPaymentForm(true)}
             disabled={isUpdating}
@@ -204,6 +223,7 @@ export function QRRequestActions({ request, onStatusUpdate, onClose }: QRRequest
             Collect Payment
           </Button>
 
+          {/* Mark as Complimentary */}
           <Button
             onClick={() => setShowComplimentaryApproval(true)}
             disabled={isUpdating}
@@ -239,11 +259,24 @@ export function QRRequestActions({ request, onStatusUpdate, onClose }: QRRequest
       {/* Complimentary Approval Modal */}
       <ManagerApprovalModal
         open={showComplimentaryApproval}
-        amount={request.metadata?.total_amount || 0}
+        amount={request.metadata?.payment_info?.total_amount || request.metadata?.payment_info?.subtotal || 0}
         type="write_off"
         actionReference={request.id}
         onApprove={handleComplimentaryApproval}
         onReject={() => setShowComplimentaryApproval(false)}
+      />
+
+      {/* Add Charge to Folio Dialog (Location QRs) */}
+      <AddChargeToFolioDialog
+        open={showAddCharge}
+        onOpenChange={setShowAddCharge}
+        request={request}
+        onSuccess={() => {
+          setShowAddCharge(false);
+          queryClient.invalidateQueries({ queryKey: ['staff-requests'] });
+          toast.success('Charge posted to folio');
+          onStatusUpdate?.();
+        }}
       />
     </div>
   );
