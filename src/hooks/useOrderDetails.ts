@@ -46,9 +46,9 @@ export function useOrderDetails(requestId: string | undefined) {
       // Parse service-specific metadata
       return {
         type: 'request',
-        service_category: request.type,
         data: {
           ...(request.metadata as Record<string, any>),
+          type: request.type,
           status: request.status,
           note: request.note,
           created_at: request.created_at,

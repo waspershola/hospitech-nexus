@@ -73,7 +73,7 @@ export function useQRNotifications() {
         
         // Show toast notification
         toast.info('New QR Request', {
-          description: `${request.service_category?.replace('_', ' ')} from ${request.metadata?.room_number || 'guest'}`,
+          description: `${request.type?.replace('_', ' ')} from ${request.metadata?.room_number || 'guest'}`,
         });
       })
       .on('postgres_changes', {
