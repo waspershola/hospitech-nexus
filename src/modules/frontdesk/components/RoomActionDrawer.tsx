@@ -483,7 +483,11 @@ export function RoomActionDrawer({ roomId, contextDate, open, onClose, onOpenAss
       description: 'Guest checked in before official check-in time' 
     });
     
-    setTimeout(() => onClose(), 600);
+    // Navigate to clean front desk route without search parameters
+    setTimeout(() => {
+      onClose();
+      navigate('/dashboard/frontdesk', { replace: true });
+    }, 600);
   };
 
   const handleMarkClean = async () => {
