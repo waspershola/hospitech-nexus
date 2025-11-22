@@ -108,6 +108,18 @@ serve(async (req) => {
 
       if (insertError) {
         console.error('[qr-generate] Insert error:', insertError);
+        
+        // Handle duplicate room QR code error
+        if (insertError.code === '23505' && insertError.message.includes('unique_room_qr')) {
+          return new Response(
+            JSON.stringify({ 
+              success: false, 
+              error: 'A QR code already exists for this room. Please update the existing QR code or delete it first.' 
+            }),
+            { status: 409, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+        
         return new Response(
           JSON.stringify({ success: false, error: insertError.message }),
           { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
