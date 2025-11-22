@@ -24,7 +24,7 @@ export function useStaffChat(requestId: string | null) {
   const [requestContext, setRequestContext] = useState<RequestContext | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [isSending, setIsSending] = useState(false);
-  const { user } = useAuth();
+  const { user, tenantId } = useAuth();
 
   const fetchRequestContext = useCallback(async () => {
     if (!requestId) return;
@@ -197,7 +197,6 @@ export function useStaffChat(requestId: string | null) {
           const newMessage = payload.new as any;
           
           // PHASE-2: Validate tenant_id to prevent cross-tenant message leaks
-          const { tenantId } = useAuth.getState?.() || {};
           if (tenantId && newMessage.tenant_id !== tenantId) {
             console.warn('[useStaffChat] SECURITY: Cross-tenant message blocked', {
               expected: tenantId,
@@ -232,7 +231,7 @@ export function useStaffChat(requestId: string | null) {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [requestId]);
+  }, [requestId, tenantId]);
 
   return {
     messages,

@@ -6,7 +6,7 @@ import { useStaffRequests } from '@/hooks/useStaffRequests';
 import RequestsTable from '@/components/qr-management/RequestsTable';
 import StaffChatDialog from '@/components/qr-management/StaffChatDialog';
 import { OrderDetailsDrawer } from '@/components/qr-management/OrderDetailsDrawer';
-import { RequestDetailsDrawer } from '@/components/qr-management/RequestDetailsDrawer';
+import { QRRequestDrawer } from '@/components/qr-management/QRRequestDrawer';
 import { Button } from '@/components/ui/button';
 import {
   Select,
@@ -23,7 +23,7 @@ export default function GuestRequestsManagement() {
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [priorityFilter, setPriorityFilter] = useState<string>('all');
   const [categoryFilter, setCategoryFilter] = useState<string>('all');
-  const { requests, isLoading, updateRequestStatus } = useStaffRequests();
+  const { requests, isLoading, updateRequestStatus, fetchRequests } = useStaffRequests();
 
   // Fetch order details when viewing an order
   const { data: orderData } = useQuery({
@@ -184,7 +184,7 @@ export default function GuestRequestsManagement() {
         }}
       />
 
-      <RequestDetailsDrawer
+      <QRRequestDrawer
         request={selectedRequestDetails}
         open={!!selectedRequestDetails}
         onOpenChange={(open) => !open && setSelectedRequestDetails(null)}
@@ -192,6 +192,7 @@ export default function GuestRequestsManagement() {
           setSelectedRequest(selectedRequestDetails);
           setSelectedRequestDetails(null);
         }}
+        onStatusUpdate={fetchRequests}
       />
     </div>
   );
