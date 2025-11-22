@@ -102,11 +102,12 @@ export function QRRequestDrawer({ open, onOpenChange }: QRRequestDrawerProps) {
       queryKey: ['inline-order-details', requestId],
       queryFn: async () => {
         // Try to fetch guest_order by request_id
-        const { data: order } = await supabase
-          .from('guest_orders')
-          .select('*')
-          .eq('request_id', requestId)
-          .maybeSingle();
+      const { data: order } = await supabase
+        .from('guest_orders')
+        .select('*')
+        .eq('request_id', requestId)
+        .eq('tenant_id', tenantId) // PHASE-1B: Prevent cross-tenant data leaks
+        .maybeSingle();
         
         if (order) {
           return { requestId, type: 'order', data: order };

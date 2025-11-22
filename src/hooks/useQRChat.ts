@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import { useAuth } from '@/contexts/AuthContext';
 
 interface ChatMessage {
   id: string;
@@ -21,6 +22,7 @@ interface UseQRChatReturn {
 }
 
 export function useQRChat(requestId: string | null, qrToken: string | null): UseQRChatReturn {
+  const { tenantId } = useAuth();
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [isSending, setIsSending] = useState(false);
@@ -141,6 +143,15 @@ export function useQRChat(requestId: string | null, qrToken: string | null): Use
         },
         (payload) => {
           const newMessage = payload.new as any;
+          
+          // PHASE-1B: Validate tenant_id to prevent cross-tenant data leaks
+          if (newMessage.tenant_id !== tenantId) {
+            console.warn('[useQRChat] SECURITY: Ignoring message from different tenant', {
+              message_tenant: newMessage.tenant_id,
+              current_tenant: tenantId,
+            });
+            return;
+          }
           
           // Add the new message to the state
           setMessages((prev) => {
