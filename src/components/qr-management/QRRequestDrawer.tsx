@@ -20,6 +20,7 @@ import { useFinanceProviders } from '@/hooks/useFinanceProviders';
 import { usePlatformFee } from '@/hooks/usePlatformFee';
 import { calculateQRPlatformFee } from '@/lib/finance/platformFee';
 import { useAuth } from '@/contexts/AuthContext';
+import { useOverdueRequests } from '@/hooks/useOverdueRequests'; // PHASE-3
 import { RequestPaymentInfo } from './RequestPaymentInfo';
 import { RequestCardSkeleton } from './RequestCardSkeleton';
 import { PaymentHistoryTimeline } from './PaymentHistoryTimeline';
@@ -55,6 +56,7 @@ export function QRRequestDrawer({ open, onOpenChange }: QRRequestDrawerProps) {
   const { tenantId } = useAuth();
   const queryClient = useQueryClient();
   const { requests, isLoading, updateRequestStatus } = useStaffRequests();
+  const { overdueCount, slaMinutes } = useOverdueRequests(); // PHASE-3: SLA tracking
   const [selectedRequest, setSelectedRequest] = useState<any>(null);
   const [customMessage, setCustomMessage] = useState('');
   const [activeTab, setActiveTab] = useState('pending');
@@ -93,6 +95,17 @@ export function QRRequestDrawer({ open, onOpenChange }: QRRequestDrawerProps) {
   // PHASE 7 FIX 3: Ensure proper filtering for drawer tabs
   const pendingRequests = requests.filter(r => r.qr_token && r.status === 'pending');
   const inProgressRequests = requests.filter(r => r.qr_token && (r.status === 'in_progress' || r.status === 'assigned'));
+
+  // PHASE-3: Filter overdue requests (pending/in_progress, not responded, older than SLA)
+  const overdueThreshold = new Date();
+  overdueThreshold.setMinutes(overdueThreshold.getMinutes() - slaMinutes);
+  
+  const overdueRequests = requests.filter(r => {
+    return r.qr_token &&
+           ['pending', 'in_progress'].includes(r.status) &&
+           !r.responded_at &&
+           new Date(r.created_at) < overdueThreshold;
+  });
 
   // PHASE 9: Batch pre-fetch all order/request details using useQueries
   const allRequestIds = [...pendingRequests, ...inProgressRequests].map(r => r.id);
@@ -628,6 +641,9 @@ export function QRRequestDrawer({ open, onOpenChange }: QRRequestDrawerProps) {
                 <TabsTrigger value="pending" className="flex-1">
                   Pending <Badge variant="secondary" className="ml-1">{pendingRequests.length}</Badge>
                 </TabsTrigger>
+                <TabsTrigger value="overdue" className="flex-1 text-destructive data-[state=active]:text-destructive">
+                  Overdue <Badge variant="destructive" className="ml-1">{overdueCount}</Badge>
+                </TabsTrigger>
                 <TabsTrigger value="active" className="flex-1">
                   Active <Badge variant="secondary" className="ml-1">{inProgressRequests.length}</Badge>
                 </TabsTrigger>
@@ -648,6 +664,41 @@ export function QRRequestDrawer({ open, onOpenChange }: QRRequestDrawerProps) {
                   {pendingRequests.length === 0 && (
                     <div className="text-center text-muted-foreground py-8 text-sm">
                       No pending requests
+                    </div>
+                  )}
+                </TabsContent>
+
+                {/* PHASE-3: Overdue Requests Tab */}
+                <TabsContent value="overdue" className="mt-0 space-y-1 p-2">
+                  {overdueRequests.map((req) => {
+                    // Calculate minutes overdue for display
+                    const minutesOverdue = Math.floor(
+                      (new Date().getTime() - new Date(req.created_at).getTime()) / (1000 * 60)
+                    );
+                    
+                    return (
+                      <div key={req.id} className="relative">
+                        {/* Overdue indicator badge */}
+                        <div className="absolute top-2 right-2 z-10">
+                          <Badge variant="destructive" className="text-xs">
+                            Overdue ({minutesOverdue} min)
+                          </Badge>
+                        </div>
+                        <RequestCard
+                          request={req}
+                          isSelected={selectedRequest?.id === req.id}
+                          onClick={() => setSelectedRequest(req)}
+                          orderDetails={orderDetailsMap[req.id]}
+                          isLoading={loadingStateMap[req.id]}
+                        />
+                      </div>
+                    );
+                  })}
+                  {overdueRequests.length === 0 && (
+                    <div className="text-center text-muted-foreground py-8 text-sm">
+                      <CheckCircle2 className="h-8 w-8 mx-auto mb-2 text-green-500" />
+                      <p>No overdue requests</p>
+                      <p className="text-xs mt-1">All requests are within {slaMinutes}-minute SLA</p>
                     </div>
                   )}
                 </TabsContent>
