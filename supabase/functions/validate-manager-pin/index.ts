@@ -357,7 +357,7 @@ serve(async (req) => {
 
     return new Response(
       JSON.stringify({
-        valid: true,
+        success: true,
         approval_token: approvalToken,
         approver: {
           id: staff.id,
