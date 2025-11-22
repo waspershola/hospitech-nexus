@@ -6,7 +6,8 @@ import { useStaffRequests } from '@/hooks/useStaffRequests';
 import RequestsTable from '@/components/qr-management/RequestsTable';
 import StaffChatDialog from '@/components/qr-management/StaffChatDialog';
 import { OrderDetailsDrawer } from '@/components/qr-management/OrderDetailsDrawer';
-import { QRRequestDrawer } from '@/components/qr-management/QRRequestDrawer';
+import { QRRequestActions } from '@/components/qr-management/QRRequestActions';
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { Button } from '@/components/ui/button';
 import {
   Select,
@@ -184,16 +185,22 @@ export default function GuestRequestsManagement() {
         }}
       />
 
-      <QRRequestDrawer
-        request={selectedRequestDetails}
-        open={!!selectedRequestDetails}
-        onOpenChange={(open) => !open && setSelectedRequestDetails(null)}
-        onOpenChat={() => {
-          setSelectedRequest(selectedRequestDetails);
-          setSelectedRequestDetails(null);
-        }}
-        onStatusUpdate={fetchRequests}
-      />
+      {selectedRequestDetails && (
+        <Sheet open={!!selectedRequestDetails} onOpenChange={(open) => !open && setSelectedRequestDetails(null)}>
+          <SheetContent className="w-full sm:max-w-2xl overflow-y-auto">
+            <SheetHeader>
+              <SheetTitle>Request Details</SheetTitle>
+            </SheetHeader>
+            <div className="mt-6">
+              <QRRequestActions 
+                request={selectedRequestDetails}
+                onStatusUpdate={fetchRequests}
+                onClose={() => setSelectedRequestDetails(null)}
+              />
+            </div>
+          </SheetContent>
+        </Sheet>
+      )}
     </div>
   );
 }
