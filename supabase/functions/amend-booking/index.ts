@@ -83,7 +83,7 @@ serve(async (req) => {
     // Fetch current booking
     const { data: booking, error: bookingError } = await supabaseAdmin
       .from('bookings')
-      .select('*, room:rooms(number, rate, type), guest:guests(name)')
+      .select('*, room:rooms!bookings_room_id_fkey(number, rate, type), guest:guests(name)')
       .eq('id', booking_id)
       .single();
 
