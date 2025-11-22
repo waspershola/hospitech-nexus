@@ -11,7 +11,7 @@ const corsHeaders = {
 const createRequestSchema = z.object({
   action: z.literal('create_request'),
   qr_token: z.string().min(10, 'QR token too short').max(500, 'QR token too long'),
-  type: z.string().max(100),
+  type: z.string().max(100).optional(),
   service_category: z.string().min(1, 'Service category required').max(100),
   note: z.string().max(2000, 'Note too long (max 2000 characters)').optional(),
   priority: z.enum(['low', 'normal', 'high', 'urgent']).optional(),
@@ -38,7 +38,7 @@ const getMessagesSchema = z.object({
 
 interface ServiceRequest {
   qr_token: string;
-  type: string;
+  type?: string;
   service_category: string;
   note?: string;
   priority?: 'low' | 'normal' | 'high' | 'urgent';
