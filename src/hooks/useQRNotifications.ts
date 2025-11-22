@@ -67,7 +67,7 @@ export function useQRNotifications() {
         event: 'INSERT',
         schema: 'public',
         table: 'guest_communications',
-        filter: `direction=eq.inbound`,
+        filter: `direction=eq.inbound,tenant_id=eq.${tenantId}`, // PHASE-1B: Add tenant_id filter
       }, (payload) => {
         const message = payload.new as any;
         
