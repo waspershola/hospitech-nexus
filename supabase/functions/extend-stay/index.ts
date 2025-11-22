@@ -6,7 +6,7 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-// EXTEND-STAY-V1: Properly extend stays with folio charge posting
+// EXTEND-STAY-V2-ROOM-STATUS-FIX: Extend stays with proper validation
 serve(async (req) => {
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
@@ -14,7 +14,7 @@ serve(async (req) => {
   }
 
   try {
-    console.log('[extend-stay] EXTEND-STAY-V1: Processing stay extension request');
+    console.log('[extend-stay] EXTEND-STAY-V2-ROOM-STATUS-FIX: Processing stay extension request');
 
     const authHeader = req.headers.get('Authorization') ?? '';
     const token = authHeader.replace('Bearer ', '').trim();
@@ -263,7 +263,15 @@ serve(async (req) => {
       }
     });
 
-    console.log('[extend-stay] EXTEND-STAY-V1: Stay extension completed successfully');
+    // Log extension details (room status remains unchanged during extension)
+    console.log('[extend-stay] EXTEND-STAY-V2-ROOM-STATUS-FIX: Stay extension completed', {
+      booking_status: booking.status,
+      room_status_note: booking.status === 'checked_in' ? 'Room remains occupied' : 'Room remains reserved',
+      additional_nights: additionalNights,
+      new_checkout: new_checkout
+    });
+
+    console.log('[extend-stay] EXTEND-STAY-V2-ROOM-STATUS-FIX: Stay extension completed successfully');
 
     return new Response(
       JSON.stringify({
