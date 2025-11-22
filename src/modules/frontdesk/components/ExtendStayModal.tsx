@@ -47,9 +47,9 @@ export function ExtendStayModal({
           throw new Error('NO_SESSION: Please login to continue');
         }
 
-        console.log('[extend-stay-modal] EXTEND-STAY-V1: Calling extend-stay edge function');
+        console.log('[extend-stay-modal] EXTEND-STAY-V2: Calling extend-stay edge function');
 
-        // EXTEND-STAY-V1: Call edge function for proper folio integration with explicit auth
+        // EXTEND-STAY-V2: Call edge function with explicit auth and error handling
         const { data, error } = await supabase.functions.invoke('extend-stay', {
           body: {
             booking_id: bookingId,
@@ -62,24 +62,28 @@ export function ExtendStayModal({
           }
         });
 
-        console.log('[extend-stay-modal] EXTEND-STAY-V1: Edge function response:', { data, error });
+        console.log('[extend-stay-modal] EXTEND-STAY-V2: Edge function response:', { data, error });
 
         if (error) {
-          console.error('[extend-stay-modal] EXTEND-STAY-V1: Edge function error:', error);
+          console.error('[extend-stay-modal] EXTEND-STAY-V2: Edge function error:', error);
           
           if (error.message?.includes('JWT') || error.message?.includes('jwt')) {
-            throw new Error('SESSION_EXPIRED: Please refresh and try again');
+            throw new Error('SESSION_EXPIRED: Your session has expired. Please refresh the page and try again.');
           }
           
           if (error.message?.includes('tenant')) {
-            throw new Error('TENANT_MISMATCH: Invalid tenant access');
+            throw new Error('TENANT_MISMATCH: You do not have access to this booking.');
+          }
+
+          if (error.message?.includes('401')) {
+            throw new Error('UNAUTHORIZED: Authentication failed. Please login again.');
           }
           
-          throw new Error(`UNAUTHORIZED: ${error.message}`);
+          throw new Error(`Error: ${error.message}`);
         }
 
         if (!data?.success) {
-          console.error('[extend-stay-modal] EXTEND-STAY-V1: Extension failed:', data);
+          console.error('[extend-stay-modal] EXTEND-STAY-V2: Extension failed:', data);
           throw new Error(data?.error || 'Failed to extend stay');
         }
 
@@ -102,7 +106,7 @@ export function ExtendStayModal({
       onClose();
     },
     onError: (error: Error) => {
-      toast.error(`Failed to extend stay: ${error.message}`);
+      toast.error(error.message || 'Failed to extend stay');
     },
   });
 
