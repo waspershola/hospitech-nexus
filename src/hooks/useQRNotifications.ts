@@ -1,8 +1,8 @@
 import { useEffect } from 'react';
 import { useRingtone } from './useRingtone';
-import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
+import { createRealtimeChannelWithRetry } from '@/lib/realtime/retryChannel';
 
 const DEBUG_QR_NOTIFICATIONS = false;
 
@@ -17,8 +17,21 @@ export function useQRNotifications() {
       console.log('[useQRNotifications] Setting up notification listeners for tenant:', tenantId);
     }
 
-    const channel = supabase
-      .channel(`qr-notifications-${tenantId}`)
+    // PHASE-2: Use retry channel with exponential backoff
+    const channel = createRealtimeChannelWithRetry(
+      `qr-notifications-${tenantId}`,
+      {
+        maxRetries: 5,
+        baseDelay: 1000,
+        maxDelay: 30000,
+        onRetry: (attempt, delay) => {
+          console.log(`[useQRNotifications] Retrying notification channel (${attempt}/5) in ${delay}ms`);
+        },
+        onFailure: () => {
+          console.error('[useQRNotifications] Notification channel failed permanently');
+        },
+      }
+    )
       // Phase 6: Listen to Realtime broadcast from edge function
       .on('broadcast', { event: 'new_qr_request' }, (payload) => {
         const data = payload.payload;
@@ -85,22 +98,17 @@ export function useQRNotifications() {
           description: message.message?.substring(0, 50) + (message.message?.length > 50 ? '...' : ''),
         });
       })
-      .subscribe((status) => {
-        // Only log errors and channel errors
-        if (status === 'CHANNEL_ERROR') {
-          console.error('[useQRNotifications] Channel error - connection failed');
-        } else if (status === 'TIMED_OUT') {
-          console.warn('[useQRNotifications] Connection timed out - will retry');
-        } else if (DEBUG_QR_NOTIFICATIONS) {
-          console.log('[useQRNotifications] Subscription status:', status);
-        }
-      });
+      .subscribe();
 
     return () => {
       if (DEBUG_QR_NOTIFICATIONS) {
         console.log('[useQRNotifications] Cleaning up notification listeners');
       }
-      supabase.removeChannel(channel);
+      
+      // PHASE-2: Use custom cleanup if available
+      if ((channel as any).cleanup) {
+        (channel as any).cleanup();
+      }
     };
   }, [tenantId, permissionGranted, playRingtone]);
 }
