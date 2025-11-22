@@ -1,5 +1,5 @@
 import { format } from 'date-fns';
-import { MessageSquare, Clock, CheckCircle2, XCircle, UtensilsCrossed, MapPin } from 'lucide-react';
+import { MessageSquare, Clock, CheckCircle2, XCircle, UtensilsCrossed, MapPin, AlertCircle } from 'lucide-react';
 import {
   Table,
   TableBody,
@@ -17,6 +17,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { useOverdueRequests } from '@/hooks/useOverdueRequests';
 
 interface RequestsTableProps {
   requests: any[];
@@ -24,6 +25,7 @@ interface RequestsTableProps {
   onViewChat: (request: any) => void;
   onUpdateStatus: (requestId: string, status: string) => Promise<boolean>;
   onViewOrder?: (request: any) => void;
+  onViewDetails?: (request: any) => void;
 }
 
 export default function RequestsTable({
@@ -32,8 +34,21 @@ export default function RequestsTable({
   onViewChat,
   onUpdateStatus,
   onViewOrder,
+  onViewDetails,
 }: RequestsTableProps) {
-  const getStatusBadge = (status: string) => {
+  const { calculateOverdue } = useOverdueRequests();
+
+  const getStatusBadge = (status: string, overdueInfo?: { isOverdue: boolean; minutesOverdue: number }) => {
+    // PHASE-3: Show overdue badge for pending requests past SLA
+    if (overdueInfo?.isOverdue && status === 'pending') {
+      return (
+        <Badge variant="destructive" className="gap-1 animate-pulse">
+          <AlertCircle className="h-3 w-3" />
+          Overdue ({overdueInfo.minutesOverdue} min)
+        </Badge>
+      );
+    }
+
     const config: Record<string, { variant: any; icon: any }> = {
       pending: { variant: 'secondary', icon: Clock },
       in_progress: { variant: 'default', icon: Clock },
@@ -97,8 +112,10 @@ export default function RequestsTable({
           </TableRow>
         </TableHeader>
         <TableBody>
-          {requests.map((request) => (
-            <TableRow key={request.id}>
+          {requests.map((request) => {
+            const overdueInfo = calculateOverdue(request);
+            return (
+            <TableRow key={request.id} className={overdueInfo.isOverdue ? 'bg-destructive/5' : ''}>
               <TableCell>
                 <div className="space-y-1">
                   <div className="flex items-center gap-2">
@@ -145,34 +162,20 @@ export default function RequestsTable({
               </TableCell>
               <TableCell>{getPriorityBadge(request.priority)}</TableCell>
               <TableCell>
-                <Select
-                  value={request.status}
-                  onValueChange={(value) => onUpdateStatus(request.id, value)}
-                >
-                  <SelectTrigger className="w-[140px]">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="pending">Pending</SelectItem>
-                    <SelectItem value="in_progress">In Progress</SelectItem>
-                    <SelectItem value="completed">Completed</SelectItem>
-                    <SelectItem value="cancelled">Cancelled</SelectItem>
-                  </SelectContent>
-                </Select>
+                {getStatusBadge(request.status, overdueInfo)}
               </TableCell>
               <TableCell>
                 {format(new Date(request.created_at), 'MMM d, h:mm a')}
               </TableCell>
               <TableCell className="text-right">
                 <div className="flex gap-2 justify-end">
-                  {['digital_menu', 'menu_order', 'room_service', 'laundry', 'spa', 'dining_reservation', 'housekeeping', 'maintenance', 'concierge'].includes(request.service_category) && onViewOrder && (
+                  {onViewDetails && (
                     <Button
                       variant="outline"
                       size="sm"
-                      onClick={() => onViewOrder(request)}
+                      onClick={() => onViewDetails(request)}
                     >
-                      <UtensilsCrossed className="h-4 w-4 mr-2" />
-                      View Details
+                      View Actions
                     </Button>
                   )}
                   <Button
@@ -186,7 +189,7 @@ export default function RequestsTable({
                 </div>
               </TableCell>
             </TableRow>
-          ))}
+          )})}
         </TableBody>
       </Table>
     </div>
