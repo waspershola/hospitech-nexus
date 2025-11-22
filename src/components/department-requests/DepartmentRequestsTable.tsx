@@ -100,7 +100,7 @@ export function DepartmentRequestsTable({
                 </TableCell>
                 <TableCell>
                   <div>
-                    <p className="font-medium capitalize">{request.service_category?.replace('_', ' ') || 'Service'}</p>
+                    <p className="font-medium capitalize">{request.type?.replace('_', ' ') || 'Service'}</p>
                     {request.note && (
                       <p className="text-xs text-muted-foreground truncate max-w-[200px]">
                         {request.note}

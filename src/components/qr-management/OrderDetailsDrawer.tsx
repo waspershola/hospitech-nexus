@@ -102,7 +102,7 @@ export function OrderDetailsDrawer({
           body: {
             request_id: order.request_id,
             tenant_id: order.tenant_id,
-            service_category: order.metadata?.service_type || 'digital_menu',
+            service_category: order.metadata?.type || 'digital_menu',
             amount: totalAmount,
             payment_location: selectedLocation?.name,
             payment_method: selectedProvider?.name,

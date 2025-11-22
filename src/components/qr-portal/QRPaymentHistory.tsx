@@ -156,7 +156,7 @@ export default function QRPaymentHistory() {
                         <div className="flex-1">
                           <div className="flex items-center gap-2 mb-2">
                             <h3 className="font-semibold capitalize">
-                              {request.service_category?.replace('_', ' ')}
+                              {request.type?.replace('_', ' ')}
                             </h3>
                             <Badge variant={isPaid ? 'default' : 'secondary'} className="gap-1">
                               {isPaid ? (

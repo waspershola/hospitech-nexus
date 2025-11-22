@@ -75,7 +75,6 @@ export function QRHousekeepingService() {
           tenant_id: qrData?.tenant_id,
           qr_token: token,
           type: 'housekeeping',
-          service_category: 'housekeeping',
           assigned_department: 'housekeeping',
           note,
           priority: 'normal',

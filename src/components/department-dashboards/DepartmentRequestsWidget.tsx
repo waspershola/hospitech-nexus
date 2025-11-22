@@ -114,7 +114,7 @@ export function DepartmentRequestsWidget({ department, departmentLabel }: Depart
                       <TableCell>
                         <div className="space-y-1">
                           <div className="font-medium capitalize">
-                            {request.service_category?.replace('_', ' ')}
+                            {request.type?.replace('_', ' ')}
                           </div>
                           {request.note && (
                             <div className="text-sm text-muted-foreground line-clamp-1">
