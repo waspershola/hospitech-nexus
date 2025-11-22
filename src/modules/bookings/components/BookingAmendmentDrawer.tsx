@@ -180,8 +180,11 @@ export function BookingAmendmentDrawer({ open, onClose, bookingId }: BookingAmen
       queryClient.invalidateQueries({ queryKey: ['booking', bookingId] });
       queryClient.invalidateQueries({ queryKey: ['bookings'] });
       queryClient.invalidateQueries({ queryKey: ['rooms'] });
+      queryClient.invalidateQueries({ queryKey: ['rooms-grid'] });
+      queryClient.invalidateQueries({ queryKey: ['room-detail'] });
       queryClient.invalidateQueries({ queryKey: ['booking-folio', bookingId] });
       queryClient.invalidateQueries({ queryKey: ['folio-by-id'] });
+      queryClient.invalidateQueries({ queryKey: ['frontdesk-kpis'] });
       
       const message = data?.data?.folio_adjusted 
         ? `Booking amended. Price ${data.data.price_difference > 0 ? 'increase' : 'decrease'} of ₦${Math.abs(data.data.price_difference).toLocaleString()} posted to folio.`
