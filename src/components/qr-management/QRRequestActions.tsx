@@ -15,7 +15,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
 import { PaymentForm } from '@/modules/payments/PaymentForm';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { ManagerApprovalModal } from '@/components/staff/ManagerApprovalModal';
+import { ManagerApprovalModal } from '@/modules/payments/ManagerApprovalModal';
 import { useQueryClient } from '@tanstack/react-query';
 
 interface QRRequestActionsProps {
@@ -96,7 +96,7 @@ export function QRRequestActions({ request, onStatusUpdate, onClose }: QRRequest
     }
   };
 
-  const handleComplimentaryApproval = async (approvalToken: string) => {
+  const handleComplimentaryApproval = async (reason: string, approvalToken: string) => {
     if (!tenantId) return;
 
     setIsUpdating(true);
@@ -111,6 +111,7 @@ export function QRRequestActions({ request, onStatusUpdate, onClose }: QRRequest
             complimentary: true,
             approved_by: user?.id,
             approval_token: approvalToken,
+            approval_reason: reason,
           },
           updated_at: new Date().toISOString(),
         })
@@ -237,12 +238,12 @@ export function QRRequestActions({ request, onStatusUpdate, onClose }: QRRequest
 
       {/* Complimentary Approval Modal */}
       <ManagerApprovalModal
-        isOpen={showComplimentaryApproval}
-        onClose={() => setShowComplimentaryApproval(false)}
-        onApprove={handleComplimentaryApproval}
-        actionType="complimentary_service"
+        open={showComplimentaryApproval}
         amount={request.metadata?.total_amount || 0}
-        reason={`Complimentary ${request.service_category} for ${request.metadata?.guest_name || 'guest'}`}
+        type="write_off"
+        actionReference={request.id}
+        onApprove={handleComplimentaryApproval}
+        onReject={() => setShowComplimentaryApproval(false)}
       />
     </div>
   );

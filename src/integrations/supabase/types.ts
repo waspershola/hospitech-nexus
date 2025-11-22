@@ -5020,6 +5020,7 @@ export type Database = {
       }
       requests: {
         Row: {
+          assigned_at: string | null
           assigned_department: string | null
           assigned_to: string | null
           completed_at: string | null
@@ -5040,6 +5041,7 @@ export type Database = {
           updated_at: string | null
         }
         Insert: {
+          assigned_at?: string | null
           assigned_department?: string | null
           assigned_to?: string | null
           completed_at?: string | null
@@ -5060,6 +5062,7 @@ export type Database = {
           updated_at?: string | null
         }
         Update: {
+          assigned_at?: string | null
           assigned_department?: string | null
           assigned_to?: string | null
           completed_at?: string | null
