@@ -1902,6 +1902,53 @@ export type Database = {
           },
         ]
       }
+      hotel_qr_services_catalog: {
+        Row: {
+          active: boolean | null
+          category: string | null
+          created_at: string
+          display_order: number | null
+          icon: string | null
+          id: string
+          service_key: string
+          service_label: string
+          tenant_id: string
+          updated_at: string
+        }
+        Insert: {
+          active?: boolean | null
+          category?: string | null
+          created_at?: string
+          display_order?: number | null
+          icon?: string | null
+          id?: string
+          service_key: string
+          service_label: string
+          tenant_id: string
+          updated_at?: string
+        }
+        Update: {
+          active?: boolean | null
+          category?: string | null
+          created_at?: string
+          display_order?: number | null
+          icon?: string | null
+          id?: string
+          service_key?: string
+          service_label?: string
+          tenant_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "hotel_qr_services_catalog_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       hotel_services: {
         Row: {
           active: boolean
