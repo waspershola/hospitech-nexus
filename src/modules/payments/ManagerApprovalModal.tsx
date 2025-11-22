@@ -12,7 +12,7 @@ import { useToast } from '@/hooks/use-toast';
 interface ManagerApprovalModalProps {
   open: boolean;
   amount: number;
-  type: 'overpayment' | 'underpayment' | 'refund' | 'write_off' | 'rebate' | 'force_cancel' | 'checkout_with_debt' | 'transfer_charge' | 'split_charge' | 'merge_folios' | 'reverse_transaction';
+  type: 'overpayment' | 'underpayment' | 'refund' | 'write_off' | 'rebate' | 'force_cancel' | 'checkout_with_debt' | 'transfer_charge' | 'split_charge' | 'merge_folios' | 'reverse_transaction' | 'early-check-in';
   actionReference?: string;
   onApprove: (reason: string, approvalToken: string) => void;
   onReject: () => void;
@@ -93,6 +93,7 @@ export function ManagerApprovalModal({
       case 'split_charge': return 'Split Charge';
       case 'merge_folios': return 'Merge Folios';
       case 'reverse_transaction': return 'Reverse Transaction';
+      case 'early-check-in': return 'Early Check-In';
       default: return 'Transaction';
     }
   };
@@ -185,6 +186,14 @@ export function ManagerApprovalModal({
             Reversing transaction of <strong>₦{amount.toLocaleString()}</strong>.
             <br />
             This reversal requires manager approval before processing.
+          </>
+        );
+      case 'early-check-in':
+        return (
+          <>
+            Checking in guest <strong>before official check-in time</strong>.
+            <br />
+            This early check-in requires manager approval before processing.
           </>
         );
       default:
