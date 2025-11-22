@@ -43,7 +43,7 @@ const validatePinSchema = z.object({
 });
 
 // Authorized roles for approvals
-const AUTHORIZED_ROLES = ['owner', 'manager', 'finance_manager', 'accounting'];
+const AUTHORIZED_ROLES = ['owner', 'manager', 'general_manager', 'finance_manager', 'accounting'];
 
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
