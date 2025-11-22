@@ -60,20 +60,6 @@ export function RoomTile({ room, onClick, isSelectionMode, isSelected, onSelecti
     operationsHours?.checkOutTime
   );
   
-  // PHASE-1-DEBUG: Log tile rendering for diagnostics
-  console.log('ROOMTILE-DEBUG', {
-    roomId: room.id,
-    roomNumber: room.number,
-    canonicalStatus: room.status,
-    computedStatus: currentStatus,
-    hasCanonicalStatus: !!room.status,
-    bookingsCount: bookingsArray.length,
-    activeBookingId: activeBooking?.id,
-    activeBookingStatus: activeBooking?.status,
-    activeBookingCheckIn: activeBooking?.check_in,
-    activeBookingCheckOut: activeBooking?.check_out
-  });
-  
   const statusColor = statusColors[currentStatus as keyof typeof statusColors] || statusColors.available;
   const borderColor = statusBorderColors[currentStatus as keyof typeof statusBorderColors] || statusBorderColors.available;
   

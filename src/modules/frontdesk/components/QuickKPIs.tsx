@@ -26,9 +26,6 @@ export function QuickKPIs({ onFilterClick, activeFilter, onArrivalsClick }: Quic
   const navigate = useNavigate();
   const { kpis, isLoading, error } = useFrontDeskKPIs();
   const { data: pendingPaymentsData } = usePendingPaymentsRooms();
-  
-  // Debug logging
-  console.log('QuickKPIs render:', { kpis, isLoading, error, pendingPaymentsData });
 
   const cards = [
     { 

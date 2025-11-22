@@ -150,23 +150,6 @@ export function RoomActionDrawer({ roomId, contextDate, open, onClose, onOpenAss
           activeBooking = overlappingBookings[0] ?? null;
         }
         
-        // PHASE-1-DEBUG: Log drawer booking resolution
-        console.log('DRAWER-DEBUG', {
-          roomId: data.id,
-          roomNumber: data.number,
-          filterDate: filterDateStr,
-          isContextDate: !!contextDate,
-          overlappingCount: overlappingBookings.length,
-          selectedBookingId: activeBooking?.id,
-          bookings: overlappingBookings.map((b: any) => ({
-            id: b.id,
-            status: b.status,
-            checkIn: format(new Date(b.check_in), 'yyyy-MM-dd'),
-            checkOut: format(new Date(b.check_out), 'yyyy-MM-dd'),
-            guestName: b.guest?.name
-          }))
-        });
-        
         // Sort by check_in date (earliest first) to prioritize today's arrivals
         const sortedBookings = activeBooking ? [activeBooking] : [];
         
@@ -218,25 +201,9 @@ export function RoomActionDrawer({ roomId, contextDate, open, onClose, onOpenAss
   const filterDate = contextDate || new Date();
   const filterDateStr = format(filterDate, 'yyyy-MM-dd');
   
-  // Debug logging for booking resolution
-  console.log('DRAWER-BOOKING-DEBUG Phase-3', {
-    roomId: room?.id,
-    roomNumber: room?.number,
-    filterDate: filterDateStr,
-    bookingsCount: bookingsArray.length,
-    allBookings: bookingsArray.map((b: any) => ({
-      id: b.id,
-      status: b.status,
-      checkIn: format(new Date(b.check_in), 'yyyy-MM-dd'),
-      checkOut: format(new Date(b.check_out), 'yyyy-MM-dd'),
-      guestName: b.guest?.name
-    }))
-  });
-  
   // IDENTICAL OVERLAP RULE AS ROOMGRID: checkInDate <= viewDate AND checkOutDate >= viewDate
   const activeBooking = (() => {
     if (!bookingsArray.length) {
-      console.log('DRAWER-BOOKING-DEBUG: No bookings found');
       return null;
     }
     
@@ -244,7 +211,6 @@ export function RoomActionDrawer({ roomId, contextDate, open, onClose, onOpenAss
     if (selectedBookingId) {
       const selected = bookingsArray.find((b: any) => b.id === selectedBookingId);
       if (selected) {
-        console.log('DRAWER-BOOKING-DEBUG: Using manually selected booking:', selected.id);
         return selected;
       }
     }
@@ -258,11 +224,6 @@ export function RoomActionDrawer({ roomId, contextDate, open, onClose, onOpenAss
       
       // ROOM-STATUS-OVERLAP-V1: Same overlap rule as RoomGrid
       return checkInDate <= filterDateStr && checkOutDate >= filterDateStr;
-    });
-    
-    console.log('DRAWER-BOOKING-DEBUG: Overlapping bookings:', {
-      overlappingCount: overlappingBookings.length,
-      selectedBookingId: overlappingBookings[0]?.id
     });
     
     if (!overlappingBookings.length) return null;
@@ -284,7 +245,6 @@ export function RoomActionDrawer({ roomId, contextDate, open, onClose, onOpenAss
       activeBooking = overlappingBookings[0] ?? null;
     }
     
-    console.log('DRAWER-BOOKING-DEBUG: Selected booking:', activeBooking?.id);
     return activeBooking;
   })();
   
