@@ -34,15 +34,24 @@ export function ExtendStayModal({
         throw new Error('New check-out date must be after current check-out');
       }
 
+      // Get current session for authentication
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.access_token) {
+        throw new Error('No active session - please login again');
+      }
+
       console.log('[extend-stay-modal] EXTEND-STAY-V1: Calling extend-stay edge function');
 
-      // EXTEND-STAY-V1: Call edge function for proper folio integration
+      // EXTEND-STAY-V1: Call edge function for proper folio integration with explicit auth
       const { data, error } = await supabase.functions.invoke('extend-stay', {
         body: {
           booking_id: bookingId,
           new_checkout: newCheckOut,
           staff_id: null, // Will use authenticated user in edge function
           reason: 'Staff extended stay via front desk'
+        },
+        headers: {
+          Authorization: `Bearer ${session.access_token}`
         }
       });
 

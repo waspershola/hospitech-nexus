@@ -108,9 +108,15 @@ export function BookingAmendmentDrawer({ open, onClose, bookingId }: BookingAmen
         throw new Error('Please provide a reason for the amendment');
       }
 
+      // Get current session for authentication
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.access_token) {
+        throw new Error('No active session - please login again');
+      }
+
       console.log('[amend-booking-drawer] AMEND-BOOKING-V1: Calling amend-booking edge function');
 
-      // AMEND-BOOKING-V1: Call edge function for proper folio integration
+      // AMEND-BOOKING-V1: Call edge function for proper folio integration with explicit auth
       const { data, error } = await supabase.functions.invoke('amend-booking', {
         body: {
           booking_id: bookingId,
@@ -121,6 +127,9 @@ export function BookingAmendmentDrawer({ open, onClose, bookingId }: BookingAmen
           notes,
           amendment_reason: amendmentReason,
           staff_id: user?.id
+        },
+        headers: {
+          Authorization: `Bearer ${session.access_token}`
         }
       });
 

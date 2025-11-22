@@ -66,6 +66,12 @@ export function TransferRoomModal({
 
   const transferMutation = useMutation({
     mutationFn: async () => {
+      // Get current session for authentication
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.access_token) {
+        throw new Error('No active session - please login again');
+      }
+
       console.log('[TransferRoomModal] TRANSFER-ROOM-V1: Calling transfer-room edge function', {
         bookingId,
         newRoomId,
@@ -79,6 +85,9 @@ export function TransferRoomModal({
           reason: reason || "Guest request",
           staff_id: user?.id,
         },
+        headers: {
+          Authorization: `Bearer ${session.access_token}`
+        }
       });
 
       if (error) {
