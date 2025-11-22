@@ -196,6 +196,16 @@ export function useStaffChat(requestId: string | null) {
         (payload) => {
           const newMessage = payload.new as any;
           
+          // PHASE-2: Validate tenant_id to prevent cross-tenant message leaks
+          const { tenantId } = useAuth.getState?.() || {};
+          if (tenantId && newMessage.tenant_id !== tenantId) {
+            console.warn('[useStaffChat] SECURITY: Cross-tenant message blocked', {
+              expected: tenantId,
+              received: newMessage.tenant_id,
+            });
+            return;
+          }
+          
           setMessages((prev) => {
             if (prev.some((m) => m.id === newMessage.id)) {
               return prev;

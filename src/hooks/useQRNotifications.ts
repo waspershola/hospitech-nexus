@@ -84,6 +84,15 @@ export function useQRNotifications() {
       }, (payload) => {
         const message = payload.new as any;
         
+        // PHASE-2: Validate tenant_id in payload to prevent cross-tenant notifications
+        if (message.tenant_id !== tenantId) {
+          console.warn('[useQRNotifications] SECURITY: Cross-tenant message blocked', {
+            expected: tenantId,
+            received: message.tenant_id,
+          });
+          return;
+        }
+        
         if (DEBUG_QR_NOTIFICATIONS) {
           console.log('[useQRNotifications] New inbound message detected:', message.id);
         }
