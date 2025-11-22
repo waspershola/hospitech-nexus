@@ -37,8 +37,7 @@ export function SetPinModal({ open, onClose }: SetPinModalProps) {
     try {
       const { data, error } = await supabase.functions.invoke('set-manager-pin', {
         body: {
-          operation: 'set',
-          new_pin: newPin,
+          pin: newPin,
           confirm_pin: confirmPin,
         },
       });

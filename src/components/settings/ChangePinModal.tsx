@@ -41,12 +41,11 @@ export function ChangePinModal({ open, onClose }: ChangePinModalProps) {
     setIsSubmitting(true);
 
     try {
-      const { data, error } = await supabase.functions.invoke('set-manager-pin', {
+      const { data, error } = await supabase.functions.invoke('change-manager-pin', {
         body: {
-          operation: 'change',
           old_pin: oldPin,
           new_pin: newPin,
-          confirm_pin: confirmPin,
+          confirm_new_pin: confirmPin,
         },
       });
 
