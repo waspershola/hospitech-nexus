@@ -1194,15 +1194,28 @@ export function RoomActionDrawer({ roomId, contextDate, open, onClose, onOpenAss
                               <Edit className="w-4 h-4 mr-2" />
                               Amend Booking
                             </Button>
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => setShowConfirmationDoc(true)}
-                              className="w-full"
-                            >
-                              <FileText className="w-4 h-4 mr-2" />
-                              Booking Confirmation
-                            </Button>
+                            {/* EARLY-CHECKIN-V1: Show Early Check-In button instead of Booking Confirmation when available */}
+                            {lifecycle && isActionAllowed(lifecycle, 'early-check-in') ? (
+                              <Button
+                                variant="default"
+                                size="sm"
+                                onClick={handleEarlyCheckIn}
+                                className="w-full"
+                              >
+                                <LogIn className="w-4 h-4 mr-2" />
+                                Early Check-In (Requires Approval)
+                              </Button>
+                            ) : (
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => setShowConfirmationDoc(true)}
+                                className="w-full"
+                              >
+                                <FileText className="w-4 h-4 mr-2" />
+                                Booking Confirmation
+                              </Button>
+                            )}
                             {groupInfo && (
                               <Button
                                 variant="outline"
