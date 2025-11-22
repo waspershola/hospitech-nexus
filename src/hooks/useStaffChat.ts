@@ -9,6 +9,7 @@ interface ChatMessage {
   direction: 'inbound' | 'outbound';
   sent_by: string | null;
   sender_name: string;
+  sender_role?: string; // PHASE-4B: Add staff role
   created_at: string;
 }
 
@@ -50,7 +51,15 @@ export function useStaffChat(requestId: string | null) {
     try {
       const { data, error } = await supabase
         .from('guest_communications')
-        .select('id, message, direction, sent_by, created_at, metadata')
+        .select(`
+          id, 
+          message, 
+          direction, 
+          sent_by, 
+          created_at, 
+          metadata,
+          staff:sent_by(full_name, role)
+        `)
         .eq('metadata->>request_id', requestId)
         .order('created_at', { ascending: true });
 
@@ -63,7 +72,10 @@ export function useStaffChat(requestId: string | null) {
         sent_by: msg.sent_by,
         sender_name: msg.direction === 'inbound' 
           ? (msg.metadata?.guest_name || 'Guest')
-          : 'Staff',
+          : (msg.staff?.full_name || 'Staff'),
+        sender_role: msg.direction === 'outbound' && msg.staff?.role 
+          ? msg.staff.role 
+          : undefined,
         created_at: msg.created_at,
       }));
 
@@ -117,6 +129,13 @@ export function useStaffChat(requestId: string | null) {
         metadata: { request_id: requestId },
       });
 
+      // PHASE-4B: Fetch staff details for sender name and role
+      const { data: staffData } = await supabase
+        .from('staff')
+        .select('full_name, role')
+        .eq('id', user.id)
+        .single();
+
       const { data, error } = await supabase
         .from('guest_communications')
         .insert({
@@ -149,7 +168,8 @@ export function useStaffChat(requestId: string | null) {
           message: data.message,
           direction: 'outbound',
           sent_by: user.id,
-          sender_name: 'Staff',
+          sender_name: staffData?.full_name || 'Staff',
+          sender_role: staffData?.role,
           created_at: data.created_at,
         },
       ]);
@@ -205,25 +225,54 @@ export function useStaffChat(requestId: string | null) {
             return;
           }
           
-          setMessages((prev) => {
-            if (prev.some((m) => m.id === newMessage.id)) {
-              return prev;
-            }
-            
-            return [
-              ...prev,
-              {
-                id: newMessage.id,
-                message: newMessage.message,
-                direction: newMessage.direction,
-                sent_by: newMessage.sent_by,
-                sender_name: newMessage.direction === 'inbound' 
-                  ? (newMessage.metadata?.guest_name || 'Guest')
-                  : 'Staff',
-                created_at: newMessage.created_at,
-              },
-            ];
-          });
+          // PHASE-4B: Fetch staff details for outbound messages in realtime
+          if (newMessage.direction === 'outbound' && newMessage.sent_by) {
+            supabase
+              .from('staff')
+              .select('full_name, role')
+              .eq('id', newMessage.sent_by)
+              .single()
+              .then(({ data: staffData }) => {
+                setMessages((prev) => {
+                  if (prev.some((m) => m.id === newMessage.id)) {
+                    return prev;
+                  }
+                  
+                  return [
+                    ...prev,
+                    {
+                      id: newMessage.id,
+                      message: newMessage.message,
+                      direction: newMessage.direction,
+                      sent_by: newMessage.sent_by,
+                      sender_name: staffData?.full_name || 'Staff',
+                      sender_role: staffData?.role,
+                      created_at: newMessage.created_at,
+                    },
+                  ];
+                });
+              });
+          } else {
+            setMessages((prev) => {
+              if (prev.some((m) => m.id === newMessage.id)) {
+                return prev;
+              }
+              
+              return [
+                ...prev,
+                {
+                  id: newMessage.id,
+                  message: newMessage.message,
+                  direction: newMessage.direction,
+                  sent_by: newMessage.sent_by,
+                  sender_name: newMessage.direction === 'inbound' 
+                    ? (newMessage.metadata?.guest_name || 'Guest')
+                    : 'Staff',
+                  created_at: newMessage.created_at,
+                },
+              ];
+            });
+          }
         }
       )
       .subscribe();
