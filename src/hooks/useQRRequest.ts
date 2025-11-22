@@ -5,7 +5,6 @@ import { toast } from 'sonner';
 interface CreateRequestData {
   qr_token: string;
   type: string;
-  service_category: string;
   note?: string;
   priority?: 'low' | 'normal' | 'high' | 'urgent';
   guest_name?: string;
@@ -46,7 +45,7 @@ export function useQRRequest(): UseQRRequestReturn {
       // Phase 3: Enhanced logging before API call
       console.log('[useQRRequest] Creating request:', {
         qr_token: data.qr_token?.substring(0, 8) + '...',
-        service_category: data.service_category,
+        type: data.type,
         priority: data.priority,
         has_note: !!data.note,
       });
@@ -86,7 +85,7 @@ export function useQRRequest(): UseQRRequestReturn {
 
       console.log('[useQRRequest] Request created successfully:', {
         id: result.data?.id,
-        service_category: result.data?.service_category,
+        type: result.data?.type,
       });
       setRequest(result.data);
       toast.success('Request created successfully');

@@ -73,7 +73,6 @@ export function QRServiceRequestForm() {
       const request = await createRequest({
         qr_token: token,
         type: service,
-        service_category: service,
         note: finalNote,
         priority,
         guest_name: guestName || 'Guest',

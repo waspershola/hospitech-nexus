@@ -80,7 +80,6 @@ export function QRSpaBooking() {
           action: 'create_request',
           type: 'spa',
           qr_token: token,
-          service_category: 'spa',
           note: `Spa Booking: ${selectedService.service_name} (${selectedService.duration})${preferredDateTime ? ` | Preferred: ${preferredDateTime}` : ''}${specialRequests ? ` | Requests: ${specialRequests}` : ''}`,
           priority: 'normal',
           metadata: {
