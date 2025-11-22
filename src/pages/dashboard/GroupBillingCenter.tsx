@@ -99,7 +99,7 @@ export default function GroupBillingCenter() {
           <p className="text-sm text-muted-foreground mb-4">
             Group ID: {actualGroupId}
           </p>
-          <Button onClick={() => navigate('/dashboard/frontdesk')} variant="outline">
+          <Button onClick={() => navigate('/dashboard/front-desk')} variant="outline">
             <ArrowLeft className="mr-2 h-4 w-4" />
             Back to Front Desk
           </Button>
@@ -116,7 +116,7 @@ export default function GroupBillingCenter() {
           <p className="text-muted-foreground mb-6">
             This group booking does not have a master folio yet. It will be created during check-in.
           </p>
-          <Button onClick={() => navigate('/dashboard/frontdesk')} variant="outline">
+          <Button onClick={() => navigate('/dashboard/front-desk')} variant="outline">
             <ArrowLeft className="mr-2 h-4 w-4" />
             Back to Front Desk
           </Button>
@@ -135,7 +135,7 @@ export default function GroupBillingCenter() {
           <Button
             variant="ghost"
             size="icon"
-            onClick={() => navigate('/dashboard/frontdesk')}
+            onClick={() => navigate('/dashboard/front-desk')}
           >
             <ArrowLeft className="h-5 w-5" />
           </Button>
