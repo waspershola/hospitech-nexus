@@ -8,7 +8,7 @@ import { cn } from '@/lib/utils';
 
 interface ServiceRequest {
   id: string;
-  service_category: string;
+  type: string;
   status: string;
   created_at: string;
   note?: string;
@@ -158,7 +158,7 @@ export function MyRequestsButton({
                       <div className="flex items-start justify-between gap-2">
                         <div className="flex-1">
                           <p className="text-sm font-medium capitalize">
-                            {request.service_category.replace('_', ' ')}
+                            {request.type.replace('_', ' ')}
                           </p>
                           {request.note && (
                             <p className="text-xs text-muted-foreground mt-0.5 line-clamp-1">

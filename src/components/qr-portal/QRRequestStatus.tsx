@@ -83,7 +83,7 @@ export function QRRequestStatus() {
   const renderServiceDetails = () => {
     const meta = request.metadata as Record<string, any> || {};
 
-    switch (request.service_category) {
+    switch (request.type) {
       case 'spa':
         return <SpaBookingDetails metadata={meta} />;
 
@@ -126,7 +126,7 @@ export function QRRequestStatus() {
               Request Submitted!
             </CardTitle>
             <p className="text-muted-foreground mt-2">
-              Your {request.service_category.replace('_', ' ')} request has been received
+              Your {request.type.replace('_', ' ')} request has been received
             </p>
           </CardHeader>
           <CardContent className="space-y-6">

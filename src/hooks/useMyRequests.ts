@@ -3,7 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 
 interface ServiceRequest {
   id: string;
-  service_category: string;
+  type: string;
   status: string;
   priority: string;
   note: string;
@@ -23,7 +23,7 @@ export function useMyRequests(qrToken: string | null) {
     try {
       const { data, error: fetchError } = await supabase
         .from('requests')
-        .select('id, service_category, status, priority, note, created_at, metadata')
+        .select('id, type, status, priority, note, created_at, metadata')
         .eq('qr_token', qrToken)
         .order('created_at', { ascending: false });
 
