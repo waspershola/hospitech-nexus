@@ -63,13 +63,29 @@ serve(async (req) => {
     }
 
     // 2. Verify user's tenant matches folio's tenant
-    const { data: userRole } = await supabase
+    const { data: userRole, error: userRoleError } = await supabase
       .from('user_roles')
       .select('tenant_id')
       .eq('user_id', user.id)
       .single();
     
-    if (!userRole || userRole.tenant_id !== folio.tenant_id) {
+    if (userRoleError || !userRole) {
+      throw new Error('Unauthorized: User role not found');
+    }
+
+    // Fetch staff record to get approver_id for PIN validation (staff.id, not auth user.id)
+    const { data: staff, error: staffError } = await supabase
+      .from('staff')
+      .select('id')
+      .eq('user_id', user.id)
+      .eq('tenant_id', userRole.tenant_id)
+      .single();
+
+    if (staffError || !staff) {
+      throw new Error('Unauthorized: Staff record not found for approval');
+    }
+    
+    if (userRole.tenant_id !== folio.tenant_id) {
       throw new Error('Unauthorized: Tenant mismatch');
     }
 
@@ -91,7 +107,7 @@ serve(async (req) => {
       {
         p_token: approval_token,
         p_action_type: 'rebate',
-        p_approver_id: user.id,
+        p_approver_id: staff.id,
         p_tenant_id: userRole.tenant_id
       }
     );
