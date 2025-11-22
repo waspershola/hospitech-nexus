@@ -67,6 +67,11 @@ export function ExtendStayModal({
         if (error) {
           console.error('[extend-stay-modal] EXTEND-STAY-V2: Edge function error:', error);
           
+          // Check for 404 - function not deployed
+          if (error.message?.includes('404') || error.context?.status === 404) {
+            throw new Error('FUNCTION_NOT_DEPLOYED: The extend-stay operation is not available. Please contact your system administrator.');
+          }
+          
           if (error.message?.includes('JWT') || error.message?.includes('jwt')) {
             throw new Error('SESSION_EXPIRED: Your session has expired. Please refresh the page and try again.');
           }
@@ -75,7 +80,7 @@ export function ExtendStayModal({
             throw new Error('TENANT_MISMATCH: You do not have access to this booking.');
           }
 
-          if (error.message?.includes('401')) {
+          if (error.message?.includes('401') || error.context?.status === 401) {
             throw new Error('UNAUTHORIZED: Authentication failed. Please login again.');
           }
           

@@ -145,6 +145,11 @@ export function BookingAmendmentDrawer({ open, onClose, bookingId }: BookingAmen
         if (error) {
           console.error('[amend-booking-drawer] AMEND-BOOKING-V1: Edge function error:', error);
           
+          // Check for 404 - function not deployed
+          if (error.message?.includes('404') || error.context?.status === 404) {
+            throw new Error('FUNCTION_NOT_DEPLOYED: The amend booking operation is not available. Please contact your system administrator.');
+          }
+          
           if (error.message?.includes('JWT') || error.message?.includes('jwt')) {
             throw new Error('SESSION_EXPIRED: Please refresh and try again');
           }
@@ -152,8 +157,12 @@ export function BookingAmendmentDrawer({ open, onClose, bookingId }: BookingAmen
           if (error.message?.includes('tenant')) {
             throw new Error('TENANT_MISMATCH: Invalid tenant access');
           }
+
+          if (error.message?.includes('401') || error.context?.status === 401) {
+            throw new Error('UNAUTHORIZED: Authentication failed');
+          }
           
-          throw new Error(`UNAUTHORIZED: ${error.message}`);
+          throw new Error(`Error: ${error.message}`);
         }
 
         if (!data?.success) {
