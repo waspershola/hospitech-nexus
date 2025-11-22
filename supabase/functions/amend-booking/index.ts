@@ -6,14 +6,14 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-// AMEND-BOOKING-V1: Properly amend bookings with folio adjustments
+// AMEND-BOOKING-V2-ROOM-STATUS-FIX: Complete room state transitions for amendments
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
 
   try {
-    console.log('[amend-booking] AMEND-BOOKING-V1: Processing booking amendment');
+    console.log('[amend-booking] AMEND-BOOKING-V2-ROOM-STATUS-FIX: Processing booking amendment');
 
     const authHeader = req.headers.get('Authorization') ?? '';
     const token = authHeader.replace('Bearer ', '').trim();
@@ -277,23 +277,77 @@ serve(async (req) => {
       );
     }
 
-    // Update room statuses if room changed
-    if (room_id && room_id !== booking.room_id && isCheckedIn) {
-      // Old room to cleaning
-      await supabaseAdmin
-        .from('rooms')
-        .update({ status: 'cleaning' })
-        .eq('id', booking.room_id)
-        .eq('tenant_id', booking.tenant_id);
+    // Update room statuses based on booking status and changes
+    if (room_id && room_id !== booking.room_id) {
+      // Room transfer scenario
+      if (isCheckedIn) {
+        // CHECKED-IN booking room transfer
+        // Old room to cleaning (guest left)
+        await supabaseAdmin
+          .from('rooms')
+          .update({ status: 'cleaning' })
+          .eq('id', booking.room_id)
+          .eq('tenant_id', booking.tenant_id);
 
-      // New room to occupied
-      await supabaseAdmin
-        .from('rooms')
-        .update({ status: 'occupied' })
-        .eq('id', room_id)
-        .eq('tenant_id', booking.tenant_id);
+        // New room to occupied (guest moved in)
+        await supabaseAdmin
+          .from('rooms')
+          .update({ status: 'occupied' })
+          .eq('id', room_id)
+          .eq('tenant_id', booking.tenant_id);
 
-      console.log('[amend-booking] AMEND-BOOKING-V1: Room statuses updated');
+        console.log('[amend-booking] AMEND-BOOKING-V2-ROOM-STATUS-FIX: Checked-in room transfer', {
+          old_room: booking.room_id,
+          old_status: 'cleaning',
+          new_room: room_id,
+          new_status: 'occupied'
+        });
+      } else if (booking.status === 'reserved') {
+        // RESERVED booking room transfer
+        // Old room to available (release reservation)
+        await supabaseAdmin
+          .from('rooms')
+          .update({ status: 'available' })
+          .eq('id', booking.room_id)
+          .eq('tenant_id', booking.tenant_id);
+
+        // New room to reserved (new reservation)
+        await supabaseAdmin
+          .from('rooms')
+          .update({ status: 'reserved' })
+          .eq('id', room_id)
+          .eq('tenant_id', booking.tenant_id);
+
+        console.log('[amend-booking] AMEND-BOOKING-V2-ROOM-STATUS-FIX: Reserved room transfer', {
+          old_room: booking.room_id,
+          old_status: 'available',
+          new_room: room_id,
+          new_status: 'reserved'
+        });
+      }
+    }
+
+    // Handle date changes that affect room availability (reserved bookings only)
+    if (check_in && check_in !== booking.check_in && !room_id && booking.status === 'reserved') {
+      const newCheckInDate = new Date(check_in);
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      
+      // If check-in moved to future, release room for today
+      if (newCheckInDate > today) {
+        await supabaseAdmin
+          .from('rooms')
+          .update({ status: 'available' })
+          .eq('id', booking.room_id)
+          .eq('tenant_id', booking.tenant_id);
+        
+        console.log('[amend-booking] AMEND-BOOKING-V2-ROOM-STATUS-FIX: Check-in date moved to future, room released', {
+          room_id: booking.room_id,
+          old_checkin: booking.check_in,
+          new_checkin: check_in,
+          new_status: 'available'
+        });
+      }
     }
 
     // Log audit event
@@ -312,7 +366,7 @@ serve(async (req) => {
       after_data: updates
     });
 
-    console.log('[amend-booking] AMEND-BOOKING-V1: Amendment completed successfully');
+    console.log('[amend-booking] AMEND-BOOKING-V2-ROOM-STATUS-FIX: Amendment completed successfully');
 
     return new Response(
       JSON.stringify({
