@@ -147,10 +147,16 @@ serve(async (req) => {
 
       console.log('[qr-generate] Updating QR code:', qr_id);
 
+      // QR-EDIT-FIX-V1: Sanitize updates - convert empty strings to null for timestamp fields
+      const sanitizedUpdates = { ...updates };
+      if (sanitizedUpdates.expires_at === '') {
+        sanitizedUpdates.expires_at = null;
+      }
+
       const { data: updatedQR, error: updateError } = await supabase
         .from('qr_codes')
         .update({
-          ...updates,
+          ...sanitizedUpdates,
           updated_at: new Date().toISOString(),
         })
         .eq('id', qr_id)
