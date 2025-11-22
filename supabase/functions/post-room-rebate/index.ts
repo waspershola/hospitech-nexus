@@ -229,11 +229,12 @@ serve(async (req) => {
 
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-    console.error('[post-room-rebate] MANAGER-PIN-V1: Error:', errorMessage);
+    console.error('[post-room-rebate] MANAGER-PIN-V1: Error:', errorMessage, '\nRaw error:', error);
     return new Response(
       JSON.stringify({
         success: false,
-        error: errorMessage
+        error: errorMessage,
+        details: error && typeof error === 'object' ? error : null
       }),
       { 
         status: 400,
