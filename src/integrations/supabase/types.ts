@@ -5030,6 +5030,7 @@ export type Database = {
           note: string | null
           priority: string | null
           qr_token: string | null
+          responded_at: string | null
           room_id: string | null
           service_category: string | null
           status: string | null
@@ -5049,6 +5050,7 @@ export type Database = {
           note?: string | null
           priority?: string | null
           qr_token?: string | null
+          responded_at?: string | null
           room_id?: string | null
           service_category?: string | null
           status?: string | null
@@ -5068,6 +5070,7 @@ export type Database = {
           note?: string | null
           priority?: string | null
           qr_token?: string | null
+          responded_at?: string | null
           room_id?: string | null
           service_category?: string | null
           status?: string | null

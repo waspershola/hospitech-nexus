@@ -19,6 +19,7 @@ interface StaffRequest {
   assigned_to?: string;
   assigned_department?: string;
   completed_at?: string;
+  responded_at?: string; // PHASE-3: SLA tracking timestamp
   room?: { number: string };
   guest?: { name: string };
 }
@@ -55,15 +56,30 @@ export function useStaffRequests() {
   };
 
   const updateRequestStatus = async (requestId: string, status: string): Promise<boolean> => {
+    // Find the current request to check if this is first response
+    const currentRequest = requests.find(r => r.id === requestId);
+    const isFirstResponse = currentRequest?.status === 'pending' && status !== 'pending' && !currentRequest.responded_at;
+
+    // PHASE-3: Set responded_at on first status change from pending
+    const updateData: any = { 
+      status, 
+      updated_at: new Date().toISOString() 
+    };
+    
+    if (isFirstResponse) {
+      updateData.responded_at = new Date().toISOString();
+      console.log(`[useStaffRequests] PHASE-3: Setting responded_at for request ${requestId}`);
+    }
+
     // Phase 4: Optimistic update
     setRequests(prev => prev.map(r => 
-      r.id === requestId ? { ...r, status } : r
+      r.id === requestId ? { ...r, ...updateData } : r
     ));
 
     try {
       const { error } = await supabase
         .from('requests')
-        .update({ status, updated_at: new Date().toISOString() })
+        .update(updateData)
         .eq('id', requestId);
 
       if (error) throw error;
