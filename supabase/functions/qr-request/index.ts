@@ -295,37 +295,51 @@ serve(async (req) => {
       }
 
       // Phase 3: Folio Linkage - Find open folio for billing
+      // LOCATION-QR-V1: Differentiate between Room QR and Location QR
       let attachedFolioId: string | null = null;
       let folioMatchMethod: string | null = null;
+      const qrScope = qr.scope || 'room'; // Default to 'room' for backward compatibility
+      
+      console.log('[LOCATION-QR-V1] QR scope:', qrScope, '| Room ID:', resolvedRoomId);
 
-      // Try to find folio by room first
-      if (resolvedRoomId) {
-        const { data: roomFolio, error: roomFolioError } = await supabase
-          .rpc('find_open_folio_by_room', {
-            p_tenant_id: qr.tenant_id,
-            p_room_id: resolvedRoomId
-          });
+      // ONLY auto-attach folio for Room-scoped QRs
+      if (qrScope === 'room') {
+        console.log('[LOCATION-QR-V1] Room QR detected - attempting auto-folio attachment');
         
-        if (roomFolio && roomFolio.length > 0) {
-          attachedFolioId = roomFolio[0].id;
-          folioMatchMethod = 'room';
-          console.log('[QR-FOLIO-FIX-V1] Matched to folio by room:', attachedFolioId);
+        // Try to find folio by room first
+        if (resolvedRoomId) {
+          const { data: roomFolio, error: roomFolioError } = await supabase
+            .rpc('find_open_folio_by_room', {
+              p_tenant_id: qr.tenant_id,
+              p_room_id: resolvedRoomId
+            });
+          
+          if (roomFolio && roomFolio.length > 0) {
+            attachedFolioId = roomFolio[0].id;
+            folioMatchMethod = 'room';
+            console.log('[QR-FOLIO-FIX-V1] Matched to folio by room:', attachedFolioId);
+          }
         }
-      }
 
-      // If no room match and phone provided, try phone matching
-      if (!attachedFolioId && requestData.guest_contact) {
-        const { data: phoneFolio, error: phoneFolioError } = await supabase
-          .rpc('find_open_folio_by_guest_phone', {
-            p_tenant_id: qr.tenant_id,
-            p_phone: requestData.guest_contact
-          });
-        
-        if (phoneFolio && phoneFolio.length > 0) {
-          attachedFolioId = phoneFolio[0].folio_id;
-          folioMatchMethod = 'phone';
-          console.log('[folio] Matched to folio by phone:', attachedFolioId);
+        // If no room match and phone provided, try phone matching
+        if (!attachedFolioId && requestData.guest_contact) {
+          const { data: phoneFolio, error: phoneFolioError } = await supabase
+            .rpc('find_open_folio_by_guest_phone', {
+              p_tenant_id: qr.tenant_id,
+              p_phone: requestData.guest_contact
+            });
+          
+          if (phoneFolio && phoneFolio.length > 0) {
+            attachedFolioId = phoneFolio[0].folio_id;
+            folioMatchMethod = 'phone';
+            console.log('[folio] Matched to folio by phone:', attachedFolioId);
+          }
         }
+      } else {
+        // Location QR (Pool, Bar, Spa, etc.) - NO auto-folio attachment
+        console.log('[LOCATION-QR-V1] Location QR detected - skipping auto-folio attachment. Staff will select folio manually.');
+        attachedFolioId = null;
+        folioMatchMethod = 'staff_selection_required';
       }
 
       // Determine payment choice (default: bill_to_room if folio exists)
@@ -486,6 +500,7 @@ serve(async (req) => {
           guest_contact: requestData.guest_contact || '',
           qr_location: qr.assigned_to,
           qr_scope: qr.scope,
+          folio_id: attachedFolioId, // Store folio_id for frontend to detect auto-attachment
           routed_department: finalDepartment,
           room_number: roomNumber || qr.assigned_to,
           room_name: roomName,
