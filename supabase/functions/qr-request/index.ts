@@ -307,9 +307,9 @@ serve(async (req) => {
           });
         
         if (roomFolio && roomFolio.length > 0) {
-          attachedFolioId = roomFolio[0].folio_id;
+          attachedFolioId = roomFolio[0].id;
           folioMatchMethod = 'room';
-          console.log('[folio] Matched to folio by room:', attachedFolioId);
+          console.log('[QR-FOLIO-FIX-V1] Matched to folio by room:', attachedFolioId);
         }
       }
 

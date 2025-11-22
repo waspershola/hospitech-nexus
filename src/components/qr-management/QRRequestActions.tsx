@@ -225,7 +225,7 @@ export function QRRequestActions({ request, onStatusUpdate, onClose }: QRRequest
           <PaymentForm
             bookingId={request.metadata?.booking_id}
             guestId={request.guest_id}
-            expectedAmount={request.metadata?.total_amount}
+            expectedAmount={request.metadata?.payment_info?.total_amount || request.metadata?.payment_info?.subtotal || 0}
             onSuccess={() => {
               setShowPaymentForm(false);
               handleStatusChange('completed');
