@@ -31,6 +31,8 @@ const paymentSchema = z.object({
   wallet_id: z.string().uuid('Invalid wallet ID format').optional().nullable(),
   recorded_by: z.string().uuid('Invalid user ID format').optional().nullable(),
   overpayment_action: z.enum(['wallet', 'refund']).optional().nullable(),
+  // Set when manager PIN approval has been granted
+  approval_token: z.string().optional().nullable(),
   force_approve: z.boolean().optional().nullable(),
   metadata: z.record(z.any()).optional().nullable(),
 });
@@ -132,6 +134,7 @@ serve(async (req) => {
       wallet_id,
       recorded_by,
       overpayment_action,
+      approval_token,
       force_approve,
       metadata,
     } = validationResult.data;
@@ -572,7 +575,7 @@ serve(async (req) => {
     }
 
     // Phase 3: Handle underpayment/overpayment logic
-    if (expected_amount && guest_id) {
+    if (expected_amount !== null && expected_amount !== undefined && guest_id) {
       const actualAmount = amount;
       const difference = actualAmount - expected_amount;
       
@@ -585,10 +588,11 @@ serve(async (req) => {
       
       const overpaymentThreshold = prefs?.large_overpayment_threshold || 50000;
       const underpaymentThreshold = prefs?.manager_approval_threshold || 50000;
+      const isManagerApproved = !!approval_token || !!force_approve;
       
       if (difference > 0.01) {
         // OVERPAYMENT: Check if needs manager approval
-        if (difference > overpaymentThreshold && !force_approve) {
+        if (difference > overpaymentThreshold && !isManagerApproved) {
           return new Response(
             JSON.stringify({
               success: false,
@@ -658,7 +662,7 @@ serve(async (req) => {
         // UNDERPAYMENT: Check if needs manager approval
         const balanceDue = Math.abs(difference);
         
-        if (balanceDue > underpaymentThreshold && !force_approve) {
+        if (balanceDue > underpaymentThreshold && !isManagerApproved) {
           return new Response(
             JSON.stringify({
               success: false,

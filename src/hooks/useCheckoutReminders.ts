@@ -26,7 +26,7 @@ export function useCheckoutReminders() {
         .select('value')
         .eq('tenant_id', tenantId)
         .eq('key', 'check_out_time')
-        .single();
+        .maybeSingle();
 
       const checkoutTime = configData?.value ? String(configData.value).replace(/"/g, '') : '12:00';
       const [hours, minutes] = checkoutTime.split(':').map(Number);
