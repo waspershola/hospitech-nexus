@@ -12,6 +12,12 @@ export interface QRAnalytics {
   requestsByPriority: Array<{ priority: string; count: number }>;
   dailyTrends: Array<{ date: string; scans: number; requests: number }>;
   topServices: Array<{ service: string; count: number; avgResponseTime: number }>;
+  // PHASE-5-ANALYTICS-V1: Enhanced metrics
+  slaCompliance: number; // percentage
+  overdueCount: number;
+  totalRevenue: number;
+  requestsByHour: Array<{ hour: number; count: number }>;
+  paymentsByMethod: Array<{ method: string; amount: number; count: number }>;
 }
 
 export function useQRAnalytics(dateRange?: { from: Date; to: Date }) {
@@ -33,10 +39,10 @@ export function useQRAnalytics(dateRange?: { from: Date; to: Date }) {
 
       if (qrError) throw qrError;
 
-      // Fetch requests
+      // PHASE-5-ANALYTICS-V1: Fetch requests with responded_at for SLA tracking
       const { data: requests, error: requestsError } = await supabase
         .from('requests')
-        .select('id, service_category, status, priority, created_at, completed_at, metadata')
+        .select('id, service_category, status, priority, created_at, completed_at, responded_at, metadata')
         .eq('tenant_id', tenantId)
         .gte('created_at', fromDate.toISOString())
         .lte('created_at', toDate.toISOString())
@@ -127,6 +133,76 @@ export function useQRAnalytics(dateRange?: { from: Date; to: Date }) {
         .sort((a, b) => b.count - a.count)
         .slice(0, 5);
 
+      // PHASE-5-ANALYTICS-V1: Calculate SLA compliance and overdue requests
+      const { data: slaConfig } = await supabase
+        .from('hotel_configurations')
+        .select('value')
+        .eq('tenant_id', tenantId)
+        .eq('key', 'request_sla_minutes')
+        .maybeSingle();
+
+      const slaThreshold = (slaConfig?.value as any)?.minutes || 15;
+
+      // Calculate response times using responded_at
+      const respondedRequests = requests?.filter(r => r.responded_at) || [];
+      const slaResponseTimes = respondedRequests.map(r => {
+        const created = new Date(r.created_at).getTime();
+        const responded = new Date(r.responded_at!).getTime();
+        return (responded - created) / (1000 * 60); // minutes
+      });
+
+      const withinSLA = slaResponseTimes.filter(t => t <= slaThreshold).length;
+      const slaCompliance = slaResponseTimes.length > 0
+        ? (withinSLA / slaResponseTimes.length) * 100
+        : 100;
+
+      // Count overdue requests
+      const now = new Date().getTime();
+      const overdueCount = requests?.filter(r => {
+        if (r.status !== 'pending') return false;
+        const createdTime = new Date(r.created_at).getTime();
+        const minutesPassed = (now - createdTime) / (1000 * 60);
+        return minutesPassed > slaThreshold;
+      }).length || 0;
+
+      // PHASE-5-ANALYTICS-V1: Calculate revenue from paid requests
+      const totalRevenue = requests?.reduce((sum, r) => {
+        const paymentInfo = r.metadata as any;
+        const amount = paymentInfo?.payment_info?.amount || 0;
+        const isPaid = paymentInfo?.payment_info?.status === 'paid';
+        return sum + (isPaid ? amount : 0);
+      }, 0) || 0;
+
+      // PHASE-5-ANALYTICS-V1: Requests by hour of day
+      const hourMap = new Map<number, number>();
+      for (let i = 0; i < 24; i++) hourMap.set(i, 0);
+      requests?.forEach(r => {
+        const hour = new Date(r.created_at).getHours();
+        hourMap.set(hour, (hourMap.get(hour) || 0) + 1);
+      });
+      const requestsByHour = Array.from(hourMap.entries())
+        .map(([hour, count]) => ({ hour, count }))
+        .sort((a, b) => a.hour - b.hour);
+
+      // PHASE-5-ANALYTICS-V1: Payments by method
+      const paymentMethodMap = new Map<string, { amount: number; count: number }>();
+      requests?.forEach(r => {
+        const paymentInfo = r.metadata as any;
+        const method = paymentInfo?.payment_info?.provider_name || 'Unknown';
+        const amount = paymentInfo?.payment_info?.amount || 0;
+        const isPaid = paymentInfo?.payment_info?.status === 'paid';
+        if (isPaid) {
+          const current = paymentMethodMap.get(method) || { amount: 0, count: 0 };
+          paymentMethodMap.set(method, {
+            amount: current.amount + amount,
+            count: current.count + 1,
+          });
+        }
+      });
+      const paymentsByMethod = Array.from(paymentMethodMap.entries())
+        .map(([method, data]) => ({ method, amount: data.amount, count: data.count }))
+        .sort((a, b) => b.amount - a.amount);
+
       const analytics: QRAnalytics = {
         totalScans,
         totalRequests,
@@ -137,6 +213,11 @@ export function useQRAnalytics(dateRange?: { from: Date; to: Date }) {
         requestsByPriority,
         dailyTrends,
         topServices,
+        slaCompliance,
+        overdueCount,
+        totalRevenue,
+        requestsByHour,
+        paymentsByMethod,
       };
 
       return analytics;
