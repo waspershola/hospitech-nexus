@@ -53,7 +53,7 @@ export default function GuestRequestsManagement() {
   const filteredRequests = requests.filter((request) => {
     if (statusFilter !== 'all' && request.status !== statusFilter) return false;
     if (priorityFilter !== 'all' && request.priority !== priorityFilter) return false;
-    if (categoryFilter !== 'all' && request.service_category !== categoryFilter) return false;
+    if (categoryFilter !== 'all' && request.type !== categoryFilter) return false;
     if (showOverdueOnly && !calculateOverdue(request).isOverdue) return false;
     return true;
   }).sort((a, b) => {
@@ -196,7 +196,7 @@ export default function GuestRequestsManagement() {
         onViewDetails={setSelectedRequestDetails}
         onViewOrder={(request) => {
           // Route to correct drawer based on service type
-          if (['digital_menu', 'room_service'].includes(request.service_category)) {
+          if (['digital_menu', 'room_service'].includes(request.type)) {
             setSelectedOrder(request);
           } else {
             setSelectedRequestDetails(request);

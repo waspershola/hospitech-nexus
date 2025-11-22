@@ -9,7 +9,7 @@ interface RequestHistoryStats {
   commonCategories: { category: string; count: number }[];
   recentRequests: Array<{
     id: string;
-    service_category: string;
+    type: string;
     status: string;
     created_at: string;
     completed_at: string | null;
@@ -32,7 +32,7 @@ export function useRequestHistory(roomId: string | null, guestName: string | nul
       try {
         let query = supabase
           .from('requests')
-          .select('id, service_category, status, created_at, completed_at, metadata')
+          .select('id, type, status, created_at, completed_at, metadata')
           .eq('tenant_id', tenantId)
           .not('qr_token', 'is', null)
           .order('created_at', { ascending: false });
@@ -77,7 +77,7 @@ export function useRequestHistory(roomId: string | null, guestName: string | nul
 
         // Count categories
         const categoryCount = data.reduce((acc, r) => {
-          acc[r.service_category] = (acc[r.service_category] || 0) + 1;
+          acc[r.type] = (acc[r.type] || 0) + 1;
           return acc;
         }, {} as Record<string, number>);
 
@@ -93,7 +93,7 @@ export function useRequestHistory(roomId: string | null, guestName: string | nul
           commonCategories,
           recentRequests: data.slice(0, 5).map(r => ({
             id: r.id,
-            service_category: r.service_category,
+            type: r.type,
             status: r.status,
             created_at: r.created_at,
             completed_at: r.completed_at,
