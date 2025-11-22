@@ -144,7 +144,7 @@ serve(async (req) => {
       .insert({
         tenant_id: folio.tenant_id,
         folio_id: folio_id,
-        transaction_type: 'rebate',
+        transaction_type: 'adjustment', // use allowed type, rebate modeled as adjustment
         amount: -Math.abs(finalRebateAmount), // Ensure negative
         description: `Room Rebate: ${reason}`,
         reference_type: 'room_rebate',
