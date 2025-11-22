@@ -48,6 +48,8 @@ export function ManagerApprovalModal({
         }
       });
 
+      console.log('[MANAGER-APPROVAL-V1] Raw validation response:', data, error);
+
       if (error) throw error;
       if (data?.error) throw new Error(data.error);
 
