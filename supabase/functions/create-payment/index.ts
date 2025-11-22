@@ -21,8 +21,8 @@ const paymentSchema = z.object({
   organization_id: z.string().uuid('Invalid organization ID format').optional().nullable(),
   booking_id: z.string().uuid('Invalid booking ID format').optional().nullable(),
   amount: z.number().positive('Amount must be positive').max(1000000000, 'Amount exceeds maximum'),
-  // Allow zero expected amount so overpayment logic can still work when needed
-  expected_amount: z.number().min(0, 'Expected amount cannot be negative').max(1000000000).optional().nullable(),
+  // Allow any expected amount (can be negative for credit balances); business logic will interpret correctly
+  expected_amount: z.number().max(1000000000).optional().nullable(),
   payment_type: z.enum(['partial', 'full', 'overpayment']).optional().nullable(),
   method: z.string().min(1, 'Payment method required').max(50, 'Method name too long'),
   provider_id: z.string().uuid('Invalid provider ID format').optional().nullable(),
