@@ -67,7 +67,7 @@ export function useRoomAvailabilityByDate(startDate: Date | null, endDate: Date 
         .select('value')
         .eq('tenant_id', tenantId)
         .eq('key', 'check_out_time')
-        .single();
+        .maybeSingle();
 
       const checkOutTime = checkOutConfig?.value 
         ? String(checkOutConfig.value).replace(/"/g, '') 
