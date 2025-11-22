@@ -100,6 +100,7 @@ export function QRMenuBrowser() {
       const { data, error } = await supabase.functions.invoke('qr-request', {
         body: {
           action: 'create_request',
+          type: 'digital_menu',
           qr_token: token,
           service_category: 'digital_menu',
           note: `Menu order: ${cart.length} items - Total: ₦${subtotal.toFixed(2)}`,

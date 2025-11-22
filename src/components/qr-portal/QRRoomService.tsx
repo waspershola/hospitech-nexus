@@ -96,6 +96,7 @@ export function QRRoomService() {
       const { data, error } = await supabase.functions.invoke('qr-request', {
         body: {
           action: 'create_request',
+          type: 'room_service',
           qr_token: token,
           service_category: 'room_service',
           note: `Room Service Order: ${cart.length} items - ${items.map(i => `${i.quantity}x ${i.name}`).join(', ')}`,
