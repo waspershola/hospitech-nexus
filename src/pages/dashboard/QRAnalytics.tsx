@@ -9,6 +9,8 @@ import {
   CheckCircle2,
   TrendingUp,
   BarChart3,
+  DollarSign,
+  AlertCircle,
 } from 'lucide-react';
 import {
   BarChart,
@@ -136,22 +138,63 @@ export default function QRAnalytics() {
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium">Completion Rate</CardTitle>
+            <CardTitle className="text-sm font-medium">SLA Compliance</CardTitle>
             <CheckCircle2 className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
-              {analytics.totalRequests > 0
-                ? Math.round(
-                    ((analytics.requestsByStatus.find(s => s.status === 'completed')?.count || 0) /
-                      analytics.totalRequests) *
-                      100
-                  )
-                : 0}
-              %
+              {analytics.slaCompliance.toFixed(1)}%
             </div>
             <p className="text-xs text-muted-foreground mt-1">
-              Requests completed
+              {analytics.overdueCount} currently overdue
+            </p>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* PHASE-5-ANALYTICS-V1: Revenue & Payment Metrics */}
+      <div className="grid gap-4 md:grid-cols-3">
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between pb-2">
+            <CardTitle className="text-sm font-medium">Total Revenue</CardTitle>
+            <DollarSign className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">
+              ₦{analytics.totalRevenue.toLocaleString()}
+            </div>
+            <p className="text-xs text-muted-foreground mt-1">
+              From QR requests
+            </p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between pb-2">
+            <CardTitle className="text-sm font-medium">Payment Methods</CardTitle>
+            <BarChart3 className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">
+              {analytics.paymentsByMethod.length}
+            </div>
+            <p className="text-xs text-muted-foreground mt-1">
+              Active payment channels
+            </p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between pb-2">
+            <CardTitle className="text-sm font-medium">Overdue Requests</CardTitle>
+            <AlertCircle className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-destructive">
+              {analytics.overdueCount}
+            </div>
+            <p className="text-xs text-muted-foreground mt-1">
+              Requires immediate attention
             </p>
           </CardContent>
         </Card>
@@ -270,6 +313,63 @@ export default function QRAnalytics() {
                     />
                   ))}
                 </Bar>
+              </BarChart>
+            </ResponsiveContainer>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* PHASE-5-ANALYTICS-V1: New Analytics Charts */}
+      <div className="grid gap-4 md:grid-cols-2">
+        <Card>
+          <CardHeader>
+            <CardTitle>Hourly Request Volume</CardTitle>
+            <CardDescription>Peak usage times throughout the day</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <ResponsiveContainer width="100%" height={300}>
+              <LineChart data={analytics.requestsByHour}>
+                <CartesianGrid strokeDasharray="3 3" />
+                <XAxis 
+                  dataKey="hour" 
+                  tick={{ fontSize: 12 }}
+                  tickFormatter={(hour) => `${hour}:00`}
+                />
+                <YAxis tick={{ fontSize: 12 }} />
+                <Tooltip 
+                  labelFormatter={(hour) => `${hour}:00 - ${hour}:59`}
+                />
+                <Line 
+                  type="monotone" 
+                  dataKey="count" 
+                  stroke={COLORS.primary} 
+                  strokeWidth={2}
+                  name="Requests"
+                />
+              </LineChart>
+            </ResponsiveContainer>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>Revenue by Payment Method</CardTitle>
+            <CardDescription>Payment channel breakdown</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <ResponsiveContainer width="100%" height={300}>
+              <BarChart data={analytics.paymentsByMethod.slice(0, 5)}>
+                <CartesianGrid strokeDasharray="3 3" />
+                <XAxis 
+                  dataKey="method" 
+                  tick={{ fontSize: 12 }}
+                  angle={-45}
+                  textAnchor="end"
+                  height={80}
+                />
+                <YAxis tick={{ fontSize: 12 }} />
+                <Tooltip />
+                <Bar dataKey="amount" fill={COLORS.success} name="Revenue (₦)" />
               </BarChart>
             </ResponsiveContainer>
           </CardContent>
