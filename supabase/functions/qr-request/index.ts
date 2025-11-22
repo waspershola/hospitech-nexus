@@ -1,10 +1,40 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.46.1";
+import { z } from "https://deno.land/x/zod@v3.22.4/mod.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
+
+// PHASE-5A-VALIDATION: Zod schemas for QR request actions
+const createRequestSchema = z.object({
+  action: z.literal('create_request'),
+  qr_token: z.string().min(10, 'QR token too short').max(500, 'QR token too long'),
+  type: z.string().max(100),
+  service_category: z.string().min(1, 'Service category required').max(100),
+  note: z.string().max(2000, 'Note too long (max 2000 characters)').optional(),
+  priority: z.enum(['low', 'normal', 'high', 'urgent']).optional(),
+  guest_name: z.string().max(200, 'Guest name too long').optional(),
+  guest_contact: z.string().max(50, 'Contact too long').optional(),
+  payment_choice: z.string().max(50).optional(),
+  metadata: z.any().optional(),
+});
+
+const sendMessageSchema = z.object({
+  action: z.literal('send_message'),
+  request_id: z.string().uuid('Invalid request ID'),
+  qr_token: z.string().min(10),
+  message: z.string().min(1, 'Message cannot be empty').max(5000, 'Message too long (max 5000 characters)'),
+  direction: z.enum(['inbound', 'outbound']),
+  guest_name: z.string().max(200).optional(),
+});
+
+const getMessagesSchema = z.object({
+  action: z.literal('get_messages'),
+  request_id: z.string().uuid('Invalid request ID'),
+  qr_token: z.string().min(10),
+});
 
 interface ServiceRequest {
   qr_token: string;
@@ -190,8 +220,32 @@ serve(async (req) => {
     const body = await req.json();
     const { action } = body;
 
+    // PHASE-5A-VALIDATION: Validate action type first
+    if (!action || typeof action !== 'string') {
+      return new Response(
+        JSON.stringify({ success: false, error: 'Invalid or missing action field' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
     if (action === 'create_request') {
-      const requestData: ServiceRequest = body;
+      // PHASE-5A-VALIDATION: Validate create_request payload
+      const validationResult = createRequestSchema.safeParse(body);
+      
+      if (!validationResult.success) {
+        const errors = validationResult.error.errors.map(e => `${e.path.join('.')}: ${e.message}`).join(', ');
+        console.error('[qr-request] Validation failed:', errors);
+        return new Response(
+          JSON.stringify({
+            success: false,
+            error: 'Invalid request data',
+            details: errors,
+          }),
+          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      const requestData: ServiceRequest = validationResult.data;
 
       // Phase 1: Enhanced validation with detailed logging
       console.log('[qr-request] Received request data:', {

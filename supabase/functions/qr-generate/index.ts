@@ -1,19 +1,49 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.3";
+import { z } from "https://deno.land/x/zod@v3.22.4/mod.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
+// PHASE-5A-VALIDATION: Zod schemas for QR code management
+const qrCodeBaseSchema = z.object({
+  scope: z.enum(['room', 'location', 'facility', 'event'], {
+    errorMap: () => ({ message: "Scope must be one of: room, location, facility, event" })
+  }),
+  assigned_to: z.string().min(1, 'Assigned to field is required').max(200, 'Assigned to field too long'),
+  room_id: z.string().uuid('Invalid room ID format').optional().nullable(),
+  services: z.array(z.string()).min(1, 'At least one service must be selected').max(50, 'Too many services selected'),
+  display_name: z.string().max(200, 'Display name too long').optional(),
+  welcome_message: z.string().max(1000, 'Welcome message too long').optional(),
+  expires_at: z.string().datetime({ message: 'Invalid datetime format' }).or(z.literal('')).optional().nullable(),
+});
+
+const createQRSchema = z.object({
+  action: z.literal('create'),
+  qr_codes: z.array(qrCodeBaseSchema).min(1, 'At least one QR code required').max(100, 'Too many QR codes (max 100)'),
+});
+
+const updateQRSchema = z.object({
+  action: z.literal('update'),
+  qr_id: z.string().uuid('Invalid QR code ID'),
+  updates: qrCodeBaseSchema.partial(),
+});
+
+const deleteQRSchema = z.object({
+  action: z.literal('delete'),
+  qr_id: z.string().uuid('Invalid QR code ID'),
+});
+
 interface QRCodeRequest {
-  scope: 'room' | 'location' | 'table' | 'facility';
+  scope: 'room' | 'location' | 'facility' | 'event';
   assigned_to: string;
-  room_id?: string;
+  room_id?: string | null;
   services: string[];
   display_name?: string;
   welcome_message?: string;
-  expires_at?: string;
+  expires_at?: string | null;
 }
 
 serve(async (req) => {
@@ -57,7 +87,7 @@ serve(async (req) => {
     }
 
     const body = await req.json();
-    const { action, qr_codes } = body;
+    const { action } = body;
 
     // Get user's tenant
     const { data: userRole } = await supabase
@@ -77,13 +107,23 @@ serve(async (req) => {
     const tenantId = userRole.tenant_id;
 
     if (action === 'create') {
-      // Validate request
-      if (!Array.isArray(qr_codes) || qr_codes.length === 0) {
+      // PHASE-5A-VALIDATION: Validate create payload with Zod
+      const validationResult = createQRSchema.safeParse(body);
+      
+      if (!validationResult.success) {
+        const errors = validationResult.error.errors.map(e => `${e.path.join('.')}: ${e.message}`).join(', ');
+        console.error('[qr-generate] Create validation failed:', errors);
         return new Response(
-          JSON.stringify({ success: false, error: 'Invalid QR code data' }),
+          JSON.stringify({
+            success: false,
+            error: 'Invalid QR code data',
+            details: errors,
+          }),
           { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
       }
+
+      const { qr_codes } = validationResult.data;
 
       console.log(`[qr-generate] Creating ${qr_codes.length} QR code(s) for tenant:`, tenantId);
 
@@ -136,14 +176,23 @@ serve(async (req) => {
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     } else if (action === 'update') {
-      const { qr_id, updates } = body;
-
-      if (!qr_id) {
+      // PHASE-5A-VALIDATION: Validate update payload with Zod
+      const validationResult = updateQRSchema.safeParse(body);
+      
+      if (!validationResult.success) {
+        const errors = validationResult.error.errors.map(e => `${e.path.join('.')}: ${e.message}`).join(', ');
+        console.error('[qr-generate] Update validation failed:', errors);
         return new Response(
-          JSON.stringify({ success: false, error: 'QR code ID required' }),
+          JSON.stringify({
+            success: false,
+            error: 'Invalid update data',
+            details: errors,
+          }),
           { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
       }
+
+      const { qr_id, updates } = validationResult.data;
 
       console.log('[qr-generate] Updating QR code:', qr_id);
 
@@ -182,14 +231,23 @@ serve(async (req) => {
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     } else if (action === 'delete') {
-      const { qr_id } = body;
-
-      if (!qr_id) {
+      // PHASE-5A-VALIDATION: Validate delete payload with Zod
+      const validationResult = deleteQRSchema.safeParse(body);
+      
+      if (!validationResult.success) {
+        const errors = validationResult.error.errors.map(e => `${e.path.join('.')}: ${e.message}`).join(', ');
+        console.error('[qr-generate] Delete validation failed:', errors);
         return new Response(
-          JSON.stringify({ success: false, error: 'QR code ID required' }),
+          JSON.stringify({
+            success: false,
+            error: 'Invalid delete request',
+            details: errors,
+          }),
           { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
       }
+
+      const { qr_id } = validationResult.data;
 
       console.log('[qr-generate] Deleting QR code:', qr_id);
 

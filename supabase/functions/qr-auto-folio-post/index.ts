@@ -1,10 +1,20 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.46.1";
+import { z } from "https://deno.land/x/zod@v3.22.4/mod.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
+
+// PHASE-5A-VALIDATION: Zod schema for charge-to-room requests
+const chargeToRoomSchema = z.object({
+  request_id: z.string().uuid('Invalid request ID format'),
+  tenant_id: z.string().uuid('Invalid tenant ID format'),
+  amount: z.number().positive('Amount must be greater than zero').max(10000000, 'Amount exceeds maximum allowed'),
+  description: z.string().max(500, 'Description too long').optional(),
+  service_category: z.string().min(1, 'Service category is required').max(100, 'Service category too long'),
+});
 
 interface ChargeToRoomRequest {
   request_id: string;
@@ -31,25 +41,32 @@ serve(async (req) => {
       }
     );
 
-    const { request_id, tenant_id, amount, description, service_category }: ChargeToRoomRequest = await req.json();
+    const rawBody = await req.json();
 
-    console.log('[qr-auto-folio-post] QR-AUTO-FOLIO-V1 - Processing charge-to-room:', {
+    // PHASE-5A-VALIDATION: Validate request body with Zod
+    const validationResult = chargeToRoomSchema.safeParse(rawBody);
+    
+    if (!validationResult.success) {
+      const errors = validationResult.error.errors.map(e => `${e.path.join('.')}: ${e.message}`).join(', ');
+      console.error('[qr-auto-folio-post] Validation failed:', errors);
+      return new Response(
+        JSON.stringify({
+          success: false,
+          error: 'Invalid request data',
+          details: errors,
+        }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 400 }
+      );
+    }
+
+    const { request_id, tenant_id, amount, description, service_category } = validationResult.data;
+
+    console.log('[qr-auto-folio-post] QR-AUTO-FOLIO-V2-VALIDATED - Processing charge-to-room:', {
       request_id,
       tenant_id,
       amount,
       service_category,
     });
-
-    // Validate inputs
-    if (!request_id || !tenant_id || !amount || amount <= 0) {
-      return new Response(
-        JSON.stringify({
-          success: false,
-          error: 'Missing or invalid required fields',
-        }),
-        { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 400 }
-      );
-    }
 
     // Get request details and verify folio exists
     const { data: request, error: requestError } = await supabaseClient
