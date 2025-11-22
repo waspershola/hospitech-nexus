@@ -16,7 +16,6 @@ interface ServiceRequest {
   tenant_id: string;
   room_id: string | null;
   type: string;
-  service_category: string;
   note: string;
   status: string;
   priority: string;

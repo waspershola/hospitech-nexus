@@ -5,7 +5,7 @@ import { toast } from 'sonner';
 interface RecordPlatformFeeParams {
   request_id: string;
   tenant_id: string;
-  service_category: string;
+  type: string;
   amount: number;
   payment_location?: string;
   payment_method?: string;
