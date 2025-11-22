@@ -332,6 +332,101 @@ serve(async (req) => {
       const paymentChoice = requestData.payment_choice || (attachedFolioId ? 'bill_to_room' : 'pay_now');
       console.log('[folio] Payment choice:', paymentChoice, '| Folio:', attachedFolioId);
 
+      // QR-FOLIO-AUDIT-V1: BLOCKING VALIDATION - Validate folio BEFORE request creation
+      if (paymentChoice === 'bill_to_room') {
+        console.log('[folio-validation] Validating folio for bill_to_room payment...');
+        
+        // Check 1: Folio must exist
+        if (!attachedFolioId) {
+          console.error('[folio-validation] BLOCKING: No active folio found - guest not checked in');
+          
+          // Log matching failure
+          await supabase.from('qr_folio_matching_log').insert({
+            tenant_id: qr.tenant_id,
+            qr_token: requestData.qr_token,
+            room_id: resolvedRoomId,
+            guest_contact: requestData.guest_contact,
+            matched_folio_id: null,
+            match_method: 'none',
+            match_success: false,
+            failure_reason: 'No active folio found for room or phone - guest not checked in',
+          });
+          
+          return new Response(
+            JSON.stringify({
+              success: false,
+              error: 'Guest not checked in. Cannot charge to room.',
+              code: 'NO_ACTIVE_FOLIO',
+              hint: 'Please select "Pay Now" option or check in the guest first.',
+            }),
+            { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+        
+        // Check 2: Folio must be open and accessible
+        const { data: folioCheck, error: folioCheckError } = await supabase
+          .from('stay_folios')
+          .select('id, status, balance, booking_id')
+          .eq('id', attachedFolioId)
+          .eq('tenant_id', qr.tenant_id)
+          .single();
+        
+        if (folioCheckError || !folioCheck) {
+          console.error('[folio-validation] BLOCKING: Folio query failed:', folioCheckError);
+          
+          await supabase.from('qr_folio_matching_log').insert({
+            tenant_id: qr.tenant_id,
+            qr_token: requestData.qr_token,
+            room_id: resolvedRoomId,
+            matched_folio_id: attachedFolioId,
+            match_method: folioMatchMethod,
+            match_success: false,
+            failure_reason: `Folio query failed: ${folioCheckError?.message || 'Unknown error'}`,
+          });
+          
+          return new Response(
+            JSON.stringify({
+              success: false,
+              error: 'Failed to access folio. Please try again.',
+              code: 'FOLIO_QUERY_ERROR',
+            }),
+            { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+        
+        // Check 3: Folio must be open status
+        if (folioCheck.status !== 'open') {
+          console.error('[folio-validation] BLOCKING: Folio not open - status:', folioCheck.status);
+          
+          await supabase.from('qr_folio_matching_log').insert({
+            tenant_id: qr.tenant_id,
+            qr_token: requestData.qr_token,
+            room_id: resolvedRoomId,
+            matched_folio_id: attachedFolioId,
+            match_method: folioMatchMethod,
+            match_success: false,
+            failure_reason: `Folio status is '${folioCheck.status}' - must be 'open' to accept charges`,
+          });
+          
+          return new Response(
+            JSON.stringify({
+              success: false,
+              error: 'Folio is not available for billing. Guest may have checked out.',
+              code: 'FOLIO_NOT_OPEN',
+              details: `Folio status: ${folioCheck.status}`,
+            }),
+            { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+        
+        console.log('[folio-validation] ✅ Folio validated:', {
+          folio_id: folioCheck.id,
+          status: folioCheck.status,
+          balance: folioCheck.balance,
+          booking_id: folioCheck.booking_id,
+        });
+      }
+
       // Phase 4: Payment integration metadata
       const PAYMENT_LOCATION_MAP: Record<string, string> = {
         'restaurant': 'Restaurant POS',
@@ -431,9 +526,9 @@ serve(async (req) => {
 
       console.log('[qr-request] Request created successfully:', newRequest.id);
 
-      // Post charge to folio if bill_to_room
+      // QR-FOLIO-AUDIT-V1: BLOCKING CHARGE POSTING - Post charge to folio if bill_to_room
       if (attachedFolioId && paymentChoice === 'bill_to_room' && paymentInfo.subtotal && paymentInfo.subtotal > 0) {
-        console.log(`[folio] Posting charge of ${paymentInfo.subtotal} to folio ${attachedFolioId}`);
+        console.log(`[folio-charge] BLOCKING: Posting charge of ${paymentInfo.subtotal} to folio ${attachedFolioId}`);
         
         try {
           // Get booking to check organization limits
@@ -453,7 +548,7 @@ serve(async (req) => {
 
             // Validate organization limits if applicable
             if (bookingData?.organization_id) {
-              console.log('[qr-request] Validating org limits for:', bookingData.organization_id);
+              console.log('[folio-charge] Validating org limits for:', bookingData.organization_id);
               
               const { data: validation, error: validationError } = await supabase.rpc(
                 'validate_org_limits',
@@ -466,12 +561,48 @@ serve(async (req) => {
               );
 
               if (validationError) {
-                console.error('[qr-request] Validation error:', validationError);
-                throw new Error('Failed to validate organization limits');
+                console.error('[folio-charge] BLOCKING: Validation RPC error:', validationError);
+                
+                // Log failure
+                await supabase.from('qr_folio_matching_log').insert({
+                  tenant_id: qr.tenant_id,
+                  request_id: newRequest.id,
+                  matched_folio_id: attachedFolioId,
+                  match_method: folioMatchMethod,
+                  match_success: false,
+                  failure_reason: `Org limit validation RPC failed: ${validationError.message}`,
+                });
+                
+                // ROLLBACK: Delete the request
+                await supabase.from('requests').delete().eq('id', newRequest.id);
+                
+                return new Response(
+                  JSON.stringify({
+                    success: false,
+                    error: 'Failed to validate organization limits',
+                    code: 'ORG_LIMIT_VALIDATION_ERROR',
+                    details: validationError.message,
+                  }),
+                  { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+                );
               }
 
               if (validation && !validation.allowed) {
-                console.log('[qr-request] Organization limit exceeded:', validation.detail);
+                console.log('[folio-charge] BLOCKING: Organization limit exceeded:', validation.detail);
+                
+                // Log limit exceeded
+                await supabase.from('qr_folio_matching_log').insert({
+                  tenant_id: qr.tenant_id,
+                  request_id: newRequest.id,
+                  matched_folio_id: attachedFolioId,
+                  match_method: folioMatchMethod,
+                  match_success: false,
+                  failure_reason: `Org limit exceeded: ${validation.detail}`,
+                });
+                
+                // ROLLBACK: Delete the request
+                await supabase.from('requests').delete().eq('id', newRequest.id);
+                
                 return new Response(
                   JSON.stringify({
                     success: false,
@@ -485,7 +616,7 @@ serve(async (req) => {
             }
           }
 
-          // Post charge to folio using RPC (validation happens inside RPC too)
+          // Post charge to folio using RPC (BLOCKING - must succeed)
           const { data: chargeResult, error: chargeError } = await supabase.rpc('folio_post_charge', {
             p_folio_id: attachedFolioId,
             p_amount: paymentInfo.subtotal,
@@ -496,27 +627,96 @@ serve(async (req) => {
           });
           
           if (chargeError) {
-            console.error('[folio] Failed to post charge:', chargeError);
-          } else {
-            console.log('[folio] Charge posted successfully:', chargeResult);
+            console.error('[folio-charge] BLOCKING ERROR: folio_post_charge RPC failed:', chargeError);
             
-            // Broadcast real-time update to folio subscribers
-            await supabase
-              .channel(`folio-${attachedFolioId}`)
-              .send({
-                type: 'broadcast',
-                event: 'charge_posted',
-                payload: {
-                  folio_id: attachedFolioId,
-                  request_id: newRequest.id,
-                  amount: paymentInfo.subtotal,
-                  description: `${requestData.service_category}: ${requestData.note || 'Service Request'}`
-                }
-              });
+            // Log failure
+            await supabase.from('qr_folio_matching_log').insert({
+              tenant_id: qr.tenant_id,
+              request_id: newRequest.id,
+              matched_folio_id: attachedFolioId,
+              match_method: folioMatchMethod,
+              match_success: false,
+              failure_reason: `folio_post_charge RPC failed: ${chargeError.message}`,
+            });
+            
+            // ROLLBACK: Delete the request to prevent orphan
+            console.log('[folio-charge] ROLLBACK: Deleting request', newRequest.id);
+            await supabase.from('requests').delete().eq('id', newRequest.id);
+            
+            return new Response(
+              JSON.stringify({
+                success: false,
+                error: 'Failed to charge to room. Please try again or select "Pay Now".',
+                code: 'FOLIO_CHARGE_FAILED',
+                details: chargeError.message,
+              }),
+              { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+            );
           }
+          
+          console.log('[folio-charge] ✅ Charge posted successfully:', chargeResult);
+          
+          // Log success
+          await supabase.from('qr_folio_matching_log').insert({
+            tenant_id: qr.tenant_id,
+            request_id: newRequest.id,
+            matched_folio_id: attachedFolioId,
+            match_method: folioMatchMethod,
+            match_success: true,
+            failure_reason: null,
+          });
+          
+          // Broadcast real-time update to folio subscribers
+          await supabase
+            .channel(`folio-${attachedFolioId}`)
+            .send({
+              type: 'broadcast',
+              event: 'charge_posted',
+              payload: {
+                folio_id: attachedFolioId,
+                request_id: newRequest.id,
+                amount: paymentInfo.subtotal,
+                description: `${requestData.service_category}: ${requestData.note || 'Service Request'}`
+              }
+            });
+            
         } catch (chargeErr) {
-          console.error('[folio] Error posting charge:', chargeErr);
+          console.error('[folio-charge] BLOCKING: Unexpected error during charge posting:', chargeErr);
+          
+          // Log unexpected error
+          await supabase.from('qr_folio_matching_log').insert({
+            tenant_id: qr.tenant_id,
+            request_id: newRequest.id,
+            matched_folio_id: attachedFolioId,
+            match_method: folioMatchMethod,
+            match_success: false,
+            failure_reason: `Unexpected error: ${chargeErr instanceof Error ? chargeErr.message : String(chargeErr)}`,
+          });
+          
+          // ROLLBACK: Delete the request
+          console.log('[folio-charge] ROLLBACK: Deleting request due to unexpected error');
+          await supabase.from('requests').delete().eq('id', newRequest.id);
+          
+          return new Response(
+            JSON.stringify({
+              success: false,
+              error: 'An unexpected error occurred while charging to room',
+              code: 'UNEXPECTED_CHARGE_ERROR',
+              details: chargeErr instanceof Error ? chargeErr.message : String(chargeErr),
+            }),
+            { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
         }
+      } else if (attachedFolioId && paymentChoice === 'bill_to_room') {
+        // Log successful folio match even when no charge (e.g., zero-cost services)
+        await supabase.from('qr_folio_matching_log').insert({
+          tenant_id: qr.tenant_id,
+          request_id: newRequest.id,
+          matched_folio_id: attachedFolioId,
+          match_method: folioMatchMethod,
+          match_success: true,
+          failure_reason: null,
+        });
       }
 
       // Calculate platform fee server-side (ensures consistency)
