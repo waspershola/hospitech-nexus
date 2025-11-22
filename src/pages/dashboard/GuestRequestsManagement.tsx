@@ -1,8 +1,9 @@
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
-import { MessageSquare, Filter } from 'lucide-react';
+import { MessageSquare, Filter, AlertCircle } from 'lucide-react';
 import { useStaffRequests } from '@/hooks/useStaffRequests';
+import { useOverdueRequests } from '@/hooks/useOverdueRequests';
 import RequestsTable from '@/components/qr-management/RequestsTable';
 import StaffChatDialog from '@/components/qr-management/StaffChatDialog';
 import { OrderDetailsDrawer } from '@/components/qr-management/OrderDetailsDrawer';
@@ -16,6 +17,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { Badge } from '@/components/ui/badge';
 
 export default function GuestRequestsManagement() {
   const [selectedRequest, setSelectedRequest] = useState<any>(null);
@@ -24,7 +26,9 @@ export default function GuestRequestsManagement() {
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [priorityFilter, setPriorityFilter] = useState<string>('all');
   const [categoryFilter, setCategoryFilter] = useState<string>('all');
+  const [showOverdueOnly, setShowOverdueOnly] = useState(false);
   const { requests, isLoading, updateRequestStatus, fetchRequests } = useStaffRequests();
+  const { getOverdueRequests, calculateOverdue } = useOverdueRequests();
 
   // Fetch order details when viewing an order
   const { data: orderData } = useQuery({
@@ -43,11 +47,24 @@ export default function GuestRequestsManagement() {
     enabled: !!selectedOrder,
   });
 
+  // PHASE-3: Filter and sort requests with overdue detection
+  const overdueRequests = getOverdueRequests(requests);
+  
   const filteredRequests = requests.filter((request) => {
     if (statusFilter !== 'all' && request.status !== statusFilter) return false;
     if (priorityFilter !== 'all' && request.priority !== priorityFilter) return false;
     if (categoryFilter !== 'all' && request.service_category !== categoryFilter) return false;
+    if (showOverdueOnly && !calculateOverdue(request).isOverdue) return false;
     return true;
+  }).sort((a, b) => {
+    // Sort by overdue first, then by oldest
+    const aOverdue = calculateOverdue(a);
+    const bOverdue = calculateOverdue(b);
+    
+    if (aOverdue.isOverdue && !bOverdue.isOverdue) return -1;
+    if (!aOverdue.isOverdue && bOverdue.isOverdue) return 1;
+    
+    return new Date(a.created_at).getTime() - new Date(b.created_at).getTime();
   });
 
   const handleUpdateOrderStatus = async (status: string) => {
@@ -77,6 +94,13 @@ export default function GuestRequestsManagement() {
           </p>
         </div>
         <div className="flex items-center gap-4">
+          {/* PHASE-3: Overdue badge */}
+          {overdueRequests.length > 0 && (
+            <Badge variant="destructive" className="gap-2 text-base px-3 py-1.5 animate-pulse">
+              <AlertCircle className="h-4 w-4" />
+              {overdueRequests.length} Overdue
+            </Badge>
+          )}
           <div className="flex items-center gap-2 text-sm">
             <div className="flex items-center gap-1">
               <div className="h-2 w-2 rounded-full bg-yellow-500" />
@@ -92,6 +116,17 @@ export default function GuestRequestsManagement() {
 
       <div className="flex items-center gap-4 bg-card p-4 rounded-lg border border-border">
         <Filter className="h-5 w-5 text-muted-foreground" />
+        
+        {/* PHASE-3: Overdue filter */}
+        <Button
+          variant={showOverdueOnly ? 'destructive' : 'outline'}
+          size="sm"
+          onClick={() => setShowOverdueOnly(!showOverdueOnly)}
+        >
+          <AlertCircle className="h-4 w-4 mr-2" />
+          {showOverdueOnly ? 'Show All' : 'Overdue Only'}
+        </Button>
+        
         <div className="flex items-center gap-2">
           <span className="text-sm font-medium">Category:</span>
           <Select value={categoryFilter} onValueChange={setCategoryFilter}>
@@ -158,6 +193,7 @@ export default function GuestRequestsManagement() {
         isLoading={isLoading}
         onViewChat={setSelectedRequest}
         onUpdateStatus={updateRequestStatus}
+        onViewDetails={setSelectedRequestDetails}
         onViewOrder={(request) => {
           // Route to correct drawer based on service type
           if (['digital_menu', 'room_service'].includes(request.service_category)) {

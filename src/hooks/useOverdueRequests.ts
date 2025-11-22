@@ -71,5 +71,26 @@ export function useOverdueRequests() {
     return () => clearInterval(interval);
   }, [tenantId, permissionGranted]);
 
-  return { overdueCount, slaMinutes };
+  // PHASE-3: Helper functions for calculating overdue status per request
+  const calculateOverdue = (request: any): { isOverdue: boolean; minutesOverdue: number } => {
+    if (request.status !== 'pending') {
+      return { isOverdue: false, minutesOverdue: 0 };
+    }
+
+    const createdAt = new Date(request.created_at);
+    const now = new Date();
+    const minutesElapsed = Math.floor((now.getTime() - createdAt.getTime()) / (1000 * 60));
+    const minutesOverdue = minutesElapsed - slaMinutes;
+
+    return {
+      isOverdue: minutesOverdue > 0,
+      minutesOverdue: Math.max(0, minutesOverdue),
+    };
+  };
+
+  const getOverdueRequests = (requests: any[]) => {
+    return requests.filter(request => calculateOverdue(request).isOverdue);
+  };
+
+  return { overdueCount, slaMinutes, calculateOverdue, getOverdueRequests };
 }
