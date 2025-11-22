@@ -28,12 +28,13 @@ import { RequestFolioLink } from '@/components/staff/RequestFolioLink';
 import { format } from 'date-fns';
 import { useQueries, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
-import { 
+import {
   MessageSquare, Clock, CheckCircle2, XCircle, AlertCircle, Send,
   User, MapPin, Zap, Loader2, History, TrendingUp, BarChart3, UtensilsCrossed,
-  Calendar, Users, Sparkles, Shirt, DollarSign
+  Calendar, Users, Sparkles, Shirt, DollarSign, Wifi
 } from 'lucide-react';
 import { toast } from 'sonner';
+import { ConnectionHealthIndicator } from '@/components/ui/ConnectionHealthIndicator';
 
 interface QRRequestDrawerProps {
   open: boolean;
@@ -672,6 +673,9 @@ export function QRRequestDrawer({ open, onOpenChange }: QRRequestDrawerProps) {
             <MessageSquare className="h-5 w-5" />
             QR Portal Requests
             <Badge variant="secondary">{requests.length}</Badge>
+            <div className="ml-auto">
+              <ConnectionHealthIndicator showLabel />
+            </div>
           </SheetTitle>
         </SheetHeader>
 
@@ -1416,6 +1420,16 @@ export function QRRequestDrawer({ open, onOpenChange }: QRRequestDrawerProps) {
                                 : 'bg-muted'
                             }`}
                           >
+                            <div className="flex items-center gap-2 mb-1">
+                              <p className="text-xs font-semibold">
+                                {msg.sender_name}
+                              </p>
+                              {msg.sender_role && msg.direction === 'outbound' && (
+                                <Badge variant="secondary" className="h-4 text-[10px] px-1.5 py-0">
+                                  {msg.sender_role}
+                                </Badge>
+                              )}
+                            </div>
                             <p className="text-sm">{msg.message}</p>
                             <p className="text-xs opacity-70 mt-1">
                               {format(new Date(msg.created_at), 'h:mm a')}

@@ -9,6 +9,7 @@ import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { ArrowLeft, Send, CheckCheck, Package } from 'lucide-react';
 import { format } from 'date-fns';
+import { ConnectionHealthIndicator } from '@/components/ui/ConnectionHealthIndicator';
 
 export function QRChatInterface() {
   const { token, requestId } = useParams<{ token: string; requestId: string }>();
@@ -75,7 +76,10 @@ export function QRChatInterface() {
             </Button>
           )}
           <div className="flex-1">
-            <h1 className="text-lg font-semibold">Service Request Chat</h1>
+            <div className="flex items-center gap-2">
+              <h1 className="text-lg font-semibold">Service Request Chat</h1>
+              <ConnectionHealthIndicator />
+            </div>
             <p className="text-sm text-muted-foreground">
               Request ID: {requestId?.substring(0, 8)}...
             </p>
