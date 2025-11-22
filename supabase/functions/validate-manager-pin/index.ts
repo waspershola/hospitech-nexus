@@ -34,10 +34,11 @@ const validatePinSchema = z.object({
     'stock_adjustment',
     'checkout_with_debt',
     'manual_rate_override',
-    'room_rebate' // Backward compatibility alias for 'rebate'
+    'room_rebate', // Backward compatibility alias for 'rebate'
+    'early-check-in' // EARLY-CHECKIN-V1: Allow early check-in approval
   ]),
   action_reference: z.string().uuid().optional().nullable(),
-  amount: z.number().positive().optional().nullable(),
+  amount: z.number().nonnegative().optional().nullable(), // Changed to nonnegative to allow 0 for early-check-in
   reason: z.string().min(10, 'Reason must be at least 10 characters').max(500, 'Reason too long'),
 });
 
