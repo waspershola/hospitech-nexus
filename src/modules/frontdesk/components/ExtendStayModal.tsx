@@ -30,44 +30,64 @@ export function ExtendStayModal({
 
   const extendMutation = useMutation({
     mutationFn: async () => {
-      if (new Date(newCheckOut) <= new Date(currentCheckOut)) {
-        throw new Error('New check-out date must be after current check-out');
-      }
-
-      // Get current session for authentication
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session?.access_token) {
-        throw new Error('No active session - please login again');
-      }
-
-      console.log('[extend-stay-modal] EXTEND-STAY-V1: Calling extend-stay edge function');
-
-      // EXTEND-STAY-V1: Call edge function for proper folio integration with explicit auth
-      const { data, error } = await supabase.functions.invoke('extend-stay', {
-        body: {
-          booking_id: bookingId,
-          new_checkout: newCheckOut,
-          staff_id: null, // Will use authenticated user in edge function
-          reason: 'Staff extended stay via front desk'
-        },
-        headers: {
-          Authorization: `Bearer ${session.access_token}`
+      try {
+        if (new Date(newCheckOut) <= new Date(currentCheckOut)) {
+          throw new Error('New check-out date must be after current check-out');
         }
-      });
 
-      console.log('[extend-stay-modal] EXTEND-STAY-V1: Edge function response:', { data, error });
+        // Get current session for authentication
+        const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+        
+        if (sessionError) {
+          console.error('[extend-stay-modal] SESSION_ERROR:', sessionError);
+          throw new Error(`SESSION_ERROR: ${sessionError.message}`);
+        }
+        
+        if (!session?.access_token) {
+          throw new Error('NO_SESSION: Please login to continue');
+        }
 
-      if (error) {
-        console.error('[extend-stay-modal] EXTEND-STAY-V1: Edge function error:', error);
-        throw error;
+        console.log('[extend-stay-modal] EXTEND-STAY-V1: Calling extend-stay edge function');
+
+        // EXTEND-STAY-V1: Call edge function for proper folio integration with explicit auth
+        const { data, error } = await supabase.functions.invoke('extend-stay', {
+          body: {
+            booking_id: bookingId,
+            new_checkout: newCheckOut,
+            staff_id: null,
+            reason: 'Staff extended stay via front desk'
+          },
+          headers: {
+            Authorization: `Bearer ${session.access_token}`
+          }
+        });
+
+        console.log('[extend-stay-modal] EXTEND-STAY-V1: Edge function response:', { data, error });
+
+        if (error) {
+          console.error('[extend-stay-modal] EXTEND-STAY-V1: Edge function error:', error);
+          
+          if (error.message?.includes('JWT') || error.message?.includes('jwt')) {
+            throw new Error('SESSION_EXPIRED: Please refresh and try again');
+          }
+          
+          if (error.message?.includes('tenant')) {
+            throw new Error('TENANT_MISMATCH: Invalid tenant access');
+          }
+          
+          throw new Error(`UNAUTHORIZED: ${error.message}`);
+        }
+
+        if (!data?.success) {
+          console.error('[extend-stay-modal] EXTEND-STAY-V1: Extension failed:', data);
+          throw new Error(data?.error || 'Failed to extend stay');
+        }
+
+        return data;
+      } catch (err) {
+        console.error('[extend-stay-modal] Error:', err);
+        throw err;
       }
-
-      if (!data?.success) {
-        console.error('[extend-stay-modal] EXTEND-STAY-V1: Extension failed:', data);
-        throw new Error(data?.error || 'Failed to extend stay');
-      }
-
-      return data;
     },
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['rooms-grid'] });
