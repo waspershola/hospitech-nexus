@@ -15,19 +15,30 @@ serve(async (req) => {
   try {
     console.log('[amend-booking] AMEND-BOOKING-V1: Processing booking amendment');
 
+    const authHeader = req.headers.get('Authorization') ?? '';
+    const token = authHeader.replace('Bearer ', '').trim();
+
+    if (!token) {
+      console.error('[amend-booking] AMEND-BOOKING-V1: Missing Authorization token');
+      return new Response(
+        JSON.stringify({ success: false, error: 'Unauthorized: Missing token' }),
+        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
     const supabaseClient = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
       Deno.env.get('SUPABASE_ANON_KEY') ?? '',
       {
         global: {
-          headers: { Authorization: req.headers.get('Authorization')! },
+          headers: { Authorization: authHeader },
         },
       }
     );
 
-    const { data: { user }, error: authError } = await supabaseClient.auth.getUser();
+    const { data: { user }, error: authError } = await supabaseClient.auth.getUser(token);
     if (authError || !user) {
-      console.error('[amend-booking] AMEND-BOOKING-V1: Authentication failed');
+      console.error('[amend-booking] AMEND-BOOKING-V1: Authentication failed', authError);
       return new Response(
         JSON.stringify({ success: false, error: 'Unauthorized' }),
         { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
