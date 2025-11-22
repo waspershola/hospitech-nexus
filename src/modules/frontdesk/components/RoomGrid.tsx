@@ -111,24 +111,8 @@ export function RoomGrid({ searchQuery, statusFilter, categoryFilter, floorFilte
         );
         const currentStatus = lifecycle.displayStatus;
         
-        // PHASE-1-DEBUG: Log booking resolution for diagnostics
-        console.log('ROOMGRID-DEBUG', {
-          roomId: room.id,
-          roomNumber: room.number,
-          today,
-          viewDate: today,
-          lifecycleStatus: currentStatus,
-          lifecycleState: lifecycle.state,
-          overlappingCount: overlappingBookings.length,
-          selectedBookingId: activeBooking?.id,
-          bookings: overlappingBookings.map((b: any) => ({
-            id: b.id,
-            status: b.status,
-            checkIn: format(new Date(b.check_in), 'yyyy-MM-dd'),
-            checkOut: format(new Date(b.check_out), 'yyyy-MM-dd'),
-            guestName: b.guest?.name
-          }))
-        });
+        // Debug helper: uncomment for lifecycle diagnostics
+        // console.log('ROOMGRID-DEBUG', { roomId: room.id, roomNumber: room.number, today, viewDate: today, lifecycleStatus: currentStatus, lifecycleState: lifecycle.state, overlappingCount: overlappingBookings.length, selectedBookingId: activeBooking?.id });
         
         return { 
           ...room, 
