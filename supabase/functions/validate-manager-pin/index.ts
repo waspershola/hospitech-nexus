@@ -1,6 +1,6 @@
 /**
  * validate-manager-pin Edge Function
- * Version: 1.0.0 - PIN-VALIDATION-V1
+ * Version: 1.0.1 - PIN-VALIDATION-V1
  * Validates manager PIN for high-risk financial operations
  * Implements rate limiting (3 attempts → 15min lockout)
  * Generates short-lived approval tokens (10min expiry)
