@@ -24,6 +24,7 @@ export type DisplayStatus =
 
 export type AllowedAction =
   | 'check-in'
+  | 'early-check-in'
   | 'checkout'
   | 'collect-payment'
   | 'add-charge'
@@ -149,12 +150,16 @@ export function calculateStayLifecycleState(
   // Expected arrival today (not yet checked in)
   if (arrivalDate === today && booking.status !== 'checked_in') {
     const canCheckIn = currentTime >= checkInTime;
+    const canEarlyCheckIn = currentTime < checkInTime;
+    
     return {
       state: 'expected-arrival-today',
       displayStatus: 'reserved',
       allowedActions: canCheckIn
         ? ['check-in', 'amend-booking', 'cancel-booking']
-        : ['amend-booking', 'cancel-booking'],
+        : canEarlyCheckIn
+          ? ['early-check-in', 'amend-booking', 'cancel-booking']
+          : ['amend-booking', 'cancel-booking'],
       statusMessage: canCheckIn
         ? 'Ready to check in'
         : `Check-in from ${checkInTime}`,

@@ -79,6 +79,7 @@ export function RoomActionDrawer({ roomId, contextDate, open, onClose, onOpenAss
   const [selectedBookingId, setSelectedBookingId] = useState<string | null>(null);
   const [showManagerApproval, setShowManagerApproval] = useState(false);
   const [pendingCheckoutData, setPendingCheckoutData] = useState<{ balance: number } | null>(null);
+  const [showEarlyCheckInApproval, setShowEarlyCheckInApproval] = useState(false);
 
   const { data: room, isLoading } = useQuery({
     queryKey: ['room-detail', roomId, contextDate ? format(contextDate, 'yyyy-MM-dd') : 'today'],
@@ -465,6 +466,26 @@ export function RoomActionDrawer({ roomId, contextDate, open, onClose, onOpenAss
     setTimeout(() => onClose(), 600);
   };
 
+  const handleEarlyCheckIn = () => {
+    setShowEarlyCheckInApproval(true);
+  };
+
+  const handleEarlyCheckInApproved = async (approvalToken: string) => {
+    if (!room) return;
+    
+    setShowEarlyCheckInApproval(false);
+    
+    // EARLY-CHECKIN-V1: Proceed with check-in after manager approval
+    await checkIn(room.id);
+    
+    toast({ 
+      title: 'Early Check-In Approved', 
+      description: 'Guest checked in before official check-in time' 
+    });
+    
+    setTimeout(() => onClose(), 600);
+  };
+
   const handleMarkClean = async () => {
     if (!room) return;
     await markClean(room.id);
@@ -577,6 +598,7 @@ export function RoomActionDrawer({ roomId, contextDate, open, onClose, onOpenAss
     // If we have a lifecycle state, use it for smarter actions
     if (lifecycle && isViewingToday) {
       const canCheckIn = isActionAllowed(lifecycle, 'check-in');
+      const canEarlyCheckIn = isActionAllowed(lifecycle, 'early-check-in');
       const canCheckout = isActionAllowed(lifecycle, 'checkout');
       const canCollectPayment = isActionAllowed(lifecycle, 'collect-payment');
       const canAddCharge = isActionAllowed(lifecycle, 'add-charge');
@@ -588,7 +610,7 @@ export function RoomActionDrawer({ roomId, contextDate, open, onClose, onOpenAss
       // Build actions array based on allowed actions
       const actions = [];
 
-      // Check-in action
+      // Check-in action (normal or early with manager approval)
       if (canCheckIn && activeBooking) {
         actions.push({ 
           label: 'Check-In Guest', 
@@ -596,6 +618,14 @@ export function RoomActionDrawer({ roomId, contextDate, open, onClose, onOpenAss
           variant: 'default' as const, 
           icon: LogIn, 
           tooltip: 'Complete guest check-in' 
+        });
+      } else if (canEarlyCheckIn && activeBooking) {
+        actions.push({ 
+          label: 'Early Check-In (Requires Approval)', 
+          action: handleEarlyCheckIn, 
+          variant: 'default' as const, 
+          icon: LogIn, 
+          tooltip: 'Check-in before official time - requires manager approval' 
         });
       }
 
@@ -1402,6 +1432,18 @@ export function RoomActionDrawer({ roomId, contextDate, open, onClose, onOpenAss
             setShowManagerApproval(false);
             setPendingCheckoutData(null);
           }}
+        />
+      )}
+      
+      {/* EARLY-CHECKIN-V1: Manager Approval Modal for Early Check-In */}
+      {activeBooking && (
+        <ManagerApprovalModal
+          open={showEarlyCheckInApproval}
+          amount={0}
+          type="early-check-in"
+          actionReference={activeBooking.id}
+          onApprove={handleEarlyCheckInApproved}
+          onReject={() => setShowEarlyCheckInApproval(false)}
         />
       )}
     </>
