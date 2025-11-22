@@ -39,7 +39,7 @@ import { ArrowUp, ArrowDown, X } from 'lucide-react';
 const qrCodeSchema = z.object({
   display_name: z.string().min(1, 'Display name is required'),
   assigned_to: z.string().optional(),
-  scope: z.enum(['room', 'common_area', 'facility', 'event']),
+  scope: z.enum(['room', 'location', 'facility', 'event']),
   services: z.array(z.string()).min(1, 'Select at least one service'),
   welcome_message: z.string().min(1, 'Welcome message is required'),
   room_id: z.string().optional(),
@@ -210,7 +210,7 @@ export default function QRCodeDialog({ open, onOpenChange, qrCode, onSave }: QRC
                     </FormControl>
                     <SelectContent>
                       <SelectItem value="room">Room</SelectItem>
-                      <SelectItem value="common_area">Common Area</SelectItem>
+                      <SelectItem value="location">Location</SelectItem>
                       <SelectItem value="facility">Facility</SelectItem>
                       <SelectItem value="event">Event</SelectItem>
                     </SelectContent>
