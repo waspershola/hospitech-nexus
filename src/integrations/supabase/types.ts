@@ -5033,7 +5033,6 @@ export type Database = {
           qr_token: string | null
           responded_at: string | null
           room_id: string | null
-          service_category: string | null
           status: string | null
           stay_folio_id: string | null
           tenant_id: string
@@ -5054,7 +5053,6 @@ export type Database = {
           qr_token?: string | null
           responded_at?: string | null
           room_id?: string | null
-          service_category?: string | null
           status?: string | null
           stay_folio_id?: string | null
           tenant_id: string
@@ -5075,7 +5073,6 @@ export type Database = {
           qr_token?: string | null
           responded_at?: string | null
           room_id?: string | null
-          service_category?: string | null
           status?: string | null
           stay_folio_id?: string | null
           tenant_id?: string
