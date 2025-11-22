@@ -58,9 +58,14 @@ serve(async (req) => {
       );
     }
 
-    // Validate request
-    const body = await req.json();
+    // Validate request (support both new clients and older ones that sent `new_pin`)
+    const rawBody = await req.json();
     console.log('[SET-PIN-V1] Request body received');
+
+    const body = {
+      pin: rawBody.pin ?? rawBody.new_pin,
+      confirm_pin: rawBody.confirm_pin ?? rawBody.confirmPin ?? rawBody.new_pin,
+    };
     
     const validationResult = setPinSchema.safeParse(body);
 
