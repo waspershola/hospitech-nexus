@@ -486,7 +486,7 @@ export function RoomActionDrawer({ roomId, contextDate, open, onClose, onOpenAss
     // Navigate to clean front desk route without search parameters
     setTimeout(() => {
       onClose();
-      navigate('/dashboard/frontdesk', { replace: true });
+      navigate('/dashboard/front-desk', { replace: true });
     }, 600);
   };
 
