@@ -275,6 +275,12 @@ export function QRRequestDrawer({ open, onOpenChange }: QRRequestDrawerProps) {
   const handleChargeToRoom = async () => {
     if (!selectedRequest) return;
     
+    // PHASE-4-IDEMPOTENCY-V1: Prevent double-click submissions
+    if (isCollectingPayment) {
+      console.log('[Charge to Room Idempotency] Charge already in progress, ignoring duplicate click');
+      return;
+    }
+    
     const amount = selectedRequest.metadata?.payment_info?.amount;
     
     if (!amount || amount <= 0) {
@@ -334,6 +340,12 @@ export function QRRequestDrawer({ open, onOpenChange }: QRRequestDrawerProps) {
     
     if (!selectedLocationId || !selectedProviderId) {
       toast.error('Please select payment location and method');
+      return;
+    }
+    
+    // PHASE-4-IDEMPOTENCY-V1: Prevent double-click submissions
+    if (isCollectingPayment) {
+      console.log('[Payment Idempotency] Payment already in progress, ignoring duplicate click');
       return;
     }
     
@@ -471,12 +483,41 @@ export function QRRequestDrawer({ open, onOpenChange }: QRRequestDrawerProps) {
 
       console.log('[Payment Collection] Payment collection completed successfully');
 
+      // PHASE-4-IDEMPOTENCY-V1: Check if payment already exists for this request
+      const existingTransactionRef = selectedRequest.metadata?.payment_info?.transaction_ref;
+      
+      if (existingTransactionRef) {
+        console.log('[Payment Idempotency] Checking for existing payment with ref:', existingTransactionRef);
+        
+        const { data: existingPayment } = await supabase
+          .from('payments')
+          .select('id, status, amount')
+          .eq('transaction_ref', existingTransactionRef)
+          .eq('tenant_id', selectedRequest.tenant_id)
+          .maybeSingle();
+        
+        if (existingPayment) {
+          console.log('[Payment Idempotency] Payment already exists:', existingPayment);
+          toast.info('Payment already recorded for this request');
+          
+          // Invalidate queries and close drawer
+          queryClient.invalidateQueries({ queryKey: ['staff-requests'] });
+          queryClient.invalidateQueries({ queryKey: ['folio-by-id', selectedRequest.stay_folio_id] });
+          onOpenChange(false);
+          return;
+        }
+      }
+      
       // Post payment to folio if request is linked to a folio
       if (selectedRequest.stay_folio_id) {
         console.log('[Payment Collection] Posting payment to folio:', selectedRequest.stay_folio_id);
         
         try {
-          // First create the payment record
+          // Use stored transaction_ref for idempotency (generated at request creation)
+          const transactionRef = existingTransactionRef || `QR-${selectedRequest.id.slice(0, 8)}-${Date.now()}`;
+          console.log('[Payment Collection] Using transaction_ref:', transactionRef);
+          
+          // First create the payment record with idempotent transaction_ref
           const { data: paymentRecord, error: paymentInsertError } = await supabase
             .from('payments')
             .insert({
@@ -489,7 +530,7 @@ export function QRRequestDrawer({ open, onOpenChange }: QRRequestDrawerProps) {
               method: selectedProvider.type,
               payment_type: 'service',
               status: 'completed',
-              transaction_ref: `QR-${selectedRequest.id.slice(0, 8)}-${Date.now()}`,
+              transaction_ref: transactionRef,
               recorded_by: user.id,
               department: selectedRequest.assigned_department || selectedRequest.service_category,
               location_id: selectedLocationId,

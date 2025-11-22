@@ -440,11 +440,18 @@ serve(async (req) => {
       };
 
       const billableServices = ['restaurant', 'room_service', 'digital_menu', 'menu_order', 'laundry', 'spa'];
+      
+      // PHASE-4-IDEMPOTENCY-V1: Generate unique transaction_ref for this request
+      // This ref is used for ALL payment attempts related to this request
+      const requestTransactionRef = `QR-${requestData.qr_token.slice(0, 8)}-${Date.now()}`;
+      console.log('[idempotency] Generated transaction_ref:', requestTransactionRef);
+      
       let paymentInfo: any = {
         location: PAYMENT_LOCATION_MAP[requestData.service_category.toLowerCase()] || 'Front Desk',
         status: 'pending',
         currency: 'NGN',
         billable: billableServices.includes(requestData.service_category.toLowerCase()),
+        transaction_ref: requestTransactionRef, // Store for future payment collection
       };
       
       // Get subtotal from frontend payment_info
