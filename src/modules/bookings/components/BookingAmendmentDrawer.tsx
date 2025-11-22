@@ -104,48 +104,68 @@ export function BookingAmendmentDrawer({ open, onClose, bookingId }: BookingAmen
 
   const amendmentMutation = useMutation({
     mutationFn: async () => {
-      if (!amendmentReason.trim()) {
-        throw new Error('Please provide a reason for the amendment');
-      }
-
-      // Get current session for authentication
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session?.access_token) {
-        throw new Error('No active session - please login again');
-      }
-
-      console.log('[amend-booking-drawer] AMEND-BOOKING-V1: Calling amend-booking edge function');
-
-      // AMEND-BOOKING-V1: Call edge function for proper folio integration with explicit auth
-      const { data, error } = await supabase.functions.invoke('amend-booking', {
-        body: {
-          booking_id: bookingId,
-          check_in: checkIn?.toISOString(),
-          check_out: checkOut?.toISOString(),
-          room_id: selectedRoomId,
-          rate_override: rateOverride ? parseFloat(rateOverride) : null,
-          notes,
-          amendment_reason: amendmentReason,
-          staff_id: user?.id
-        },
-        headers: {
-          Authorization: `Bearer ${session.access_token}`
+      try {
+        if (!amendmentReason.trim()) {
+          throw new Error('Please provide a reason for the amendment');
         }
-      });
 
-      console.log('[amend-booking-drawer] AMEND-BOOKING-V1: Edge function response:', { data, error });
+        // Get current session for authentication
+        const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+        
+        if (sessionError) {
+          console.error('[amend-booking-drawer] SESSION_ERROR:', sessionError);
+          throw new Error(`SESSION_ERROR: ${sessionError.message}`);
+        }
+        
+        if (!session?.access_token) {
+          throw new Error('NO_SESSION: Please login to continue');
+        }
 
-      if (error) {
-        console.error('[amend-booking-drawer] AMEND-BOOKING-V1: Edge function error:', error);
-        throw error;
+        console.log('[amend-booking-drawer] AMEND-BOOKING-V1: Calling amend-booking edge function');
+
+        // AMEND-BOOKING-V1: Call edge function for proper folio integration with explicit auth
+        const { data, error } = await supabase.functions.invoke('amend-booking', {
+          body: {
+            booking_id: bookingId,
+            check_in: checkIn?.toISOString(),
+            check_out: checkOut?.toISOString(),
+            room_id: selectedRoomId,
+            rate_override: rateOverride ? parseFloat(rateOverride) : null,
+            notes,
+            amendment_reason: amendmentReason,
+            staff_id: user?.id
+          },
+          headers: {
+            Authorization: `Bearer ${session.access_token}`
+          }
+        });
+
+        console.log('[amend-booking-drawer] AMEND-BOOKING-V1: Edge function response:', { data, error });
+
+        if (error) {
+          console.error('[amend-booking-drawer] AMEND-BOOKING-V1: Edge function error:', error);
+          
+          if (error.message?.includes('JWT') || error.message?.includes('jwt')) {
+            throw new Error('SESSION_EXPIRED: Please refresh and try again');
+          }
+          
+          if (error.message?.includes('tenant')) {
+            throw new Error('TENANT_MISMATCH: Invalid tenant access');
+          }
+          
+          throw new Error(`UNAUTHORIZED: ${error.message}`);
+        }
+
+        if (!data?.success) {
+          console.error('[amend-booking-drawer] AMEND-BOOKING-V1: Amendment failed:', data);
+          throw new Error(data?.error || 'Failed to amend booking');
+        }
+
+        return data;
+      } catch (err) {
+        console.error('[amend-booking-drawer] Error:', err);
+        throw err;
       }
-
-      if (!data?.success) {
-        console.error('[amend-booking-drawer] AMEND-BOOKING-V1: Amendment failed:', data);
-        throw new Error(data?.error || 'Failed to amend booking');
-      }
-
-      return data;
     },
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['booking', bookingId] });

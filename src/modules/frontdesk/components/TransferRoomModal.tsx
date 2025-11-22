@@ -66,42 +66,62 @@ export function TransferRoomModal({
 
   const transferMutation = useMutation({
     mutationFn: async () => {
-      // Get current session for authentication
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session?.access_token) {
-        throw new Error('No active session - please login again');
-      }
-
-      console.log('[TransferRoomModal] TRANSFER-ROOM-V1: Calling transfer-room edge function', {
-        bookingId,
-        newRoomId,
-        reason
-      });
-
-      const { data, error } = await supabase.functions.invoke("transfer-room", {
-        body: {
-          booking_id: bookingId,
-          new_room_id: newRoomId,
-          reason: reason || "Guest request",
-          staff_id: user?.id,
-        },
-        headers: {
-          Authorization: `Bearer ${session.access_token}`
+      try {
+        // Get current session for authentication
+        const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+        
+        if (sessionError) {
+          console.error('[TransferRoomModal] SESSION_ERROR:', sessionError);
+          throw new Error(`SESSION_ERROR: ${sessionError.message}`);
         }
-      });
+        
+        if (!session?.access_token) {
+          throw new Error('NO_SESSION: Please login to continue');
+        }
 
-      if (error) {
-        console.error('[TransferRoomModal] TRANSFER-ROOM-V1: Edge function error:', error);
-        throw error;
+        console.log('[TransferRoomModal] TRANSFER-ROOM-V1: Calling transfer-room edge function', {
+          bookingId,
+          newRoomId,
+          reason
+        });
+
+        const { data, error } = await supabase.functions.invoke("transfer-room", {
+          body: {
+            booking_id: bookingId,
+            new_room_id: newRoomId,
+            reason: reason || "Guest request",
+            staff_id: user?.id,
+          },
+          headers: {
+            Authorization: `Bearer ${session.access_token}`
+          }
+        });
+
+        if (error) {
+          console.error('[TransferRoomModal] TRANSFER-ROOM-V1: Edge function error:', error);
+          
+          if (error.message?.includes('JWT') || error.message?.includes('jwt')) {
+            throw new Error('SESSION_EXPIRED: Please refresh and try again');
+          }
+          
+          if (error.message?.includes('tenant')) {
+            throw new Error('TENANT_MISMATCH: Invalid tenant access');
+          }
+          
+          throw new Error(`UNAUTHORIZED: ${error.message}`);
+        }
+
+        if (!data?.success) {
+          console.error('[TransferRoomModal] TRANSFER-ROOM-V1: Transfer failed:', data);
+          throw new Error(data?.error || "Transfer failed");
+        }
+
+        console.log('[TransferRoomModal] TRANSFER-ROOM-V1: Transfer successful:', data);
+        return data;
+      } catch (err) {
+        console.error('[TransferRoomModal] Error:', err);
+        throw err;
       }
-
-      if (!data?.success) {
-        console.error('[TransferRoomModal] TRANSFER-ROOM-V1: Transfer failed:', data);
-        throw new Error(data?.error || "Transfer failed");
-      }
-
-      console.log('[TransferRoomModal] TRANSFER-ROOM-V1: Transfer successful:', data);
-      return data;
     },
     onSuccess: (data) => {
       toast.success(`Room transferred successfully to ${data.data.new_room_number}`);
