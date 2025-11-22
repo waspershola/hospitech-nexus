@@ -34,6 +34,7 @@ import { RoomDropdown } from '@/components/shared/RoomDropdown';
 import { useQRServicesCatalog } from '@/hooks/useQRServicesCatalog';
 import { supabase } from '@/integrations/supabase/client';
 import { Skeleton } from '@/components/ui/skeleton';
+import { ArrowUp, ArrowDown, X } from 'lucide-react';
 
 const qrCodeSchema = z.object({
   display_name: z.string().min(1, 'Display name is required'),
@@ -222,9 +223,12 @@ export default function QRCodeDialog({ open, onOpenChange, qrCode, onSave }: QRC
             <FormField
               control={form.control}
               name="services"
-              render={() => (
+              render={({ field }) => (
                 <FormItem>
                   <FormLabel>Available Services</FormLabel>
+                  <FormDescription>
+                    Select services and reorder them to set display priority
+                  </FormDescription>
                   {servicesLoading ? (
                     <div className="grid grid-cols-2 gap-3 mt-2">
                       {[...Array(6)].map((_, i) => (
@@ -236,32 +240,103 @@ export default function QRCodeDialog({ open, onOpenChange, qrCode, onSave }: QRC
                       No services configured. Contact your administrator to set up QR services.
                     </p>
                   ) : (
-                    <div className="grid grid-cols-2 gap-3 mt-2">
-                      {availableServices.map((service) => (
-                        <FormField
-                          key={service.service_key}
-                          control={form.control}
-                          name="services"
-                          render={({ field }) => (
-                            <FormItem className="flex items-center space-x-2 space-y-0">
-                              <FormControl>
-                                <Checkbox
-                                  checked={field.value?.includes(service.service_key)}
-                                  onCheckedChange={(checked) => {
-                                    const updatedServices = checked
-                                      ? [...(field.value || []), service.service_key]
-                                      : field.value?.filter((val) => val !== service.service_key);
-                                    field.onChange(updatedServices);
-                                  }}
-                                />
-                              </FormControl>
-                              <FormLabel className="font-normal cursor-pointer">
+                    <div className="space-y-4 mt-2">
+                      {/* Selected Services with Reordering */}
+                      {field.value && field.value.length > 0 && (
+                        <div className="space-y-2">
+                          <p className="text-sm font-medium">Selected Services (in display order)</p>
+                          <div className="space-y-1 border rounded-md p-2">
+                            {field.value.map((serviceKey, index) => {
+                              const service = availableServices.find((s) => s.service_key === serviceKey);
+                              if (!service) return null;
+                              return (
+                                <div
+                                  key={serviceKey}
+                                  className="flex items-center justify-between gap-2 p-2 bg-muted/50 rounded-md"
+                                >
+                                  <span className="text-sm flex-1">{service.service_label}</span>
+                                  <div className="flex items-center gap-1">
+                                    <Button
+                                      type="button"
+                                      variant="ghost"
+                                      size="sm"
+                                      className="h-7 w-7 p-0"
+                                      disabled={index === 0}
+                                      onClick={() => {
+                                        const newServices = [...field.value];
+                                        [newServices[index - 1], newServices[index]] = [
+                                          newServices[index],
+                                          newServices[index - 1],
+                                        ];
+                                        field.onChange(newServices);
+                                      }}
+                                    >
+                                      <ArrowUp className="h-4 w-4" />
+                                    </Button>
+                                    <Button
+                                      type="button"
+                                      variant="ghost"
+                                      size="sm"
+                                      className="h-7 w-7 p-0"
+                                      disabled={index === field.value.length - 1}
+                                      onClick={() => {
+                                        const newServices = [...field.value];
+                                        [newServices[index], newServices[index + 1]] = [
+                                          newServices[index + 1],
+                                          newServices[index],
+                                        ];
+                                        field.onChange(newServices);
+                                      }}
+                                    >
+                                      <ArrowDown className="h-4 w-4" />
+                                    </Button>
+                                    <Button
+                                      type="button"
+                                      variant="ghost"
+                                      size="sm"
+                                      className="h-7 w-7 p-0 text-destructive hover:text-destructive"
+                                      onClick={() => {
+                                        field.onChange(field.value.filter((s) => s !== serviceKey));
+                                      }}
+                                    >
+                                      <X className="h-4 w-4" />
+                                    </Button>
+                                  </div>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Available Services Checkboxes */}
+                      <div className="space-y-2">
+                        <p className="text-sm font-medium">
+                          {field.value && field.value.length > 0 ? 'Add More Services' : 'Select Services'}
+                        </p>
+                        <div className="grid grid-cols-2 gap-3">
+                          {availableServices.map((service) => (
+                            <div key={service.service_key} className="flex items-center space-x-2 space-y-0">
+                              <Checkbox
+                                id={`service-${service.service_key}`}
+                                checked={field.value?.includes(service.service_key)}
+                                onCheckedChange={(checked) => {
+                                  const updatedServices = checked
+                                    ? [...(field.value || []), service.service_key]
+                                    : field.value?.filter((val) => val !== service.service_key);
+                                  field.onChange(updatedServices);
+                                }}
+                              />
+                              <label
+                                htmlFor={`service-${service.service_key}`}
+                                className="text-sm font-normal cursor-pointer"
+                              >
                                 {service.service_label}
-                              </FormLabel>
-                            </FormItem>
-                          )}
-                        />
-                      ))}
+                              </label>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
                     </div>
                   )}
                   <FormMessage />
