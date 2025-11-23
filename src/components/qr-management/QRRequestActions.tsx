@@ -22,6 +22,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { useRequestReceipt } from '@/hooks/useRequestReceipt';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { format } from 'date-fns';
+import { generateRequestReference } from '@/lib/qr/requestReference';
 
 interface QRRequestActionsProps {
   request: any;
@@ -146,12 +147,21 @@ export function QRRequestActions({ request, onStatusUpdate, onClose }: QRRequest
     
     setIsUpdating(true);
     try {
+      // PHASE-A-BILLING-V1: Generate billing reference code
+      const billingRef = generateRequestReference(request.id);
+      
       const { error } = await supabase
         .from('requests')
         .update({
           transferred_to_frontdesk: true,
           transferred_at: new Date().toISOString(),
           transferred_by: user.id,
+          
+          // PHASE-A-BILLING-V1: Set billing tracking fields
+          billing_reference_code: billingRef,
+          billing_routed_to: 'frontdesk',
+          billing_status: 'pending_frontdesk',
+          
           status: 'in_progress',
           metadata: {
             ...request.metadata,
@@ -170,10 +180,13 @@ export function QRRequestActions({ request, onStatusUpdate, onClose }: QRRequest
         p_request_id: request.id,
         p_staff_id: user.id,
         p_action_type: 'transferred_to_frontdesk',
-        p_metadata: { timestamp: new Date().toISOString() }
+        p_metadata: { 
+          billing_reference: billingRef,
+          timestamp: new Date().toISOString() 
+        }
       });
 
-      toast.success('Request transferred to Front Desk for billing');
+      toast.success(`Transferred to Front Desk (Ref: ${billingRef})`);
       queryClient.invalidateQueries({ queryKey: ['staff-requests'] });
       setShowTransferDialog(false);
       onStatusUpdate?.();
@@ -328,9 +341,27 @@ export function QRRequestActions({ request, onStatusUpdate, onClose }: QRRequest
             bookingId={request.metadata?.booking_id}
             guestId={request.guest_id}
             expectedAmount={request.metadata?.payment_info?.total_amount || request.metadata?.payment_info?.subtotal || 0}
-            onSuccess={() => {
+            onSuccess={async () => {
               const amount = request.metadata?.payment_info?.total_amount || request.metadata?.payment_info?.subtotal || 0;
               const guestName = request.metadata?.guest_name || 'Guest';
+              
+              // PHASE-A-BILLING-V1: Update billing status when payment collected
+              if (tenantId && user) {
+                try {
+                  await supabase
+                    .from('requests')
+                    .update({
+                      billing_status: 'paid_direct',
+                      billing_routed_to: 'self_collected',
+                      billing_processed_by: user.id,
+                      billing_processed_at: new Date().toISOString(),
+                    })
+                    .eq('id', request.id)
+                    .eq('tenant_id', tenantId);
+                } catch (error) {
+                  console.error('[QRRequestActions] Error updating billing status:', error);
+                }
+              }
               
               setShowPaymentForm(false);
               handleStatusChange('completed');
