@@ -60,7 +60,7 @@ const SERVICE_TO_DASHBOARD_MAP: Record<string, string> = {
 export function QRRequestDrawer({ open, onOpenChange }: QRRequestDrawerProps) {
   const { tenantId } = useAuth();
   const queryClient = useQueryClient();
-  const { requests, isLoading, updateRequestStatus } = useStaffRequests();
+  const { requests, isLoading, updateRequestStatus, fetchRequests } = useStaffRequests();
   const { overdueCount, slaMinutes } = useOverdueRequests(); // PHASE-3: SLA tracking
   const [selectedRequest, setSelectedRequest] = useState<any>(null);
   const [customMessage, setCustomMessage] = useState('');
@@ -156,6 +156,14 @@ export function QRRequestDrawer({ open, onOpenChange }: QRRequestDrawerProps) {
   const loadingStateMap = Object.fromEntries(
     orderDetailsQueries.map((q, idx) => [allRequestIds[idx], q.isLoading])
   );
+
+  // PHASE-2A-COMPLETE: Force refetch when drawer opens
+  useEffect(() => {
+    if (open) {
+      console.log('[QRRequestDrawer] PHASE-2A-COMPLETE: Drawer opened - force refreshing requests');
+      fetchRequests();
+    }
+  }, [open, fetchRequests]);
 
   useEffect(() => {
     if (open && !selectedRequest && pendingRequests.length > 0) {

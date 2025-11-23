@@ -599,6 +599,26 @@ serve(async (req) => {
 
       console.log('[qr-request] Request created successfully:', newRequest.id);
 
+      // PHASE-2A-COMPLETE: Broadcast new request to all connected staff
+      console.log('[qr-request] PHASE-2A-COMPLETE: Broadcasting new request to staff');
+      try {
+        await supabase
+          .channel(`qr-notifications-${qr.tenant_id}`)
+          .send({
+            type: 'broadcast',
+            event: 'new_qr_request',
+            payload: {
+              type: 'new_request',
+              tenant_id: qr.tenant_id,
+              request_id: newRequest.id,
+              timestamp: new Date().toISOString(),
+            }
+          });
+        console.log('[qr-request] PHASE-2A-COMPLETE: Broadcast sent successfully');
+      } catch (broadcastError) {
+        console.error('[qr-request] PHASE-2A-COMPLETE: Broadcast failed (non-blocking):', broadcastError);
+      }
+
       // QR-FOLIO-AUDIT-V1: BLOCKING CHARGE POSTING - Post charge to folio if bill_to_room
       if (attachedFolioId && paymentChoice === 'bill_to_room' && paymentInfo.subtotal && paymentInfo.subtotal > 0) {
         console.log(`[folio-charge] BLOCKING: Posting charge of ${paymentInfo.subtotal} to folio ${attachedFolioId}`);
