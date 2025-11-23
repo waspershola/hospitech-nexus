@@ -10,19 +10,6 @@ interface ActivityTimelineProps {
   tenantId: string;
 }
 
-interface ActivityLog {
-  id: string;
-  action_type: string;
-  amount: number | null;
-  payment_method: string | null;
-  created_at: string;
-  metadata: any;
-  staff: {
-    full_name: string;
-    role: string;
-  } | null;
-}
-
 const ACTION_ICONS: Record<string, any> = {
   assigned: User,
   started_handling: Clock,
@@ -48,13 +35,14 @@ export function ActivityTimeline({ requestId, tenantId }: ActivityTimelineProps)
     queryKey: ['request-activity-log', requestId, tenantId],
     queryFn: async () => {
       const { data, error } = await supabase
-        .rpc('get_request_activity_log', {
-          p_request_id: requestId,
-          p_tenant_id: tenantId,
-        });
+        .from('request_activity_log' as any)
+        .select('*')
+        .eq('request_id', requestId)
+        .eq('tenant_id', tenantId)
+        .order('created_at', { ascending: false });
 
       if (error) throw error;
-      return (data || []) as ActivityLog[];
+      return data || [];
     },
     enabled: !!requestId && !!tenantId,
   });
@@ -81,7 +69,7 @@ export function ActivityTimeline({ requestId, tenantId }: ActivityTimelineProps)
     <Card className="p-4">
       <h3 className="text-sm font-semibold mb-4">Activity Timeline</h3>
       <div className="space-y-4">
-        {activities.map((activity) => {
+        {activities.map((activity: any) => {
           const Icon = ACTION_ICONS[activity.action_type] || AlertCircle;
           const label = ACTION_LABELS[activity.action_type] || activity.action_type;
           

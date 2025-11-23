@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useRingtone } from '@/hooks/useRingtone';
+import { useOverdueRequestsReminder } from '@/hooks/qr/useOverdueRequestsReminder';
 import { QrCode } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -13,6 +14,9 @@ export function QRRequestNotificationWidget() {
   const { playRingtone } = useRingtone();
   const [qrRequestCount, setQrRequestCount] = useState(0);
   const [drawerOpen, setDrawerOpen] = useState(false);
+  
+  // PHASE-2-SLA-REMINDER: Enable 5-minute overdue reminder
+  useOverdueRequestsReminder(tenantId);
 
   useEffect(() => {
     if (!tenantId) return;
