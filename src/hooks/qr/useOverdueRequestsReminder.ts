@@ -1,18 +1,33 @@
 import { useEffect, useRef } from 'react';
-import { useStaffRequests } from './useStaffRequests';
-import { useHotelConfig } from '@/hooks/useHotelConfig';
+import { useStaffRequests } from '@/hooks/useStaffRequests';
+import { useQuery } from '@tanstack/react-query';
+import { supabase } from '@/integrations/supabase/client';
 
 /**
  * PHASE-2-SLA-REMINDER: 5-minute overdue request reminder
  * Plays ringtone every 5 minutes when overdue pending requests exist
  */
 export function useOverdueRequestsReminder(tenantId: string) {
-  const { data: config } = useHotelConfig();
-  const { data: requests } = useStaffRequests(tenantId);
+  const { data: config } = useQuery({
+    queryKey: ['hotel-config', tenantId],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from('hotel_configurations')
+        .select('value')
+        .eq('tenant_id', tenantId)
+        .eq('key', 'sla_threshold_minutes')
+        .maybeSingle();
+      
+      return data?.value as number | null;
+    },
+    enabled: !!tenantId,
+  });
+  
+  const { requests } = useStaffRequests();
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
 
-  const slaMinutes = config?.sla_threshold_minutes || 30;
+  const slaMinutes = config || 30;
 
   useEffect(() => {
     // Initialize audio element

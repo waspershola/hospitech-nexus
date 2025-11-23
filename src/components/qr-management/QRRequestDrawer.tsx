@@ -24,7 +24,8 @@ import { useOverdueRequests } from '@/hooks/useOverdueRequests';
 import { RequestPaymentInfo } from './RequestPaymentInfo';
 import { RequestCardSkeleton } from './RequestCardSkeleton';
 import { PaymentHistoryTimeline } from './PaymentHistoryTimeline';
-import { RequestActivityTimeline } from './RequestActivityTimeline'; // PHASE 1.4
+import { RequestActivityTimeline } from './RequestActivityTimeline';
+import { ActivityTimeline } from './ActivityTimeline';
 import { RequestFolioLink } from '@/components/staff/RequestFolioLink';
 import { format } from 'date-fns';
 import { useQueries, useQueryClient } from '@tanstack/react-query';
@@ -1162,13 +1163,19 @@ export function QRRequestDrawer({ open, onOpenChange }: QRRequestDrawerProps) {
                         </div>
                       </CollapsibleTrigger>
                       <CollapsibleContent className="mt-2 space-y-3">
+                        {/* PHASE-2-ACTIVITY-TIMELINE: Staff action timeline */}
+                        <ActivityTimeline 
+                          requestId={selectedRequest.id}
+                          tenantId={tenantId}
+                        />
+                        
                         {selectedRequest.metadata?.payment_info && (
                           <PaymentHistoryTimeline 
                             request={selectedRequest}
                             paymentInfo={selectedRequest.metadata.payment_info}
                           />
                         )}
-                        {/* Activity Timeline will populate once migration is run */}
+                        {/* Legacy activity timeline */}
                         <RequestActivityTimeline requestId={selectedRequest.id} />
                       </CollapsibleContent>
                     </Collapsible>
