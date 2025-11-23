@@ -5101,6 +5101,11 @@ export type Database = {
           assigned_at: string | null
           assigned_department: string | null
           assigned_to: string | null
+          billing_processed_at: string | null
+          billing_processed_by: string | null
+          billing_reference_code: string | null
+          billing_routed_to: string | null
+          billing_status: string | null
           completed_at: string | null
           created_at: string | null
           guest_id: string | null
@@ -5124,6 +5129,11 @@ export type Database = {
           assigned_at?: string | null
           assigned_department?: string | null
           assigned_to?: string | null
+          billing_processed_at?: string | null
+          billing_processed_by?: string | null
+          billing_reference_code?: string | null
+          billing_routed_to?: string | null
+          billing_status?: string | null
           completed_at?: string | null
           created_at?: string | null
           guest_id?: string | null
@@ -5147,6 +5157,11 @@ export type Database = {
           assigned_at?: string | null
           assigned_department?: string | null
           assigned_to?: string | null
+          billing_processed_at?: string | null
+          billing_processed_by?: string | null
+          billing_reference_code?: string | null
+          billing_routed_to?: string | null
+          billing_status?: string | null
           completed_at?: string | null
           created_at?: string | null
           guest_id?: string | null
@@ -5186,6 +5201,13 @@ export type Database = {
             columns: ["assigned_to"]
             isOneToOne: false
             referencedRelation: "v_profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "requests_billing_processed_by_fkey"
+            columns: ["billing_processed_by"]
+            isOneToOne: false
+            referencedRelation: "staff"
             referencedColumns: ["id"]
           },
           {
