@@ -3,12 +3,14 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { useQuery, useMutation } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useQRToken } from '@/hooks/useQRToken';
+import { useGuestInfo } from '@/hooks/useGuestInfo';
 import { usePlatformFee } from '@/hooks/usePlatformFee';
 import { calculateQRPlatformFee } from '@/lib/finance/platformFee';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
+import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -42,9 +44,12 @@ export function QRLaundryService() {
   const { token } = useParams<{ token: string }>();
   const navigate = useNavigate();
   const { qrData } = useQRToken(token);
+  const { guestInfo, saveGuestInfo } = useGuestInfo(token);
   const [cart, setCart] = useState<CartItem[]>([]);
   const [specialInstructions, setSpecialInstructions] = useState('');
   const [activeCategory, setActiveCategory] = useState('all');
+  const [guestName, setGuestName] = useState(guestInfo?.name || '');
+  const [guestPhone, setGuestPhone] = useState(guestInfo?.phone || '');
 
   const { data: platformFeeConfig } = usePlatformFee(qrData?.tenant_id);
 
@@ -102,13 +107,16 @@ export function QRLaundryService() {
           action: 'create_request',
           type: 'laundry',
           qr_token: token,
+          guest_name: guestName.trim() || 'Guest',
+          guest_contact: guestPhone.trim(),
+          service_category: 'laundry',
           note: `Laundry Service: ${cart.length} items - ${items.map(i => `${i.quantity}x ${i.item_name} (${SERVICE_TYPE_LABELS[i.service_type]})`).join(', ')}${specialInstructions ? ` | Instructions: ${specialInstructions}` : ''}`,
           priority: 'normal',
           metadata: {
             qr_token: token,
             room_number: (qrData as any)?.room?.number || 'N/A',
             guest_label: 'Guest',
-            service_type: 'laundry',
+            service_category: 'laundry',
             laundry_items: items,
             special_instructions: specialInstructions,
             payment_info: {
@@ -130,6 +138,10 @@ export function QRLaundryService() {
       return request?.request || request;
     },
     onSuccess: (data) => {
+      // Save guest info to localStorage for future use
+      if (guestName.trim() || guestPhone.trim()) {
+        saveGuestInfo(guestName.trim() || 'Guest', guestPhone.trim());
+      }
       toast.success('Laundry request submitted successfully!');
       setCart([]);
       setSpecialInstructions('');
@@ -312,15 +324,39 @@ export function QRLaundryService() {
                 </div>
               ))}
 
-              <div className="space-y-3">
-                <Label htmlFor="instructions">Special Instructions (optional)</Label>
-                <Textarea
-                  id="instructions"
-                  placeholder="Any special requests or stain information..."
-                  value={specialInstructions}
-                  onChange={(e) => setSpecialInstructions(e.target.value)}
-                  rows={3}
-                />
+              <div className="space-y-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="guest-name">Your Name</Label>
+                    <Input
+                      id="guest-name"
+                      placeholder="Enter your name"
+                      value={guestName}
+                      onChange={(e) => setGuestName(e.target.value)}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="guest-phone">Phone Number</Label>
+                    <Input
+                      id="guest-phone"
+                      type="tel"
+                      placeholder="+234 xxx xxx xxxx"
+                      value={guestPhone}
+                      onChange={(e) => setGuestPhone(e.target.value)}
+                    />
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="instructions">Special Instructions (optional)</Label>
+                  <Textarea
+                    id="instructions"
+                    placeholder="Any special requests or stain information..."
+                    value={specialInstructions}
+                    onChange={(e) => setSpecialInstructions(e.target.value)}
+                    rows={3}
+                  />
+                </div>
               </div>
 
               <div className="pt-4 border-t border-border space-y-2">

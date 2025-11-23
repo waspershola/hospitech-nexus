@@ -3,6 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { useMutation } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useQRToken } from '@/hooks/useQRToken';
+import { useGuestInfo } from '@/hooks/useGuestInfo';
 import { usePlatformFee } from '@/hooks/usePlatformFee';
 import { calculateQRPlatformFee } from '@/lib/finance/platformFee';
 import { Button } from '@/components/ui/button';
@@ -17,9 +18,10 @@ export function QRDiningReservation() {
   const { token } = useParams<{ token: string }>();
   const navigate = useNavigate();
   const { qrData } = useQRToken(token);
+  const { guestInfo, saveGuestInfo } = useGuestInfo(token);
   const { data: platformFeeConfig } = usePlatformFee(qrData?.tenant_id);
-  const [guestName, setGuestName] = useState('');
-  const [guestContact, setGuestContact] = useState('');
+  const [guestName, setGuestName] = useState(guestInfo?.name || '');
+  const [guestContact, setGuestContact] = useState(guestInfo?.phone || '');
   const [guestEmail, setGuestEmail] = useState('');
   const [reservationDate, setReservationDate] = useState('');
   const [reservationTime, setReservationTime] = useState('');
@@ -86,35 +88,35 @@ export function QRDiningReservation() {
         finalAmount = platformFeeBreakdown.totalAmount;
       }
 
-      // Create a request entry for tracking and notifications
-      const { data: request, error: requestError } = await supabase
-        .from('requests')
-        .insert({
-          tenant_id: qrData?.tenant_id,
-          qr_token: token,
+      // Use edge function to create request
+      const { data, error: requestError } = await supabase.functions.invoke('qr-request', {
+        body: {
+          action: 'create_request',
           type: 'dining_reservation',
-          assigned_department: 'restaurant',
+          qr_token: token,
+          guest_name: guestName.trim(),
+          guest_contact: guestContact.trim(),
+          service_category: 'dining_reservation',
           note: `Dining Reservation: ${guestName} - ${numberOfGuests} guests on ${reservationDate} at ${reservationTime}${specialRequests ? ` | Requests: ${specialRequests}` : ''}`,
           priority: 'normal',
-          status: 'pending',
           metadata: {
             reservation_id: reservation.id,
-            guest_contact: guestContact,
             guest_email: guestEmail,
             reservation_date: reservationDate,
             reservation_time: reservationTime,
             number_of_guests: parseInt(numberOfGuests),
             payment_info: {
               billable: true,
-              amount: finalAmount, // Staff will adjust after service if not provided
+              amount: finalAmount,
               currency: 'NGN',
               status: 'pending',
               location: 'Restaurant',
             },
           },
-        })
-        .select()
-        .single();
+        },
+      });
+
+      const request = data?.request;
 
       if (requestError) {
         console.error('[QRDiningReservation] Request insert error:', {
@@ -129,6 +131,10 @@ export function QRDiningReservation() {
       return { reservation, request };
     },
     onSuccess: (data) => {
+      // Save guest info to localStorage for future use
+      if (guestName.trim() || guestContact.trim()) {
+        saveGuestInfo(guestName.trim(), guestContact.trim());
+      }
       toast.success('Reservation request submitted successfully!');
       // Reset form
       setGuestName('');

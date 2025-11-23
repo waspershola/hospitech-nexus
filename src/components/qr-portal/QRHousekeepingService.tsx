@@ -3,9 +3,11 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { useMutation } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useQRToken } from '@/hooks/useQRToken';
+import { useGuestInfo } from '@/hooks/useGuestInfo';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Checkbox } from '@/components/ui/checkbox';
+import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -34,11 +36,14 @@ export function QRHousekeepingService() {
   const { token } = useParams<{ token: string }>();
   const navigate = useNavigate();
   const { qrData } = useQRToken(token);
+  const { guestInfo, saveGuestInfo } = useGuestInfo(token);
   
   const [cleaningType, setCleaningType] = useState('full_clean');
   const [selectedItems, setSelectedItems] = useState<string[]>([]);
   const [preferredTime, setPreferredTime] = useState('');
   const [specialInstructions, setSpecialInstructions] = useState('');
+  const [guestName, setGuestName] = useState(guestInfo?.name || '');
+  const [guestPhone, setGuestPhone] = useState(guestInfo?.phone || '');
 
   const createHousekeepingRequest = useMutation({
     mutationFn: async () => {
@@ -69,16 +74,16 @@ export function QRHousekeepingService() {
         tenant_id: qrData?.tenant_id,
       });
 
-      const { data: request, error } = await supabase
-        .from('requests')
-        .insert({
-          tenant_id: qrData?.tenant_id,
-          qr_token: token,
+      const { data, error } = await supabase.functions.invoke('qr-request', {
+        body: {
+          action: 'create_request',
           type: 'housekeeping',
-          assigned_department: 'housekeeping',
+          qr_token: token,
+          guest_name: guestName.trim() || 'Guest',
+          guest_contact: guestPhone.trim(),
+          service_category: 'housekeeping',
           note,
           priority: 'normal',
-          status: 'pending',
           metadata: {
             cleaning_type: cleaningType,
             selected_items: selectedItems,
@@ -88,9 +93,10 @@ export function QRHousekeepingService() {
               billable: false,
             },
           },
-        })
-        .select()
-        .single();
+        },
+      });
+
+      const request = data?.request;
 
       if (error) {
         console.error('[QRHousekeepingService] Request insert error:', {
@@ -106,6 +112,10 @@ export function QRHousekeepingService() {
       return request;
     },
     onSuccess: (data) => {
+      // Save guest info to localStorage for future use
+      if (guestName.trim() || guestPhone.trim()) {
+        saveGuestInfo(guestName.trim() || 'Guest', guestPhone.trim());
+      }
       toast.success('Housekeeping request submitted successfully!');
       if (data) {
         console.log('[QRHousekeepingService] Navigating to chat:', data.id);
@@ -238,6 +248,32 @@ export function QRHousekeepingService() {
               <p className="text-sm text-muted-foreground">
                 We'll do our best to accommodate your preferred time
               </p>
+            </div>
+
+            {/* Guest Information */}
+            <div className="space-y-4">
+              <h3 className="text-base font-semibold">Contact Information</h3>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="guest-name">Your Name</Label>
+                  <Input
+                    id="guest-name"
+                    placeholder="Enter your name"
+                    value={guestName}
+                    onChange={(e) => setGuestName(e.target.value)}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="guest-phone">Phone Number</Label>
+                  <Input
+                    id="guest-phone"
+                    type="tel"
+                    placeholder="+234 xxx xxx xxxx"
+                    value={guestPhone}
+                    onChange={(e) => setGuestPhone(e.target.value)}
+                  />
+                </div>
+              </div>
             </div>
 
             {/* Special Instructions */}

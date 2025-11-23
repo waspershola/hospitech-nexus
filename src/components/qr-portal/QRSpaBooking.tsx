@@ -3,12 +3,14 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { useQuery, useMutation } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useQRToken } from '@/hooks/useQRToken';
+import { useGuestInfo } from '@/hooks/useGuestInfo';
 import { usePlatformFee } from '@/hooks/usePlatformFee';
 import { calculateQRPlatformFee } from '@/lib/finance/platformFee';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
+import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { ArrowLeft, Loader2, Clock, Sparkles } from 'lucide-react';
@@ -29,10 +31,13 @@ export function QRSpaBooking() {
   const { token } = useParams<{ token: string }>();
   const navigate = useNavigate();
   const { qrData } = useQRToken(token);
+  const { guestInfo, saveGuestInfo } = useGuestInfo(token);
   const [selectedService, setSelectedService] = useState<SpaService | null>(null);
   const [preferredDateTime, setPreferredDateTime] = useState('');
   const [specialRequests, setSpecialRequests] = useState('');
   const [activeCategory, setActiveCategory] = useState('all');
+  const [guestName, setGuestName] = useState(guestInfo?.name || '');
+  const [guestPhone, setGuestPhone] = useState(guestInfo?.phone || '');
 
   const { data: platformFeeConfig } = usePlatformFee(qrData?.tenant_id);
 
@@ -80,10 +85,14 @@ export function QRSpaBooking() {
           action: 'create_request',
           type: 'spa',
           qr_token: token,
+          guest_name: guestName.trim() || 'Guest',
+          guest_contact: guestPhone.trim(),
+          service_category: 'spa',
           note: `Spa Booking: ${selectedService.service_name} (${selectedService.duration})${preferredDateTime ? ` | Preferred: ${preferredDateTime}` : ''}${specialRequests ? ` | Requests: ${specialRequests}` : ''}`,
           priority: 'normal',
-          // PHASE-1B: Fix metadata structure
-          metadata: {
+          guest_name: guestName.trim() || 'Guest',
+          guest_contact: guestPhone.trim(),
+          service_category: 'spa',
             qr_token: token,
             room_number: (qrData as any)?.room?.number || 'N/A',
             guest_label: 'Guest',
@@ -261,8 +270,31 @@ export function QRSpaBooking() {
                 )}
               </div>
 
-              <div className="space-y-3">
-                <Label htmlFor="datetime">Preferred Date & Time (optional)</Label>
+              <div className="space-y-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="guest-name">Your Name</Label>
+                    <Input
+                      id="guest-name"
+                      placeholder="Enter your name"
+                      value={guestName}
+                      onChange={(e) => setGuestName(e.target.value)}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="guest-phone">Phone Number</Label>
+                    <Input
+                      id="guest-phone"
+                      type="tel"
+                      placeholder="+234 xxx xxx xxxx"
+                      value={guestPhone}
+                      onChange={(e) => setGuestPhone(e.target.value)}
+                    />
+                  </div>
+                </div>
+
+                <div className="space-y-3">
+                  <Label htmlFor="datetime">Preferred Date & Time (optional)</Label>
                 <input
                   id="datetime"
                   type="datetime-local"

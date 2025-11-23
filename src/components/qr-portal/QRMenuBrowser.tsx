@@ -3,6 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useQRToken } from '@/hooks/useQRToken';
+import { useGuestInfo } from '@/hooks/useGuestInfo';
 import { usePlatformFee } from '@/hooks/usePlatformFee';
 import { calculateQRPlatformFee } from '@/lib/finance/platformFee';
 import { Button } from '@/components/ui/button';
@@ -10,6 +11,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
 import { Badge } from '@/components/ui/badge';
+import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { ArrowLeft, Plus, Minus, ShoppingCart, Loader2 } from 'lucide-react';
@@ -54,10 +56,13 @@ export function QRMenuBrowser() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { qrData } = useQRToken(token);
+  const { guestInfo, saveGuestInfo } = useGuestInfo(token);
   const [cart, setCart] = useState<CartItem[]>([]);
   const [specialInstructions, setSpecialInstructions] = useState('');
   const [isCartOpen, setIsCartOpen] = useState(false);
   const [activeCategory, setActiveCategory] = useState('all');
+  const [guestName, setGuestName] = useState(guestInfo?.name || '');
+  const [guestPhone, setGuestPhone] = useState(guestInfo?.phone || '');
 
   const { data: platformFeeConfig } = usePlatformFee(qrData?.tenant_id);
 
@@ -102,6 +107,9 @@ export function QRMenuBrowser() {
           action: 'create_request',
           type: 'digital_menu',
           qr_token: token,
+          guest_name: guestName.trim() || 'Guest',
+          guest_contact: guestPhone.trim(),
+          service_category: 'digital_menu',
           note: `Menu order: ${cart.length} items - Total: ₦${subtotal.toFixed(2)}`,
           priority: 'normal',
           // PHASE-1B: Add guest_name and guest_contact at top level

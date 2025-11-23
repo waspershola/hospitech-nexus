@@ -3,6 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useQRToken } from '@/hooks/useQRToken';
+import { useGuestInfo } from '@/hooks/useGuestInfo';
 import { usePlatformFee } from '@/hooks/usePlatformFee';
 import { calculateQRPlatformFee } from '@/lib/finance/platformFee';
 import { useQRPayment } from '@/components/qr-portal/useQRPayment';
@@ -12,6 +13,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
 import { Badge } from '@/components/ui/badge';
+import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { ArrowLeft, Plus, Minus, ShoppingCart, Loader2, Utensils } from 'lucide-react';
@@ -39,14 +41,15 @@ export function QRRoomService() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { qrData } = useQRToken(token);
+  const { guestInfo, saveGuestInfo } = useGuestInfo(token);
   const [cart, setCart] = useState<CartItem[]>([]);
   const [specialInstructions, setSpecialInstructions] = useState('');
   const [isCartOpen, setIsCartOpen] = useState(false);
   const [activeCategory, setActiveCategory] = useState('all');
+  const [guestName, setGuestName] = useState(guestInfo?.name || '');
+  const [guestPhone, setGuestPhone] = useState(guestInfo?.phone || '');
   
   const { 
-    guestPhone, 
-    setGuestPhone, 
     paymentChoice, 
     setPaymentChoice,
     getPaymentMetadata 
@@ -98,6 +101,9 @@ export function QRRoomService() {
           action: 'create_request',
           type: 'room_service',
           qr_token: token,
+          guest_name: guestName.trim() || 'Guest',
+          guest_contact: guestPhone.trim(),
+          service_category: 'room_service',
           note: `Room Service Order: ${cart.length} items - ${items.map(i => `${i.quantity}x ${i.name}`).join(', ')}`,
           priority: 'normal',
           guest_contact: guestPhone,
@@ -286,6 +292,31 @@ export function QRRoomService() {
                       onChange={(e) => setSpecialInstructions(e.target.value)}
                       rows={3}
                     />
+                  </div>
+
+                  {/* Guest Information */}
+                  <div className="space-y-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label htmlFor="guest-name">Your Name</Label>
+                        <Input
+                          id="guest-name"
+                          placeholder="Enter your name"
+                          value={guestName}
+                          onChange={(e) => setGuestName(e.target.value)}
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="guest-phone-input">Phone Number</Label>
+                        <Input
+                          id="guest-phone-input"
+                          type="tel"
+                          placeholder="+234 xxx xxx xxxx"
+                          value={guestPhone}
+                          onChange={(e) => setGuestPhone(e.target.value)}
+                        />
+                      </div>
+                    </div>
                   </div>
 
                   {/* Payment Options */}
