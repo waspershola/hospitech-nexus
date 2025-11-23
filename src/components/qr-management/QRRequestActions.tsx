@@ -44,8 +44,10 @@ export function QRRequestActions({ request, onStatusUpdate, onClose }: QRRequest
 
   const isAssignedToMe = request.assigned_to === user?.id;
   
-  // PHASE-2-SIMPLIFICATION: No distinction between room/location QR
-  // Staff manually decides all financial actions
+  // PHASE-4.2: Location-scoped QRs show "Add to Folio", room-scoped QRs hide it
+  // Location QRs (Pool, Bar, Spa, etc.) have no room_id and need manual folio selection
+  // Room QRs already have room context, staff uses dedicated folio in drawer
+  const isLocationScoped = !request.room_id;
   const hasCharge = request.metadata?.payment_info?.billable;
   const guestPaymentPreference = request.metadata?.payment_choice || 'pay_now';
 
@@ -264,8 +266,9 @@ export function QRRequestActions({ request, onStatusUpdate, onClose }: QRRequest
         </div>
         
         <div className="space-y-2">
-          {/* Add Charge to Folio - Always available for all QR types */}
-          {hasCharge && (
+          {/* PHASE-4.2: Add Charge to Folio - Only for location-scoped QRs (Pool, Bar, Spa, etc.) */}
+          {/* Room-scoped QRs use dedicated room folio in drawer, not this button */}
+          {hasCharge && isLocationScoped && (
             <Button
               onClick={() => setShowAddCharge(true)}
               disabled={isUpdating}
@@ -373,18 +376,20 @@ export function QRRequestActions({ request, onStatusUpdate, onClose }: QRRequest
         onReject={() => setShowComplimentaryApproval(false)}
       />
 
-      {/* Add Charge to Folio Dialog (All QRs - PHASE-2-SIMPLIFICATION) */}
-      <AddChargeToFolioDialog
-        open={showAddCharge}
-        onOpenChange={setShowAddCharge}
-        request={request}
-        onSuccess={() => {
-          setShowAddCharge(false);
-          queryClient.invalidateQueries({ queryKey: ['staff-requests'] });
-          toast.success('Charge posted to folio');
-          onStatusUpdate?.();
-        }}
-      />
+      {/* PHASE-4.2: Add Charge to Folio Dialog (Location-scoped QRs only) */}
+      {isLocationScoped && (
+        <AddChargeToFolioDialog
+          open={showAddCharge}
+          onOpenChange={setShowAddCharge}
+          request={request}
+          onSuccess={() => {
+            setShowAddCharge(false);
+            queryClient.invalidateQueries({ queryKey: ['staff-requests'] });
+            toast.success('Charge posted to folio');
+            onStatusUpdate?.();
+          }}
+        />
+      )}
 
       {/* PHASE-3-TRANSFER-V1: Transfer Confirmation Dialog */}
       <Dialog open={showTransferDialog} onOpenChange={setShowTransferDialog}>
