@@ -1,6 +1,8 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
+import { useQueryClient } from '@tanstack/react-query';
+import { updateRequestStatus as broadcastStatusUpdate } from '@/lib/qr/statusBroadcast';
 import { toast } from 'sonner';
 
 interface StaffRequest {
@@ -24,9 +26,10 @@ interface StaffRequest {
 }
 
 export function useStaffRequests() {
-  const [requests, setRequests] = useState<StaffRequest[]>([]);
-  const [isLoading, setIsLoading] = useState(false);
   const { tenantId } = useAuth();
+  const queryClient = useQueryClient();
+  const [requests, setRequests] = useState<StaffRequest[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
 
   const fetchRequests = async () => {
     if (!tenantId) return;
@@ -55,41 +58,30 @@ export function useStaffRequests() {
   };
 
   const updateRequestStatus = async (requestId: string, status: string): Promise<boolean> => {
-    // Find the current request to check if this is first response
-    const currentRequest = requests.find(r => r.id === requestId);
-    const isFirstResponse = currentRequest?.status === 'pending' && status !== 'pending' && !currentRequest.responded_at;
-
-    // PHASE-3: Set responded_at on first status change from pending
-    const updateData: any = { 
-      status, 
-      updated_at: new Date().toISOString() 
-    };
-    
-    if (isFirstResponse) {
-      updateData.responded_at = new Date().toISOString();
-      console.log(`[useStaffRequests] PHASE-3: Setting responded_at for request ${requestId}`);
-    }
-
-    // Phase 4: Optimistic update
-    setRequests(prev => prev.map(r => 
-      r.id === requestId ? { ...r, ...updateData } : r
-    ));
-
     try {
-      const { error } = await supabase
-        .from('requests')
-        .update(updateData)
-        .eq('id', requestId);
+      console.log('[useStaffRequests] PHASE-2A-V1: Using unified status broadcast');
+      
+      // Use unified status broadcast system (PHASE-2A)
+      const result = await broadcastStatusUpdate(requestId, status, tenantId!, queryClient);
+      
+      if (!result.success) {
+        throw new Error(result.error || 'Failed to update status');
+      }
 
-      if (error) throw error;
+      // Optimistically update local state
+      setRequests((prev) =>
+        prev.map((req) =>
+          req.id === requestId
+            ? { ...req, status, responded_at: req.responded_at || new Date().toISOString() }
+            : req
+        )
+      );
 
-      toast.success('Request status updated');
+      console.log('[useStaffRequests] PHASE-2A-V1: Status broadcast successful');
       return true;
-    } catch (err) {
-      console.error('[useStaffRequests] Error updating status:', err);
+    } catch (error: any) {
+      console.error('[useStaffRequests] Update error:', error);
       toast.error('Failed to update request status');
-      // Revert optimistic update on error
-      await fetchRequests();
       return false;
     }
   };

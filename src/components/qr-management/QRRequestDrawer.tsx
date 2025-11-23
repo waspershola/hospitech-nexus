@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
+import { subscribeToStatusUpdates } from '@/lib/qr/statusBroadcast';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -169,6 +170,24 @@ export function QRRequestDrawer({ open, onOpenChange }: QRRequestDrawerProps) {
   useEffect(() => {
     localStorage.setItem('qr-quick-replies-open', JSON.stringify(quickRepliesOpen));
   }, [quickRepliesOpen]);
+
+  // PHASE-2A-V1: Subscribe to cross-tab status updates via BroadcastChannel
+  useEffect(() => {
+    console.log('[QRRequestDrawer] PHASE-2A-V1: Setting up BroadcastChannel listener');
+    
+    const unsubscribe = subscribeToStatusUpdates((payload) => {
+      console.log('[QRRequestDrawer] PHASE-2A-V1: Received status update from another tab:', payload);
+      
+      // Invalidate queries to refresh data
+      queryClient.invalidateQueries({ queryKey: ['staff-requests'] });
+      queryClient.invalidateQueries({ queryKey: ['qr-requests'] });
+    });
+
+    return () => {
+      console.log('[QRRequestDrawer] PHASE-2A-V1: Cleaning up BroadcastChannel listener');
+      unsubscribe();
+    };
+  }, [queryClient]);
 
   // Auto-select payment location based on service category
   useEffect(() => {
