@@ -9,17 +9,21 @@ import {
   CheckCircle, 
   UserCheck,
   Loader2,
-  Printer
+  Printer,
+  MoveRight,
+  AlertTriangle
 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
 import { PaymentForm } from '@/modules/payments/PaymentForm';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { ManagerApprovalModal } from '@/modules/payments/ManagerApprovalModal';
 import { useQueryClient } from '@tanstack/react-query';
 import { AddChargeToFolioDialog } from './AddChargeToFolioDialog';
 import { useRequestReceipt } from '@/hooks/useRequestReceipt';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { format } from 'date-fns';
 
 interface QRRequestActionsProps {
   request: any;
@@ -36,6 +40,7 @@ export function QRRequestActions({ request, onStatusUpdate, onClose }: QRRequest
   const [showComplimentaryApproval, setShowComplimentaryApproval] = useState(false);
   const [showAddCharge, setShowAddCharge] = useState(false);
   const [selectedFolioId, setSelectedFolioId] = useState<string | null>(null);
+  const [showTransferDialog, setShowTransferDialog] = useState(false);
 
   const isAssignedToMe = request.assigned_to === user?.id;
   
@@ -139,6 +144,50 @@ export function QRRequestActions({ request, onStatusUpdate, onClose }: QRRequest
     } catch (error: any) {
       console.error('[QRRequestActions] Error marking complimentary:', error);
       toast.error(error.message || 'Failed to mark as complimentary');
+    } finally {
+      setIsUpdating(false);
+    }
+  };
+
+  const handleTransferToFrontDesk = async () => {
+    if (!tenantId || !user) return;
+    
+    setIsUpdating(true);
+    try {
+      const { error } = await supabase
+        .from('requests')
+        .update({
+          transferred_to_frontdesk: true,
+          transferred_at: new Date().toISOString(),
+          transferred_by: user.id,
+          status: 'in_progress',
+          metadata: {
+            ...request.metadata,
+            transfer_note: 'Requires front desk billing assistance',
+          },
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', request.id)
+        .eq('tenant_id', tenantId);
+
+      if (error) throw error;
+
+      // Log activity
+      await supabase.rpc('log_request_activity', {
+        p_tenant_id: tenantId,
+        p_request_id: request.id,
+        p_staff_id: user.id,
+        p_action_type: 'transferred_to_frontdesk',
+        p_metadata: { timestamp: new Date().toISOString() }
+      });
+
+      toast.success('Request transferred to Front Desk for billing');
+      queryClient.invalidateQueries({ queryKey: ['staff-requests'] });
+      setShowTransferDialog(false);
+      onStatusUpdate?.();
+    } catch (error: any) {
+      console.error('[QRRequestActions] Transfer error:', error);
+      toast.error(error.message || 'Failed to transfer request');
     } finally {
       setIsUpdating(false);
     }
@@ -260,6 +309,28 @@ export function QRRequestActions({ request, onStatusUpdate, onClose }: QRRequest
             <Printer className="h-4 w-4 mr-2" />
             {isPrinting ? 'Printing...' : 'Print Receipt'}
           </Button>
+
+          {/* PHASE-3-TRANSFER-V1: Transfer to Front Desk */}
+          {!request.transferred_to_frontdesk && (
+            <Button
+              onClick={() => setShowTransferDialog(true)}
+              disabled={isUpdating}
+              className="w-full"
+              variant="secondary"
+            >
+              <MoveRight className="h-4 w-4 mr-2" />
+              Transfer to Front Desk
+            </Button>
+          )}
+
+          {request.transferred_to_frontdesk && (
+            <Alert>
+              <AlertTriangle className="h-4 w-4" />
+              <AlertDescription>
+                Transferred to Front Desk on {format(new Date(request.transferred_at), 'MMM d, h:mm a')}
+              </AlertDescription>
+            </Alert>
+          )}
         </div>
       </Card>
 
@@ -314,6 +385,25 @@ export function QRRequestActions({ request, onStatusUpdate, onClose }: QRRequest
           onStatusUpdate?.();
         }}
       />
+
+      {/* PHASE-3-TRANSFER-V1: Transfer Confirmation Dialog */}
+      <Dialog open={showTransferDialog} onOpenChange={setShowTransferDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Transfer to Front Desk</DialogTitle>
+            <DialogDescription>
+              This will flag this request for the Front Desk team to handle payment collection or folio billing. 
+              The request will remain active until Front Desk completes it.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="flex gap-2 pt-4">
+            <Button onClick={handleTransferToFrontDesk} disabled={isUpdating} className="flex-1">
+              {isUpdating ? 'Transferring...' : 'Confirm Transfer'}
+            </Button>
+            <Button variant="outline" onClick={() => setShowTransferDialog(false)}>Cancel</Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

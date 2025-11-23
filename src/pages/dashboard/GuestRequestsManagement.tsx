@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
-import { MessageSquare, Filter, AlertCircle } from 'lucide-react';
+import { MessageSquare, Filter, AlertCircle, MoveRight } from 'lucide-react';
 import { useStaffRequests } from '@/hooks/useStaffRequests';
 import { useOverdueRequests } from '@/hooks/useOverdueRequests';
 import RequestsTable from '@/components/qr-management/RequestsTable';
@@ -27,6 +27,7 @@ export default function GuestRequestsManagement() {
   const [priorityFilter, setPriorityFilter] = useState<string>('all');
   const [categoryFilter, setCategoryFilter] = useState<string>('all');
   const [showOverdueOnly, setShowOverdueOnly] = useState(false);
+  const [showFrontDeskOnly, setShowFrontDeskOnly] = useState(false);
   const { requests, isLoading, updateRequestStatus, fetchRequests } = useStaffRequests();
   const { getOverdueRequests, calculateOverdue } = useOverdueRequests();
 
@@ -55,6 +56,7 @@ export default function GuestRequestsManagement() {
     if (priorityFilter !== 'all' && request.priority !== priorityFilter) return false;
     if (categoryFilter !== 'all' && request.type !== categoryFilter) return false;
     if (showOverdueOnly && !calculateOverdue(request).isOverdue) return false;
+    if (showFrontDeskOnly && !request.transferred_to_frontdesk) return false; // PHASE-3-TRANSFER-V1
     return true;
   }).sort((a, b) => {
     // Sort by overdue first, then by oldest
@@ -81,6 +83,7 @@ export default function GuestRequestsManagement() {
 
   const pendingCount = requests.filter((r) => r.status === 'pending').length;
   const inProgressCount = requests.filter((r) => r.status === 'in_progress').length;
+  const frontDeskCount = requests.filter((r) => r.transferred_to_frontdesk).length;
 
   return (
     <div className="space-y-6">
@@ -125,6 +128,21 @@ export default function GuestRequestsManagement() {
         >
           <AlertCircle className="h-4 w-4 mr-2" />
           {showOverdueOnly ? 'Show All' : 'Overdue Only'}
+        </Button>
+
+        {/* PHASE-3-TRANSFER-V1: Front Desk Billing Tasks filter */}
+        <Button
+          variant={showFrontDeskOnly ? 'default' : 'outline'}
+          size="sm"
+          onClick={() => setShowFrontDeskOnly(!showFrontDeskOnly)}
+        >
+          <MoveRight className="h-4 w-4 mr-2" />
+          {showFrontDeskOnly ? 'Show All' : 'Front Desk Billing Tasks'}
+          {frontDeskCount > 0 && (
+            <Badge className="ml-2" variant="secondary">
+              {frontDeskCount}
+            </Badge>
+          )}
         </Button>
         
         <div className="flex items-center gap-2">
