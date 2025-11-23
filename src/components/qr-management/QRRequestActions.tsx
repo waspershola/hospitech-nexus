@@ -219,15 +219,15 @@ export function QRRequestActions({ request, onStatusUpdate, onClose }: QRRequest
           )}
           
           {/* Collect Payment (all QR types) */}
-          <Button
-            onClick={() => setShowPaymentForm(true)}
-            disabled={isUpdating}
-            className="w-full"
-            variant="outline"
-          >
-            <DollarSign className="h-4 w-4 mr-2" />
-            Collect Payment
-          </Button>
+            <Button
+              onClick={() => setShowPaymentForm(true)}
+              disabled={isUpdating}
+              className="w-full"
+              variant="outline"
+            >
+              <DollarSign className="h-4 w-4 mr-2" />
+              Collect Payment
+            </Button>
 
           {/* Mark as Complimentary */}
           <Button
@@ -253,9 +253,18 @@ export function QRRequestActions({ request, onStatusUpdate, onClose }: QRRequest
             guestId={request.guest_id}
             expectedAmount={request.metadata?.payment_info?.total_amount || request.metadata?.payment_info?.subtotal || 0}
             onSuccess={() => {
+              const amount = request.metadata?.payment_info?.total_amount || request.metadata?.payment_info?.subtotal || 0;
+              const guestName = request.metadata?.guest_name || 'Guest';
+              
               setShowPaymentForm(false);
               handleStatusChange('completed');
-              toast.success('Payment recorded successfully');
+              
+              // PHASE-3: Enhanced payment success notification
+              toast.success('Payment Collected Successfully', {
+                description: `₦${amount.toLocaleString()} received from ${guestName}`,
+                duration: 5000,
+                icon: <CheckCircle className="h-5 w-5 text-green-500" />
+              });
             }}
             onCancel={() => setShowPaymentForm(false)}
           />
