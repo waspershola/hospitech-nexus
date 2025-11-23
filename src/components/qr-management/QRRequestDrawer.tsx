@@ -157,11 +157,22 @@ export function QRRequestDrawer({ open, onOpenChange }: QRRequestDrawerProps) {
     orderDetailsQueries.map((q, idx) => [allRequestIds[idx], q.isLoading])
   );
 
-  // PHASE-2A-COMPLETE: Force refetch when drawer opens
+  // PHASE-2A-COMPLETE: Force refetch when drawer opens + aggressive polling
   useEffect(() => {
     if (open) {
       console.log('[QRRequestDrawer] PHASE-2A-COMPLETE: Drawer opened - force refreshing requests');
       fetchRequests();
+      
+      // Poll every 2 seconds while drawer is open for guaranteed real-time updates
+      const pollInterval = setInterval(() => {
+        console.log('[QRRequestDrawer] PHASE-2A-POLLING: Refreshing requests');
+        fetchRequests();
+      }, 2000);
+      
+      return () => {
+        console.log('[QRRequestDrawer] PHASE-2A-POLLING: Clearing poll interval');
+        clearInterval(pollInterval);
+      };
     }
   }, [open, fetchRequests]);
 
