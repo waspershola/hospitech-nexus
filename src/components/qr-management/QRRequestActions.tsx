@@ -36,13 +36,10 @@ export function QRRequestActions({ request, onStatusUpdate, onClose }: QRRequest
 
   const isAssignedToMe = request.assigned_to === user?.id;
   
-  // PHASE-1-FRAUD-PREVENTION: Determine QR scope
-  // Room-scoped QR: has room_id and stay_folio_id (auto-attached)
-  // Location-scoped QR: no room_id, no auto folio (Pool, Bar, Spa, etc.)
-  const qrScope = request.metadata?.qr_scope || 'room'; // Default to 'room' for backward compatibility
-  const isRoomQR = qrScope === 'room' && !!request.stay_folio_id;
-  const isLocationQR = qrScope === 'location' || !request.stay_folio_id;
+  // PHASE-2-SIMPLIFICATION: No distinction between room/location QR
+  // Staff manually decides all financial actions
   const hasCharge = request.metadata?.payment_info?.billable;
+  const guestPaymentPreference = request.metadata?.payment_choice || 'pay_now';
 
   const handleStatusChange = async (newStatus: string) => {
     if (!tenantId) return;
@@ -204,9 +201,19 @@ export function QRRequestActions({ request, onStatusUpdate, onClose }: QRRequest
           <DollarSign className="h-4 w-4" />
           Financial Actions
         </h3>
+        
+        {/* Guest Payment Preference Display */}
+        <div className="bg-muted p-2 rounded mb-3 text-xs">
+          <strong>Guest Selected:</strong>{' '}
+          {guestPaymentPreference === 'bill_to_room' 
+            ? '📋 Bill to Room' 
+            : '💳 Pay Now'
+          }
+        </div>
+        
         <div className="space-y-2">
-          {/* Location QR: Add Charge to Folio (staff selects folio) */}
-          {isLocationQR && hasCharge && (
+          {/* Add Charge to Folio - Always available for all QR types */}
+          {hasCharge && (
             <Button
               onClick={() => setShowAddCharge(true)}
               disabled={isUpdating}
@@ -281,7 +288,7 @@ export function QRRequestActions({ request, onStatusUpdate, onClose }: QRRequest
         onReject={() => setShowComplimentaryApproval(false)}
       />
 
-      {/* Add Charge to Folio Dialog (Location QRs) */}
+      {/* Add Charge to Folio Dialog (All QRs - PHASE-2-SIMPLIFICATION) */}
       <AddChargeToFolioDialog
         open={showAddCharge}
         onOpenChange={setShowAddCharge}
