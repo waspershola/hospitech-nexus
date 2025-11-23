@@ -4,6 +4,7 @@ import { NavLink } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { useNavigation } from '@/hooks/useNavigation';
 import { useRequestNotificationCount } from '@/hooks/useRequestNotificationCount';
+import { useQRBillingTasks } from '@/hooks/useQRBillingTasks';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useState } from 'react';
 import {
@@ -28,6 +29,7 @@ export function AppSidebar() {
   const { open } = useSidebar();
   const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({});
   const notificationCount = useRequestNotificationCount();
+  const { count: billingTasksCount } = useQRBillingTasks();
   
   // Use unified navigation hook for all users (platform and tenant)
   const { data: navItems, isLoading, error } = useNavigation();
@@ -164,6 +166,11 @@ export function AppSidebar() {
                               {item.path === '/dashboard/department-requests' && notificationCount > 0 && (
                                 <span className="ml-2 flex h-5 min-w-[20px] items-center justify-center rounded-full bg-red-500 px-1.5 text-xs font-medium text-white">
                                   {notificationCount > 99 ? '99+' : notificationCount}
+                                </span>
+                              )}
+                              {item.path === '/dashboard/qr-billing-tasks' && billingTasksCount > 0 && (
+                                <span className="ml-2 flex h-5 min-w-[20px] items-center justify-center rounded-full bg-blue-500 px-1.5 text-xs font-medium text-white">
+                                  {billingTasksCount > 99 ? '99+' : billingTasksCount}
                                 </span>
                               )}
                             </span>
