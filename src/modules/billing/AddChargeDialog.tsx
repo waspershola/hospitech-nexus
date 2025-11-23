@@ -45,7 +45,7 @@ const CHARGE_DEPARTMENTS = [
 ];
 
 export function AddChargeDialog({ open, onOpenChange, folioId }: AddChargeDialogProps) {
-  const { tenantId } = useAuth();
+  const { tenantId, user } = useAuth();
   const queryClient = useQueryClient();
   const [amount, setAmount] = useState('');
   const [description, setDescription] = useState('');
@@ -121,8 +121,18 @@ export function AddChargeDialog({ open, onOpenChange, folioId }: AddChargeDialog
     mutationFn: async () => {
       if (!tenantId) throw new Error('No tenant ID');
 
+      // Extract UUID string if object was somehow passed
+      const folioUuid = typeof folioId === 'string' ? folioId : (folioId as any)?.id || '';
+      
+      console.log('[AddChargeDialog] BILLING-REF-V2: Posting charge', {
+        folioIdType: typeof folioId,
+        folioUuid,
+        amount: parseFloat(amount),
+        billingReference: validatedRequest?.request_id,
+      });
+
       const { data, error } = await supabase.rpc('folio_post_charge', {
-        p_folio_id: folioId,
+        p_folio_id: folioUuid,
         p_amount: parseFloat(amount),
         p_description: description,
         p_department: department || null,
@@ -141,7 +151,7 @@ export function AddChargeDialog({ open, onOpenChange, folioId }: AddChargeDialog
           .from('requests')
           .update({
             billing_status: 'posted_to_folio',
-            billing_processed_by: tenantId,
+            billing_processed_by: user?.id || null,
             billing_processed_at: new Date().toISOString()
           })
           .eq('id', validatedRequest.request_id)
