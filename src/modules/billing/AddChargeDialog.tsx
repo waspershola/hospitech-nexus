@@ -121,11 +121,26 @@ export function AddChargeDialog({ open, onOpenChange, folioId }: AddChargeDialog
     mutationFn: async () => {
       if (!tenantId) throw new Error('No tenant ID');
 
+      // Enhanced debugging to trace folioId value
+      const folioIdObj = folioId as any;
+      console.log('[AddChargeDialog] DEBUG-V3: Mutation triggered', {
+        folioId,
+        folioIdType: typeof folioId,
+        folioIdValue: folioId,
+        isString: typeof folioId === 'string',
+        isNull: folioId === null,
+        hasIdProperty: folioIdObj && typeof folioIdObj === 'object' && 'id' in folioIdObj
+      });
+
       // Extract UUID string if object was somehow passed
       const folioUuid = typeof folioId === 'string' ? folioId : (folioId as any)?.id || '';
       
+      // Runtime validation to ensure folioUuid is valid
+      if (!folioUuid || folioUuid.length === 0) {
+        throw new Error(`Invalid folio ID: received ${typeof folioId} instead of string UUID`);
+      }
+      
       console.log('[AddChargeDialog] BILLING-REF-V2: Posting charge', {
-        folioIdType: typeof folioId,
         folioUuid,
         amount: parseFloat(amount),
         billingReference: validatedRequest?.request_id,
@@ -161,7 +176,8 @@ export function AddChargeDialog({ open, onOpenChange, folioId }: AddChargeDialog
       return result;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['folio-by-id', folioId, tenantId] });
+      // Fixed query keys to match useFolioById hook
+      queryClient.invalidateQueries({ queryKey: ['folio', folioId, tenantId] });
       queryClient.invalidateQueries({ queryKey: ['folio-transactions', folioId, tenantId] });
       toast.success('Charge added successfully');
       
