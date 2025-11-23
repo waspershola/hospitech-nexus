@@ -5018,6 +5018,84 @@ export type Database = {
           },
         ]
       }
+      request_activity_log: {
+        Row: {
+          action_type: string
+          amount: number | null
+          created_at: string | null
+          id: string
+          metadata: Json | null
+          payment_location_id: string | null
+          payment_method: string | null
+          payment_provider_id: string | null
+          request_id: string
+          staff_id: string | null
+          tenant_id: string
+        }
+        Insert: {
+          action_type: string
+          amount?: number | null
+          created_at?: string | null
+          id?: string
+          metadata?: Json | null
+          payment_location_id?: string | null
+          payment_method?: string | null
+          payment_provider_id?: string | null
+          request_id: string
+          staff_id?: string | null
+          tenant_id: string
+        }
+        Update: {
+          action_type?: string
+          amount?: number | null
+          created_at?: string | null
+          id?: string
+          metadata?: Json | null
+          payment_location_id?: string | null
+          payment_method?: string | null
+          payment_provider_id?: string | null
+          request_id?: string
+          staff_id?: string | null
+          tenant_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "request_activity_log_payment_location_id_fkey"
+            columns: ["payment_location_id"]
+            isOneToOne: false
+            referencedRelation: "finance_locations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "request_activity_log_payment_provider_id_fkey"
+            columns: ["payment_provider_id"]
+            isOneToOne: false
+            referencedRelation: "finance_providers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "request_activity_log_payment_provider_id_fkey"
+            columns: ["payment_provider_id"]
+            isOneToOne: false
+            referencedRelation: "v_finance_overview_summary"
+            referencedColumns: ["provider_id"]
+          },
+          {
+            foreignKeyName: "request_activity_log_request_id_fkey"
+            columns: ["request_id"]
+            isOneToOne: false
+            referencedRelation: "requests"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "request_activity_log_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       requests: {
         Row: {
           assigned_at: string | null
@@ -5036,6 +5114,9 @@ export type Database = {
           status: string | null
           stay_folio_id: string | null
           tenant_id: string
+          transferred_at: string | null
+          transferred_by: string | null
+          transferred_to_frontdesk: boolean | null
           type: string
           updated_at: string | null
         }
@@ -5056,6 +5137,9 @@ export type Database = {
           status?: string | null
           stay_folio_id?: string | null
           tenant_id: string
+          transferred_at?: string | null
+          transferred_by?: string | null
+          transferred_to_frontdesk?: boolean | null
           type: string
           updated_at?: string | null
         }
@@ -5076,6 +5160,9 @@ export type Database = {
           status?: string | null
           stay_folio_id?: string | null
           tenant_id?: string
+          transferred_at?: string | null
+          transferred_by?: string | null
+          transferred_to_frontdesk?: boolean | null
           type?: string
           updated_at?: string | null
         }
@@ -7896,6 +7983,16 @@ export type Database = {
       }
       is_platform_admin: { Args: { _user_id: string }; Returns: boolean }
       is_system_locked_user: { Args: { _user_id: string }; Returns: boolean }
+      log_request_activity: {
+        Args: {
+          p_action_type: string
+          p_metadata?: Json
+          p_request_id: string
+          p_staff_id: string
+          p_tenant_id: string
+        }
+        Returns: string
+      }
       post_group_master_charge: {
         Args: {
           p_amount: number
