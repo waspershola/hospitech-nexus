@@ -928,7 +928,14 @@ export function QRRequestDrawer({
 
           {/* Details panel - full width in department mode */}
           <div className={`flex-1 flex flex-col overflow-auto ${hideRequestList ? 'w-full' : ''}`}>
-            {displayRequest ? (
+            {isDepartmentLoading && mode === 'department' ? (
+              <div className="flex-1 flex items-center justify-center">
+                <div className="text-center space-y-3">
+                  <Loader2 className="h-8 w-8 animate-spin text-muted-foreground mx-auto" />
+                  <p className="text-sm text-muted-foreground">Loading request details...</p>
+                </div>
+              </div>
+            ) : displayRequest ? (
               <>
                 {/* FIXED HEADER - Service category and status */}
                 <div className="p-4 border-b shrink-0">
@@ -980,15 +987,15 @@ export function QRRequestDrawer({
                     <ScrollArea className="flex-1 max-h-[calc(100vh-350px)]">
                       <div className="p-4 space-y-4">
                     {/* Guest Note */}
-                    {displayRequest.note && (
+                    {displayRequest?.note && (
                       <div className="bg-muted p-3 rounded-lg text-sm">
                         <p className="font-medium mb-1">Guest Note:</p>
-                        <p>{selectedRequest.note}</p>
+                        <p>{displayRequest.note}</p>
                       </div>
                     )}
 
                     {/* PHASE 1.3: Guest Payment Preference Indicator */}
-                    {selectedRequest.metadata?.payment_choice && (
+                    {displayRequest?.metadata?.payment_choice && (
                       <Alert className="border-blue-200 bg-blue-50">
                         <CreditCard className="h-4 w-4 text-blue-600" />
                         <AlertDescription>
@@ -996,7 +1003,7 @@ export function QRRequestDrawer({
                             Guest Payment Preference
                           </p>
                           <p className="text-xs text-blue-700 mt-1">
-                            {selectedRequest.metadata.payment_choice === 'bill_to_room' 
+                            {displayRequest.metadata.payment_choice === 'bill_to_room' 
                               ? '💳 Bill to Room' 
                               : '💰 Pay Now (via payment providers)'}
                           </p>
@@ -1005,36 +1012,36 @@ export function QRRequestDrawer({
                     )}
 
                     {/* Guest Contact & Phone Display */}
-                    {selectedRequest.metadata?.guest_contact && (
+                    {displayRequest?.metadata?.guest_contact && (
                       <div className="flex items-center gap-2 text-sm p-2 bg-muted/50 rounded-md">
                         <Phone className="h-3 w-3 text-muted-foreground" />
                         <span className="font-medium">Guest Phone:</span>
-                        <span>{selectedRequest.metadata.guest_contact}</span>
+                        <span>{displayRequest.metadata.guest_contact}</span>
                       </div>
                     )}
 
                     {/* Guest & Room Info */}
-                    {(selectedRequest.metadata?.guest_name || selectedRequest.metadata?.room_number || selectedRequest.room?.number) && (
+                    {(displayRequest?.metadata?.guest_name || displayRequest?.metadata?.room_number || displayRequest?.room?.number) && (
                       <div className="flex items-center gap-4 text-sm">
-                        {selectedRequest.metadata?.guest_name && (
+                        {displayRequest.metadata?.guest_name && (
                           <div className="flex items-center gap-1">
                             <User className="h-3 w-3 text-muted-foreground" />
-                            <span>{selectedRequest.metadata.guest_name}</span>
+                            <span>{displayRequest.metadata.guest_name}</span>
                           </div>
                         )}
-                        {(selectedRequest.metadata?.room_number || selectedRequest.room?.number) && (
+                        {(displayRequest.metadata?.room_number || displayRequest.room?.number) && (
                           <div className="flex items-center gap-1 bg-primary/10 px-2 py-1 rounded">
                             <MapPin className="h-3 w-3 text-primary" />
-                            <span className="font-medium">{selectedRequest.metadata?.room_number || selectedRequest.room?.number}</span>
+                            <span className="font-medium">{displayRequest.metadata?.room_number || displayRequest.room?.number}</span>
                           </div>
                         )}
                       </div>
                     )}
 
                     {/* Order Details Section */}
-                    {(selectedRequest.type === 'digital_menu' || 
-                      selectedRequest.type === 'menu_order' || 
-                      selectedRequest.type === 'room_service') && (
+                    {(displayRequest?.type === 'digital_menu' || 
+                      displayRequest?.type === 'menu_order' || 
+                      displayRequest?.type === 'room_service') && (
                       <div>
                         {orderLoading ? (
                           <div className="flex items-center justify-center py-4">
@@ -1109,8 +1116,8 @@ export function QRRequestDrawer({
                               )}
                               
                               {/* Payment Collection Section */}
-                              {selectedRequest.metadata?.payment_info?.billable && 
-                               selectedRequest.metadata?.payment_info?.status !== 'paid' && (
+                              {displayRequest?.metadata?.payment_info?.billable && 
+                               displayRequest?.metadata?.payment_info?.status !== 'paid' && (
                                 <>
                                   <Separator />
                                   <div className="space-y-3 p-3 bg-muted/30 rounded-lg">
@@ -1176,19 +1183,19 @@ export function QRRequestDrawer({
                                   </Button>
                                 </>
                               )}
-                              {selectedRequest.metadata?.payment_info?.status === 'paid' && (
+                              {displayRequest?.metadata?.payment_info?.status === 'paid' && (
                                 <div className="space-y-2 p-3 bg-green-500/10 rounded-lg border border-green-500/20">
                                   <div className="flex items-center gap-2">
                                     <CheckCircle2 className="h-4 w-4 text-green-600" />
                                     <span className="text-sm font-medium text-green-600">Payment Collected</span>
                                   </div>
-                                  {selectedRequest.metadata.payment_info.location_name && (
+                                  {displayRequest?.metadata?.payment_info?.location_name && (
                                     <div className="text-xs text-muted-foreground space-y-1">
-                                      <div>Location: {selectedRequest.metadata.payment_info.location_name}</div>
-                                      <div>Method: {selectedRequest.metadata.payment_info.provider_name} ({selectedRequest.metadata.payment_info.provider_type?.toUpperCase()})</div>
-                                      <div>Amount: ₦{selectedRequest.metadata.payment_info.amount?.toLocaleString()}</div>
-                                      {selectedRequest.metadata.payment_info.collected_at && (
-                                        <div>Collected: {new Date(selectedRequest.metadata.payment_info.collected_at).toLocaleString()}</div>
+                                      <div>Location: {displayRequest.metadata.payment_info.location_name}</div>
+                                      <div>Method: {displayRequest.metadata.payment_info.provider_name} ({displayRequest.metadata.payment_info.provider_type?.toUpperCase()})</div>
+                                      <div>Amount: ₦{displayRequest.metadata.payment_info.amount?.toLocaleString()}</div>
+                                      {displayRequest.metadata.payment_info.collected_at && (
+                                        <div>Collected: {new Date(displayRequest.metadata.payment_info.collected_at).toLocaleString()}</div>
                                       )}
                                     </div>
                                   )}
@@ -1205,16 +1212,16 @@ export function QRRequestDrawer({
                     )}
 
                     {/* Payment Info */}
-                    <RequestPaymentInfo request={selectedRequest} />
+                    <RequestPaymentInfo request={displayRequest} />
                     
                     {/* Folio Link */}
-                    <RequestFolioLink request={selectedRequest} />
+                    <RequestFolioLink request={displayRequest} />
                     
                     {/* Amount Adjustment for Dining Reservations */}
-                    {selectedRequest.type === 'dining_reservation' &&
-                     selectedRequest.metadata?.payment_info?.billable &&
-                     selectedRequest.metadata?.payment_info?.amount === null &&
-                     selectedRequest.metadata?.payment_info?.status !== 'paid' && (
+                    {displayRequest?.type === 'dining_reservation' &&
+                     displayRequest?.metadata?.payment_info?.billable &&
+                     displayRequest?.metadata?.payment_info?.amount === null &&
+                     displayRequest?.metadata?.payment_info?.status !== 'paid' && (
                       <div className="border border-border rounded-lg p-4 space-y-3 bg-amber-500/5">
                         <div className="flex items-center gap-2">
                           <DollarSign className="h-4 w-4 text-amber-600" />
@@ -1260,10 +1267,10 @@ export function QRRequestDrawer({
                     )}
 
                     {/* Payment Collection for Dining Reservations (after amount is set) */}
-                    {selectedRequest.type === 'dining_reservation' &&
-                     selectedRequest.metadata?.payment_info?.billable &&
-                     selectedRequest.metadata?.payment_info?.amount !== null &&
-                     selectedRequest.metadata?.payment_info?.status !== 'paid' && (
+                    {displayRequest?.type === 'dining_reservation' &&
+                     displayRequest?.metadata?.payment_info?.billable &&
+                     displayRequest?.metadata?.payment_info?.amount !== null &&
+                     displayRequest?.metadata?.payment_info?.status !== 'paid' && (
                       <div className="border border-border rounded-lg p-4 space-y-3">
                         <div className="flex items-center gap-2">
                           <DollarSign className="h-4 w-4 text-primary" />
@@ -1274,7 +1281,7 @@ export function QRRequestDrawer({
                         <div className="flex justify-between items-center p-3 bg-muted/30 rounded-lg">
                           <span className="font-medium">Total Bill:</span>
                           <span className="font-bold text-lg text-primary">
-                            ₦{selectedRequest.metadata.payment_info.amount?.toLocaleString()}
+                            ₦{displayRequest.metadata.payment_info.amount?.toLocaleString()}
                           </span>
                         </div>
 
@@ -1337,15 +1344,15 @@ export function QRRequestDrawer({
                               <line x1="1" y1="10" x2="23" y2="10"/>
                             </svg>
                           )}
-                          {isCollectingPayment ? 'Processing...' : `Collect Payment (₦${selectedRequest.metadata.payment_info.amount?.toLocaleString()})`}
+                          {isCollectingPayment ? 'Processing...' : `Collect Payment (₦${displayRequest?.metadata?.payment_info?.amount?.toLocaleString()})`}
                         </Button>
                       </div>
                     )}
 
                     {/* Payment Collection for Spa Services */}
-                    {selectedRequest.type === 'spa' &&
-                     selectedRequest.metadata?.payment_info?.billable &&
-                     selectedRequest.metadata?.payment_info?.status !== 'paid' && (
+                    {displayRequest?.type === 'spa' &&
+                     displayRequest?.metadata?.payment_info?.billable &&
+                     displayRequest?.metadata?.payment_info?.status !== 'paid' && (
                       <div className="border border-border rounded-lg p-4 space-y-3">
                         <div className="flex items-center gap-2">
                           <Sparkles className="h-4 w-4 text-purple-600" />
@@ -1356,7 +1363,7 @@ export function QRRequestDrawer({
                         <div className="flex justify-between items-center p-3 bg-muted/30 rounded-lg">
                           <span className="font-medium">Service Total:</span>
                           <span className="font-bold text-lg text-primary">
-                            ₦{selectedRequest.metadata.payment_info.amount?.toLocaleString()}
+                            ₦{displayRequest?.metadata?.payment_info?.amount?.toLocaleString()}
                           </span>
                         </div>
 
@@ -1405,15 +1412,15 @@ export function QRRequestDrawer({
                           ) : (
                             <DollarSign className="h-4 w-4" />
                           )}
-                          {isCollectingPayment ? 'Processing...' : `Collect Payment (₦${selectedRequest.metadata.payment_info.amount?.toLocaleString()})`}
+                          {isCollectingPayment ? 'Processing...' : `Collect Payment (₦${displayRequest?.metadata?.payment_info?.amount?.toLocaleString()})`}
                         </Button>
                       </div>
                     )}
 
                     {/* Payment Collection for Laundry Services */}
-                    {selectedRequest.type === 'laundry' &&
-                     selectedRequest.metadata?.payment_info?.billable &&
-                     selectedRequest.metadata?.payment_info?.status !== 'paid' && (
+                    {displayRequest?.type === 'laundry' &&
+                     displayRequest?.metadata?.payment_info?.billable &&
+                     displayRequest?.metadata?.payment_info?.status !== 'paid' && (
                       <div className="border border-border rounded-lg p-4 space-y-3">
                         <div className="flex items-center gap-2">
                           <Shirt className="h-4 w-4 text-blue-600" />
@@ -1424,7 +1431,7 @@ export function QRRequestDrawer({
                         <div className="flex justify-between items-center p-3 bg-muted/30 rounded-lg">
                           <span className="font-medium">Service Total:</span>
                           <span className="font-bold text-lg text-primary">
-                            ₦{selectedRequest.metadata.payment_info.amount?.toLocaleString()}
+                            ₦{displayRequest?.metadata?.payment_info?.amount?.toLocaleString()}
                           </span>
                         </div>
 
@@ -1473,27 +1480,27 @@ export function QRRequestDrawer({
                           ) : (
                             <DollarSign className="h-4 w-4" />
                           )}
-                          {isCollectingPayment ? 'Processing...' : `Collect Payment (₦${selectedRequest.metadata.payment_info.amount?.toLocaleString()})`}
+                          {isCollectingPayment ? 'Processing...' : `Collect Payment (₦${displayRequest?.metadata?.payment_info?.amount?.toLocaleString()})`}
                         </Button>
                       </div>
                     )}
 
                     {/* Payment Collected Confirmation (for all services) */}
-                    {selectedRequest.metadata?.payment_info?.status === 'paid' &&
-                     selectedRequest.type !== 'digital_menu' &&
-                     selectedRequest.type !== 'room_service' && (
+                    {displayRequest?.metadata?.payment_info?.status === 'paid' &&
+                     displayRequest?.type !== 'digital_menu' &&
+                     displayRequest?.type !== 'room_service' && (
                       <div className="space-y-2 p-3 bg-green-500/10 rounded-lg border border-green-500/20">
                         <div className="flex items-center gap-2">
                           <CheckCircle2 className="h-4 w-4 text-green-600" />
                           <span className="text-sm font-medium text-green-600">Payment Collected</span>
                         </div>
-                        {selectedRequest.metadata.payment_info.location_name && (
+                        {displayRequest?.metadata?.payment_info?.location_name && (
                           <div className="text-xs text-muted-foreground space-y-1">
-                            <div>Location: {selectedRequest.metadata.payment_info.location_name}</div>
-                            <div>Method: {selectedRequest.metadata.payment_info.provider_name} ({selectedRequest.metadata.payment_info.provider_type?.toUpperCase()})</div>
-                            <div>Amount: ₦{selectedRequest.metadata.payment_info.amount?.toLocaleString()}</div>
-                            {selectedRequest.metadata.payment_info.collected_at && (
-                              <div>Collected: {new Date(selectedRequest.metadata.payment_info.collected_at).toLocaleString()}</div>
+                            <div>Location: {displayRequest.metadata.payment_info.location_name}</div>
+                            <div>Method: {displayRequest.metadata.payment_info.provider_name} ({displayRequest.metadata.payment_info.provider_type?.toUpperCase()})</div>
+                            <div>Amount: ₦{displayRequest?.metadata?.payment_info?.amount?.toLocaleString()}</div>
+                            {displayRequest?.metadata?.payment_info?.collected_at && (
+                              <div>Collected: {new Date(displayRequest.metadata.payment_info.collected_at).toLocaleString()}</div>
                             )}
                           </div>
                         )}
@@ -1506,7 +1513,7 @@ export function QRRequestDrawer({
                         <div className="flex items-center gap-2 mb-3">
                           <History className="h-4 w-4 text-muted-foreground" />
                           <p className="text-xs font-medium text-muted-foreground">
-                            Request History {selectedRequest.room?.number ? `(Room ${selectedRequest.room.number})` : ''}
+                            Request History {displayRequest?.room?.number ? `(Room ${displayRequest.room.number})` : ''}
                           </p>
                         </div>
                         
@@ -1543,7 +1550,7 @@ export function QRRequestDrawer({
                     )}
 
                     {/* COLLAPSIBLE Quick Replies - Moved inside scrollable area */}
-                    {selectedRequest.status !== 'completed' && (
+                    {displayRequest?.status !== 'completed' && (
                       <Collapsible open={quickRepliesOpen} onOpenChange={setQuickRepliesOpen}>
                         <CollapsibleTrigger asChild>
                           <Button variant="outline" size="sm" className="w-full justify-between">
@@ -1567,7 +1574,7 @@ export function QRRequestDrawer({
                         </CollapsibleTrigger>
                         <CollapsibleContent className="mt-2">
                           <div className="grid grid-cols-2 gap-2">
-                            {getQuickReplyTemplates(selectedRequest.type).map((template, idx) => (
+                            {getQuickReplyTemplates(displayRequest.type).map((template, idx) => (
                               <Button
                                 key={idx}
                                 size="sm"
@@ -1649,17 +1656,17 @@ export function QRRequestDrawer({
 
                   {/* TAB 2: PAYMENT HISTORY */}
                   <TabsContent value="payments" className="flex-1 mt-0">
-                    <ScrollArea className="flex-1">
+                    <ScrollArea className="flex-1 max-h-[calc(100vh-350px)]">
                       <div className="p-4 space-y-4">
                         <div className="flex items-center gap-2 mb-4">
                           <DollarSign className="h-5 w-5 text-primary" />
                           <h3 className="font-semibold text-lg">Payment History</h3>
                         </div>
                         
-                        {selectedRequest.metadata?.payment_info ? (
+                        {displayRequest?.metadata?.payment_info ? (
                           <PaymentHistoryTimeline 
-                            request={selectedRequest}
-                            paymentInfo={selectedRequest.metadata.payment_info}
+                            request={displayRequest}
+                            paymentInfo={displayRequest.metadata.payment_info}
                           />
                         ) : (
                           <div className="text-center py-12 text-muted-foreground">
@@ -1673,7 +1680,7 @@ export function QRRequestDrawer({
 
                   {/* TAB 3: ACTIVITY LOG */}
                   <TabsContent value="activity" className="flex-1 mt-0">
-                    <ScrollArea className="flex-1">
+                    <ScrollArea className="flex-1 max-h-[calc(100vh-350px)]">
                       <div className="p-4 space-y-4">
                         <div className="flex items-center gap-2 mb-4">
                           <History className="h-5 w-5 text-primary" />
@@ -1681,19 +1688,19 @@ export function QRRequestDrawer({
                         </div>
                         
                         <ActivityTimeline 
-                          requestId={selectedRequest.id}
+                          requestId={displayRequest?.id}
                           tenantId={tenantId}
                         />
                         
                         {/* Legacy activity timeline */}
-                        <RequestActivityTimeline requestId={selectedRequest.id} />
+                        <RequestActivityTimeline requestId={displayRequest?.id} />
                       </div>
                     </ScrollArea>
                   </TabsContent>
                 </Tabs>
 
                 {/* FIXED FOOTER - Message Input */}
-                {selectedRequest.status !== 'completed' && (
+                {displayRequest?.status !== 'completed' && (
                   <div className="p-4 border-t shrink-0">
                     <div className="flex gap-2">
                       <Textarea
@@ -1721,19 +1728,19 @@ export function QRRequestDrawer({
                 )}
 
                 {/* FIXED FOOTER - Action Buttons */}
-                {selectedRequest.status !== 'completed' && (
+                {displayRequest?.status !== 'completed' && (
                   <div className="p-4 border-t flex gap-2 shrink-0">
-                    {selectedRequest.status === 'pending' && (
+                    {displayRequest.status === 'pending' && (
                       <Button
-                        onClick={() => updateRequestStatus(selectedRequest.id, 'in_progress')}
+                        onClick={() => updateRequestStatus(displayRequest.id, 'in_progress')}
                         className="flex-1"
                       >
                         Start Handling
                       </Button>
                     )}
-                    {selectedRequest.status === 'in_progress' && (
+                    {displayRequest.status === 'in_progress' && (
                       <Button
-                        onClick={() => updateRequestStatus(selectedRequest.id, 'completed')}
+                        onClick={() => updateRequestStatus(displayRequest.id, 'completed')}
                         className="flex-1"
                       >
                         <CheckCircle2 className="h-4 w-4 mr-2" />
@@ -1742,7 +1749,7 @@ export function QRRequestDrawer({
                     )}
                     <Button
                       variant="outline"
-                      onClick={() => updateRequestStatus(selectedRequest.id, 'cancelled')}
+                      onClick={() => updateRequestStatus(displayRequest.id, 'cancelled')}
                     >
                       Cancel
                     </Button>
@@ -1751,7 +1758,7 @@ export function QRRequestDrawer({
               </>
             ) : (
               <div className="flex-1 flex items-center justify-center text-muted-foreground">
-                Select a request to view details
+                {mode === 'department' ? 'Loading request details...' : 'Select a request to view details'}
               </div>
             )}
           </div>
