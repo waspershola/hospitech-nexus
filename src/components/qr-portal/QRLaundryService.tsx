@@ -14,8 +14,10 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { ArrowLeft, Plus, Minus, ShoppingCart, Loader2, Clock } from 'lucide-react';
+import { ArrowLeft, Plus, Minus, ShoppingCart, Loader2, Clock, AlertCircle } from 'lucide-react';
 import { toast } from 'sonner';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { QRPaymentOptions } from './QRPaymentOptions';
 
 interface LaundryItem {
   id: string;
@@ -50,6 +52,13 @@ export function QRLaundryService() {
   const [activeCategory, setActiveCategory] = useState('all');
   const [guestName, setGuestName] = useState(guestInfo?.name || '');
   const [guestPhone, setGuestPhone] = useState(guestInfo?.phone || '');
+  const [paymentChoice, setPaymentChoice] = useState<'pay_now' | 'bill_to_room'>('pay_now');
+
+  // PHASE-2-SIMPLIFICATION: Room status-based payment options
+  const roomStatus = qrData?.room_status;
+  const sessionExpired = qrData?.session_expired || false;
+  const showBillToRoom = roomStatus === 'occupied' && !sessionExpired;
+  const payNowOnly = ['available', 'cleaning', 'out_of_order'].includes(roomStatus || '') || sessionExpired;
 
   const { data: platformFeeConfig } = usePlatformFee(qrData?.tenant_id);
 
@@ -110,6 +119,7 @@ export function QRLaundryService() {
           guest_name: guestName.trim() || 'Guest',
           guest_contact: guestPhone.trim(),
           service_category: 'laundry',
+          payment_choice: paymentChoice, // PHASE-2-SIMPLIFICATION: Store guest preference
           note: `Laundry Service: ${cart.length} items - ${items.map(i => `${i.quantity}x ${i.item_name} (${SERVICE_TYPE_LABELS[i.service_type]})`).join(', ')}${specialInstructions ? ` | Instructions: ${specialInstructions}` : ''}`,
           priority: 'normal',
           metadata: {
@@ -157,7 +167,13 @@ export function QRLaundryService() {
         details: error?.details,
         error,
       });
-      toast.error(`Error: ${error?.message || 'Failed to submit laundry request'}`);
+      
+      // PHASE-2-SIMPLIFICATION: Handle session expiry error
+      if (error?.message?.includes('SESSION_EXPIRED')) {
+        toast.error('Your stay has ended. Room charges are no longer available.');
+      } else {
+        toast.error(`Error: ${error?.message || 'Failed to submit laundry request'}`);
+      }
     },
   });
 
@@ -325,6 +341,18 @@ export function QRLaundryService() {
               ))}
 
               <div className="space-y-4">
+                {/* PHASE-2-SIMPLIFICATION: Session Expiry Banner */}
+                {sessionExpired && (
+                  <Alert variant="destructive">
+                    <AlertCircle className="h-4 w-4" />
+                    <AlertTitle>Session Expired</AlertTitle>
+                    <AlertDescription>
+                      Your stay has ended. Room charges are no longer available.
+                      Please rescan the QR code or contact the front desk.
+                    </AlertDescription>
+                  </Alert>
+                )}
+
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label htmlFor="guest-name">Your Name</Label>
@@ -346,6 +374,17 @@ export function QRLaundryService() {
                     />
                   </div>
                 </div>
+
+                {/* PHASE-2-SIMPLIFICATION: Payment Options */}
+                <QRPaymentOptions
+                  showPhone={showBillToRoom}
+                  guestPhone={guestPhone}
+                  onPhoneChange={setGuestPhone}
+                  paymentChoice={paymentChoice}
+                  onPaymentChoiceChange={setPaymentChoice}
+                  billToRoomDisabled={payNowOnly}
+                  sessionExpired={sessionExpired}
+                />
 
                 <div className="space-y-2">
                   <Label htmlFor="instructions">Special Instructions (optional)</Label>
