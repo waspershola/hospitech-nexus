@@ -90,9 +90,7 @@ export function QRSpaBooking() {
           service_category: 'spa',
           note: `Spa Booking: ${selectedService.service_name} (${selectedService.duration})${preferredDateTime ? ` | Preferred: ${preferredDateTime}` : ''}${specialRequests ? ` | Requests: ${specialRequests}` : ''}`,
           priority: 'normal',
-          guest_name: guestName.trim() || 'Guest',
-          guest_contact: guestPhone.trim(),
-          service_category: 'spa',
+          metadata: {
             qr_token: token,
             room_number: (qrData as any)?.room?.number || 'N/A',
             guest_label: 'Guest',
@@ -123,6 +121,7 @@ export function QRSpaBooking() {
     },
     onSuccess: (data) => {
       toast.success('Spa booking request submitted!');
+      saveGuestInfo(guestName, guestPhone);
       setSelectedService(null);
       setPreferredDateTime('');
       setSpecialRequests('');
@@ -317,6 +316,7 @@ export function QRSpaBooking() {
                   onChange={(e) => setSpecialRequests(e.target.value)}
                   rows={3}
                 />
+              </div>
               </div>
 
               <div className="flex gap-3">

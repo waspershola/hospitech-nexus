@@ -106,9 +106,7 @@ export function QRRoomService() {
           service_category: 'room_service',
           note: `Room Service Order: ${cart.length} items - ${items.map(i => `${i.quantity}x ${i.name}`).join(', ')}`,
           priority: 'normal',
-          guest_contact: guestPhone,
           payment_choice: paymentChoice,
-          // PHASE-1B: Fix metadata structure
           metadata: {
             qr_token: token,
             room_number: (qrData as any)?.room?.number || 'N/A',
@@ -135,6 +133,7 @@ export function QRRoomService() {
     },
     onSuccess: (data) => {
       toast.success('Room service order placed successfully!');
+      saveGuestInfo(guestName, guestPhone);
       
       // Show folio feedback if "Bill to Room" was selected
       if (paymentChoice === 'bill_to_room') {
