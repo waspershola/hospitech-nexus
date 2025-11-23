@@ -140,10 +140,12 @@ export default function RequestsTable({
               </TableCell>
               <TableCell>
                 <div className="text-sm">
-                  <div>{request.metadata?.guest_name || 'Anonymous'}</div>
-                  {request.metadata?.guest_contact && (
-                    <div className="text-muted-foreground">
-                      {request.metadata.guest_contact}
+                  <div className="font-medium">
+                    {request.guest_name || request.metadata?.guest_name || 'Guest'}
+                  </div>
+                  {(request.guest_contact || request.metadata?.guest_contact) && (
+                    <div className="text-xs text-muted-foreground">
+                      {request.guest_contact || request.metadata?.guest_contact}
                     </div>
                   )}
                 </div>
