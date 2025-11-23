@@ -28,6 +28,7 @@ import { RequestCardSkeleton } from './RequestCardSkeleton';
 import { PaymentHistoryTimeline } from './PaymentHistoryTimeline';
 import { RequestActivityTimeline } from './RequestActivityTimeline';
 import { ActivityTimeline } from './ActivityTimeline';
+import { QRRequestActions } from './QRRequestActions';
 import { RequestFolioLink } from '@/components/staff/RequestFolioLink';
 import { format } from 'date-fns';
 import { useQuery, useQueries, useQueryClient } from '@tanstack/react-query';
@@ -984,7 +985,7 @@ export function QRRequestDrawer({
 
                   {/* TAB 1: DETAILS */}
                   <TabsContent value="details" className="flex-1 mt-0 flex flex-col">
-                    <ScrollArea className="flex-1 max-h-[calc(100vh-350px)]">
+                    <ScrollArea className="flex-1 max-h-[calc(100vh-280px)]">
                       <div className="p-4 space-y-4">
                     {/* Guest Note */}
                     {displayRequest?.note && (
@@ -1650,6 +1651,29 @@ export function QRRequestDrawer({
                         </div>
                        ))}
                     </div>
+
+                    {/* CRITICAL: Status Management & Financial Actions */}
+                    {mode === 'department' && displayRequest && (
+                      <>
+                        <Separator className="my-6" />
+                        <div className="space-y-4">
+                          <div className="flex items-center gap-2 mb-4">
+                            <Shield className="h-5 w-5 text-primary" />
+                            <h3 className="font-semibold text-lg">Request Actions</h3>
+                          </div>
+                          <QRRequestActions
+                            request={displayRequest}
+                            onStatusUpdate={() => {
+                              queryClient.invalidateQueries({ queryKey: ['qr-request', displayRequest.id] });
+                              queryClient.invalidateQueries({ queryKey: ['staff-requests'] });
+                            }}
+                            onClose={() => {
+                              queryClient.invalidateQueries({ queryKey: ['qr-request', displayRequest.id] });
+                            }}
+                          />
+                        </div>
+                      </>
+                    )}
                       </div>
                     </ScrollArea>
                   </TabsContent>
