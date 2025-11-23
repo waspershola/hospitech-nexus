@@ -15,6 +15,7 @@ interface AddChargeToFolioDialogProps {
   onOpenChange: (open: boolean) => void;
   request: any;
   onSuccess: () => void;
+  billingReferenceCode?: string; // Optional billing reference for QR Billing Tasks
 }
 
 export function AddChargeToFolioDialog({
@@ -22,6 +23,7 @@ export function AddChargeToFolioDialog({
   onOpenChange,
   request,
   onSuccess,
+  billingReferenceCode,
 }: AddChargeToFolioDialogProps) {
   const { tenantId } = useAuth();
   const [selectedFolioId, setSelectedFolioId] = useState<string>('');
@@ -94,19 +96,28 @@ export function AddChargeToFolioDialog({
 
       if (error) throw error;
 
-      // Update request to mark as charged
+      // Update request to mark as charged and update billing status if applicable
+      const updateData: any = {
+        status: 'completed',
+        metadata: {
+          ...request.metadata,
+          folio_id: selectedFolioId,
+          charged_at: new Date().toISOString(),
+          charge_method: 'staff_selected_folio',
+        },
+        updated_at: new Date().toISOString(),
+      };
+
+      // If this is a QR Billing Task, update billing tracking fields
+      if (billingReferenceCode) {
+        updateData.billing_status = 'posted_to_folio';
+        updateData.billing_processed_by = tenantId;
+        updateData.billing_processed_at = new Date().toISOString();
+      }
+
       const { error: updateError } = await supabase
         .from('requests')
-        .update({
-          status: 'completed',
-          metadata: {
-            ...request.metadata,
-            folio_id: selectedFolioId,
-            charged_at: new Date().toISOString(),
-            charge_method: 'staff_selected_folio',
-          },
-          updated_at: new Date().toISOString(),
-        })
+        .update(updateData)
         .eq('id', request.id)
         .eq('tenant_id', tenantId);
 
@@ -131,6 +142,15 @@ export function AddChargeToFolioDialog({
         </DialogHeader>
 
         <div className="space-y-4">
+          {billingReferenceCode && (
+            <Alert>
+              <AlertCircle className="h-4 w-4" />
+              <AlertDescription>
+                <span className="font-semibold">QR Billing Task</span> - Reference: <span className="font-mono text-primary">{billingReferenceCode}</span>
+              </AlertDescription>
+            </Alert>
+          )}
+
           <Alert>
             <AlertCircle className="h-4 w-4" />
             <AlertDescription>
