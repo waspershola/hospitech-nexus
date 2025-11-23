@@ -82,11 +82,12 @@ export function QRSpaBooking() {
           qr_token: token,
           note: `Spa Booking: ${selectedService.service_name} (${selectedService.duration})${preferredDateTime ? ` | Preferred: ${preferredDateTime}` : ''}${specialRequests ? ` | Requests: ${specialRequests}` : ''}`,
           priority: 'normal',
+          // PHASE-1B: Fix metadata structure
           metadata: {
             qr_token: token,
             room_number: (qrData as any)?.room?.number || 'N/A',
             guest_label: 'Guest',
-            service_type: 'spa',
+            service_category: 'spa',
             service_id: selectedService.id,
             service_name: selectedService.service_name,
             duration: selectedService.duration,

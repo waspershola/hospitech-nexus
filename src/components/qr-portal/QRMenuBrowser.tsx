@@ -104,11 +104,12 @@ export function QRMenuBrowser() {
           qr_token: token,
           note: `Menu order: ${cart.length} items - Total: ₦${subtotal.toFixed(2)}`,
           priority: 'normal',
+          // PHASE-1B: Add guest_name and guest_contact at top level
           metadata: {
             qr_token: token,
             room_number: (qrData as any)?.room?.number || qrData?.assigned_to || 'Guest',
             guest_label: 'Guest',
-            service_type: 'digital_menu',
+            service_category: 'digital_menu',
             guest_order_items: items,
             special_instructions: specialInstructions,
             payment_info: {
