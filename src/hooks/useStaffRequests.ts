@@ -102,24 +102,25 @@ export function useStaffRequests() {
           table: 'requests',
           filter: `tenant_id=eq.${tenantId}`,
         },
-        () => {
+        (payload) => {
+          console.log('[useStaffRequests] PHASE-2A-COMPLETE: Realtime INSERT/UPDATE received:', payload.eventType);
           fetchRequests();
         }
       )
-      .subscribe();
+      .subscribe((status) => {
+        console.log('[useStaffRequests] PHASE-2A-COMPLETE: Subscription status:', status);
+      });
 
-    // Phase 4: Add broadcast channel for instant updates
-    const bc = new BroadcastChannel('qr-requests');
-    bc.onmessage = (event) => {
-      if (event.data.type === 'new_request' && event.data.tenant_id === tenantId) {
-        console.log('[useStaffRequests] Broadcast: New request detected');
-        fetchRequests();
-      }
+    // PHASE-2A-COMPLETE: Listen to status broadcast channel from Phase 2A
+    const statusBc = new BroadcastChannel('qr-request-status-updates');
+    statusBc.onmessage = (event) => {
+      console.log('[useStaffRequests] PHASE-2A-COMPLETE: Status update broadcast received:', event.data);
+      fetchRequests();
     };
 
     return () => {
       supabase.removeChannel(channel);
-      bc.close();
+      statusBc.close();
     };
   }, [tenantId]);
 
