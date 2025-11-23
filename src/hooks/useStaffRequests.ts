@@ -21,6 +21,8 @@ interface StaffRequest {
   assigned_department?: string;
   completed_at?: string;
   responded_at?: string; // PHASE-3: SLA tracking timestamp
+  guest_name?: string; // PHASE-1C: Guest name from QR portal
+  guest_contact?: string; // PHASE-1C: Guest contact from QR portal
   room?: { number: string };
   guest?: { name: string };
 }
