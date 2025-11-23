@@ -106,6 +106,7 @@ import ReservationsManagement from "./pages/dashboard/ReservationsManagement";
 import LaundryManagement from "./pages/dashboard/LaundryManagement";
 import SpaManagement from "./pages/dashboard/SpaManagement";
 import QuickReplyTemplatesManagement from "./pages/dashboard/QuickReplyTemplatesManagement";
+import QRBillingTasks from "./pages/dashboard/QRBillingTasks";
 
 function PlatformGuard({ children }: { children: React.ReactNode }) {
   const { isPlatformAdmin, isLoading } = usePlatformRole();
@@ -172,6 +173,7 @@ const App = () => (
               <Route path="qr-management" element={<RoleGuard allowedRoles={['owner', 'manager']}><QRManagement /></RoleGuard>} />
               <Route path="guest-requests" element={<GuestRequestsManagement />} />
               <Route path="department-requests" element={<DepartmentRequestsDashboard />} />
+              <Route path="qr-billing-tasks" element={<RoleGuard allowedRoles={['owner', 'manager', 'frontdesk', 'finance']}><QRBillingTasks /></RoleGuard>} />
               <Route path="qr-analytics" element={<RoleGuard allowedRoles={['owner', 'manager']}><QRAnalytics /></RoleGuard>} />
               <Route path="qr-printables" element={<RoleGuard allowedRoles={['owner', 'manager']}><QRPrintables /></RoleGuard>} />
               <Route path="qr-portal-features" element={<RoleGuard allowedRoles={['owner', 'manager']}><QRPortalFeatures /></RoleGuard>} />
