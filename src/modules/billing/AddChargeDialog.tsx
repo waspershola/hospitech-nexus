@@ -50,6 +50,12 @@ export function AddChargeDialog({ open, onOpenChange, folioId }: AddChargeDialog
   const [amount, setAmount] = useState('');
   const [description, setDescription] = useState('');
   const [department, setDepartment] = useState('');
+  
+  // Billing reference validation
+  const [billingReference, setBillingReference] = useState('');
+  const [isValidating, setIsValidating] = useState(false);
+  const [validatedRequest, setValidatedRequest] = useState<any>(null);
+  const [validationError, setValidationError] = useState('');
 
   // Fetch folio to get organization info
   const { data: folio } = useFolioById(folioId);
@@ -65,6 +71,52 @@ export function AddChargeDialog({ open, onOpenChange, folioId }: AddChargeDialog
     enabled: !!organizationId && !!amount && parseFloat(amount) > 0,
   });
 
+  const validateReference = async () => {
+    if (!billingReference.trim()) return;
+    
+    setIsValidating(true);
+    setValidationError('');
+    
+    try {
+      const { data, error } = await supabase
+        .rpc('validate_billing_reference' as any, {
+          p_tenant_id: tenantId,
+          p_reference_code: billingReference.trim()
+        }) as any;
+        
+      if (error) throw error;
+      
+      const result = data?.[0] as {
+        valid: boolean;
+        request_id?: string;
+        request_type?: string;
+        department?: string;
+        guest_name?: string;
+        room_number?: string;
+        total_amount?: number;
+        description?: string;
+        error_message?: string;
+      };
+      
+      if (result?.valid) {
+        setValidatedRequest(result);
+        // Auto-populate fields
+        setAmount(result.total_amount?.toString() || '');
+        setDescription(result.description || '');
+        setDepartment(result.department || '');
+        toast.success(`✓ Valid billing task - ${result.guest_name || 'Guest'}`);
+      } else {
+        setValidationError(result?.error_message || 'Invalid reference');
+        setValidatedRequest(null);
+      }
+    } catch (err: any) {
+      setValidationError('Failed to validate reference');
+      toast.error('Validation failed', { description: err.message });
+    } finally {
+      setIsValidating(false);
+    }
+  };
+
   const addChargeMutation = useMutation({
     mutationFn: async () => {
       if (!tenantId) throw new Error('No tenant ID');
@@ -74,12 +126,27 @@ export function AddChargeDialog({ open, onOpenChange, folioId }: AddChargeDialog
         p_amount: parseFloat(amount),
         p_description: description,
         p_department: department || null,
+        p_reference_type: validatedRequest ? 'billing_reference' : null,
+        p_reference_id: validatedRequest?.request_id || null,
       });
 
       if (error) throw error;
       
       const result = data as { success: boolean; error?: string };
       if (!result?.success) throw new Error(result?.error || 'Failed to add charge');
+
+      // Update request billing status if reference was used
+      if (validatedRequest) {
+        await supabase
+          .from('requests')
+          .update({
+            billing_status: 'posted_to_folio',
+            billing_processed_by: tenantId,
+            billing_processed_at: new Date().toISOString()
+          })
+          .eq('id', validatedRequest.request_id)
+          .eq('tenant_id', tenantId);
+      }
 
       return result;
     },
@@ -98,6 +165,9 @@ export function AddChargeDialog({ open, onOpenChange, folioId }: AddChargeDialog
       setAmount('');
       setDescription('');
       setDepartment('');
+      setBillingReference('');
+      setValidatedRequest(null);
+      setValidationError('');
     },
     onError: (error: Error) => {
       toast.error(`Failed to add charge: ${error.message}`);
@@ -169,6 +239,69 @@ export function AddChargeDialog({ open, onOpenChange, folioId }: AddChargeDialog
                   ))}
                 </SelectContent>
               </Select>
+            </div>
+
+            {/* Billing Reference Section */}
+            <div className="border-t pt-4 mt-2">
+              <div className="flex items-center justify-between mb-2">
+                <Label htmlFor="billing-reference">
+                  Billing Reference (Optional)
+                </Label>
+                <span className="text-xs text-muted-foreground">
+                  Link to QR billing task
+                </span>
+              </div>
+              
+              <div className="flex gap-2">
+                <Input
+                  id="billing-reference"
+                  placeholder="e.g., QR-84550D"
+                  value={billingReference}
+                  onChange={(e) => {
+                    setBillingReference(e.target.value.toUpperCase());
+                    setValidatedRequest(null);
+                    setValidationError('');
+                  }}
+                  className="flex-1"
+                />
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={validateReference}
+                  disabled={!billingReference.trim() || isValidating}
+                >
+                  {isValidating ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    'Validate'
+                  )}
+                </Button>
+              </div>
+              
+              {/* Validation Success Alert */}
+              {validatedRequest && (
+                <Alert className="mt-2 border-green-500 bg-green-50 dark:bg-green-950/20">
+                  <CheckCircle2 className="h-4 w-4 text-green-600" />
+                  <AlertDescription className="text-green-800 dark:text-green-200">
+                    <strong>✓ Valid QR Billing Task</strong>
+                    <div className="text-sm mt-1">
+                      {validatedRequest.request_type} - {validatedRequest.guest_name}
+                      {validatedRequest.room_number && ` (Room ${validatedRequest.room_number})`}
+                    </div>
+                    <div className="text-xs text-green-600 dark:text-green-400 mt-1">
+                      Amount: ₦{validatedRequest.total_amount?.toLocaleString()}
+                    </div>
+                  </AlertDescription>
+                </Alert>
+              )}
+              
+              {/* Validation Error Alert */}
+              {validationError && (
+                <Alert variant="destructive" className="mt-2">
+                  <AlertTriangle className="h-4 w-4" />
+                  <AlertDescription>{validationError}</AlertDescription>
+                </Alert>
+              )}
             </div>
           </div>
 

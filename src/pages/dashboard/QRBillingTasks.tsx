@@ -1,25 +1,19 @@
-import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Receipt, DollarSign, CheckCircle2, XCircle } from 'lucide-react';
-import { AddChargeToFolioDialog } from '@/components/qr-management/AddChargeToFolioDialog';
-import { PaymentForm } from '@/modules/payments/PaymentForm';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Receipt, Copy, ExternalLink, Info } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { toast } from 'sonner';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 
 export default function QRBillingTasks() {
   const { tenantId } = useAuth();
-  const [selectedRequest, setSelectedRequest] = useState<any>(null);
-  const [showAddCharge, setShowAddCharge] = useState(false);
-  const [showPayment, setShowPayment] = useState(false);
 
   // Fetch pending billing tasks
-  const { data: billingTasks = [], refetch } = useQuery({
+  const { data: billingTasks = [] } = useQuery({
     queryKey: ['qr-billing-tasks', tenantId],
     queryFn: async () => {
       if (!tenantId) return [];
@@ -42,49 +36,9 @@ export default function QRBillingTasks() {
     enabled: !!tenantId,
   });
 
-  const handleMarkCompleted = async (requestId: string) => {
-    try {
-      const { error } = await supabase
-        .from('requests')
-        .update({
-          billing_status: 'posted_to_folio',
-          billing_processed_by: tenantId,
-          billing_processed_at: new Date().toISOString(),
-          status: 'completed'
-        })
-        .eq('id', requestId)
-        .eq('tenant_id', tenantId);
-
-      if (error) throw error;
-      toast.success('Billing task marked as completed');
-      refetch();
-    } catch (err: any) {
-      toast.error('Failed to update task', {
-        description: err.message
-      });
-    }
-  };
-
-  const handleCancel = async (requestId: string) => {
-    try {
-      const { error } = await supabase
-        .from('requests')
-        .update({
-          billing_status: 'cancelled',
-          billing_processed_by: tenantId,
-          billing_processed_at: new Date().toISOString()
-        })
-        .eq('id', requestId)
-        .eq('tenant_id', tenantId);
-
-      if (error) throw error;
-      toast.success('Billing task cancelled');
-      refetch();
-    } catch (err: any) {
-      toast.error('Failed to cancel task', {
-        description: err.message
-      });
-    }
+  const copyReferenceCode = (code: string) => {
+    navigator.clipboard.writeText(code);
+    toast.success('Reference code copied to clipboard');
   };
 
   return (
@@ -100,6 +54,13 @@ export default function QRBillingTasks() {
           {billingTasks.length} Pending
         </Badge>
       </div>
+
+      <Alert>
+        <Info className="h-4 w-4" />
+        <AlertDescription>
+          Copy the billing reference code and use it in <strong>Billing Center</strong> or <strong>Front Desk → Add Charge</strong> to post charges to the guest's folio.
+        </AlertDescription>
+      </Alert>
 
       {billingTasks.length === 0 ? (
         <Card>
@@ -123,19 +84,32 @@ export default function QRBillingTasks() {
               <Card key={task.id} className="hover:shadow-md transition-shadow">
                 <CardHeader>
                   <div className="flex items-start justify-between">
-                    <div className="space-y-1">
-                      <CardTitle className="flex items-center gap-2">
-                        <span className="font-mono text-primary">
+                    <div className="space-y-2">
+                      <CardTitle className="flex items-center gap-2 flex-wrap">
+                        <span className="font-mono text-2xl text-primary">
                           {task.billing_reference_code}
                         </span>
-                        <Badge variant="outline">{task.type}</Badge>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => copyReferenceCode(task.billing_reference_code)}
+                        >
+                          <Copy className="h-3 w-3 mr-1" />
+                          Copy
+                        </Button>
                       </CardTitle>
+                      <div className="flex items-center gap-2">
+                        <Badge variant="outline">{task.type}</Badge>
+                        {task.assigned_department && (
+                          <Badge variant="secondary">{task.assigned_department}</Badge>
+                        )}
+                      </div>
                       <div className="text-sm text-muted-foreground space-y-1">
                         {task.rooms?.number && (
                           <p>Room {task.rooms.number}</p>
                         )}
                         {task.guests?.name && (
-                          <p>{task.guests.name}</p>
+                          <p>Guest: {task.guests.name}</p>
                         )}
                         <p>
                           Transferred {formatDistanceToNow(new Date(task.created_at), { addSuffix: true })}
@@ -143,7 +117,7 @@ export default function QRBillingTasks() {
                       </div>
                     </div>
                     <div className="text-right">
-                      <div className="text-2xl font-bold">
+                      <div className="text-3xl font-bold text-primary">
                         ₦{amountDisplay}
                       </div>
                       <p className="text-sm text-muted-foreground">Amount Due</p>
@@ -151,92 +125,34 @@ export default function QRBillingTasks() {
                   </div>
                 </CardHeader>
                 <CardContent>
-                  <div className="flex gap-2">
-                    <Button
-                      onClick={() => {
-                        setSelectedRequest(task);
-                        setShowAddCharge(true);
-                      }}
-                      className="flex-1"
-                    >
-                      <Receipt className="h-4 w-4 mr-2" />
-                      Add to Folio
-                    </Button>
-                    <Button
-                      variant="outline"
-                      onClick={() => {
-                        setSelectedRequest(task);
-                        setShowPayment(true);
-                      }}
-                      className="flex-1"
-                    >
-                      <DollarSign className="h-4 w-4 mr-2" />
-                      Collect Payment
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => handleMarkCompleted(task.id)}
-                      title="Mark as Completed"
-                    >
-                      <CheckCircle2 className="h-4 w-4" />
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => handleCancel(task.id)}
-                      title="Cancel Task"
-                    >
-                      <XCircle className="h-4 w-4" />
-                    </Button>
+                  <div className="bg-muted/50 rounded-lg p-4 space-y-2">
+                    <p className="text-sm font-medium">To process this billing task:</p>
+                    <ol className="text-sm text-muted-foreground space-y-1 list-decimal list-inside">
+                      <li>Copy the reference code above</li>
+                      <li>Navigate to <strong>Billing Center</strong> or <strong>Front Desk</strong></li>
+                      <li>Click <strong>"Add Charge"</strong> on the guest's folio</li>
+                      <li>Paste the reference code to auto-populate charge details</li>
+                    </ol>
+                    {task.guest_id && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="mt-2"
+                        onClick={() => {
+                          // Navigate to billing center for this guest's folio
+                          window.open(`/dashboard/billing/${task.guest_id}`, '_blank');
+                        }}
+                      >
+                        <ExternalLink className="h-3 w-3 mr-2" />
+                        Open Billing Center
+                      </Button>
+                    )}
                   </div>
                 </CardContent>
               </Card>
             );
           })}
         </div>
-      )}
-
-      {/* Add Charge to Folio Dialog */}
-      {selectedRequest && (
-        <AddChargeToFolioDialog
-          open={showAddCharge}
-          onOpenChange={setShowAddCharge}
-          request={selectedRequest}
-          billingReferenceCode={selectedRequest.billing_reference_code}
-          onSuccess={() => {
-            setShowAddCharge(false);
-            setSelectedRequest(null);
-            refetch();
-          }}
-        />
-      )}
-
-      {/* Payment Form Dialog */}
-      {selectedRequest && (
-        <Dialog open={showPayment} onOpenChange={setShowPayment}>
-          <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
-            <DialogHeader>
-              <DialogTitle>Collect Payment</DialogTitle>
-            </DialogHeader>
-            <PaymentForm
-              guestId={selectedRequest.guest_id}
-              bookingId={(selectedRequest.metadata as any)?.booking_id}
-              prefilledAmount={
-                ((selectedRequest.metadata as any)?.payment_info?.total_amount || 
-                 (selectedRequest.metadata as any)?.payment_info?.subtotal || 0) / 100
-              }
-              billingReferenceCode={selectedRequest.billing_reference_code}
-              requestId={selectedRequest.id}
-              onSuccess={() => {
-                setShowPayment(false);
-                setSelectedRequest(null);
-                refetch();
-              }}
-              onCancel={() => setShowPayment(false)}
-            />
-          </DialogContent>
-        </Dialog>
       )}
     </div>
   );
