@@ -86,6 +86,36 @@ serve(async (req) => {
       .eq('tenant_id', qrData.tenant_id)
       .single();
 
+    // PHASE-2-SIMPLIFICATION: Fetch room status if room-scoped
+    let roomStatus = null;
+    let sessionExpired = false;
+
+    if (qrData.room_id) {
+      const { data: roomData } = await supabase
+        .from('rooms')
+        .select('status')
+        .eq('id', qrData.room_id)
+        .eq('tenant_id', qrData.tenant_id)
+        .single();
+      
+      roomStatus = roomData?.status || null;
+      
+      // Check if old session (folio closed but guest trying to order)
+      const { data: closedFolio } = await supabase
+        .from('stay_folios')
+        .select('status')
+        .eq('room_id', qrData.room_id)
+        .eq('tenant_id', qrData.tenant_id)
+        .eq('status', 'closed')
+        .order('updated_at', { ascending: false })
+        .limit(1)
+        .single();
+      
+      if (closedFolio) {
+        sessionExpired = true;
+      }
+    }
+
     return new Response(
       JSON.stringify({
         success: true,
@@ -98,6 +128,8 @@ serve(async (req) => {
           welcome_message: qrData.welcome_message || 'Welcome! How can we help you today?',
           scope: qrData.scope,
           services: qrData.services || [],
+          room_status: roomStatus,
+          session_expired: sessionExpired,
           branding: branding || {},
           tenant: meta || {}
         }

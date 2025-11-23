@@ -6,6 +6,8 @@ import { useQRToken } from '@/hooks/useQRToken';
 import { useGuestInfo } from '@/hooks/useGuestInfo';
 import { usePlatformFee } from '@/hooks/usePlatformFee';
 import { calculateQRPlatformFee } from '@/lib/finance/platformFee';
+import { useQRPayment } from '@/components/qr-portal/useQRPayment';
+import { QRPaymentOptions } from '@/components/qr-portal/QRPaymentOptions';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -13,7 +15,8 @@ import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { ArrowLeft, Loader2, Clock, Sparkles } from 'lucide-react';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { ArrowLeft, Loader2, Clock, Sparkles, CheckCircle, AlertCircle } from 'lucide-react';
 import { toast } from 'sonner';
 
 interface SpaService {
@@ -39,6 +42,18 @@ export function QRSpaBooking() {
   const [guestName, setGuestName] = useState(guestInfo?.name || '');
   const [guestPhone, setGuestPhone] = useState(guestInfo?.phone || '');
 
+  const { 
+    paymentChoice, 
+    setPaymentChoice,
+    getPaymentMetadata 
+  } = useQRPayment();
+  
+  // PHASE-2-SIMPLIFICATION: Room status conditional logic
+  const roomStatus = qrData?.room_status;
+  const sessionExpired = qrData?.session_expired || false;
+  const showBillToRoom = roomStatus === 'occupied' && !sessionExpired;
+  const payNowOnly = ['available', 'cleaning', 'out_of_order'].includes(roomStatus || '') || sessionExpired;
+
   const { data: platformFeeConfig } = usePlatformFee(qrData?.tenant_id);
 
   const { data: spaServices = [], isLoading } = useQuery({
@@ -62,22 +77,12 @@ export function QRSpaBooking() {
 
   const createSpaBooking = useMutation({
     mutationFn: async () => {
-      // Phase 3: Enhanced validation and logging
       if (!token || !selectedService || !qrData?.tenant_id) {
-        console.error('[QRSpaBooking] Missing required data:', {
-          has_token: !!token,
-          has_service: !!selectedService,
-          has_tenant_id: !!qrData?.tenant_id,
-        });
         toast.error('Session not ready. Please wait and try again.');
         return;
       }
 
-      console.log('[QRSpaBooking] Creating spa booking:', {
-        service_name: selectedService.service_name,
-        preferred_datetime: preferredDateTime,
-        tenant_id: qrData?.tenant_id,
-      });
+      const paymentMetadata = getPaymentMetadata();
 
       // Call edge function to create request with platform fee calculation
       const { data: request, error } = await supabase.functions.invoke('qr-request', {
@@ -90,6 +95,7 @@ export function QRSpaBooking() {
           service_category: 'spa',
           note: `Spa Booking: ${selectedService.service_name} (${selectedService.duration})${preferredDateTime ? ` | Preferred: ${preferredDateTime}` : ''}${specialRequests ? ` | Requests: ${specialRequests}` : ''}`,
           priority: 'normal',
+          payment_choice: paymentChoice,
           metadata: {
             qr_token: token,
             room_number: (qrData as any)?.room?.number || 'N/A',
@@ -101,6 +107,7 @@ export function QRSpaBooking() {
             price: selectedService.price,
             preferred_datetime: preferredDateTime,
             special_requests: specialRequests,
+            ...paymentMetadata,
             payment_info: {
               billable: true,
               subtotal: selectedService.price,
@@ -111,12 +118,7 @@ export function QRSpaBooking() {
         },
       });
 
-      if (error) {
-        console.error('[QRSpaBooking] Request creation error:', error);
-        throw new Error(error.message || 'Failed to create spa booking');
-      }
-
-      console.log('[QRSpaBooking] Request created via edge function:', request);
+      if (error) throw new Error(error.message || 'Failed to create spa booking');
       return request?.request || request;
     },
     onSuccess: (data) => {
@@ -126,18 +128,15 @@ export function QRSpaBooking() {
       setPreferredDateTime('');
       setSpecialRequests('');
       if (data) {
-        console.log('[QRSpaBooking] Navigating to request status:', data.id);
         navigate(`/qr/${token}/request/${data.id}`);
       }
     },
     onError: (error: any) => {
-      console.error('[QRSpaBooking] Mutation error:', {
-        message: error?.message,
-        code: error?.code,
-        details: error?.details,
-        error,
-      });
-      toast.error(`Error: ${error?.message || 'Failed to submit spa booking'}`);
+      if (error?.message?.includes('SESSION_EXPIRED')) {
+        toast.error('Your stay has ended. Room charges are no longer available.');
+      } else {
+        toast.error(`Error: ${error?.message || 'Failed to submit spa booking'}`);
+      }
     },
   });
 
@@ -249,27 +248,37 @@ export function QRSpaBooking() {
                 </div>
                 
                 {platformFeeBreakdown.platformFee > 0 && platformFeeConfig && platformFeeConfig.payer === 'guest' && (
-                  <div className="flex justify-between items-center pt-2 border-t text-sm">
-                    <span className="text-muted-foreground">
-                      Platform Fee {platformFeeConfig.fee_type === 'flat' ? '(Flat)' : `(${platformFeeConfig.qr_fee}%)`}
-                    </span>
-                    <span className="text-muted-foreground">
-                      +{selectedService.currency} {platformFeeBreakdown.platformFee.toFixed(2)}
-                    </span>
-                  </div>
-                )}
-                
-                {platformFeeBreakdown.platformFee > 0 && platformFeeConfig && platformFeeConfig.payer === 'guest' && (
-                  <div className="flex justify-between items-center pt-2 border-t font-semibold">
-                    <span>Total Amount:</span>
-                    <span className="text-lg text-accent">
-                      {selectedService.currency} {finalTotal.toFixed(2)}
-                    </span>
-                  </div>
+                  <>
+                    <div className="flex justify-between items-center pt-2 border-t text-sm">
+                      <span className="text-muted-foreground">
+                        Platform Fee {platformFeeConfig.fee_type === 'flat' ? '(Flat)' : `(${platformFeeConfig.qr_fee}%)`}
+                      </span>
+                      <span className="text-muted-foreground">
+                        +{selectedService.currency} {platformFeeBreakdown.platformFee.toFixed(2)}
+                      </span>
+                    </div>
+                    <div className="flex justify-between items-center pt-2 border-t font-semibold">
+                      <span>Total Amount:</span>
+                      <span className="text-lg text-accent">
+                        {selectedService.currency} {finalTotal.toFixed(2)}
+                      </span>
+                    </div>
+                  </>
                 )}
               </div>
 
               <div className="space-y-4">
+                {/* PHASE-2-SIMPLIFICATION: Session Expiry Banner */}
+                {sessionExpired && (
+                  <Alert variant="destructive">
+                    <AlertCircle className="h-4 w-4" />
+                    <AlertTitle>Session Expired</AlertTitle>
+                    <AlertDescription className="text-xs">
+                      Your stay has ended. Room charges are no longer available. Please rescan the QR code or contact front desk.
+                    </AlertDescription>
+                  </Alert>
+                )}
+                
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label htmlFor="guest-name">Your Name</Label>
@@ -291,6 +300,17 @@ export function QRSpaBooking() {
                     />
                   </div>
                 </div>
+
+                {/* PHASE-2-SIMPLIFICATION: Conditional Payment Options */}
+                <QRPaymentOptions
+                  guestPhone={guestPhone}
+                  onPhoneChange={setGuestPhone}
+                  paymentChoice={paymentChoice}
+                  onPaymentChoiceChange={setPaymentChoice}
+                  showPhone={showBillToRoom}
+                  billToRoomDisabled={payNowOnly}
+                  sessionExpired={sessionExpired}
+                />
 
                 <div className="space-y-3">
                   <Label htmlFor="datetime">Preferred Date & Time (optional)</Label>

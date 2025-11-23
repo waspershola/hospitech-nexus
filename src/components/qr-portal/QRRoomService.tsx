@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
@@ -16,7 +16,8 @@ import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
-import { ArrowLeft, Plus, Minus, ShoppingCart, Loader2, Utensils } from 'lucide-react';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { ArrowLeft, Plus, Minus, ShoppingCart, Loader2, Utensils, CheckCircle, AlertCircle } from 'lucide-react';
 import { toast } from 'sonner';
 
 interface MenuItem {
@@ -56,6 +57,12 @@ export function QRRoomService() {
   } = useQRPayment();
 
   const { data: platformFeeConfig } = usePlatformFee(qrData?.tenant_id);
+
+  // PHASE-2-SIMPLIFICATION: Room status conditional logic
+  const roomStatus = qrData?.room_status;
+  const sessionExpired = qrData?.session_expired || false;
+  const showBillToRoom = roomStatus === 'occupied' && !sessionExpired;
+  const payNowOnly = ['available', 'cleaning', 'out_of_order'].includes(roomStatus || '') || sessionExpired;
 
   const { data: menuItems = [], isLoading } = useQuery({
     queryKey: ['room-service-items', qrData?.tenant_id],
@@ -318,12 +325,26 @@ export function QRRoomService() {
                     </div>
                   </div>
 
+                  {/* PHASE-2-SIMPLIFICATION: Session Expiry Banner */}
+                  {sessionExpired && (
+                    <Alert variant="destructive" className="mb-4">
+                      <AlertCircle className="h-4 w-4" />
+                      <AlertTitle>Session Expired</AlertTitle>
+                      <AlertDescription className="text-xs">
+                        Your stay has ended. Room charges are no longer available. Please rescan the QR code or contact front desk.
+                      </AlertDescription>
+                    </Alert>
+                  )}
+
                   {/* Payment Options */}
                   <QRPaymentOptions
                     guestPhone={guestPhone}
                     onPhoneChange={setGuestPhone}
                     paymentChoice={paymentChoice}
                     onPaymentChoiceChange={setPaymentChoice}
+                    showPhone={showBillToRoom}
+                    billToRoomDisabled={payNowOnly}
+                    sessionExpired={sessionExpired}
                   />
 
                   <div className="pt-4 border-t border-border space-y-2">

@@ -11,6 +11,8 @@ interface QRData {
   welcome_message: string;
   scope: string;
   services: string[];
+  room_status?: 'occupied' | 'available' | 'cleaning' | 'out_of_order'; // PHASE-2-SIMPLIFICATION
+  session_expired?: boolean; // PHASE-2-SIMPLIFICATION
   branding: {
     primary_color?: string;
     logo_url?: string;

@@ -6,6 +6,8 @@ import { useQRToken } from '@/hooks/useQRToken';
 import { useGuestInfo } from '@/hooks/useGuestInfo';
 import { usePlatformFee } from '@/hooks/usePlatformFee';
 import { calculateQRPlatformFee } from '@/lib/finance/platformFee';
+import { useQRPayment } from '@/components/qr-portal/useQRPayment';
+import { QRPaymentOptions } from '@/components/qr-portal/QRPaymentOptions';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -14,7 +16,8 @@ import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
-import { ArrowLeft, Plus, Minus, ShoppingCart, Loader2 } from 'lucide-react';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { ArrowLeft, Plus, Minus, ShoppingCart, Loader2, CheckCircle, AlertCircle } from 'lucide-react';
 import { toast } from 'sonner';
 
 // Import menu images
@@ -64,7 +67,19 @@ export function QRMenuBrowser() {
   const [guestName, setGuestName] = useState(guestInfo?.name || '');
   const [guestPhone, setGuestPhone] = useState(guestInfo?.phone || '');
 
+  const { 
+    paymentChoice, 
+    setPaymentChoice,
+    getPaymentMetadata 
+  } = useQRPayment();
+
   const { data: platformFeeConfig } = usePlatformFee(qrData?.tenant_id);
+  
+  // PHASE-2-SIMPLIFICATION: Room status conditional logic
+  const roomStatus = qrData?.room_status;
+  const sessionExpired = qrData?.session_expired || false;
+  const showBillToRoom = roomStatus === 'occupied' && !sessionExpired;
+  const payNowOnly = ['available', 'cleaning', 'out_of_order'].includes(roomStatus || '') || sessionExpired;
 
   const { data: menuItems = [], isLoading } = useQuery({
     queryKey: ['menu-items', qrData?.tenant_id],
@@ -101,6 +116,8 @@ export function QRMenuBrowser() {
 
       const subtotal = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
 
+      const paymentMetadata = getPaymentMetadata();
+
       // Call edge function to create request with platform fee calculation
       const { data, error } = await supabase.functions.invoke('qr-request', {
         body: {
@@ -112,7 +129,7 @@ export function QRMenuBrowser() {
           service_category: 'digital_menu',
           note: `Menu order: ${cart.length} items - Total: ₦${subtotal.toFixed(2)}`,
           priority: 'normal',
-          // PHASE-1B: Add guest_name and guest_contact at top level
+          payment_choice: paymentChoice,
           metadata: {
             qr_token: token,
             room_number: (qrData as any)?.room?.number || qrData?.assigned_to || 'Guest',
@@ -120,6 +137,7 @@ export function QRMenuBrowser() {
             service_category: 'digital_menu',
             guest_order_items: items,
             special_instructions: specialInstructions,
+            ...paymentMetadata,
             payment_info: {
               billable: true,
               subtotal: subtotal,
@@ -138,6 +156,7 @@ export function QRMenuBrowser() {
     },
     onSuccess: (data) => {
       toast.success('Order placed successfully!');
+      saveGuestInfo(guestName, guestPhone);
       setCart([]);
       setSpecialInstructions('');
       setIsCartOpen(false);
@@ -146,8 +165,12 @@ export function QRMenuBrowser() {
         navigate(`/qr/${token}/order/${data.order.id}`);
       }
     },
-    onError: () => {
-      toast.error('Failed to place order');
+    onError: (error: any) => {
+      if (error?.message?.includes('SESSION_EXPIRED')) {
+        toast.error('Your stay has ended. Room charges are no longer available.');
+      } else {
+        toast.error('Failed to place order');
+      }
     },
   });
 
@@ -286,6 +309,53 @@ export function QRMenuBrowser() {
                       rows={3}
                     />
                   </div>
+
+                  {/* Guest Information */}
+                  <div className="space-y-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label htmlFor="guest-name">Your Name</Label>
+                        <Input
+                          id="guest-name"
+                          placeholder="Enter your name"
+                          value={guestName}
+                          onChange={(e) => setGuestName(e.target.value)}
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="guest-phone-input">Phone Number</Label>
+                        <Input
+                          id="guest-phone-input"
+                          type="tel"
+                          placeholder="+234 xxx xxx xxxx"
+                          value={guestPhone}
+                          onChange={(e) => setGuestPhone(e.target.value)}
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* PHASE-2-SIMPLIFICATION: Session Expiry Banner */}
+                  {sessionExpired && (
+                    <Alert variant="destructive">
+                      <AlertCircle className="h-4 w-4" />
+                      <AlertTitle>Session Expired</AlertTitle>
+                      <AlertDescription className="text-xs">
+                        Your stay has ended. Room charges are no longer available. Please rescan the QR code or contact front desk.
+                      </AlertDescription>
+                    </Alert>
+                  )}
+
+                  {/* PHASE-2-SIMPLIFICATION: Conditional Payment Options */}
+                  <QRPaymentOptions
+                    guestPhone={guestPhone}
+                    onPhoneChange={setGuestPhone}
+                    paymentChoice={paymentChoice}
+                    onPaymentChoiceChange={setPaymentChoice}
+                    showPhone={showBillToRoom}
+                    billToRoomDisabled={payNowOnly}
+                    sessionExpired={sessionExpired}
+                  />
 
                   <div className="pt-4 border-t border-border space-y-2">
                     <div className="flex justify-between">

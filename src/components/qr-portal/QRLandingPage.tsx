@@ -5,7 +5,7 @@ import { useQRTheme } from '@/hooks/useQRTheme';
 import { useMyRequests } from '@/hooks/useMyRequests';
 import { useGuestInfo } from '@/hooks/useGuestInfo';
 import { GuestInfoModal } from '@/components/qr-portal/GuestInfoModal';
-import { UtensilsCrossed, Wifi, Wrench, Bell, MessageCircle, Phone, Clock, Sparkles, Crown, Utensils, Shirt as ShirtIcon, Headphones, Receipt, LucideIcon } from 'lucide-react';
+import { UtensilsCrossed, Wifi, Wrench, Bell, MessageCircle, Phone, Clock, Sparkles, Crown, Utensils, Shirt as ShirtIcon, Headphones, Receipt, LucideIcon, CheckCircle, AlertCircle } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { LuxuryHeader } from '@/components/qr-portal/LuxuryHeader';
@@ -218,6 +218,40 @@ export function QRLandingPage() {
             <p className="text-muted-foreground text-lg leading-relaxed">{welcome_message}</p>
           </CardContent>
         </Card>
+
+        {/* PHASE-2-SIMPLIFICATION: Room Status Banner */}
+        {qrData.room_status && (
+          <Card className="shadow-xl bg-card/90 border-2 border-primary/20">
+            <CardContent className="p-4">
+              {qrData.room_status === 'occupied' && !qrData.session_expired && (
+                <div className="flex items-center gap-2 text-green-600">
+                  <CheckCircle className="h-5 w-5" />
+                  <p className="font-medium">Room is occupied - All services available</p>
+                </div>
+              )}
+              
+              {['available', 'cleaning', 'out_of_order'].includes(qrData.room_status) && (
+                <div className="flex items-center gap-2 text-amber-600">
+                  <Bell className="h-5 w-5" />
+                  <p className="font-medium">Browse services & pay directly</p>
+                </div>
+              )}
+              
+              {qrData.session_expired && (
+                <div className="bg-destructive/10 border border-destructive/30 rounded-lg p-4">
+                  <div className="flex items-center gap-2 text-destructive mb-2">
+                    <Bell className="h-5 w-5" />
+                    <p className="font-bold">Session Expired</p>
+                  </div>
+                  <p className="text-sm text-muted-foreground">
+                    Your stay has ended. Room billing is no longer available.
+                    Please rescan the QR code for current access.
+                  </p>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        )}
 
         {/* Services Section */}
         <div className="space-y-6">
