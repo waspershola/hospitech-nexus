@@ -8,7 +8,8 @@ import {
   Play, 
   CheckCircle, 
   UserCheck,
-  Loader2
+  Loader2,
+  Printer
 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
@@ -18,6 +19,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { ManagerApprovalModal } from '@/modules/payments/ManagerApprovalModal';
 import { useQueryClient } from '@tanstack/react-query';
 import { AddChargeToFolioDialog } from './AddChargeToFolioDialog';
+import { useRequestReceipt } from '@/hooks/useRequestReceipt';
 
 interface QRRequestActionsProps {
   request: any;
@@ -28,6 +30,7 @@ interface QRRequestActionsProps {
 export function QRRequestActions({ request, onStatusUpdate, onClose }: QRRequestActionsProps) {
   const { user, tenantId } = useAuth();
   const queryClient = useQueryClient();
+  const { printRequestReceipt, isPrinting } = useRequestReceipt();
   const [isUpdating, setIsUpdating] = useState(false);
   const [showPaymentForm, setShowPaymentForm] = useState(false);
   const [showComplimentaryApproval, setShowComplimentaryApproval] = useState(false);
@@ -245,6 +248,17 @@ export function QRRequestActions({ request, onStatusUpdate, onClose }: QRRequest
           >
             <Gift className="h-4 w-4 mr-2" />
             Mark as Complimentary
+          </Button>
+
+          {/* PHASE-3-PRINT-V1: Print Receipt */}
+          <Button
+            onClick={() => printRequestReceipt(request)}
+            disabled={isUpdating || isPrinting}
+            className="w-full"
+            variant="outline"
+          >
+            <Printer className="h-4 w-4 mr-2" />
+            {isPrinting ? 'Printing...' : 'Print Receipt'}
           </Button>
         </div>
       </Card>
