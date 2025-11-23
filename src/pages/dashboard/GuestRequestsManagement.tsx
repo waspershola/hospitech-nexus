@@ -10,6 +10,7 @@ import { OrderDetailsDrawer } from '@/components/qr-management/OrderDetailsDrawe
 import { QRRequestActions } from '@/components/qr-management/QRRequestActions';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { Button } from '@/components/ui/button';
+import { generateRequestReference } from '@/lib/qr/requestReference';
 import {
   Select,
   SelectContent,
