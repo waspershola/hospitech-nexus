@@ -3,7 +3,6 @@ import { Card } from '@/components/ui/card';
 import { useState } from 'react';
 import { 
   DollarSign, 
-  FileText, 
   Gift, 
   Play, 
   CheckCircle, 
@@ -20,7 +19,6 @@ import { PaymentForm } from '@/modules/payments/PaymentForm';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { ManagerApprovalModal } from '@/modules/payments/ManagerApprovalModal';
 import { useQueryClient } from '@tanstack/react-query';
-import { AddChargeToFolioDialog } from './AddChargeToFolioDialog';
 import { useRequestReceipt } from '@/hooks/useRequestReceipt';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { format } from 'date-fns';
@@ -38,17 +36,9 @@ export function QRRequestActions({ request, onStatusUpdate, onClose }: QRRequest
   const [isUpdating, setIsUpdating] = useState(false);
   const [showPaymentForm, setShowPaymentForm] = useState(false);
   const [showComplimentaryApproval, setShowComplimentaryApproval] = useState(false);
-  const [showAddCharge, setShowAddCharge] = useState(false);
-  const [selectedFolioId, setSelectedFolioId] = useState<string | null>(null);
   const [showTransferDialog, setShowTransferDialog] = useState(false);
 
   const isAssignedToMe = request.assigned_to === user?.id;
-  
-  // PHASE-4.2: Location-scoped QRs show "Add to Folio", room-scoped QRs hide it
-  // Location QRs (Pool, Bar, Spa, etc.) have no room_id and need manual folio selection
-  // Room QRs already have room context, staff uses dedicated folio in drawer
-  const isLocationScoped = !request.room_id;
-  const hasCharge = request.metadata?.payment_info?.billable;
   const guestPaymentPreference = request.metadata?.payment_choice || 'pay_now';
 
   const handleStatusChange = async (newStatus: string) => {
@@ -256,6 +246,11 @@ export function QRRequestActions({ request, onStatusUpdate, onClose }: QRRequest
           Financial Actions
         </h3>
         
+        {/* ARCHITECTURAL RULE: NO FOLIO CHARGING FROM QR DRAWER
+            All folio charges must be posted from Billing Center by Front Desk.
+            Other departments use "Transfer to Front Desk" for room billing.
+            This ensures proper separation of duties and financial controls. */}
+        
         {/* Guest Payment Preference Display */}
         <div className="bg-muted p-2 rounded mb-3 text-xs">
           <strong>Guest Selected:</strong>{' '}
@@ -266,22 +261,8 @@ export function QRRequestActions({ request, onStatusUpdate, onClose }: QRRequest
         </div>
         
         <div className="space-y-2">
-          {/* PHASE-4.2: Add Charge to Folio - Only for location-scoped QRs (Pool, Bar, Spa, etc.) */}
-          {/* Room-scoped QRs use dedicated room folio in drawer, not this button */}
-          {hasCharge && isLocationScoped && (
-            <Button
-              onClick={() => setShowAddCharge(true)}
-              disabled={isUpdating}
-              className="w-full"
-              variant="default"
-            >
-              <FileText className="h-4 w-4 mr-2" />
-              Add Charge to Folio
-            </Button>
-          )}
-          
           {/* Collect Payment (all QR types) */}
-            <Button
+          <Button
               onClick={() => setShowPaymentForm(true)}
               disabled={isUpdating}
               className="w-full"
@@ -375,21 +356,6 @@ export function QRRequestActions({ request, onStatusUpdate, onClose }: QRRequest
         onApprove={handleComplimentaryApproval}
         onReject={() => setShowComplimentaryApproval(false)}
       />
-
-      {/* PHASE-4.2: Add Charge to Folio Dialog (Location-scoped QRs only) */}
-      {isLocationScoped && (
-        <AddChargeToFolioDialog
-          open={showAddCharge}
-          onOpenChange={setShowAddCharge}
-          request={request}
-          onSuccess={() => {
-            setShowAddCharge(false);
-            queryClient.invalidateQueries({ queryKey: ['staff-requests'] });
-            toast.success('Charge posted to folio');
-            onStatusUpdate?.();
-          }}
-        />
-      )}
 
       {/* PHASE-3-TRANSFER-V1: Transfer Confirmation Dialog */}
       <Dialog open={showTransferDialog} onOpenChange={setShowTransferDialog}>
