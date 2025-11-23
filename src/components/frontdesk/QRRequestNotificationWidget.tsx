@@ -79,8 +79,7 @@ export function QRRequestNotificationWidget() {
     setDrawerOpen(true);
   };
 
-  if (qrRequestCount === 0) return null;
-
+  // PHASE 1.7: Button always visible even when count is 0
   return (
     <>
       <Button
@@ -91,9 +90,11 @@ export function QRRequestNotificationWidget() {
       >
         <QrCode className="h-4 w-4" />
         <span className="hidden sm:inline">QR Requests</span>
-        <Badge variant="default" className="ml-1">
-          {qrRequestCount}
-        </Badge>
+        {qrRequestCount > 0 && (
+          <Badge variant="default" className="ml-1">
+            {qrRequestCount}
+          </Badge>
+        )}
       </Button>
       
       <QRRequestDrawer 
