@@ -7,8 +7,7 @@ import { useOverdueRequests } from '@/hooks/useOverdueRequests';
 import RequestsTable from '@/components/qr-management/RequestsTable';
 import StaffChatDialog from '@/components/qr-management/StaffChatDialog';
 import { OrderDetailsDrawer } from '@/components/qr-management/OrderDetailsDrawer';
-import { QRRequestActions } from '@/components/qr-management/QRRequestActions';
-import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
+import { QRRequestDrawer } from '@/components/qr-management/QRRequestDrawer';
 import { Button } from '@/components/ui/button';
 import { generateRequestReference } from '@/lib/qr/requestReference';
 import {
@@ -240,22 +239,13 @@ export default function GuestRequestsManagement() {
         }}
       />
 
-      {selectedRequestDetails && (
-        <Sheet open={!!selectedRequestDetails} onOpenChange={(open) => !open && setSelectedRequestDetails(null)}>
-          <SheetContent className="w-full sm:max-w-2xl overflow-y-auto">
-            <SheetHeader>
-              <SheetTitle>Request Details</SheetTitle>
-            </SheetHeader>
-            <div className="mt-6">
-              <QRRequestActions 
-                request={selectedRequestDetails}
-                onStatusUpdate={fetchRequests}
-                onClose={() => setSelectedRequestDetails(null)}
-              />
-            </div>
-          </SheetContent>
-        </Sheet>
-      )}
+      <QRRequestDrawer
+        open={!!selectedRequestDetails}
+        onOpenChange={(open) => !open && setSelectedRequestDetails(null)}
+        mode="department"
+        selectedRequestId={selectedRequestDetails?.id}
+        hideRequestList={true}
+      />
     </div>
   );
 }

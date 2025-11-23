@@ -30,7 +30,7 @@ import { RequestActivityTimeline } from './RequestActivityTimeline';
 import { ActivityTimeline } from './ActivityTimeline';
 import { RequestFolioLink } from '@/components/staff/RequestFolioLink';
 import { format } from 'date-fns';
-import { useQueries, useQueryClient } from '@tanstack/react-query';
+import { useQuery, useQueries, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import {
   MessageSquare, Clock, CheckCircle2, XCircle, AlertCircle, Send,
@@ -44,6 +44,9 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 interface QRRequestDrawerProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  mode?: 'front-desk' | 'department'; // Controls drawer behavior
+  selectedRequestId?: string; // For department mode - external request selection
+  hideRequestList?: boolean; // Hide left panel in department mode
 }
 
 // Map service categories to dashboard names for auto-selecting payment location
@@ -58,12 +61,42 @@ const SERVICE_TO_DASHBOARD_MAP: Record<string, string> = {
   'concierge': 'front_desk',
 };
 
-export function QRRequestDrawer({ open, onOpenChange }: QRRequestDrawerProps) {
+export function QRRequestDrawer({ 
+  open, 
+  onOpenChange,
+  mode = 'front-desk',
+  selectedRequestId,
+  hideRequestList = false
+}: QRRequestDrawerProps) {
   const { tenantId } = useAuth();
   const queryClient = useQueryClient();
   const { requests, isLoading, updateRequestStatus, fetchRequests } = useStaffRequests();
   const { overdueCount, slaMinutes } = useOverdueRequests(); // PHASE-3: SLA tracking
   const [selectedRequest, setSelectedRequest] = useState<any>(null);
+
+  // Fetch individual request for department mode
+  const { data: departmentRequest, isLoading: isDepartmentLoading } = useQuery({
+    queryKey: ['qr-request-detail', selectedRequestId],
+    queryFn: async () => {
+      if (!selectedRequestId || !tenantId) return null;
+      const { data, error } = await supabase
+        .from('requests')
+        .select('*, room:rooms(*), guest:guests(*)')
+        .eq('id', selectedRequestId)
+        .eq('tenant_id', tenantId)
+        .single();
+      
+      if (error) {
+        console.error('[QRRequestDrawer] Error fetching department request:', error);
+        return null;
+      }
+      return data;
+    },
+    enabled: mode === 'department' && !!selectedRequestId && !!tenantId,
+  });
+
+  // Use department request if in department mode, otherwise use selected from list
+  const displayRequest = mode === 'department' ? departmentRequest : selectedRequest;
   const [customMessage, setCustomMessage] = useState('');
   const [activeTab, setActiveTab] = useState('pending');
   const [isCollectingPayment, setIsCollectingPayment] = useState(false);
@@ -76,11 +109,11 @@ export function QRRequestDrawer({ open, onOpenChange }: QRRequestDrawerProps) {
     return saved !== null ? JSON.parse(saved) : false;
   });
   
-  const { messages, requestContext, sendMessage, isSending } = useStaffChat(selectedRequest?.id);
+  const { messages, requestContext, sendMessage, isSending } = useStaffChat(displayRequest?.id);
   
   const { stats: historyStats, isLoading: historyLoading } = useRequestHistory(
-    selectedRequest?.room_id || null,
-    selectedRequest?.metadata?.guest_name || null
+    displayRequest?.room_id || null,
+    displayRequest?.metadata?.guest_name || null
   );
 
   // Fetch finance data for payment collection
@@ -91,10 +124,10 @@ export function QRRequestDrawer({ open, onOpenChange }: QRRequestDrawerProps) {
 
   // Fetch order details if this is a menu/room service request
   const { data: orderDetails, isLoading: orderLoading } = useOrderDetails(
-    (selectedRequest?.type === 'digital_menu' || 
-     selectedRequest?.type === 'menu_order' || 
-     selectedRequest?.type === 'room_service') 
-      ? selectedRequest?.id 
+    (displayRequest?.type === 'digital_menu' || 
+     displayRequest?.type === 'menu_order' || 
+     displayRequest?.type === 'room_service') 
+      ? displayRequest?.id 
       : undefined
   );
 
@@ -211,8 +244,8 @@ export function QRRequestDrawer({ open, onOpenChange }: QRRequestDrawerProps) {
 
   // Auto-select payment location based on service category
   useEffect(() => {
-    if (selectedRequest && !selectedLocationId) {
-      const serviceCategory = selectedRequest.type;
+    if (displayRequest && !selectedLocationId) {
+      const serviceCategory = displayRequest.type;
       const dashboardName = SERVICE_TO_DASHBOARD_MAP[serviceCategory];
       if (dashboardName) {
         const defaultLocationId = getDefaultLocation(dashboardName);
@@ -221,15 +254,15 @@ export function QRRequestDrawer({ open, onOpenChange }: QRRequestDrawerProps) {
         }
       }
     }
-  }, [selectedRequest, selectedLocationId, getDefaultLocation]);
+  }, [displayRequest, selectedLocationId, getDefaultLocation]);
 
   // Reset payment selections when request changes
   useEffect(() => {
-    if (selectedRequest) {
+    if (displayRequest) {
       setSelectedLocationId(null);
       setSelectedProviderId(null);
     }
-  }, [selectedRequest?.id]);
+  }, [displayRequest?.id]);
 
   const handleQuickReply = async (template: string) => {
     if (!selectedRequest) return;
@@ -788,7 +821,7 @@ export function QRRequestDrawer({ open, onOpenChange }: QRRequestDrawerProps) {
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent side="right" className="w-full sm:max-w-2xl p-0 flex flex-col">
+      <SheetContent side="right" className="w-full sm:max-w-2xl p-0 flex flex-col overflow-y-auto">
         <SheetHeader className="px-6 py-4 border-b">
           <SheetTitle className="flex items-center gap-2">
             <MessageSquare className="h-5 w-5" />
@@ -800,7 +833,9 @@ export function QRRequestDrawer({ open, onOpenChange }: QRRequestDrawerProps) {
           </SheetTitle>
         </SheetHeader>
 
-        <div className="flex flex-1 overflow-hidden">
+        <div className="flex flex-1 overflow-auto">
+          {/* Conditionally render request list - only in front-desk mode */}
+          {!hideRequestList && mode === 'front-desk' && (
           <div className="w-1/3 border-r flex flex-col">
             <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col">
               <TabsList className="w-full rounded-none border-b">
@@ -889,9 +924,11 @@ export function QRRequestDrawer({ open, onOpenChange }: QRRequestDrawerProps) {
               </ScrollArea>
             </Tabs>
           </div>
+          )}
 
-          <div className="flex-1 flex flex-col overflow-hidden">
-            {selectedRequest ? (
+          {/* Details panel - full width in department mode */}
+          <div className={`flex-1 flex flex-col overflow-auto ${hideRequestList ? 'w-full' : ''}`}>
+            {displayRequest ? (
               <>
                 {/* FIXED HEADER - Service category and status */}
                 <div className="p-4 border-b shrink-0">
@@ -900,26 +937,26 @@ export function QRRequestDrawer({ open, onOpenChange }: QRRequestDrawerProps) {
                       <div className="flex items-center gap-2 mb-1">
                         <button
                           onClick={() => {
-                            const ref = generateRequestReference(selectedRequest.id);
+                            const ref = generateRequestReference(displayRequest.id);
                             navigator.clipboard.writeText(ref);
                             toast.success('Reference code copied');
                           }}
                           className="flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-muted hover:bg-muted/80 transition-colors text-xs font-mono text-muted-foreground hover:text-foreground"
                           title="Click to copy reference code"
                         >
-                          <span className="font-semibold">{generateRequestReference(selectedRequest.id)}</span>
+                          <span className="font-semibold">{generateRequestReference(displayRequest.id)}</span>
                           <Copy className="h-3 w-3" />
                         </button>
                       </div>
                       <h3 className="font-semibold text-lg capitalize">
-                        {selectedRequest.type?.replace('_', ' ')}
+                        {displayRequest.type?.replace('_', ' ')}
                       </h3>
                       <p className="text-sm text-muted-foreground">
-                        {format(new Date(selectedRequest.created_at), 'MMM d, h:mm a')}
+                        {format(new Date(displayRequest.created_at), 'MMM d, h:mm a')}
                       </p>
                     </div>
-                    <Badge variant={getStatusConfig(selectedRequest.status).variant}>
-                      {getStatusConfig(selectedRequest.status).label}
+                    <Badge variant={getStatusConfig(displayRequest.status).variant}>
+                      {getStatusConfig(displayRequest.status).label}
                     </Badge>
                   </div>
                 </div>
@@ -940,10 +977,10 @@ export function QRRequestDrawer({ open, onOpenChange }: QRRequestDrawerProps) {
 
                   {/* TAB 1: DETAILS */}
                   <TabsContent value="details" className="flex-1 mt-0 flex flex-col">
-                    <ScrollArea className="flex-1">
+                    <ScrollArea className="flex-1 max-h-[calc(100vh-350px)]">
                       <div className="p-4 space-y-4">
                     {/* Guest Note */}
-                    {selectedRequest.note && (
+                    {displayRequest.note && (
                       <div className="bg-muted p-3 rounded-lg text-sm">
                         <p className="font-medium mb-1">Guest Note:</p>
                         <p>{selectedRequest.note}</p>
