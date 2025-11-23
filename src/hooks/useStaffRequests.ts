@@ -23,6 +23,9 @@ interface StaffRequest {
   responded_at?: string; // PHASE-3: SLA tracking timestamp
   guest_name?: string; // PHASE-1C: Guest name from QR portal
   guest_contact?: string; // PHASE-1C: Guest contact from QR portal
+  transferred_to_frontdesk?: boolean; // PHASE-3-TRANSFER-V1
+  transferred_at?: string; // PHASE-3-TRANSFER-V1
+  transferred_by?: string; // PHASE-3-TRANSFER-V1
   room?: { number: string };
   guest?: { name: string };
   guest_order?: { guest_name: string | null }[];
