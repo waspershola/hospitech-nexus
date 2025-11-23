@@ -18,6 +18,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { useOverdueRequests } from '@/hooks/useOverdueRequests';
+import { generateRequestReference } from '@/lib/qr/requestReference';
 
 interface RequestsTableProps {
   requests: any[];
@@ -118,6 +119,9 @@ export default function RequestsTable({
             <TableRow key={request.id} className={overdueInfo.isOverdue ? 'bg-destructive/5' : ''}>
               <TableCell>
                 <div className="space-y-1">
+                  <div className="text-xs font-mono text-muted-foreground mb-1">
+                    {generateRequestReference(request.id)}
+                  </div>
                   <div className="flex items-center gap-2">
                     {request.type === 'menu_order' && (
                       <Badge variant="secondary" className="gap-1">

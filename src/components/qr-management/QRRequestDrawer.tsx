@@ -11,6 +11,7 @@ import { Separator } from '@/components/ui/separator';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Label } from '@/components/ui/label';
+import { generateRequestReference } from '@/lib/qr/requestReference';
 import { useStaffRequests } from '@/hooks/useStaffRequests';
 import { useStaffChat } from '@/hooks/useStaffChat';
 import { useRequestHistory } from '@/hooks/useRequestHistory';
@@ -34,7 +35,7 @@ import { supabase } from '@/integrations/supabase/client';
 import {
   MessageSquare, Clock, CheckCircle2, XCircle, AlertCircle, Send,
   User, MapPin, Zap, Loader2, History, TrendingUp, BarChart3, UtensilsCrossed,
-  Calendar, Users, Sparkles, Shirt, DollarSign, Wifi, Phone, CreditCard, Shield, ShieldAlert
+  Calendar, Users, Sparkles, Shirt, DollarSign, Wifi, Phone, CreditCard, Shield, ShieldAlert, Copy
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { ConnectionHealthIndicator } from '@/components/ui/ConnectionHealthIndicator';
@@ -895,7 +896,21 @@ export function QRRequestDrawer({ open, onOpenChange }: QRRequestDrawerProps) {
                 {/* FIXED HEADER - Service category and status */}
                 <div className="p-4 border-b shrink-0">
                   <div className="flex items-start justify-between">
-                    <div>
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2 mb-1">
+                        <button
+                          onClick={() => {
+                            const ref = generateRequestReference(selectedRequest.id);
+                            navigator.clipboard.writeText(ref);
+                            toast.success('Reference code copied');
+                          }}
+                          className="flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-muted hover:bg-muted/80 transition-colors text-xs font-mono text-muted-foreground hover:text-foreground"
+                          title="Click to copy reference code"
+                        >
+                          <span className="font-semibold">{generateRequestReference(selectedRequest.id)}</span>
+                          <Copy className="h-3 w-3" />
+                        </button>
+                      </div>
                       <h3 className="font-semibold text-lg capitalize">
                         {selectedRequest.type?.replace('_', ' ')}
                       </h3>
