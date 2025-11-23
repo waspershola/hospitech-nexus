@@ -102,11 +102,12 @@ export function QRRoomService() {
           priority: 'normal',
           guest_contact: guestPhone,
           payment_choice: paymentChoice,
+          // PHASE-1B: Fix metadata structure
           metadata: {
             qr_token: token,
             room_number: (qrData as any)?.room?.number || 'N/A',
             guest_label: 'Guest',
-            service_type: 'room_service',
+            service_category: 'room_service',
             guest_order_items: items,
             special_instructions: specialInstructions,
             ...paymentMetadata,

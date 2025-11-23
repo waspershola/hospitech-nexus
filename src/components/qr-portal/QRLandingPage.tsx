@@ -1,8 +1,10 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useQRToken } from '@/hooks/useQRToken';
 import { useQRTheme } from '@/hooks/useQRTheme';
 import { useMyRequests } from '@/hooks/useMyRequests';
+import { useGuestInfo } from '@/hooks/useGuestInfo';
+import { GuestInfoModal } from '@/components/qr-portal/GuestInfoModal';
 import { UtensilsCrossed, Wifi, Wrench, Bell, MessageCircle, Phone, Clock, Sparkles, Crown, Utensils, Shirt as ShirtIcon, Headphones, Receipt, LucideIcon } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -78,8 +80,23 @@ export function QRLandingPage() {
   // Phase 3: Dynamic My Requests
   const { requests, pendingCount } = useMyRequests(token || null);
 
+  // PHASE-1C: Guest Info Persistence
+  const { guestInfo, isLoading: guestInfoLoading, hasGuestInfo, saveGuestInfo } = useGuestInfo(token);
+  const [showGuestInfoModal, setShowGuestInfoModal] = useState(false);
+
   // Apply QR theme dynamically
   useQRTheme(qrData?.branding, 'qr-portal-root');
+
+  // PHASE-1C: Show guest info modal on first visit
+  useEffect(() => {
+    if (!guestInfoLoading && !hasGuestInfo && qrData) {
+      // Delay modal slightly to let landing page render first
+      const timer = setTimeout(() => {
+        setShowGuestInfoModal(true);
+      }, 800);
+      return () => clearTimeout(timer);
+    }
+  }, [guestInfoLoading, hasGuestInfo, qrData]);
 
   if (isValidating) {
     return (
@@ -155,8 +172,24 @@ export function QRLandingPage() {
   const showFeedback = tenant?.qr_feedback_enabled ?? true;
   const showCalling = tenant?.qr_calling_enabled ?? true;
 
+  const handleGuestInfoSubmit = (name: string, phone: string) => {
+    saveGuestInfo(name, phone);
+    setShowGuestInfoModal(false);
+  };
+
+  const handleGuestInfoSkip = () => {
+    setShowGuestInfoModal(false);
+  };
+
   return (
     <>
+      {/* PHASE-1C: Guest Info Modal */}
+      <GuestInfoModal 
+        open={showGuestInfoModal}
+        onSubmit={handleGuestInfoSubmit}
+        onSkip={handleGuestInfoSkip}
+      />
+
       {/* Offline Indicator */}
       <OfflineIndicator />
 

@@ -45,10 +45,11 @@ export function useStaffChat(requestId: string | null) {
   }, [requestId]);
 
   const fetchMessages = useCallback(async () => {
-    if (!requestId) return;
+    if (!requestId || !tenantId) return;
 
     setIsLoading(true);
     try {
+      // PHASE-1A: Add tenant_id filter to prevent cross-tenant data leaks
       const { data, error } = await supabase
         .from('guest_communications')
         .select(`
@@ -61,9 +62,22 @@ export function useStaffChat(requestId: string | null) {
           staff:sent_by(full_name, role)
         `)
         .eq('metadata->>request_id', requestId)
+        .eq('tenant_id', tenantId)
         .order('created_at', { ascending: true });
 
-      if (error) throw error;
+      if (error) {
+        console.error('[useStaffChat] Failed to load messages:', error);
+        toast.error('Failed to load messages');
+        setMessages([]);
+        return;
+      }
+
+      if (!data || data.length === 0) {
+        // PHASE-1A: Defensive empty state handling
+        console.log('[useStaffChat] No messages found for request:', requestId);
+        setMessages([]);
+        return;
+      }
 
       const formattedMessages = (data || []).map((msg: any) => ({
         id: msg.id,
@@ -86,7 +100,7 @@ export function useStaffChat(requestId: string | null) {
     } finally {
       setIsLoading(false);
     }
-  }, [requestId]);
+  }, [requestId, tenantId]);
 
   const sendMessage = async (message: string): Promise<boolean> => {
     if (!requestId || !user) {
