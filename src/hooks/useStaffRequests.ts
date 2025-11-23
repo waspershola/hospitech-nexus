@@ -25,6 +25,7 @@ interface StaffRequest {
   guest_contact?: string; // PHASE-1C: Guest contact from QR portal
   room?: { number: string };
   guest?: { name: string };
+  guest_order?: { guest_name: string | null }[];
 }
 
 export function useStaffRequests() {
@@ -43,7 +44,8 @@ export function useStaffRequests() {
         .select(`
           *,
           room:rooms(number),
-          guest:guests(name)
+          guest:guests(name),
+          guest_order:guest_orders(guest_name)
         `)
         .eq('tenant_id', tenantId)
         .not('qr_token', 'is', null)
