@@ -8063,6 +8063,20 @@ export type Database = {
         }
         Returns: boolean
       }
+      validate_billing_reference: {
+        Args: { p_reference_code: string; p_tenant_id: string }
+        Returns: {
+          department: string
+          description: string
+          error_message: string
+          guest_name: string
+          request_id: string
+          request_type: string
+          room_number: string
+          total_amount: number
+          valid: boolean
+        }[]
+      }
       validate_org_limits: {
         Args: {
           _amount: number
