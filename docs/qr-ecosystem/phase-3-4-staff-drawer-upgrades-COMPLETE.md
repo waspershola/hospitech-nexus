@@ -89,30 +89,33 @@ WHERE id = request_id;
 - Refactored `RequestDetailsDrawer` to use RequestDetailsPanel
 - Eliminates duplicate detail rendering code across components
 
-### ✅ Phase 4.2: Conditional "Add to Folio" Logic (COMPLETE)
+### ✅ Phase 4.2: Remove Folio Charging from QR Drawer (COMPLETE - CORRECTED)
 **Status**: Deployed  
 **Files**: `src/components/qr-management/QRRequestActions.tsx`
 
+**CORRECTION**: Previous implementation incorrectly allowed folio charging from QR drawer for location-scoped QRs. This violated the separation of duties principle.
+
 **Implementation**:
-- Added `isLocationScoped` check: `!request.room_id`
-- **Room-scoped QRs** (room_id present): "Add Charge to Folio" button HIDDEN
-  - Room QRs already have room context, staff uses dedicated folio in drawer
-- **Location-scoped QRs** (room_id is null): "Add Charge to Folio" button VISIBLE
-  - Location QRs (Pool, Bar, Spa, Gym, etc.) need manual folio selection
-- Updated button condition: `hasCharge && isLocationScoped`
-- Wrapped `AddChargeToFolioDialog` with `isLocationScoped` check
+- **Removed "Add Charge to Folio" button entirely** from QR Request Drawer (all QR types)
+- **Removed `AddChargeToFolioDialog` usage** from drawer context
+- Financial Actions now only contain:
+  - `Collect Payment` - for direct payment collection
+  - `Mark as Complimentary` - with Manager PIN approval
+  - `Transfer to Front Desk` - for billing tasks requiring front desk attention
+- Added architectural clarification comment explaining separation of duties
 
-**Logic**:
-```tsx
-const isLocationScoped = !request.room_id;
-
-// Only show for location-scoped QRs
-{hasCharge && isLocationScoped && (
-  <Button onClick={() => setShowAddCharge(true)}>
-    Add Charge to Folio
-  </Button>
-)}
+**Business Rule**:
 ```
+All folio charges MUST be posted from Billing Center by Front Desk.
+QR Drawer = operational actions + payment collection + transfer workflow.
+Billing Center = folio charging + folio management.
+```
+
+**Workflow**:
+1. Staff uses "Transfer to Front Desk" for any request needing folio billing
+2. Request appears in "Front Desk Billing Tasks" filter
+3. Front Desk opens Billing Center for guest's folio
+4. Front Desk uses existing "Add Charge" button, referencing QR Request Reference Code
 
 ---
 
@@ -163,38 +166,58 @@ const isLocationScoped = !request.room_id;
 - [ ] Confirm service-specific details display properly
 - [ ] Verify folio link section appears
 
-### Phase 4.2: Conditional "Add to Folio" Logic
-**Room-Scoped QR Tests**:
-- [ ] Create QR request from room (room_id present)
+### Phase 4.2: Folio Charging Removal (Corrected)
+**All QR Types**:
+- [ ] Create room-scoped QR request (room service)
 - [ ] Open request in drawer
 - [ ] Navigate to Financial Actions card
-- [ ] **Verify "Add Charge to Folio" button is HIDDEN**
-- [ ] Confirm "Collect Payment" and "Mark as Complimentary" buttons still visible
-- [ ] Test with different room numbers
-
-**Location-Scoped QR Tests**:
-- [ ] Create QR request from Pool (room_id = null)
+- [ ] **Verify "Add Charge to Folio" button is NOT PRESENT**
+- [ ] Confirm only "Collect Payment" and "Mark as Complimentary" buttons visible
+- [ ] Create location-scoped QR request (Pool, Bar, Spa)
 - [ ] Open request in drawer
-- [ ] Navigate to Financial Actions card
-- [ ] **Verify "Add Charge to Folio" button is VISIBLE**
-- [ ] Click button and confirm AddChargeToFolioDialog opens
-- [ ] Test with Bar, Spa, Gym, Event Center, Laundry, Restaurant QRs
-- [ ] Verify all location-scoped QRs show the button
+- [ ] **Verify "Add Charge to Folio" button is NOT PRESENT**
+- [ ] Confirm same buttons as room-scoped QR
 
-**Edge Cases**:
-- [ ] Test request with no payment info (hasCharge = false)
-- [ ] Verify button hidden regardless of QR type
-- [ ] Test request with payment_info.billable = false
-- [ ] Confirm button respects both conditions
+**Transfer to Front Desk Workflow**:
+- [ ] Click "Transfer to Front Desk" button
+- [ ] Confirm request flagged with transfer metadata
+- [ ] Navigate to Guest Requests Management
+- [ ] Filter by "Front Desk Billing Tasks"
+- [ ] Verify transferred request appears with reference code
+- [ ] Open Billing Center for guest
+- [ ] Use "Add Charge" button in Billing Center
+- [ ] Enter QR Request Reference Code in description
+- [ ] Verify charge posts successfully to folio
 
 ---
 
 ## Architecture Decisions
 
-### Why Hide "Add to Folio" for Room-Scoped QRs?
-**Rationale**: Room-scoped QR requests already have room context. Staff can view the dedicated room folio in the drawer (via RequestFolioLink and FolioActionsMenu). Having a separate "Add Charge to Folio" button would be redundant and could cause confusion about which folio to bill.
+### Folio Charging Workflow (Separation of Duties)
 
-**Location-Scoped QRs Need Manual Selection**: Requests from Pool, Bar, Spa, etc. don't have inherent room context. Staff must manually select which guest folio to charge, making the "Add Charge to Folio" button essential for these scenarios.
+#### ❌ What Staff CANNOT Do in QR Drawer
+- Post charges directly to guest folios
+- Add line items to folios
+- Bill to room from QR drawer (removed in Phase 4.2 correction)
+
+#### ✅ What Staff CAN Do in QR Drawer
+1. **Collect Payment** - Cash, card, or mobile money for immediate payment
+2. **Mark as Complimentary** - With Manager PIN approval for zero-charge services
+3. **Transfer to Front Desk** - For requests requiring folio billing or complex financial handling
+
+#### 🏨 Front Desk Workflow for Folio Charges
+1. Staff member uses "Transfer to Front Desk" button in QR drawer
+2. Request appears in "Front Desk Billing Tasks" filter with reference code
+3. Front Desk opens **Billing Center** for guest's folio
+4. Front Desk uses existing "Add Charge" button in Billing Center
+5. Reference field: Enter QR Request Reference Code (e.g., QR-001234)
+
+#### Why This Architecture?
+- **Single source of truth** for folio charges = Billing Center only
+- **Proper financial controls** - only authorized roles (Front Desk/Manager) can post to folios
+- **Clear audit trail** - all folio charges go through one controlled path in Billing Center
+- **Prevents errors** - no duplicate or unauthorized folio entries from various staff
+- **Separation of duties** - operational staff handle service delivery, financial staff handle billing
 
 ### Unified RequestDetailsPanel Benefits
 1. **Single Source of Truth**: All request detail rendering logic in one component
