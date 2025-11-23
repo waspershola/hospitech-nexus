@@ -924,9 +924,24 @@ export function QRRequestDrawer({ open, onOpenChange }: QRRequestDrawerProps) {
                   </div>
                 </div>
 
-                {/* SCROLLABLE CONTENT AREA - Everything else goes here */}
-                <ScrollArea className="flex-1 max-h-[calc(100vh-300px)]">
-                  <div className="p-4 space-y-4">
+                {/* PHASE-3.5: Tabbed Interface for Details, Payment History, Activity Log */}
+                <Tabs defaultValue="details" className="flex-1 flex flex-col">
+                  <TabsList className="w-full rounded-none border-b px-4">
+                    <TabsTrigger value="details" className="flex-1">
+                      Details
+                    </TabsTrigger>
+                    <TabsTrigger value="payments" className="flex-1">
+                      Payment History
+                    </TabsTrigger>
+                    <TabsTrigger value="activity" className="flex-1">
+                      Activity Log
+                    </TabsTrigger>
+                  </TabsList>
+
+                  {/* TAB 1: DETAILS */}
+                  <TabsContent value="details" className="flex-1 mt-0 flex flex-col">
+                    <ScrollArea className="flex-1">
+                      <div className="p-4 space-y-4">
                     {/* Guest Note */}
                     {selectedRequest.note && (
                       <div className="bg-muted p-3 rounded-lg text-sm">
@@ -1206,32 +1221,6 @@ export function QRRequestDrawer({ open, onOpenChange }: QRRequestDrawerProps) {
                         </div>
                       </div>
                     )}
-                    
-                    {/* PHASE 1.4 & 1.5: Payment & Activity History */}
-                    <Collapsible defaultOpen={true}>
-                      <CollapsibleTrigger className="flex items-center justify-between w-full p-3 bg-muted/50 rounded-md hover:bg-muted">
-                        <div className="flex items-center gap-2">
-                          <History className="h-4 w-4" />
-                          <span className="font-medium">Payment & Activity History</span>
-                        </div>
-                      </CollapsibleTrigger>
-                      <CollapsibleContent className="mt-2 space-y-3">
-                        {/* PHASE-2-ACTIVITY-TIMELINE: Staff action timeline */}
-                        <ActivityTimeline 
-                          requestId={selectedRequest.id}
-                          tenantId={tenantId}
-                        />
-                        
-                        {selectedRequest.metadata?.payment_info && (
-                          <PaymentHistoryTimeline 
-                            request={selectedRequest}
-                            paymentInfo={selectedRequest.metadata.payment_info}
-                          />
-                        )}
-                        {/* Legacy activity timeline */}
-                        <RequestActivityTimeline requestId={selectedRequest.id} />
-                      </CollapsibleContent>
-                    </Collapsible>
 
                     {/* Payment Collection for Dining Reservations (after amount is set) */}
                     {selectedRequest.type === 'dining_reservation' &&
@@ -1615,10 +1604,56 @@ export function QRRequestDrawer({ open, onOpenChange }: QRRequestDrawerProps) {
                             </p>
                           </div>
                         </div>
-                      ))}
+                       ))}
                     </div>
-                  </div>
-                </ScrollArea>
+                      </div>
+                    </ScrollArea>
+                  </TabsContent>
+
+                  {/* TAB 2: PAYMENT HISTORY */}
+                  <TabsContent value="payments" className="flex-1 mt-0">
+                    <ScrollArea className="flex-1">
+                      <div className="p-4 space-y-4">
+                        <div className="flex items-center gap-2 mb-4">
+                          <DollarSign className="h-5 w-5 text-primary" />
+                          <h3 className="font-semibold text-lg">Payment History</h3>
+                        </div>
+                        
+                        {selectedRequest.metadata?.payment_info ? (
+                          <PaymentHistoryTimeline 
+                            request={selectedRequest}
+                            paymentInfo={selectedRequest.metadata.payment_info}
+                          />
+                        ) : (
+                          <div className="text-center py-12 text-muted-foreground">
+                            <DollarSign className="h-12 w-12 mx-auto mb-3 opacity-20" />
+                            <p>No payment history available</p>
+                          </div>
+                        )}
+                      </div>
+                    </ScrollArea>
+                  </TabsContent>
+
+                  {/* TAB 3: ACTIVITY LOG */}
+                  <TabsContent value="activity" className="flex-1 mt-0">
+                    <ScrollArea className="flex-1">
+                      <div className="p-4 space-y-4">
+                        <div className="flex items-center gap-2 mb-4">
+                          <History className="h-5 w-5 text-primary" />
+                          <h3 className="font-semibold text-lg">Activity Log</h3>
+                        </div>
+                        
+                        <ActivityTimeline 
+                          requestId={selectedRequest.id}
+                          tenantId={tenantId}
+                        />
+                        
+                        {/* Legacy activity timeline */}
+                        <RequestActivityTimeline requestId={selectedRequest.id} />
+                      </div>
+                    </ScrollArea>
+                  </TabsContent>
+                </Tabs>
 
                 {/* FIXED FOOTER - Message Input */}
                 {selectedRequest.status !== 'completed' && (
