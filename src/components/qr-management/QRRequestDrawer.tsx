@@ -20,10 +20,11 @@ import { useFinanceProviders } from '@/hooks/useFinanceProviders';
 import { usePlatformFee } from '@/hooks/usePlatformFee';
 import { calculateQRPlatformFee } from '@/lib/finance/platformFee';
 import { useAuth } from '@/contexts/AuthContext';
-import { useOverdueRequests } from '@/hooks/useOverdueRequests'; // PHASE-3
+import { useOverdueRequests } from '@/hooks/useOverdueRequests';
 import { RequestPaymentInfo } from './RequestPaymentInfo';
 import { RequestCardSkeleton } from './RequestCardSkeleton';
 import { PaymentHistoryTimeline } from './PaymentHistoryTimeline';
+import { RequestActivityTimeline } from './RequestActivityTimeline'; // PHASE 1.4
 import { RequestFolioLink } from '@/components/staff/RequestFolioLink';
 import { format } from 'date-fns';
 import { useQueries, useQueryClient } from '@tanstack/react-query';
@@ -31,10 +32,11 @@ import { supabase } from '@/integrations/supabase/client';
 import {
   MessageSquare, Clock, CheckCircle2, XCircle, AlertCircle, Send,
   User, MapPin, Zap, Loader2, History, TrendingUp, BarChart3, UtensilsCrossed,
-  Calendar, Users, Sparkles, Shirt, DollarSign, Wifi
+  Calendar, Users, Sparkles, Shirt, DollarSign, Wifi, Phone, CreditCard, Shield, ShieldAlert
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { ConnectionHealthIndicator } from '@/components/ui/ConnectionHealthIndicator';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 
 interface QRRequestDrawerProps {
   open: boolean;
@@ -272,11 +274,71 @@ export function QRRequestDrawer({ open, onOpenChange }: QRRequestDrawerProps) {
     }
   };
 
-  // Charge to room handler - bypasses payment collection
+  // PHASE 1.2: Validate guest phone before charging to room
+  const validateGuestPhone = async (folioId: string, guestPhone?: string) => {
+    if (!guestPhone) {
+      console.warn('[FRAUD-PREVENTION-V1] No guest phone provided for validation');
+      return { valid: false, reason: 'No phone number provided', guestName: null };
+    }
+    
+    const { data: folio, error } = await supabase
+      .from('stay_folios')
+      .select('guest:guests(phone, name)')
+      .eq('id', folioId)
+      .eq('tenant_id', tenantId)
+      .single();
+      
+    if (error || !folio) {
+      return { valid: false, reason: 'Unable to verify folio guest', guestName: null };
+    }
+    
+    const checkedInPhone = folio.guest?.phone;
+    const phoneMatches = checkedInPhone === guestPhone;
+    
+    console.log('[FRAUD-PREVENTION-V1] Phone validation:', {
+      provided: guestPhone,
+      checkedIn: checkedInPhone,
+      matches: phoneMatches
+    });
+    
+    return {
+      valid: phoneMatches,
+      reason: phoneMatches ? 'Verified' : 'Phone mismatch - guest identity not confirmed',
+      guestName: folio.guest?.name
+    };
+  };
+
+  // PHASE 1.5: Log staff activity (using raw SQL until types refresh)
+  const logActivity = async (actionType: string, metadata: any = {}) => {
+    if (!selectedRequest) return;
+    
+    const { data: { user } } = await supabase.auth.getUser();
+    
+    try {
+      const { error } = await supabase.rpc('log_request_activity' as any, {
+        p_tenant_id: tenantId,
+        p_request_id: selectedRequest.id,
+        p_staff_id: user?.id,
+        p_action_type: actionType,
+        p_metadata: {
+          ...metadata,
+          timestamp: new Date().toISOString(),
+          request_type: selectedRequest.type
+        }
+      });
+      
+      if (!error) {
+        console.log('[ACTIVITY-LOG-V1] Logged:', actionType);
+      }
+    } catch (error) {
+      console.error('[ACTIVITY-LOG-V1] Failed to log activity:', error);
+    }
+  };
+
+  // Charge to room handler with FRAUD PREVENTION
   const handleChargeToRoom = async () => {
     if (!selectedRequest) return;
     
-    // PHASE-4-IDEMPOTENCY-V1: Prevent double-click submissions
     if (isCollectingPayment) {
       console.log('[Charge to Room Idempotency] Charge already in progress, ignoring duplicate click');
       return;
@@ -294,8 +356,27 @@ export function QRRequestDrawer({ open, onOpenChange }: QRRequestDrawerProps) {
       return;
     }
 
+    // PHASE 1.2: FRAUD PREVENTION - Validate phone BEFORE charging
+    const guestPhone = selectedRequest.metadata?.guest_contact;
+    const validation = await validateGuestPhone(selectedRequest.stay_folio_id, guestPhone);
+    
+    if (!validation.valid) {
+      await logActivity('phone_mismatch', { 
+        reason: validation.reason,
+        provided_phone: guestPhone
+      });
+      
+      toast.error(`Cannot charge to room: ${validation.reason}`, {
+        description: 'Verify guest identity before charging.',
+        duration: 8000
+      });
+      return;
+    }
+    
+    await logActivity('phone_verified', { guest_name: validation.guestName });
+
     setIsCollectingPayment(true);
-    console.log('[Charge to Room] QR-AUTO-FOLIO-UI-V1 - Charging to folio:', {
+    console.log('[Charge to Room] FRAUD-SAFE-V1 - Phone verified, charging to folio:', {
       request_id: selectedRequest.id,
       folio_id: selectedRequest.stay_folio_id,
       amount,
@@ -318,14 +399,14 @@ export function QRRequestDrawer({ open, onOpenChange }: QRRequestDrawerProps) {
         throw new Error(data?.error || 'Failed to charge to room');
       }
 
+      await logActivity('charged_to_folio', { amount, folio_number: data.folio_number });
+
       toast.success(`₦${amount.toLocaleString()} charged to folio ${data.folio_number}`);
       
-      // Invalidate queries to refresh data
       queryClient.invalidateQueries({ queryKey: ['staff-requests'] });
       queryClient.invalidateQueries({ queryKey: ['folio-by-id', selectedRequest.stay_folio_id] });
       queryClient.invalidateQueries({ queryKey: ['booking-folio'] });
       
-      // Close drawer
       onOpenChange(false);
     } catch (error: any) {
       console.error('[Charge to Room] Error:', error);
@@ -800,6 +881,32 @@ export function QRRequestDrawer({ open, onOpenChange }: QRRequestDrawerProps) {
                       </div>
                     )}
 
+                    {/* PHASE 1.3: Guest Payment Preference Indicator */}
+                    {selectedRequest.metadata?.payment_choice && (
+                      <Alert className="border-blue-200 bg-blue-50">
+                        <CreditCard className="h-4 w-4 text-blue-600" />
+                        <AlertDescription>
+                          <p className="text-sm font-medium text-blue-900">
+                            Guest Payment Preference
+                          </p>
+                          <p className="text-xs text-blue-700 mt-1">
+                            {selectedRequest.metadata.payment_choice === 'bill_to_room' 
+                              ? '💳 Bill to Room' 
+                              : '💰 Pay Now (via payment providers)'}
+                          </p>
+                        </AlertDescription>
+                      </Alert>
+                    )}
+
+                    {/* Guest Contact & Phone Display */}
+                    {selectedRequest.metadata?.guest_contact && (
+                      <div className="flex items-center gap-2 text-sm p-2 bg-muted/50 rounded-md">
+                        <Phone className="h-3 w-3 text-muted-foreground" />
+                        <span className="font-medium">Guest Phone:</span>
+                        <span>{selectedRequest.metadata.guest_contact}</span>
+                      </div>
+                    )}
+
                     {/* Guest & Room Info */}
                     {(selectedRequest.metadata?.guest_name || selectedRequest.metadata?.room_number || selectedRequest.room?.number) && (
                       <div className="flex items-center gap-4 text-sm">
@@ -1046,13 +1153,25 @@ export function QRRequestDrawer({ open, onOpenChange }: QRRequestDrawerProps) {
                       </div>
                     )}
                     
-                    {/* Payment History Timeline */}
-                    {selectedRequest.metadata?.payment_info && (
-                      <PaymentHistoryTimeline 
-                        request={selectedRequest}
-                        paymentInfo={selectedRequest.metadata.payment_info}
-                      />
-                    )}
+                    {/* PHASE 1.4 & 1.5: Payment & Activity History */}
+                    <Collapsible defaultOpen={true}>
+                      <CollapsibleTrigger className="flex items-center justify-between w-full p-3 bg-muted/50 rounded-md hover:bg-muted">
+                        <div className="flex items-center gap-2">
+                          <History className="h-4 w-4" />
+                          <span className="font-medium">Payment & Activity History</span>
+                        </div>
+                      </CollapsibleTrigger>
+                      <CollapsibleContent className="mt-2 space-y-3">
+                        {selectedRequest.metadata?.payment_info && (
+                          <PaymentHistoryTimeline 
+                            request={selectedRequest}
+                            paymentInfo={selectedRequest.metadata.payment_info}
+                          />
+                        )}
+                        {/* Activity Timeline will populate once migration is run */}
+                        <RequestActivityTimeline requestId={selectedRequest.id} />
+                      </CollapsibleContent>
+                    </Collapsible>
 
                     {/* Payment Collection for Dining Reservations (after amount is set) */}
                     {selectedRequest.type === 'dining_reservation' &&

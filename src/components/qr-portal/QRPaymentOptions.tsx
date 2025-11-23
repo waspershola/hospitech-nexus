@@ -87,7 +87,7 @@ export function QRPaymentOptions({
                   </Label>
                 </div>
                 <p className="text-xs text-muted-foreground">
-                  Complete payment immediately via secure payment gateway.
+                  Complete payment immediately via our payment providers.
                 </p>
               </div>
             </CardContent>
