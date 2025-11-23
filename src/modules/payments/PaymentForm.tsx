@@ -64,6 +64,8 @@ interface PaymentFormProps {
   dashboardContext?: string;
   onSuccess?: (paymentId?: string) => void;
   onCancel?: () => void;
+  billingReferenceCode?: string; // Optional billing reference for QR Billing Tasks
+  requestId?: string; // Optional request ID to update billing status
 }
 
 export function PaymentForm({
@@ -76,6 +78,8 @@ export function PaymentForm({
   dashboardContext = 'front_desk',
   onSuccess,
   onCancel,
+  billingReferenceCode,
+  requestId,
 }: PaymentFormProps) {
   const [validationError, setValidationError] = useState<string | null>(null);
   const [showOverpaymentDialog, setShowOverpaymentDialog] = useState(false);
@@ -339,6 +343,24 @@ export function PaymentForm({
           setShowOverpaymentDialog(false);
           setShowManagerApproval(false);
           
+          // If this is a QR Billing Task, update billing status
+          if (requestId && billingReferenceCode) {
+            try {
+              await supabase
+                .from('requests')
+                .update({
+                  billing_status: 'paid_direct',
+                  billing_processed_by: tenantId,
+                  billing_processed_at: new Date().toISOString()
+                })
+                .eq('id', requestId)
+                .eq('tenant_id', tenantId);
+            } catch (err) {
+              console.error('[PaymentForm] Failed to update billing status:', err);
+              // Don't block payment success
+            }
+          }
+          
           // PHASE 2: Send SMS receipt if enabled
           if (sendSMS && guestPhone && paymentData?.payment) {
             try {
@@ -381,6 +403,15 @@ export function PaymentForm({
 
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+      {billingReferenceCode && (
+        <Alert>
+          <AlertCircle className="h-4 w-4" />
+          <AlertDescription>
+            <span className="font-semibold">QR Billing Task</span> - Reference: <span className="font-mono text-primary">{billingReferenceCode}</span>
+          </AlertDescription>
+        </Alert>
+      )}
+
       {validationError && (
         <Alert variant="destructive">
           <AlertCircle className="h-4 w-4" />
