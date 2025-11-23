@@ -35,7 +35,13 @@ export function QRRequestActions({ request, onStatusUpdate, onClose }: QRRequest
   const [selectedFolioId, setSelectedFolioId] = useState<string | null>(null);
 
   const isAssignedToMe = request.assigned_to === user?.id;
-  const isLocationQR = !request.metadata?.folio_id; // Location QRs don't have auto-attached folio
+  
+  // PHASE-1-FRAUD-PREVENTION: Determine QR scope
+  // Room-scoped QR: has room_id and stay_folio_id (auto-attached)
+  // Location-scoped QR: no room_id, no auto folio (Pool, Bar, Spa, etc.)
+  const qrScope = request.metadata?.qr_scope || 'room'; // Default to 'room' for backward compatibility
+  const isRoomQR = qrScope === 'room' && !!request.stay_folio_id;
+  const isLocationQR = qrScope === 'location' || !request.stay_folio_id;
   const hasCharge = request.metadata?.payment_info?.billable;
 
   const handleStatusChange = async (newStatus: string) => {
