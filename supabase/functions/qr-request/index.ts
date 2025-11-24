@@ -356,7 +356,9 @@ serve(async (req) => {
       console.log('[PHASE-2-SIMPLIFICATION] QR scope:', qrScope);
       console.log('[PHASE-2-SIMPLIFICATION] No auto-folio detection - staff decides financial action');
 
-      // Check for session expiry (guest checked out but trying to bill-to-room)
+      // SESSION EXPIRY DETECTION: Check for closed folio (guest checked out)
+      // If guest checked out (folio closed) but tries to bill-to-room, reject the request
+      // This prevents charging closed folios and maintains data integrity
       if (resolvedRoomId && requestData.payment_choice === 'bill_to_room') {
         const { data: closedFolio } = await supabase
           .from('stay_folios')
@@ -383,7 +385,10 @@ serve(async (req) => {
         }
       }
 
-      // Determine payment choice
+      // PAYMENT CHOICE STORAGE: Store guest preference in metadata only (not enforced)
+      // 'bill_to_room' = guest wants charge added to room folio
+      // 'pay_now' = guest wants to pay directly
+      // Staff will manually process this preference in QRRequestActions drawer
       const paymentChoice = requestData.payment_choice || 'pay_now';
       console.log('[PHASE-2-SIMPLIFICATION] Payment choice (stored in metadata only):', paymentChoice);
 

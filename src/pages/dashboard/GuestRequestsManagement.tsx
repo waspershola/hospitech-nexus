@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
-import { MessageSquare, Filter, AlertCircle, MoveRight } from 'lucide-react';
+import { MessageSquare, Filter, AlertCircle, MoveRight, Search } from 'lucide-react';
 import { useStaffRequests } from '@/hooks/useStaffRequests';
 import { useOverdueRequests } from '@/hooks/useOverdueRequests';
 import RequestsTable from '@/components/qr-management/RequestsTable';
@@ -18,6 +18,8 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
+import { Input } from '@/components/ui/input';
+import { useDebounce } from '@/hooks/useDebounce';
 
 export default function GuestRequestsManagement() {
   const [selectedRequest, setSelectedRequest] = useState<any>(null);
@@ -28,6 +30,8 @@ export default function GuestRequestsManagement() {
   const [categoryFilter, setCategoryFilter] = useState<string>('all');
   const [showOverdueOnly, setShowOverdueOnly] = useState(false);
   const [showFrontDeskOnly, setShowFrontDeskOnly] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  const debouncedSearch = useDebounce(searchQuery, 300);
   const { requests, isLoading, updateRequestStatus, fetchRequests } = useStaffRequests();
   const { getOverdueRequests, calculateOverdue } = useOverdueRequests();
 
@@ -48,7 +52,7 @@ export default function GuestRequestsManagement() {
     enabled: !!selectedOrder,
   });
 
-  // PHASE-3: Filter and sort requests with overdue detection
+  // PHASE-3: Filter and sort requests with overdue detection and search
   const overdueRequests = getOverdueRequests(requests);
   
   const filteredRequests = requests.filter((request) => {
@@ -56,7 +60,28 @@ export default function GuestRequestsManagement() {
     if (priorityFilter !== 'all' && request.priority !== priorityFilter) return false;
     if (categoryFilter !== 'all' && request.type !== categoryFilter) return false;
     if (showOverdueOnly && !calculateOverdue(request).isOverdue) return false;
-    if (showFrontDeskOnly && !request.transferred_to_frontdesk) return false; // PHASE-3-TRANSFER-V1
+    if (showFrontDeskOnly && !request.transferred_to_frontdesk) return false;
+    
+    // Search filter: search across service, guest, room, priority, status, billing
+    if (debouncedSearch) {
+      const searchLower = debouncedSearch.toLowerCase();
+      const guestName = request.guest_name || request.metadata?.guest_name || '';
+      const guestContact = request.guest_contact || request.metadata?.guest_contact || '';
+      const roomNumber = request.metadata?.room_number || request.room?.number || '';
+      const billingStatus = (request as any).billing_status || 'none';
+      
+      const matchesSearch = 
+        request.type.toLowerCase().includes(searchLower) ||
+        guestName.toLowerCase().includes(searchLower) ||
+        guestContact.toLowerCase().includes(searchLower) ||
+        roomNumber.toString().toLowerCase().includes(searchLower) ||
+        request.priority.toLowerCase().includes(searchLower) ||
+        request.status.toLowerCase().includes(searchLower) ||
+        billingStatus.toLowerCase().includes(searchLower);
+      
+      if (!matchesSearch) return false;
+    }
+    
     return true;
   }).sort((a, b) => {
     // Sort by overdue first, then by oldest
@@ -117,8 +142,19 @@ export default function GuestRequestsManagement() {
         </div>
       </div>
 
-      <div className="flex items-center gap-4 bg-card p-4 rounded-lg border border-border">
+      <div className="flex items-center gap-4 bg-card p-4 rounded-lg border border-border flex-wrap">
         <Filter className="h-5 w-5 text-muted-foreground" />
+        
+        {/* Search Input */}
+        <div className="relative flex-1 min-w-[300px]">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Input
+            placeholder="Search by service, guest, room, status, or billing..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="pl-10"
+          />
+        </div>
         
         {/* PHASE-3: Overdue filter */}
         <Button
@@ -191,7 +227,7 @@ export default function GuestRequestsManagement() {
             </SelectContent>
           </Select>
         </div>
-        {(statusFilter !== 'all' || priorityFilter !== 'all' || categoryFilter !== 'all') && (
+        {(statusFilter !== 'all' || priorityFilter !== 'all' || categoryFilter !== 'all' || searchQuery || showOverdueOnly || showFrontDeskOnly) && (
           <Button
             variant="ghost"
             size="sm"
@@ -199,9 +235,12 @@ export default function GuestRequestsManagement() {
               setStatusFilter('all');
               setPriorityFilter('all');
               setCategoryFilter('all');
+              setSearchQuery('');
+              setShowOverdueOnly(false);
+              setShowFrontDeskOnly(false);
             }}
           >
-            Clear Filters
+            Clear All Filters
           </Button>
         )}
       </div>
