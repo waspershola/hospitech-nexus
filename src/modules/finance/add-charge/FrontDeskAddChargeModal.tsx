@@ -156,6 +156,9 @@ export function FrontDeskAddChargeModal({
         p_department: department || null,
         p_reference_type: validatedRequest ? 'qr_request' : (propRequestId ? 'qr_request' : null),
         p_reference_id: validatedRequest?.request_id || propRequestId || null,
+        // NEW: QR Billing Task Context (Phase 3 - Frontend Integration)
+        p_request_id: validatedRequest?.request_id || propRequestId || null,
+        p_billing_reference_code: validatedRequest ? billingReference : (propBillingRef || null),
       };
 
       console.log('[FrontDeskAddChargeModal] 🔍 PRE-RPC-NETWORK-PAYLOAD', {
@@ -180,6 +183,9 @@ export function FrontDeskAddChargeModal({
         p_department: preRpcPayload.p_department ? `${preRpcPayload.p_department}` : null,
         p_reference_type: preRpcPayload.p_reference_type ? `${preRpcPayload.p_reference_type}` : null,
         p_reference_id: preRpcPayload.p_reference_id || null,
+        // NEW: QR Billing Context
+        p_request_id: preRpcPayload.p_request_id || null,
+        p_billing_reference_code: preRpcPayload.p_billing_reference_code ? `${preRpcPayload.p_billing_reference_code}` : null,
       };
 
       // UUID validation regex
@@ -222,10 +228,27 @@ export function FrontDeskAddChargeModal({
         version?: string; 
         detail?: string;
         debug_v_folio_id?: string;
+        billing_status?: string;
+        billed_at?: string;
+        billed_amount?: number;
+        billed_folio_id?: string;
       };
       
       if (!result?.success) {
         console.error('[FrontDeskAddChargeModal] ❌ FOLIO-POST-CHARGE-DB-FAIL', { result, defensivePayload });
+        
+        // Handle ALREADY_BILLED specifically (Phase 3)
+        if (result.code === 'ALREADY_BILLED') {
+          toast.error("Already Billed", {
+            description: `This QR billing task has already been charged to a folio on ${new Date(result.billed_at || '').toLocaleDateString()}. Cannot charge again.`,
+            duration: 5000,
+          });
+          
+          // Disable validated request to prevent further attempts
+          setValidatedRequest(null);
+          setBillingReference('');
+          return result; // Return early, don't throw
+        }
         
         // Throw structured error with DB code and version for better debugging
         const dbError = new Error(result.error || 'Failed to add charge');
@@ -239,21 +262,12 @@ export function FrontDeskAddChargeModal({
       console.log('[FrontDeskAddChargeModal] ✅ FOLIO-POST-CHARGE-SUCCESS', { 
         result,
         version: result.version,
-        folio_id_used: result.debug_v_folio_id
+        folio_id_used: result.debug_v_folio_id,
+        billing_status: result.billing_status,
       });
 
-      // Update request billing status if reference was used
-      if (validatedRequest) {
-        await supabase
-          .from('requests')
-          .update({
-            billing_status: 'posted_to_folio',
-            billing_processed_by: user?.id || null,
-            billing_processed_at: new Date().toISOString()
-          })
-          .eq('id', validatedRequest.request_id)
-          .eq('tenant_id', tenantId);
-      }
+      // NOTE: Request billing status update now handled atomically by RPC (Phase 2)
+      // Removed redundant frontend update to prevent race conditions
 
       return result;
     },
