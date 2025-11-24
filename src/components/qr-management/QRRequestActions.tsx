@@ -43,9 +43,16 @@ export function QRRequestActions({ request, onStatusUpdate, onClose }: QRRequest
   const isAssignedToMe = request.assigned_to === user?.id;
   const guestPaymentPreference = request.metadata?.payment_choice || 'pay_now';
   
-  // Phase 4: Check if billing is completed
+  // PHASE 3: Calculate payment amounts for partial payment handling
+  const expectedAmount = request.metadata?.payment_info?.total_amount || 
+                        request.metadata?.payment_info?.subtotal || 0;
+  const billedAmount = request.billed_amount || 0;
+  const remainingBalance = Math.max(0, expectedAmount - billedAmount);
+  const isFullyPaid = remainingBalance === 0 && billedAmount > 0;
+  
+  // Phase 4: Check if billing is completed AND fully paid
   const billingCompleted = isBillingCompleted(request.billing_status);
-  const billedAmount = request.billed_amount || request.metadata?.payment_info?.total_amount || 0;
+  const shouldHideActions = billingCompleted && isFullyPaid;
 
   const handleStatusChange = async (newStatus: string) => {
     if (!tenantId) return;
@@ -115,11 +122,14 @@ export function QRRequestActions({ request, onStatusUpdate, onClose }: QRRequest
 
     setIsUpdating(true);
     try {
-      // Mark request as completed with complimentary flag
+      // PHASE 2: Mark request as completed with complimentary flag AND update billing status
       const { error: requestError } = await supabase
         .from('requests')
         .update({
           status: 'completed',
+          billing_status: 'paid_direct', // PHASE 2: Update billing status
+          paid_at: new Date().toISOString(), // PHASE 2: Record payment timestamp
+          billing_processed_by: user?.id, // PHASE 2: Record who approved
           metadata: {
             ...request.metadata,
             complimentary: true,
@@ -136,6 +146,7 @@ export function QRRequestActions({ request, onStatusUpdate, onClose }: QRRequest
 
       toast.success('Marked as complimentary (no charge)');
       queryClient.invalidateQueries({ queryKey: ['staff-requests'] });
+      queryClient.invalidateQueries({ queryKey: ['qr-request-detail', request.id] });
       setShowComplimentaryApproval(false);
       onStatusUpdate?.();
       onClose?.();
@@ -264,20 +275,34 @@ export function QRRequestActions({ request, onStatusUpdate, onClose }: QRRequest
           Financial Actions
         </h3>
         
-        {/* PHASE 4: Show billing completed status */}
-        {billingCompleted && (
+        {/* PHASE 2 & 3: Show billing completed status or partial payment alert */}
+        {billingCompleted && isFullyPaid && (
           <Alert className="border-green-500 bg-green-50 dark:bg-green-950/20 mb-3">
             <CheckCircle className="h-4 w-4 text-green-600" />
             <AlertDescription className="text-green-800 dark:text-green-200">
-              <strong>Billed to Room Folio</strong>
+              <strong>Payment Completed</strong>
               <div className="text-sm mt-1">
-                ₦{billedAmount.toLocaleString()} charged on {request.billed_at ? format(new Date(request.billed_at), 'MMM d, h:mm a') : 'N/A'}
+                ₦{billedAmount.toLocaleString()} paid on {request.paid_at ? format(new Date(request.paid_at), 'MMM d, h:mm a') : 'N/A'}
               </div>
               {request.billing_status === 'paid_direct' && (
                 <div className="text-xs text-green-600 dark:text-green-400 mt-1">
-                  ✓ Payment collected via room folio
+                  ✓ Payment collected successfully
                 </div>
               )}
+            </AlertDescription>
+          </Alert>
+        )}
+        
+        {/* PHASE 3: Show partial payment alert */}
+        {billedAmount > 0 && remainingBalance > 0 && (
+          <Alert className="border-amber-500 bg-amber-50 dark:bg-amber-950/20 mb-3">
+            <AlertTriangle className="h-4 w-4 text-amber-600" />
+            <AlertDescription className="text-amber-800 dark:text-amber-200">
+              <strong>Partial Payment Received</strong>
+              <div className="text-sm mt-1">
+                Paid: ₦{billedAmount.toLocaleString()} | 
+                Remaining: ₦{remainingBalance.toLocaleString()}
+              </div>
             </AlertDescription>
           </Alert>
         )}
@@ -297,10 +322,10 @@ export function QRRequestActions({ request, onStatusUpdate, onClose }: QRRequest
         </div>
         
         <div className="space-y-2">
-          {/* PHASE 4: Hide financial actions when billing is completed */}
-          {!billingCompleted && (
+          {/* PHASE 2 & 3: Hide financial actions ONLY when fully paid */}
+          {!shouldHideActions && (
             <>
-              {/* Collect Payment (all QR types) */}
+              {/* Collect Payment (all QR types) - PHASE 3: Show remaining amount if partial */}
               <Button
                 onClick={() => setShowPaymentForm(true)}
                 disabled={isUpdating}
@@ -308,7 +333,10 @@ export function QRRequestActions({ request, onStatusUpdate, onClose }: QRRequest
                 variant="outline"
               >
                 <DollarSign className="h-4 w-4 mr-2" />
-                Collect Payment
+                {remainingBalance > 0 && billedAmount > 0 
+                  ? `Collect Remaining ₦${remainingBalance.toLocaleString()}` 
+                  : 'Collect Payment'
+                }
               </Button>
 
               {/* Mark as Complimentary */}
@@ -368,18 +396,38 @@ export function QRRequestActions({ request, onStatusUpdate, onClose }: QRRequest
           <PaymentForm
             bookingId={request.metadata?.booking_id}
             guestId={request.guest_id}
-            requestId={request.id} // PHASE-6: Pass requestId for automatic billing status sync
-            expectedAmount={request.metadata?.payment_info?.total_amount || request.metadata?.payment_info?.subtotal || 0}
+            requestId={request.id}
+            expectedAmount={remainingBalance > 0 ? remainingBalance : expectedAmount} // PHASE 3: Pre-fill remaining amount
             onSuccess={async () => {
-              const amount = request.metadata?.payment_info?.total_amount || request.metadata?.payment_info?.subtotal || 0;
+              const amount = remainingBalance > 0 ? remainingBalance : expectedAmount;
               const guestName = request.metadata?.guest_name || 'Guest';
               
-              // PHASE-6: Removed manual billing_status update - now handled automatically by Phase 5 backend
+              // PHASE 2: Update billing_status to paid_direct after successful payment
+              const { error: statusError } = await supabase
+                .from('requests')
+                .update({
+                  billing_status: 'paid_direct',
+                  paid_at: new Date().toISOString(),
+                  billing_processed_by: user?.id,
+                  billed_amount: billedAmount + amount, // PHASE 3: Accumulate payment
+                  updated_at: new Date().toISOString(),
+                })
+                .eq('id', request.id)
+                .eq('tenant_id', tenantId);
+              
+              if (statusError) {
+                console.error('[QRRequestActions] Failed to update billing status:', statusError);
+              }
               
               setShowPaymentForm(false);
               handleStatusChange('completed');
               
-              // PHASE-3: Enhanced payment success notification
+              // Invalidate queries to refresh UI
+              queryClient.invalidateQueries({ queryKey: ['staff-requests'] });
+              queryClient.invalidateQueries({ queryKey: ['qr-request-detail', request.id] });
+              onStatusUpdate?.();
+              
+              // Enhanced payment success notification
               toast.success('Payment Collected Successfully', {
                 description: `₦${amount.toLocaleString()} received from ${guestName}`,
                 duration: 5000,
@@ -391,10 +439,10 @@ export function QRRequestActions({ request, onStatusUpdate, onClose }: QRRequest
         </DialogContent>
       </Dialog>
 
-      {/* Complimentary Approval Modal */}
+      {/* Complimentary Approval Modal - PHASE 3: Pass remaining amount for partial payments */}
       <ManagerApprovalModal
         open={showComplimentaryApproval}
-        amount={request.metadata?.payment_info?.total_amount || request.metadata?.payment_info?.subtotal || 0}
+        amount={remainingBalance > 0 ? remainingBalance : expectedAmount}
         type="write_off"
         actionReference={request.id}
         onApprove={handleComplimentaryApproval}

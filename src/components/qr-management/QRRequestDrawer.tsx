@@ -1150,8 +1150,7 @@ export function QRRequestDrawer({
                       </div>
                     )}
 
-                    {/* Payment Info */}
-                    <RequestPaymentInfo request={displayRequest} />
+                    {/* Payment Info - MOVED TO ACTIVITY LOG TAB (Phase 1) */}
                     
                     {/* Folio Link */}
                     <RequestFolioLink request={displayRequest} />
@@ -1227,47 +1226,7 @@ export function QRRequestDrawer({
                       </div>
                     )}
 
-                    {/* Request History Stats */}
-                    {historyStats && historyStats.totalRequests > 1 && (
-                      <div className="p-4 bg-muted/30 rounded-lg">
-                        <div className="flex items-center gap-2 mb-3">
-                          <History className="h-4 w-4 text-muted-foreground" />
-                          <p className="text-xs font-medium text-muted-foreground">
-                            Request History {displayRequest?.room?.number ? `(Room ${displayRequest.room.number})` : ''}
-                          </p>
-                        </div>
-                        
-                        <div className="grid grid-cols-3 gap-3 mb-3">
-                          <div className="bg-background rounded-lg p-2 text-center">
-                            <p className="text-lg font-bold">{historyStats.totalRequests}</p>
-                            <p className="text-xs text-muted-foreground">Total</p>
-                          </div>
-                          <div className="bg-background rounded-lg p-2 text-center">
-                            <p className="text-lg font-bold text-green-600">{historyStats.completedRequests}</p>
-                            <p className="text-xs text-muted-foreground">Completed</p>
-                          </div>
-                          <div className="bg-background rounded-lg p-2 text-center">
-                            <p className="text-lg font-bold text-blue-600">{historyStats.averageResponseTime}m</p>
-                            <p className="text-xs text-muted-foreground">Avg Time</p>
-                          </div>
-                        </div>
-
-                        {historyStats.commonCategories.length > 0 && (
-                          <div className="space-y-1">
-                            <div className="flex items-center gap-1 mb-1">
-                              <BarChart3 className="h-3 w-3 text-muted-foreground" />
-                              <p className="text-xs text-muted-foreground">Common Requests:</p>
-                            </div>
-                            {historyStats.commonCategories.map((cat) => (
-                              <div key={cat.category} className="flex items-center justify-between text-xs">
-                                <span className="capitalize">{cat.category.replace('_', ' ')}</span>
-                                <Badge variant="secondary" className="h-5">{cat.count}</Badge>
-                              </div>
-                            ))}
-                          </div>
-                        )}
-                      </div>
-                    )}
+                    {/* Request History Stats - MOVED TO ACTIVITY LOG TAB (Phase 1) */}
 
                     {/* COLLAPSIBLE Quick Replies - Moved inside scrollable area */}
                     {displayRequest?.status !== 'completed' && (
@@ -1429,6 +1388,51 @@ export function QRRequestDrawer({
                           <History className="h-5 w-5 text-primary" />
                           <h3 className="font-semibold text-lg">Activity Log</h3>
                         </div>
+                        
+                        {/* PHASE 1: Payment Information */}
+                        <RequestPaymentInfo request={displayRequest} />
+                        
+                        {/* PHASE 1: Request History Stats */}
+                        {historyStats && historyStats.totalRequests > 1 && (
+                          <div className="p-4 bg-muted/30 rounded-lg">
+                            <div className="flex items-center gap-2 mb-3">
+                              <History className="h-4 w-4 text-muted-foreground" />
+                              <p className="text-xs font-medium text-muted-foreground">
+                                Request History {displayRequest?.room?.number ? `(Room ${displayRequest.room.number})` : ''}
+                              </p>
+                            </div>
+                            
+                            <div className="grid grid-cols-3 gap-3 mb-3">
+                              <div className="bg-background rounded-lg p-2 text-center">
+                                <p className="text-lg font-bold">{historyStats.totalRequests}</p>
+                                <p className="text-xs text-muted-foreground">Total</p>
+                              </div>
+                              <div className="bg-background rounded-lg p-2 text-center">
+                                <p className="text-lg font-bold text-green-600">{historyStats.completedRequests}</p>
+                                <p className="text-xs text-muted-foreground">Completed</p>
+                              </div>
+                              <div className="bg-background rounded-lg p-2 text-center">
+                                <p className="text-lg font-bold text-blue-600">{historyStats.averageResponseTime}m</p>
+                                <p className="text-xs text-muted-foreground">Avg Time</p>
+                              </div>
+                            </div>
+
+                            {historyStats.commonCategories.length > 0 && (
+                              <div className="space-y-1">
+                                <div className="flex items-center gap-1 mb-1">
+                                  <BarChart3 className="h-3 w-3 text-muted-foreground" />
+                                  <p className="text-xs text-muted-foreground">Common Requests:</p>
+                                </div>
+                                {historyStats.commonCategories.map((cat) => (
+                                  <div key={cat.category} className="flex items-center justify-between text-xs">
+                                    <span className="capitalize">{cat.category.replace('_', ' ')}</span>
+                                    <Badge variant="secondary" className="h-5">{cat.count}</Badge>
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+                        )}
                         
                         <ActivityTimeline 
                           requestId={displayRequest?.id}
