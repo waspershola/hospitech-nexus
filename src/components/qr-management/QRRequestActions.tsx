@@ -43,18 +43,9 @@ export function QRRequestActions({ request, onStatusUpdate, onClose }: QRRequest
   const isAssignedToMe = request.assigned_to === user?.id;
   const guestPaymentPreference = request.metadata?.payment_choice || 'pay_now';
   
-  // Phase 4: Check if billing is completed - COMPREHENSIVE check
+  // Phase 4: Check if billing is completed
   const billingCompleted = isBillingCompleted(request.billing_status);
   const billedAmount = request.billed_amount || request.metadata?.payment_info?.total_amount || 0;
-  
-  // DEBUG: Log billing status for troubleshooting
-  console.log('[QRRequestActions] Billing status check:', {
-    billing_status: request.billing_status,
-    billed_amount: request.billed_amount,
-    billingCompleted,
-    transferred_to_frontdesk: request.transferred_to_frontdesk,
-    request_id: request.id
-  });
 
   const handleStatusChange = async (newStatus: string) => {
     if (!tenantId) return;

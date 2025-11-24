@@ -110,8 +110,7 @@ export function QRRequestDrawer({
     return saved !== null ? JSON.parse(saved) : false;
   });
   
-  // FIX: Only enable chat when request exists to prevent "Failed to load messages" error
-  const { messages, requestContext, sendMessage, isSending } = useStaffChat(displayRequest?.id || null);
+  const { messages, requestContext, sendMessage, isSending } = useStaffChat(displayRequest?.id);
   
   const { stats: historyStats, isLoading: historyLoading } = useRequestHistory(
     displayRequest?.room_id || null,

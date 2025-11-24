@@ -67,10 +67,7 @@ export function useStaffChat(requestId: string | null) {
 
       if (error) {
         console.error('[useStaffChat] Failed to load messages:', error);
-        // FIX: Don't show toast for no messages - it's expected for new requests
-        if (error.code !== 'PGRST116') {
-          toast.error('Failed to load messages');
-        }
+        toast.error('Failed to load messages');
         setMessages([]);
         return;
       }
