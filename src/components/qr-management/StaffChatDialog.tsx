@@ -12,7 +12,8 @@ import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
-import { useStaffChat } from '@/hooks/useStaffChat';
+import { useUnifiedRequestChat } from '@/hooks/useUnifiedRequestChat';
+import { useAuth } from '@/contexts/AuthContext';
 
 interface StaffChatDialogProps {
   open: boolean;
@@ -27,9 +28,15 @@ export default function StaffChatDialog({
 }: StaffChatDialogProps) {
   const [message, setMessage] = useState('');
   const messagesEndRef = useRef<HTMLDivElement>(null);
-  const { messages, isLoading, isSending, sendMessage } = useStaffChat(
-    request?.id || null
-  );
+  const { user, tenantId } = useAuth();
+  
+  // PHASE 4: Migrated to unified chat hook
+  const { messages, isLoading, isSending, sendMessage } = useUnifiedRequestChat({
+    tenantId: tenantId || '',
+    requestId: request?.id || '',
+    userType: 'staff',
+    userId: user?.id,
+  });
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
