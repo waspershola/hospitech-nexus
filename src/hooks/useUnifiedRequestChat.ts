@@ -62,15 +62,7 @@ async function fetchMessages(
 
   const { data, error } = await supabase
     .from('guest_communications')
-    .select(`
-      id, 
-      message, 
-      direction, 
-      sent_by, 
-      created_at, 
-      metadata,
-      staff:sent_by(full_name, role)
-    `)
+    .select('id, message, direction, sent_by, created_at, metadata')
     .eq('metadata->>request_id', requestId)
     .eq('tenant_id', tenantId)
     .order('created_at', { ascending: true });
@@ -88,22 +80,48 @@ async function fetchMessages(
 
   console.log('[UNIFIED-CHAT-V1] Fetched messages:', data?.length || 0);
 
+  // Get unique staff IDs from outbound messages
+  const staffIds = [...new Set(
+    (data || [])
+      .filter(msg => msg.direction === 'outbound' && msg.sent_by)
+      .map(msg => msg.sent_by)
+  )];
+
+  // Fetch staff details in batch
+  let staffMap: Record<string, { full_name: string; role: string }> = {};
+  if (staffIds.length > 0) {
+    const { data: staffData } = await supabase
+      .from('staff')
+      .select('id, full_name, role')
+      .in('id', staffIds);
+    
+    if (staffData) {
+      staffMap = Object.fromEntries(
+        staffData.map(s => [s.id, { full_name: s.full_name, role: s.role }])
+      );
+    }
+  }
+
   // Format messages consistently
-  const formattedMessages = (data || []).map((msg: any) => ({
-    id: msg.id,
-    message: msg.message,
-    direction: msg.direction,
-    sent_by: msg.sent_by,
-    sender_name:
-      msg.direction === 'inbound'
-        ? msg.metadata?.guest_name || 'Guest'
-        : msg.staff?.full_name || 'Staff',
-    sender_role:
-      msg.direction === 'outbound' && msg.staff?.role
-        ? msg.staff.role
-        : undefined,
-    created_at: msg.created_at,
-  }));
+  const formattedMessages = (data || []).map((msg: any) => {
+    const staff = msg.sent_by ? staffMap[msg.sent_by] : null;
+    
+    return {
+      id: msg.id,
+      message: msg.message,
+      direction: msg.direction,
+      sent_by: msg.sent_by,
+      sender_name:
+        msg.direction === 'inbound'
+          ? msg.metadata?.guest_name || 'Guest'
+          : staff?.full_name || 'Staff',
+      sender_role:
+        msg.direction === 'outbound' && staff?.role
+          ? staff.role
+          : undefined,
+      created_at: msg.created_at,
+    };
+  });
 
   return formattedMessages;
 }
