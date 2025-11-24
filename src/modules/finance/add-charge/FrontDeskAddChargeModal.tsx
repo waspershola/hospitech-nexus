@@ -203,7 +203,7 @@ export function FrontDeskAddChargeModal({
       const { data, error } = await supabase.rpc('folio_post_charge', defensivePayload);
 
       if (error) {
-        console.error('[FrontDeskAddChargeModal] ❌ FOLIO-POST-CHARGE-ERROR', {
+        console.error('[FrontDeskAddChargeModal] ❌ FOLIO-POST-CHARGE-RPC-ERROR', {
           message: error.message,
           details: (error as any).details,
           hint: (error as any).hint,
@@ -212,9 +212,35 @@ export function FrontDeskAddChargeModal({
         });
         throw error;
       }
+
+      // Check for structured DB errors (success: false from function)
+      const result = data as { 
+        success: boolean; 
+        error?: string; 
+        hint?: string; 
+        code?: string; 
+        version?: string; 
+        detail?: string;
+        debug_v_folio_id?: string;
+      };
       
-      const result = data as { success: boolean; error?: string };
-      if (!result?.success) throw new Error(result?.error || 'Failed to add charge');
+      if (!result?.success) {
+        console.error('[FrontDeskAddChargeModal] ❌ FOLIO-POST-CHARGE-DB-FAIL', { result, defensivePayload });
+        
+        // Throw structured error with DB code and version for better debugging
+        const dbError = new Error(result.error || 'Failed to add charge');
+        (dbError as any).code = result.code;
+        (dbError as any).version = result.version;
+        (dbError as any).hint = result.hint;
+        (dbError as any).detail = result.detail;
+        throw dbError;
+      }
+
+      console.log('[FrontDeskAddChargeModal] ✅ FOLIO-POST-CHARGE-SUCCESS', { 
+        result,
+        version: result.version,
+        folio_id_used: result.debug_v_folio_id
+      });
 
       // Update request billing status if reference was used
       if (validatedRequest) {
@@ -268,7 +294,15 @@ export function FrontDeskAddChargeModal({
       setValidationError('');
     },
     onError: (error: Error) => {
-      toast.error(`Failed to add charge: ${error.message}`);
+      const err = error as any;
+      const errorMessage = err.message || "Failed to add charge";
+      const errorCode = err.code ? ` [${err.code}]` : '';
+      const errorVersion = err.version ? ` (${err.version})` : '';
+      const errorHint = err.hint ? `\n\nHint: ${err.hint}` : '';
+      
+      toast.error("Charge Failed", {
+        description: `${errorMessage}${errorCode}${errorVersion}${errorHint}`,
+      });
     },
   });
 
