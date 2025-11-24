@@ -13,7 +13,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Label } from '@/components/ui/label';
 import { generateRequestReference } from '@/lib/qr/requestReference';
 import { useStaffRequests } from '@/hooks/useStaffRequests';
-import { useStaffChat } from '@/hooks/useStaffChat';
+import { useUnifiedRequestChat } from '@/hooks/useUnifiedRequestChat';
 import { useRequestHistory } from '@/hooks/useRequestHistory';
 import { useOrderDetails } from '@/hooks/useOrderDetails';
 import { useDashboardDefaults } from '@/hooks/useDashboardDefaults';
@@ -69,7 +69,7 @@ export function QRRequestDrawer({
   selectedRequestId,
   hideRequestList = false
 }: QRRequestDrawerProps) {
-  const { tenantId } = useAuth();
+  const { user, tenantId } = useAuth();
   const queryClient = useQueryClient();
   const { requests, isLoading, updateRequestStatus, fetchRequests } = useStaffRequests();
   const { overdueCount, slaMinutes } = useOverdueRequests(); // PHASE-3: SLA tracking
@@ -98,6 +98,14 @@ export function QRRequestDrawer({
 
   // Use department request if in department mode, otherwise use selected from list
   const displayRequest = mode === 'department' ? departmentRequest : selectedRequest;
+  
+  // PHASE 4: Migrated to unified chat hook (must be after displayRequest is defined)
+  const { messages, sendMessage, isSending } = useUnifiedRequestChat({
+    tenantId: tenantId || '',
+    requestId: displayRequest?.id || '',
+    userType: 'staff',
+    userId: user?.id,
+  });
   const [customMessage, setCustomMessage] = useState('');
   const [activeTab, setActiveTab] = useState('pending');
   const [isCollectingPayment, setIsCollectingPayment] = useState(false);
@@ -109,8 +117,6 @@ export function QRRequestDrawer({
     const saved = localStorage.getItem('qr-quick-replies-open');
     return saved !== null ? JSON.parse(saved) : false;
   });
-  
-  const { messages, requestContext, sendMessage, isSending } = useStaffChat(displayRequest?.id);
   
   const { stats: historyStats, isLoading: historyLoading } = useRequestHistory(
     displayRequest?.room_id || null,
@@ -1594,26 +1600,26 @@ export function QRRequestDrawer({
                     )}
 
                     {/* Request Context */}
-                    {requestContext && (
+                    {displayRequest && (
                       <div className="p-3 bg-muted/50 border rounded-lg">
                         <div className="flex items-center justify-between mb-2">
                           <div>
                             <p className="text-sm font-medium capitalize">
-                              {requestContext.type.replace('_', ' ')}
+                              {displayRequest.type.replace('_', ' ')}
                             </p>
-                            {requestContext.room && (
+                            {displayRequest.room && (
                               <p className="text-xs text-muted-foreground">
-                                Room {requestContext.room.number}
+                                Room {displayRequest.room.number}
                               </p>
                             )}
                           </div>
                           <Badge variant="outline" className="capitalize">
-                            {requestContext.status}
+                            {displayRequest.status}
                           </Badge>
                         </div>
-                        {requestContext.priority && (
+                        {displayRequest.priority && (
                           <Badge variant="secondary" className="text-xs">
-                            {requestContext.priority} priority
+                            {displayRequest.priority} priority
                           </Badge>
                         )}
                       </div>

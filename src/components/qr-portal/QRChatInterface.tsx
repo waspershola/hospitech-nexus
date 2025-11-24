@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { useQRChat } from '@/hooks/useQRChat';
+import { useUnifiedRequestChat } from '@/hooks/useUnifiedRequestChat';
 import { useAuth } from '@/contexts/AuthContext';
 import { useOrderDetails } from '@/hooks/useOrderDetails';
 import { Button } from '@/components/ui/button';
@@ -14,8 +14,15 @@ import { ConnectionHealthIndicator } from '@/components/ui/ConnectionHealthIndic
 export function QRChatInterface() {
   const { token, requestId } = useParams<{ token: string; requestId: string }>();
   const navigate = useNavigate();
-  const { qrToken, guestId } = useAuth();
-  const { messages, isLoading, isSending, sendMessage } = useQRChat(requestId || null, qrToken);
+  const { qrToken, guestId, tenantId } = useAuth();
+  
+  // PHASE 3: Migrated to unified chat hook
+  const { messages, isLoading, isSending, sendMessage } = useUnifiedRequestChat({
+    tenantId: tenantId || '',
+    requestId: requestId || '',
+    userType: 'guest',
+    guestName: 'Guest',
+  });
   
   // Check if this request has a linked order
   const { data: orderDetails } = useOrderDetails(requestId);
@@ -35,7 +42,7 @@ export function QRChatInterface() {
     
     if (!messageText.trim() || isSending) return;
 
-    const success = await sendMessage(messageText, 'Guest');
+    const success = await sendMessage(messageText);
     
     if (success) {
       setMessageText('');
