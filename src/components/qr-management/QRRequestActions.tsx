@@ -368,28 +368,13 @@ export function QRRequestActions({ request, onStatusUpdate, onClose }: QRRequest
           <PaymentForm
             bookingId={request.metadata?.booking_id}
             guestId={request.guest_id}
+            requestId={request.id} // PHASE-6: Pass requestId for automatic billing status sync
             expectedAmount={request.metadata?.payment_info?.total_amount || request.metadata?.payment_info?.subtotal || 0}
             onSuccess={async () => {
               const amount = request.metadata?.payment_info?.total_amount || request.metadata?.payment_info?.subtotal || 0;
               const guestName = request.metadata?.guest_name || 'Guest';
               
-              // PHASE-A-BILLING-V1: Update billing status when payment collected
-              if (tenantId && user) {
-                try {
-                  await supabase
-                    .from('requests')
-                    .update({
-                      billing_status: 'paid_direct',
-                      billing_routed_to: 'self_collected',
-                      billing_processed_by: user.id,
-                      billing_processed_at: new Date().toISOString(),
-                    })
-                    .eq('id', request.id)
-                    .eq('tenant_id', tenantId);
-                } catch (error) {
-                  console.error('[QRRequestActions] Error updating billing status:', error);
-                }
-              }
+              // PHASE-6: Removed manual billing_status update - now handled automatically by Phase 5 backend
               
               setShowPaymentForm(false);
               handleStatusChange('completed');
