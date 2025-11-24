@@ -156,6 +156,17 @@ export function FrontDeskAddChargeModal({
         p_reference_id: validatedRequest?.request_id || propRequestId || null,
       };
 
+      // UUID validation regex
+      const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+      
+      if (typeof payload.p_folio_id !== 'string' || !uuidRegex.test(payload.p_folio_id)) {
+        console.error('[FrontDeskAddChargeModal] ❌ INVALID_UUID_FORMAT', {
+          received: payload.p_folio_id,
+          type: typeof payload.p_folio_id,
+        });
+        throw new Error('Invalid folio ID format - must be UUID string');
+      }
+
       console.log('[FrontDeskAddChargeModal] UNIFIED-V2-DEFENSIVE: RPC Payload', {
         payload,
         types: {
