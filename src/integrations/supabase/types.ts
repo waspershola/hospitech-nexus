@@ -5101,6 +5101,10 @@ export type Database = {
           assigned_at: string | null
           assigned_department: string | null
           assigned_to: string | null
+          billed_amount: number | null
+          billed_at: string | null
+          billed_folio_id: string | null
+          billed_transaction_id: string | null
           billing_processed_at: string | null
           billing_processed_by: string | null
           billing_reference_code: string | null
@@ -5112,6 +5116,7 @@ export type Database = {
           id: string
           metadata: Json | null
           note: string | null
+          paid_at: string | null
           priority: string | null
           qr_token: string | null
           responded_at: string | null
@@ -5129,6 +5134,10 @@ export type Database = {
           assigned_at?: string | null
           assigned_department?: string | null
           assigned_to?: string | null
+          billed_amount?: number | null
+          billed_at?: string | null
+          billed_folio_id?: string | null
+          billed_transaction_id?: string | null
           billing_processed_at?: string | null
           billing_processed_by?: string | null
           billing_reference_code?: string | null
@@ -5140,6 +5149,7 @@ export type Database = {
           id?: string
           metadata?: Json | null
           note?: string | null
+          paid_at?: string | null
           priority?: string | null
           qr_token?: string | null
           responded_at?: string | null
@@ -5157,6 +5167,10 @@ export type Database = {
           assigned_at?: string | null
           assigned_department?: string | null
           assigned_to?: string | null
+          billed_amount?: number | null
+          billed_at?: string | null
+          billed_folio_id?: string | null
+          billed_transaction_id?: string | null
           billing_processed_at?: string | null
           billing_processed_by?: string | null
           billing_reference_code?: string | null
@@ -5168,6 +5182,7 @@ export type Database = {
           id?: string
           metadata?: Json | null
           note?: string | null
+          paid_at?: string | null
           priority?: string | null
           qr_token?: string | null
           responded_at?: string | null
@@ -5201,6 +5216,20 @@ export type Database = {
             columns: ["assigned_to"]
             isOneToOne: false
             referencedRelation: "v_profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "requests_billed_folio_id_fkey"
+            columns: ["billed_folio_id"]
+            isOneToOne: false
+            referencedRelation: "stay_folios"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "requests_billed_transaction_id_fkey"
+            columns: ["billed_transaction_id"]
+            isOneToOne: false
+            referencedRelation: "folio_transactions"
             referencedColumns: ["id"]
           },
           {
