@@ -336,6 +336,7 @@ export function PaymentForm({
           notes: data.notes,
           provider_name: selectedProvider.name,
           provider_fee: selectedProvider.fee_percent,
+          ...(requestId ? { request_id: requestId } : {}), // PHASE-6: Pass request_id for Phase 5 sync
         },
       },
       {
