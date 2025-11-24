@@ -94,7 +94,9 @@ export default function RequestsTable({
   if (requests.length === 0) {
     return (
       <div className="text-center py-12 border border-border rounded-lg bg-card">
-        <p className="text-muted-foreground">No QR-based requests yet.</p>
+        <p className="text-muted-foreground">
+          No requests found matching your filters.
+        </p>
       </div>
     );
   }

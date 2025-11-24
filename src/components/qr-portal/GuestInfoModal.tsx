@@ -21,15 +21,9 @@ export function GuestInfoModal({ open, onSubmit, onSkip }: GuestInfoModalProps) 
   const [phone, setPhone] = useState('');
 
   const handleSubmit = () => {
-    if (name.trim() || phone.trim()) {
+    if (name.trim()) {
       onSubmit(name.trim(), phone.trim());
-    } else {
-      onSkip();
     }
-  };
-
-  const handleSkip = () => {
-    onSkip();
   };
 
   return (
@@ -43,14 +37,14 @@ export function GuestInfoModal({ open, onSubmit, onSkip }: GuestInfoModalProps) 
           </div>
           <DialogTitle className="text-2xl font-display text-center">Welcome!</DialogTitle>
           <DialogDescription className="text-center text-base pt-2">
-            Help us serve you better by sharing your details. This information will be saved for your convenience across all services during your stay.
+            Help us serve you better by sharing your name. Phone number is optional. This information will be saved for your convenience across all services during your stay.
           </DialogDescription>
         </DialogHeader>
 
         <div className="space-y-4 py-4">
           <div className="space-y-2">
             <Label htmlFor="guest-name" className="text-sm font-medium">
-              Your Name (Optional)
+              Your Name *
             </Label>
             <div className="relative">
               <User className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -94,17 +88,15 @@ export function GuestInfoModal({ open, onSubmit, onSkip }: GuestInfoModalProps) 
             onClick={handleSubmit}
             size="lg"
             className="w-full"
+            disabled={!name.trim()}
           >
             Continue
           </Button>
-          <Button
-            variant="ghost"
-            onClick={handleSkip}
-            size="sm"
-            className="w-full"
-          >
-            Skip for now
-          </Button>
+          {!name.trim() && (
+            <p className="text-xs text-muted-foreground text-center">
+              Please provide your name to continue
+            </p>
+          )}
         </div>
       </DialogContent>
     </Dialog>
