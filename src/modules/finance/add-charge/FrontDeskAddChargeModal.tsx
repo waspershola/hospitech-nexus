@@ -146,9 +146,11 @@ export function FrontDeskAddChargeModal({
     mutationFn: async () => {
       if (!tenantId) throw new Error('No tenant ID');
 
-      // Build payload with defensive template-literal pattern
-      const payload = {
-        p_folio_id: `${normalizedFolioId}`, // Template literal defensive pattern
+      // ============================================
+      // PHASE 1: PRE-RPC DIAGNOSTIC LOGGING
+      // ============================================
+      const preRpcPayload = {
+        p_folio_id: normalizedFolioId,
         p_amount: parseFloat(amount),
         p_description: description,
         p_department: department || null,
@@ -156,31 +158,49 @@ export function FrontDeskAddChargeModal({
         p_reference_id: validatedRequest?.request_id || propRequestId || null,
       };
 
+      console.log('[FrontDeskAddChargeModal] 🔍 PRE-RPC-NETWORK-PAYLOAD', {
+        stringified: JSON.stringify(preRpcPayload),
+        types: Object.fromEntries(
+          Object.entries(preRpcPayload).map(([k, v]) => [k, typeof v])
+        ),
+        p_folio_id_value: preRpcPayload.p_folio_id,
+        p_folio_id_constructor: preRpcPayload.p_folio_id?.constructor?.name,
+        p_folio_id_is_string: typeof preRpcPayload.p_folio_id === 'string',
+        origin,
+      });
+
+      // ============================================
+      // PHASE 3: DEFENSIVE STRINGIFY PATTERN
+      // (From PAYMENT-FOLIO-RPC-FIX.md)
+      // ============================================
+      const defensivePayload = {
+        p_folio_id: `${preRpcPayload.p_folio_id}`.trim(),           // Template literal + trim
+        p_amount: preRpcPayload.p_amount,
+        p_description: `${preRpcPayload.p_description}`,             // Ensure string primitive
+        p_department: preRpcPayload.p_department ? `${preRpcPayload.p_department}` : null,
+        p_reference_type: preRpcPayload.p_reference_type ? `${preRpcPayload.p_reference_type}` : null,
+        p_reference_id: preRpcPayload.p_reference_id || null,
+      };
+
       // UUID validation regex
       const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
       
-      if (typeof payload.p_folio_id !== 'string' || !uuidRegex.test(payload.p_folio_id)) {
+      if (typeof defensivePayload.p_folio_id !== 'string' || !uuidRegex.test(defensivePayload.p_folio_id)) {
         console.error('[FrontDeskAddChargeModal] ❌ INVALID_UUID_FORMAT', {
-          received: payload.p_folio_id,
-          type: typeof payload.p_folio_id,
+          received: defensivePayload.p_folio_id,
+          type: typeof defensivePayload.p_folio_id,
         });
         throw new Error('Invalid folio ID format - must be UUID string');
       }
 
-      console.log('[FrontDeskAddChargeModal] UNIFIED-V2-DEFENSIVE: RPC Payload', {
-        payload,
-        types: {
-          p_folio_id: typeof payload.p_folio_id,
-          p_amount: typeof payload.p_amount,
-          p_description: typeof payload.p_description,
-          p_department: typeof payload.p_department,
-          p_reference_type: typeof payload.p_reference_type,
-          p_reference_id: typeof payload.p_reference_id,
-        },
-        origin,
+      console.log('[FrontDeskAddChargeModal] 🛡️ DEFENSIVE-V3-RPC-CALL', {
+        original: preRpcPayload,
+        defensive: defensivePayload,
+        uuidCheck: uuidRegex.test(defensivePayload.p_folio_id),
+        version: 'DEFENSIVE-UUID-CAST-V1',
       });
 
-      const { data, error } = await supabase.rpc('folio_post_charge', payload);
+      const { data, error } = await supabase.rpc('folio_post_charge', defensivePayload);
 
       if (error) {
         console.error('[FrontDeskAddChargeModal] ❌ FOLIO-POST-CHARGE-ERROR', {
