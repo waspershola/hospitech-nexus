@@ -146,23 +146,41 @@ export function FrontDeskAddChargeModal({
     mutationFn: async () => {
       if (!tenantId) throw new Error('No tenant ID');
 
-      console.log('[FrontDeskAddChargeModal] UNIFIED-V1: Posting charge', {
-        origin,
-        folioId: normalizedFolioId,
-        amount: parseFloat(amount),
-        billingReference: validatedRequest?.request_id,
-      });
-
-      const { data, error } = await supabase.rpc('folio_post_charge', {
-        p_folio_id: normalizedFolioId,
+      // Build payload with defensive template-literal pattern
+      const payload = {
+        p_folio_id: `${normalizedFolioId}`, // Template literal defensive pattern
         p_amount: parseFloat(amount),
         p_description: description,
         p_department: department || null,
         p_reference_type: validatedRequest ? 'qr_request' : (propRequestId ? 'qr_request' : null),
         p_reference_id: validatedRequest?.request_id || propRequestId || null,
+      };
+
+      console.log('[FrontDeskAddChargeModal] UNIFIED-V2-DEFENSIVE: RPC Payload', {
+        payload,
+        types: {
+          p_folio_id: typeof payload.p_folio_id,
+          p_amount: typeof payload.p_amount,
+          p_description: typeof payload.p_description,
+          p_department: typeof payload.p_department,
+          p_reference_type: typeof payload.p_reference_type,
+          p_reference_id: typeof payload.p_reference_id,
+        },
+        origin,
       });
 
-      if (error) throw error;
+      const { data, error } = await supabase.rpc('folio_post_charge', payload);
+
+      if (error) {
+        console.error('[FrontDeskAddChargeModal] ❌ FOLIO-POST-CHARGE-ERROR', {
+          message: error.message,
+          details: (error as any).details,
+          hint: (error as any).hint,
+          code: (error as any).code,
+          payload,
+        });
+        throw error;
+      }
       
       const result = data as { success: boolean; error?: string };
       if (!result?.success) throw new Error(result?.error || 'Failed to add charge');
