@@ -19,6 +19,7 @@ import {
 } from '@/components/ui/select';
 import { useOverdueRequests } from '@/hooks/useOverdueRequests';
 import { generateRequestReference } from '@/lib/qr/requestReference';
+import { getBillingStatusLabel, getBillingStatusColor } from '@/lib/qr/billingStatus';
 
 interface RequestsTableProps {
   requests: any[];
@@ -108,6 +109,7 @@ export default function RequestsTable({
             <TableHead>Room</TableHead>
             <TableHead>Priority</TableHead>
             <TableHead>Status</TableHead>
+            <TableHead>Billing</TableHead>
             <TableHead>Submitted</TableHead>
             <TableHead className="text-right">Actions</TableHead>
           </TableRow>
@@ -172,6 +174,16 @@ export default function RequestsTable({
               <TableCell>{getPriorityBadge(request.priority)}</TableCell>
               <TableCell>
                 {getStatusBadge(request.status, overdueInfo)}
+              </TableCell>
+              <TableCell>
+                {/* Phase 4: Billing status badge */}
+                {request.billing_status && request.billing_status !== 'none' ? (
+                  <Badge variant={getBillingStatusColor(request.billing_status)}>
+                    {getBillingStatusLabel(request.billing_status)}
+                  </Badge>
+                ) : (
+                  <span className="text-muted-foreground text-xs">—</span>
+                )}
               </TableCell>
               <TableCell>
                 {format(new Date(request.created_at), 'MMM d, h:mm a')}

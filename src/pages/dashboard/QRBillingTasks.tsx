@@ -76,9 +76,11 @@ export default function QRBillingTasks() {
         <div className="grid gap-4">
           {billingTasks.map((task) => {
             const metadata = task.metadata as any;
-            const amount = metadata?.payment_info?.total_amount || 
+            // PHASE 4: Fix amount calculation - amounts already in Naira, not kobo
+            const amount = task.billed_amount || 
+                          metadata?.payment_info?.total_amount || 
                           metadata?.payment_info?.subtotal || 0;
-            const amountDisplay = (amount / 100).toLocaleString();
+            const amountDisplay = amount.toLocaleString();
 
             return (
               <Card key={task.id} className="hover:shadow-md transition-shadow">

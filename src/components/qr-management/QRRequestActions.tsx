@@ -23,6 +23,7 @@ import { useRequestReceipt } from '@/hooks/useRequestReceipt';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { format } from 'date-fns';
 import { generateRequestReference } from '@/lib/qr/requestReference';
+import { isBillingCompleted } from '@/lib/qr/billingStatus';
 
 interface QRRequestActionsProps {
   request: any;
@@ -41,6 +42,10 @@ export function QRRequestActions({ request, onStatusUpdate, onClose }: QRRequest
 
   const isAssignedToMe = request.assigned_to === user?.id;
   const guestPaymentPreference = request.metadata?.payment_choice || 'pay_now';
+  
+  // Phase 4: Check if billing is completed
+  const billingCompleted = isBillingCompleted(request.billing_status);
+  const billedAmount = request.billed_amount || request.metadata?.payment_info?.total_amount || 0;
 
   const handleStatusChange = async (newStatus: string) => {
     if (!tenantId) return;
@@ -259,6 +264,24 @@ export function QRRequestActions({ request, onStatusUpdate, onClose }: QRRequest
           Financial Actions
         </h3>
         
+        {/* PHASE 4: Show billing completed status */}
+        {billingCompleted && (
+          <Alert className="border-green-500 bg-green-50 dark:bg-green-950/20 mb-3">
+            <CheckCircle className="h-4 w-4 text-green-600" />
+            <AlertDescription className="text-green-800 dark:text-green-200">
+              <strong>Billed to Room Folio</strong>
+              <div className="text-sm mt-1">
+                ₦{billedAmount.toLocaleString()} charged on {request.billed_at ? format(new Date(request.billed_at), 'MMM d, h:mm a') : 'N/A'}
+              </div>
+              {request.billing_status === 'paid_direct' && (
+                <div className="text-xs text-green-600 dark:text-green-400 mt-1">
+                  ✓ Payment collected via room folio
+                </div>
+              )}
+            </AlertDescription>
+          </Alert>
+        )}
+        
         {/* ARCHITECTURAL RULE: NO FOLIO CHARGING FROM QR DRAWER
             All folio charges must be posted from Billing Center by Front Desk.
             Other departments use "Transfer to Front Desk" for room billing.
@@ -274,29 +297,47 @@ export function QRRequestActions({ request, onStatusUpdate, onClose }: QRRequest
         </div>
         
         <div className="space-y-2">
-          {/* Collect Payment (all QR types) */}
-          <Button
-              onClick={() => setShowPaymentForm(true)}
-              disabled={isUpdating}
-              className="w-full"
-              variant="outline"
-            >
-              <DollarSign className="h-4 w-4 mr-2" />
-              Collect Payment
-            </Button>
+          {/* PHASE 4: Hide financial actions when billing is completed */}
+          {!billingCompleted && (
+            <>
+              {/* Collect Payment (all QR types) */}
+              <Button
+                onClick={() => setShowPaymentForm(true)}
+                disabled={isUpdating}
+                className="w-full"
+                variant="outline"
+              >
+                <DollarSign className="h-4 w-4 mr-2" />
+                Collect Payment
+              </Button>
 
-          {/* Mark as Complimentary */}
-          <Button
-            onClick={() => setShowComplimentaryApproval(true)}
-            disabled={isUpdating}
-            className="w-full"
-            variant="outline"
-          >
-            <Gift className="h-4 w-4 mr-2" />
-            Mark as Complimentary
-          </Button>
+              {/* Mark as Complimentary */}
+              <Button
+                onClick={() => setShowComplimentaryApproval(true)}
+                disabled={isUpdating}
+                className="w-full"
+                variant="outline"
+              >
+                <Gift className="h-4 w-4 mr-2" />
+                Mark as Complimentary
+              </Button>
 
-          {/* PHASE-3-PRINT-V1: Print Receipt */}
+              {/* PHASE-3-TRANSFER-V1: Transfer to Front Desk */}
+              {!request.transferred_to_frontdesk && (
+                <Button
+                  onClick={() => setShowTransferDialog(true)}
+                  disabled={isUpdating}
+                  className="w-full"
+                  variant="secondary"
+                >
+                  <MoveRight className="h-4 w-4 mr-2" />
+                  Transfer to Front Desk
+                </Button>
+              )}
+            </>
+          )}
+
+          {/* PHASE-3-PRINT-V1: Print Receipt (always available) */}
           <Button
             onClick={() => printRequestReceipt(request)}
             disabled={isUpdating || isPrinting}
@@ -306,19 +347,6 @@ export function QRRequestActions({ request, onStatusUpdate, onClose }: QRRequest
             <Printer className="h-4 w-4 mr-2" />
             {isPrinting ? 'Printing...' : 'Print Receipt'}
           </Button>
-
-          {/* PHASE-3-TRANSFER-V1: Transfer to Front Desk */}
-          {!request.transferred_to_frontdesk && (
-            <Button
-              onClick={() => setShowTransferDialog(true)}
-              disabled={isUpdating}
-              className="w-full"
-              variant="secondary"
-            >
-              <MoveRight className="h-4 w-4 mr-2" />
-              Transfer to Front Desk
-            </Button>
-          )}
 
           {request.transferred_to_frontdesk && (
             <Alert>
