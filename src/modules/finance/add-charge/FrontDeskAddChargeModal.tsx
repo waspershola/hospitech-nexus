@@ -208,7 +208,7 @@ export function FrontDeskAddChargeModal({
           details: (error as any).details,
           hint: (error as any).hint,
           code: (error as any).code,
-          payload,
+          defensivePayload,
         });
         throw error;
       }
