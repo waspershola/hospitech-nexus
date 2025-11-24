@@ -7888,7 +7888,7 @@ export type Database = {
           p_description: string
           p_folio_id: string
           p_reference_id?: string
-          p_reference_type?: string
+          p_reference_type: string
         }
         Returns: Json
       }
