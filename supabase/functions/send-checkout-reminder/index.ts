@@ -89,8 +89,8 @@ serve(async (req: Request) => {
         id,
         check_out,
         total_amount,
-        room:rooms(number),
-        guest:guests(id, name, email, phone)
+        room:rooms!bookings_room_id_fkey(number),
+        guest:guests!bookings_guest_id_fkey(id, name, email, phone)
       `)
       .eq('tenant_id', tenant_id)
       .eq('status', 'checked_in')
