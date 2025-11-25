@@ -37,97 +37,55 @@ export default function FinanceCenter() {
       <div className="h-full flex flex-col">
       <div className="mb-6 flex items-start justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-display font-bold">Finance Center</h1>
-          <p className="text-muted-foreground">Manage payments, providers, and wallets</p>
+          <h1 className="text-3xl font-display font-bold">
+            {activeTab === 'settings' && 'Finance Settings'}
+            {activeTab === 'preferences' && 'Payment Preferences'}
+            {activeTab === 'receipts' && 'Receipt Settings'}
+            {activeTab === 'receipt-logs' && 'Receipt Logs'}
+            {activeTab === 'receivables' && 'Accounts Receivable'}
+            {activeTab === 'credits' && 'Guest Credits'}
+            {activeTab === 'folios' && 'Folios'}
+            {activeTab === 'post-checkout' && 'Post-Checkout Ledger'}
+            {activeTab === 'reports' && 'Finance Reports'}
+            {activeTab === 'organizations' && 'Organizations'}
+            {activeTab === 'providers' && 'Payment Providers'}
+            {activeTab === 'payment-methods' && 'Payment Methods'}
+            {activeTab === 'locations' && 'Payment Locations'}
+            {activeTab === 'rules' && 'Provider Rules'}
+            {activeTab === 'wallets' && 'Guest Wallets'}
+            {activeTab === 'reconciliation' && 'Reconciliation'}
+            {activeTab === 'org-analytics' && 'Organization Analytics'}
+            {activeTab === 'analytics' && 'Financial Analytics'}
+            {activeTab === 'platform-fees' && 'Platform Fees'}
+            {activeTab === 'audit' && 'Audit Trail'}
+          </h1>
+          <p className="text-muted-foreground">
+            {activeTab === 'settings' && 'Configure currency, tax rates, and service charges'}
+            {activeTab === 'preferences' && 'Configure payment processing preferences'}
+            {activeTab === 'receipts' && 'Customize receipt templates and settings'}
+            {activeTab === 'receipt-logs' && 'View receipt generation history'}
+            {activeTab === 'receivables' && 'Manage accounts receivable and outstanding balances'}
+            {activeTab === 'credits' && 'View and manage guest credit balances'}
+            {activeTab === 'folios' && 'View and manage guest folios'}
+            {activeTab === 'post-checkout' && 'Review closed folio transactions'}
+            {activeTab === 'reports' && 'Financial reports and summaries'}
+            {activeTab === 'organizations' && 'Manage corporate and group accounts'}
+            {activeTab === 'providers' && 'Manage payment providers and integrations'}
+            {activeTab === 'payment-methods' && 'Configure accepted payment methods'}
+            {activeTab === 'locations' && 'Manage payment collection locations'}
+            {activeTab === 'rules' && 'Configure provider-specific rules'}
+            {activeTab === 'wallets' && 'Monitor guest wallet transactions and balances'}
+            {activeTab === 'reconciliation' && 'Reconcile transactions with providers'}
+            {activeTab === 'org-analytics' && 'Analytics for organizations and corporate clients'}
+            {activeTab === 'analytics' && 'Financial insights and performance metrics'}
+            {activeTab === 'platform-fees' && 'View platform fee charges and billing'}
+            {activeTab === 'audit' && 'Complete audit trail of financial changes'}
+          </p>
         </div>
         <BackfillFoliosButton />
       </div>
 
       <Tabs value={activeTab} onValueChange={handleTabChange} className="flex-1 flex flex-col overflow-hidden">
-        <div className="overflow-x-auto pb-2 -mx-6 px-6">
-          <TabsList className="inline-flex w-auto h-auto mb-4 gap-1 flex-nowrap">
-            <TabsTrigger value="settings" className="flex items-center gap-2 whitespace-nowrap">
-              <Settings className="w-4 h-4" />
-              <span>Settings</span>
-            </TabsTrigger>
-            <TabsTrigger value="preferences" className="flex items-center gap-2 whitespace-nowrap">
-              <Sliders className="w-4 h-4" />
-              <span>Preferences</span>
-            </TabsTrigger>
-            <TabsTrigger value="receipts" className="flex items-center gap-2 whitespace-nowrap">
-              <FileText className="w-4 h-4" />
-              <span>Receipts</span>
-            </TabsTrigger>
-            <TabsTrigger value="receipt-logs" className="flex items-center gap-2 whitespace-nowrap">
-              <Printer className="w-4 h-4" />
-              <span>Logs</span>
-            </TabsTrigger>
-            <TabsTrigger value="receivables" className="flex items-center gap-2 whitespace-nowrap">
-              <Receipt className="w-4 h-4" />
-              <span>A/R</span>
-            </TabsTrigger>
-            <TabsTrigger value="credits" className="flex items-center gap-2 whitespace-nowrap">
-              <CreditCard className="w-4 h-4" />
-              <span>Credits</span>
-            </TabsTrigger>
-            <TabsTrigger value="folios" className="flex items-center gap-2 whitespace-nowrap">
-              <Receipt className="w-4 h-4" />
-              <span>Folios</span>
-            </TabsTrigger>
-            <TabsTrigger value="post-checkout" className="flex items-center gap-2 whitespace-nowrap">
-              <FileText className="w-4 h-4" />
-              <span>Post-Checkout</span>
-            </TabsTrigger>
-            <TabsTrigger value="reports" className="flex items-center gap-2 whitespace-nowrap">
-              <BarChart3 className="w-4 h-4" />
-              <span>Reports</span>
-            </TabsTrigger>
-            <TabsTrigger value="organizations" className="flex items-center gap-2 whitespace-nowrap">
-              <Building className="w-4 h-4" />
-              <span>Organizations</span>
-            </TabsTrigger>
-            <TabsTrigger value="providers" className="flex items-center gap-2 whitespace-nowrap">
-              <Building2 className="w-4 h-4" />
-              <span>Providers</span>
-            </TabsTrigger>
-            <TabsTrigger value="payment-methods" className="flex items-center gap-2 whitespace-nowrap">
-              <CreditCard className="w-4 h-4" />
-              <span>Payment Methods</span>
-            </TabsTrigger>
-            <TabsTrigger value="locations" className="flex items-center gap-2 whitespace-nowrap">
-              <MapPin className="w-4 h-4" />
-              <span>Locations</span>
-            </TabsTrigger>
-            <TabsTrigger value="rules" className="flex items-center gap-2 whitespace-nowrap">
-              <Shield className="w-4 h-4" />
-              <span>Rules</span>
-            </TabsTrigger>
-            <TabsTrigger value="wallets" className="flex items-center gap-2 whitespace-nowrap">
-              <Wallet className="w-4 h-4" />
-              <span>Wallets</span>
-            </TabsTrigger>
-            <TabsTrigger value="reconciliation" className="flex items-center gap-2 whitespace-nowrap">
-              <RefreshCcw className="w-4 h-4" />
-              <span>Reconciliation</span>
-            </TabsTrigger>
-            <TabsTrigger value="org-analytics" className="flex items-center gap-2 whitespace-nowrap">
-              <BarChart3 className="w-4 h-4" />
-              <span>Org Analytics</span>
-            </TabsTrigger>
-            <TabsTrigger value="analytics" className="flex items-center gap-2 whitespace-nowrap">
-              <TrendingUp className="w-4 h-4" />
-              <span>Analytics</span>
-            </TabsTrigger>
-            <TabsTrigger value="platform-fees" className="flex items-center gap-2 whitespace-nowrap">
-              <DollarSign className="w-4 h-4" />
-              <span>Platform Fees</span>
-            </TabsTrigger>
-            <TabsTrigger value="audit" className="flex items-center gap-2 whitespace-nowrap">
-              <Shield className="w-4 h-4" />
-              <span>Audit Trail</span>
-            </TabsTrigger>
-          </TabsList>
-        </div>
 
         <div className="flex-1 overflow-y-auto px-6">
           <TabsContent value="settings" className="mt-0">
