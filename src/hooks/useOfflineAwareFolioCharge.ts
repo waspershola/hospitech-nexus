@@ -7,6 +7,8 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { useAuth } from '@/contexts/AuthContext';
 import { offlineAwareRPC } from '@/lib/offline/offlineAwareClient';
+import { offlineFolioManager } from '@/lib/offline/offlineFolioManager';
+import { isElectronContext } from '@/lib/offline/offlineTypes';
 
 interface PostChargeParams {
   folioId: string;
@@ -24,7 +26,35 @@ export function useOfflineAwareFolioCharge() {
 
   return useMutation({
     mutationFn: async (params: PostChargeParams) => {
-      // Use offline-aware RPC wrapper
+      // Check if offline and in Electron context
+      const offline = !navigator.onLine && isElectronContext();
+      
+      if (offline) {
+        // Post charge locally
+        const localCharge = await offlineFolioManager.postChargeOffline({
+          folio_id: params.folioId,
+          amount: params.amount,
+          description: params.description,
+          department: params.department,
+          metadata: {
+            ...params.metadata,
+            request_id: params.requestId,
+            billing_reference_code: params.billingReferenceCode,
+          },
+        });
+
+        console.log('[OFFLINE-CHARGE-V1] Posted charge locally:', localCharge.id);
+
+        return { 
+          success: true, 
+          queued: true, 
+          offline: true,
+          message: 'Charge posted locally, will sync when online',
+          transaction_id: localCharge.id,
+        };
+      }
+
+      // Use offline-aware RPC wrapper (handles online queueing)
       const { data, error, queued } = await offlineAwareRPC('folio_post_charge', {
         p_tenant_id: tenantId,
         p_folio_id: params.folioId,
@@ -51,7 +81,12 @@ export function useOfflineAwareFolioCharge() {
       queryClient.invalidateQueries({ queryKey: ['folio', variables.folioId] });
       queryClient.invalidateQueries({ queryKey: ['booking-folio'] });
       
-      if (data.queued) {
+      if (data.offline) {
+        toast.info('Charge posted locally (offline mode)', {
+          description: 'Charge will sync automatically when connection is restored',
+          duration: 5000,
+        });
+      } else if (data.queued) {
         toast.info('Charge queued for sync when online', {
           description: 'Charge will be posted automatically when connection is restored'
         });
