@@ -173,6 +173,35 @@ ipcMain.on('log:event', (_event, logEvent: LogEvent) => {
   logger.log(logEvent.level, logEvent.message, logEvent.context);
 });
 
+// Auto-sync scheduler - runs every 5 minutes when online
+let syncInterval: NodeJS.Timeout | null = null;
+
+const startSyncScheduler = () => {
+  if (syncInterval) return;
+  
+  syncInterval = setInterval(() => {
+    if (isOnline && mainWindow && !mainWindow.isDestroyed()) {
+      logger.info('Triggering scheduled sync');
+      mainWindow.webContents.send('sync:trigger');
+    }
+  }, 5 * 60 * 1000); // Every 5 minutes
+};
+
+const stopSyncScheduler = () => {
+  if (syncInterval) {
+    clearInterval(syncInterval);
+    syncInterval = null;
+  }
+};
+
+// Start sync scheduler
+startSyncScheduler();
+
+// Stop sync scheduler on app quit
+app.on('before-quit', () => {
+  stopSyncScheduler();
+});
+
 // Printing
 ipcMain.handle('print:pdf', async (_event, { bufferOrUrl, options }: { bufferOrUrl: string | ArrayBuffer; options?: PrintOptions }) => {
   logger.info('Print request received');
