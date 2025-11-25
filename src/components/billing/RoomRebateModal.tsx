@@ -102,11 +102,14 @@ export function RoomRebateModal({
     onSuccess: (result) => {
       toast.success(`Room rebate of ${formatCurrency(result.rebate_amount, 'NGN')} applied successfully`);
       
-      // Invalidate all folio-related queries
+      // QUERY-KEY-FIX-V1: Specific folio cache invalidation (folio-by-id removed)
       queryClient.invalidateQueries({ queryKey: ['folio', folioId, tenantId] });
       queryClient.invalidateQueries({ queryKey: ['folio-transactions', folioId, tenantId] });
       queryClient.invalidateQueries({ queryKey: ['folio-ledger', folioId, tenantId] });
-      queryClient.invalidateQueries({ queryKey: ['folio-by-id'] });
+      // Also invalidate booking-folio if we have booking context
+      if (result.booking_id) {
+        queryClient.invalidateQueries({ queryKey: ['booking-folio', result.booking_id, tenantId] });
+      }
 
       reset();
       setShowManagerApproval(false);

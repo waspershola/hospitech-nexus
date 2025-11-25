@@ -224,13 +224,17 @@ export function FolioSettlementDialog({ folioId, open, onClose }: FolioSettlemen
       return payment;
     },
     onSuccess: (payment) => {
+      // QUERY-KEY-FIX-V1: Specific cache invalidation with tenantId
       setLastPayment(payment);
       setShowReceipt(true);
       toast.success('Payment recorded successfully');
       queryClient.invalidateQueries({ queryKey: ['outstanding-folios'] });
-      queryClient.invalidateQueries({ queryKey: ['folio', folioId] });
+      queryClient.invalidateQueries({ queryKey: ['folio', folioId, tenantId] });
       queryClient.invalidateQueries({ queryKey: ['folio-transactions-summary', folioId] });
-      queryClient.invalidateQueries({ queryKey: ['booking-folio'] });
+      // Also invalidate booking-folio if we have booking context
+      if (folio?.booking_id) {
+        queryClient.invalidateQueries({ queryKey: ['booking-folio', folio.booking_id, tenantId] });
+      }
     },
     onError: (error: Error) => {
       toast.error(`Failed to settle folio: ${error.message}`);

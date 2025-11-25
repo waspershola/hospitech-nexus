@@ -134,7 +134,8 @@ export default function FrontDesk() {
                   onRoomClick={async (roomId) => {
                     // FOLIO-PREFETCH-V1: Prefetch room data before opening drawer
                     if (tenantId) {
-                      queryClient.prefetchQuery({
+                      // Prefetch room + booking data
+                      const roomPromise = queryClient.prefetchQuery({
                         queryKey: ['room-detail', roomId, 'today'],
                         queryFn: async () => {
                           const { data } = await supabase
@@ -163,6 +164,9 @@ export default function FrontDesk() {
                         },
                         staleTime: 30 * 1000,
                       });
+                      
+                      // Start prefetch but don't wait (non-blocking)
+                      roomPromise.catch(console.error);
                     }
                     setSelectedRoomId(roomId);
                     setContextDate(null);
@@ -183,8 +187,9 @@ export default function FrontDesk() {
                 <AvailabilityCalendar onRoomClick={async (roomId, date) => {
                   // FOLIO-PREFETCH-V1: Prefetch room data for date view
                   if (tenantId && date) {
-                    queryClient.prefetchQuery({
-                      queryKey: ['room-detail', roomId, format(date, 'yyyy-MM-dd')],
+                    const dateKey = format(date, 'yyyy-MM-dd');
+                    const roomPromise = queryClient.prefetchQuery({
+                      queryKey: ['room-detail', roomId, dateKey],
                       queryFn: async () => {
                         const { data } = await supabase
                           .from('rooms')
@@ -212,6 +217,9 @@ export default function FrontDesk() {
                       },
                       staleTime: 30 * 1000,
                     });
+                    
+                    // Start prefetch but don't wait (non-blocking)
+                    roomPromise.catch(console.error);
                   }
                   setSelectedRoomId(roomId);
                   setContextDate(date);

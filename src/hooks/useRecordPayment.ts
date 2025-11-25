@@ -43,11 +43,13 @@ export function useRecordPayment() {
       return data;
     },
     onMutate: async (newPayment) => {
-      // Cancel outgoing refetches
-      await queryClient.cancelQueries({ queryKey: ['booking-folio'] });
+      // QUERY-KEY-FIX-V1: Cancel specific queries with IDs
+      const bookingId = newPayment.booking_id;
+      if (bookingId) {
+        await queryClient.cancelQueries({ queryKey: ['booking-folio', bookingId, tenantId] });
+      }
       
       // Snapshot previous value
-      const bookingId = newPayment.booking_id;
       if (!bookingId) return { previousFolio: null };
       
       const previousFolio = queryClient.getQueryData(['booking-folio', bookingId, tenantId]);
@@ -87,15 +89,20 @@ export function useRecordPayment() {
     onSuccess: async (data, variables) => {
       console.log('[useRecordPayment] PAYMENT-FIX-V2: Payment success, invalidating queries...');
       
-      // Phase 1 Enhancement: Better cache management with forced refetch
+      // QUERY-KEY-FIX-V1: Enhanced cache management with specific IDs
+      const bookingId = variables.booking_id;
+      const folioId = data.folio_id;
+      
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: ['payments', tenantId] }),
         queryClient.invalidateQueries({ queryKey: ['wallets', tenantId] }),
         queryClient.invalidateQueries({ queryKey: ['wallet-transactions', tenantId] }),
         queryClient.invalidateQueries({ queryKey: ['finance-analytics', tenantId] }),
         queryClient.invalidateQueries({ queryKey: ['reconciliation-records', tenantId] }),
-        queryClient.invalidateQueries({ queryKey: ['booking-folio'] }),
-        queryClient.invalidateQueries({ queryKey: ['folio-by-id'] }),
+        // Specific booking folio invalidation
+        ...(bookingId ? [queryClient.invalidateQueries({ queryKey: ['booking-folio', bookingId, tenantId] })] : []),
+        // Specific folio invalidation
+        ...(folioId ? [queryClient.invalidateQueries({ queryKey: ['folio', folioId, tenantId] })] : []),
         queryClient.invalidateQueries({ queryKey: ['bookings'] }),
         queryClient.invalidateQueries({ queryKey: ['frontdesk-kpis'] }),
         
@@ -107,11 +114,13 @@ export function useRecordPayment() {
         ),
       ]);
       
-      // Force immediate refetch for active queries
-      await queryClient.refetchQueries({ 
-        queryKey: ['booking-folio'], 
-        type: 'active' 
-      });
+      // Force immediate refetch for active queries with specific IDs
+      if (bookingId) {
+        await queryClient.refetchQueries({ 
+          queryKey: ['booking-folio', bookingId, tenantId], 
+          type: 'active' 
+        });
+      }
       
       // PAYMENT-FIX-V2 Phase 3: Force refetch for staff requests if this is a QR payment
       if (variables.metadata?.request_id) {

@@ -7,6 +7,8 @@ export function useCheckout() {
   const queryClient = useQueryClient();
   const { user } = useAuth();
 
+  const { tenantId } = useAuth();
+  
   return useMutation({
     mutationFn: async ({ 
       bookingId, 
@@ -28,12 +30,12 @@ export function useCheckout() {
 
       return data;
     },
-    onSuccess: () => {
-      // Invalidate all relevant queries to force refresh
+    onSuccess: (_data, variables) => {
+      // QUERY-KEY-FIX-V1: Specific cache invalidation with IDs
       queryClient.invalidateQueries({ queryKey: ['rooms-grid'] });
       queryClient.invalidateQueries({ queryKey: ['room-detail'] });
       queryClient.invalidateQueries({ queryKey: ['frontdesk-kpis'] });
-      queryClient.invalidateQueries({ queryKey: ['booking-folio'] });
+      queryClient.invalidateQueries({ queryKey: ['booking-folio', variables.bookingId, tenantId] });
       
       toast.success('Guest checked out successfully');
     },

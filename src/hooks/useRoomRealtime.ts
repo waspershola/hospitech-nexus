@@ -101,7 +101,13 @@ export function usePaymentRealtime() {
         (payload) => {
           console.log('Payment change detected:', payload);
           
-          queryClient.invalidateQueries({ queryKey: ['booking-folio'] });
+          // QUERY-KEY-FIX-V1: Extract booking_id from payload for specific invalidation
+          const newData = payload.new as any;
+          const oldData = payload.old as any;
+          const bookingId = newData?.booking_id || oldData?.booking_id;
+          if (bookingId) {
+            queryClient.invalidateQueries({ queryKey: ['booking-folio', bookingId, tenantId] });
+          }
           queryClient.invalidateQueries({ queryKey: ['frontdesk-kpis'] });
         }
       )

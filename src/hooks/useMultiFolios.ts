@@ -47,6 +47,7 @@ export function useMultiFolios(bookingId: string | null) {
       return data as MultiFolio[];
     },
     enabled: !!bookingId && !!tenantId,
+    staleTime: 30 * 1000, // QUERY-KEY-FIX-V1: Cache for 30 seconds
   });
 
   const primaryFolio = folios.find((f) => f.is_primary);
@@ -104,8 +105,9 @@ export function useMultiFolios(bookingId: string | null) {
       return data;
     },
     onSuccess: (data) => {
+      // QUERY-KEY-FIX-V1: Specific cache invalidation with IDs
       queryClient.invalidateQueries({ queryKey: ['multi-folios', bookingId, tenantId] });
-      queryClient.invalidateQueries({ queryKey: ['folio-by-id', data.id, tenantId] });
+      queryClient.invalidateQueries({ queryKey: ['folio', data.id, tenantId] });
       toast.success(`${data.folio_type} folio created`);
     },
     onError: (error: Error) => {

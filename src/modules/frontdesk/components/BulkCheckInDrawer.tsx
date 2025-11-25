@@ -192,6 +192,8 @@ export function BulkCheckInDrawer({ open, onClose }: BulkCheckInDrawerProps) {
       return { successful, failed, total: payments.length };
     },
     onSuccess: (data) => {
+      // QUERY-KEY-FIX-V1: Invalidate all affected booking folios
+      // Note: BulkCheckIn affects multiple bookings, so invalidate all booking-folio queries
       queryClient.invalidateQueries({ queryKey: ['booking-folio'] });
       queryClient.invalidateQueries({ queryKey: ['payments'] });
 
