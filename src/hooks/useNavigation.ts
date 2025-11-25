@@ -117,19 +117,47 @@ export function useNavigation() {
       console.log('✅ [Navigation] Filtered navigation items:', filtered.length);
       console.log('✅ [Navigation] Items:', filtered.map(item => item.name).join(', '));
       
-      // Build hierarchical structure (parent-child relationships)
-      const parentItems = filtered.filter(item => !item.parent_id);
-      const childItems = filtered.filter(item => item.parent_id);
-      
-      const hierarchical = parentItems.map(parent => ({
-        ...parent,
-        children: childItems
-          .filter(child => child.parent_id === parent.id)
-          .sort((a, b) => a.order_index - b.order_index)
-      })).sort((a, b) => a.order_index - b.order_index);
-      
-      console.log('✅ [Navigation] Hierarchical structure:', hierarchical.length, 'parents');
-      return hierarchical;
+      // Build full hierarchical tree (supports multiple nesting levels)
+      const itemsWithChildren: NavigationItem[] = filtered
+        .map((item) => ({ ...item, children: [] as NavigationItem[] }))
+        .sort((a, b) => a.order_index - b.order_index);
+
+      const itemsById = new Map<string, NavigationItem>();
+      itemsWithChildren.forEach((item) => {
+        itemsById.set(item.id, item);
+      });
+
+      const rootItems: NavigationItem[] = [];
+
+      itemsWithChildren.forEach((item) => {
+        if (item.parent_id) {
+          const parent = itemsById.get(item.parent_id);
+          if (parent) {
+            parent.children!.push(item);
+          } else {
+            // If parent is missing for some reason, treat as root to avoid losing it
+            rootItems.push(item);
+          }
+        } else {
+          rootItems.push(item);
+        }
+      });
+
+      // Ensure children for every node are ordered
+      const sortTree = (nodes: NavigationItem[]) => {
+        nodes.sort((a, b) => a.order_index - b.order_index);
+        nodes.forEach((node) => {
+          if (node.children && node.children.length > 0) {
+            sortTree(node.children);
+          }
+        });
+      };
+
+      sortTree(rootItems);
+
+      console.log('✅ [Navigation] Hierarchical structure:', rootItems.length, 'root items');
+      return rootItems;
+
       } catch (error) {
         console.error('❌ [Navigation] Fatal error:', error);
         throw error;
