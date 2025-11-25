@@ -5,6 +5,8 @@ import Topbar from './Topbar';
 import MobileNav from './MobileNav';
 import { AudioPermissionPrompt } from '@/components/notifications/AudioPermissionPrompt';
 import { useQRNotifications } from '@/hooks/useQRNotifications';
+import { OfflineStatusIndicator } from '@/components/offline/OfflineStatusIndicator';
+import { SyncStatusIndicator } from '@/components/offline/SyncStatusIndicator';
 
 export default function DashboardShell() {
   // Phase 5: Unified ringtone system
@@ -16,9 +18,17 @@ export default function DashboardShell() {
         <AppSidebar />
         
         <div className="flex flex-col flex-1">
-          <header className="h-16 flex items-center border-b border-border bg-background px-4">
-            <SidebarTrigger className="mr-4" />
-            <Topbar />
+          <header className="h-16 flex items-center justify-between border-b border-border bg-background px-4">
+            <div className="flex items-center gap-4">
+              <SidebarTrigger />
+              <Topbar />
+            </div>
+            
+            {/* Offline Desktop Status Indicators (Electron only) */}
+            <div className="flex items-center gap-2">
+              <OfflineStatusIndicator />
+              <SyncStatusIndicator />
+            </div>
           </header>
           
           <main className="flex-1 overflow-y-auto p-4 md:p-6">

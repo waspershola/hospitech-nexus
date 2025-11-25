@@ -6,6 +6,7 @@ import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { formatPlatformRole } from '@/lib/roleFormatter';
 import { ManagerPinSection } from '@/components/settings/ManagerPinSection';
+import { AutoLaunchSettings } from '@/components/offline/AutoLaunchSettings';
 
 export default function Settings() {
   const { user, role, tenantId, tenantName, platformRole } = useAuth();
@@ -234,6 +235,9 @@ export default function Settings() {
           </p>
         </div>
       </Card>
+
+      {/* Desktop App Settings (Electron only) */}
+      <AutoLaunchSettings />
     </div>
   );
 }
