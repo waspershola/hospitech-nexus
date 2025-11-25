@@ -44,5 +44,6 @@ export function useFolioById(folioId: string | null) {
       return data;
     },
     enabled: !!folioId && !!tenantId,
+    staleTime: 30 * 1000, // Cache for 30 seconds
   });
 }

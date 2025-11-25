@@ -83,5 +83,6 @@ export function useStayFolio(folioId: string | null) {
       };
     },
     enabled: !!folioId && !!tenantId,
+    staleTime: 30 * 1000, // Cache for 30 seconds
   });
 }

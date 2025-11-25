@@ -109,5 +109,6 @@ export function useFolioLedger(folioId: string | null) {
       return ledgerEntries;
     },
     enabled: !!folioId && !!tenantId,
+    staleTime: 30 * 1000, // Cache for 30 seconds
   });
 }

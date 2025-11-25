@@ -40,6 +40,7 @@ import { BookingPaymentManager } from '@/modules/bookings/components/BookingPaym
 import { ManagerApprovalModal } from '@/modules/payments/ManagerApprovalModal';
 import { toast } from '@/hooks/use-toast';
 import { Switch } from '@/components/ui/switch';
+import { Skeleton } from '@/components/ui/skeleton';
 import { 
   Loader2, User, CreditCard, Calendar, AlertCircle, Clock, Building2, AlertTriangle, 
   Wallet, Zap, Coffee, BellOff, UserPlus, LogIn, LogOut, Wrench, Sparkles, FileText, Receipt, Edit, Printer, MessageSquare, Users, MoveRight
@@ -81,7 +82,7 @@ export function RoomActionDrawer({ roomId, contextDate, open, onClose, onOpenAss
   const [pendingCheckoutData, setPendingCheckoutData] = useState<{ balance: number } | null>(null);
   const [showEarlyCheckInApproval, setShowEarlyCheckInApproval] = useState(false);
 
-  const { data: room, isLoading } = useQuery({
+  const { data: room, isLoading, isError } = useQuery({
     queryKey: ['room-detail', roomId, contextDate ? format(contextDate, 'yyyy-MM-dd') : 'today'],
     queryFn: async () => {
       if (!roomId || !tenantId) return null;
@@ -160,6 +161,7 @@ export function RoomActionDrawer({ roomId, contextDate, open, onClose, onOpenAss
       return data;
     },
     enabled: !!roomId && !!tenantId,
+    staleTime: 30 * 1000, // FOLIO-PREFETCH-V1: Cache for 30 seconds
   });
 
   // Phase 2: Debounced realtime subscription for room changes
@@ -843,11 +845,40 @@ export function RoomActionDrawer({ roomId, contextDate, open, onClose, onOpenAss
       <Sheet open={open} onOpenChange={onClose}>
         <SheetContent className="w-full sm:max-w-lg overflow-y-auto">
           {isLoading ? (
-            <div className="flex flex-col items-center justify-center h-full gap-2">
-              <Loader2 className="w-8 h-8 animate-spin text-primary" />
-              <p className="text-sm text-muted-foreground">Loading...</p>
+            // FOLIO-PREFETCH-V1: Skeleton loading states
+            <div className="space-y-4 p-6">
+              <div className="flex items-center gap-3">
+                <Skeleton className="h-10 w-10 rounded-full" />
+                <div className="space-y-2 flex-1">
+                  <Skeleton className="h-5 w-3/4" />
+                  <Skeleton className="h-4 w-1/2" />
+                </div>
+              </div>
+              
+              <Separator />
+              
+              <div className="space-y-3">
+                <Skeleton className="h-24 w-full" /> {/* Guest Info Card */}
+                <Skeleton className="h-20 w-full" /> {/* Stay Details */}
+                <Skeleton className="h-16 w-full" /> {/* Folio Summary */}
+              </div>
+              
+              <div className="flex gap-2 mt-4">
+                <Skeleton className="h-10 flex-1" />
+                <Skeleton className="h-10 flex-1" />
+              </div>
             </div>
-          ) : room ? (
+          ) : isError ? (
+            <div className="flex flex-col items-center justify-center h-full gap-2">
+              <AlertCircle className="w-8 h-8 text-destructive" />
+              <p className="text-sm text-muted-foreground">Error loading room details</p>
+            </div>
+          ) : !room ? (
+            <div className="flex flex-col items-center justify-center h-full gap-2">
+              <AlertCircle className="w-8 h-8 text-muted-foreground" />
+              <p className="text-sm text-muted-foreground">Room not found</p>
+            </div>
+          ) : (
             <>
               {/* Date Context Badge */}
               {contextDate && format(contextDate, 'yyyy-MM-dd') !== format(new Date(), 'yyyy-MM-dd') && (
@@ -1338,10 +1369,6 @@ export function RoomActionDrawer({ roomId, contextDate, open, onClose, onOpenAss
                 </TabsContent>
               </Tabs>
             </>
-          ) : (
-            <div className="flex items-center justify-center h-full">
-              <p className="text-muted-foreground">Room not found</p>
-            </div>
           )}
         </SheetContent>
       </Sheet>

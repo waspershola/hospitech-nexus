@@ -19,10 +19,16 @@ import { QRRequestNotificationWidget } from '@/components/frontdesk/QRRequestNot
 import { useOverstayRooms } from '@/hooks/useOverstayRooms';
 import { useRoomActions } from '@/modules/frontdesk/hooks/useRoomActions';
 import { useRoomRealtime, useBookingRealtime, usePaymentRealtime } from '@/hooks/useRoomRealtime';
+import { useQueryClient } from '@tanstack/react-query';
+import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/contexts/AuthContext';
+import { format } from 'date-fns';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Calendar, LayoutGrid } from 'lucide-react';
 
 export default function FrontDesk() {
+  const { tenantId } = useAuth();
+  const queryClient = useQueryClient();
   const [selectedRoomId, setSelectedRoomId] = useState<string | null>(null);
   const [contextDate, setContextDate] = useState<Date | null>(null);
   const [statusFilter, setStatusFilter] = useState<string | null>(null);
@@ -125,7 +131,39 @@ export default function FrontDesk() {
               <div className="px-3 sm:px-4 lg:px-6 pt-2 pb-20 lg:pb-6">
                 <RoomStatusOverview 
                   statusFilter={statusFilter}
-                  onRoomClick={(roomId) => {
+                  onRoomClick={async (roomId) => {
+                    // FOLIO-PREFETCH-V1: Prefetch room data before opening drawer
+                    if (tenantId) {
+                      queryClient.prefetchQuery({
+                        queryKey: ['room-detail', roomId, 'today'],
+                        queryFn: async () => {
+                          const { data } = await supabase
+                            .from('rooms')
+                            .select(`
+                              *,
+                              category:room_categories(name, short_code, base_rate),
+                              bookings!bookings_room_id_fkey(
+                                id,
+                                check_in,
+                                check_out,
+                                status,
+                                total_amount,
+                                guest_id,
+                                room_id,
+                                organization_id,
+                                metadata,
+                                guest:guests(id, name, email, phone),
+                                organization:organizations(id, name, credit_limit, allow_negative_balance)
+                              )
+                            `)
+                            .eq('id', roomId)
+                            .eq('tenant_id', tenantId)
+                            .maybeSingle();
+                          return data;
+                        },
+                        staleTime: 30 * 1000,
+                      });
+                    }
                     setSelectedRoomId(roomId);
                     setContextDate(null);
                   }}
@@ -142,7 +180,39 @@ export default function FrontDesk() {
           <TabsContent value="date" className="flex-1 flex flex-col m-0 overflow-hidden data-[state=inactive]:absolute data-[state=inactive]:invisible data-[state=inactive]:pointer-events-none">
             <ScrollArea className="flex-1">
               <div className="px-3 sm:px-4 lg:px-6 pt-3 sm:pt-4 pb-20 lg:pb-6">
-                <AvailabilityCalendar onRoomClick={(roomId, date) => {
+                <AvailabilityCalendar onRoomClick={async (roomId, date) => {
+                  // FOLIO-PREFETCH-V1: Prefetch room data for date view
+                  if (tenantId && date) {
+                    queryClient.prefetchQuery({
+                      queryKey: ['room-detail', roomId, format(date, 'yyyy-MM-dd')],
+                      queryFn: async () => {
+                        const { data } = await supabase
+                          .from('rooms')
+                          .select(`
+                            *,
+                            category:room_categories(name, short_code, base_rate),
+                            bookings!bookings_room_id_fkey(
+                              id,
+                              check_in,
+                              check_out,
+                              status,
+                              total_amount,
+                              guest_id,
+                              room_id,
+                              organization_id,
+                              metadata,
+                              guest:guests(id, name, email, phone),
+                              organization:organizations(id, name, credit_limit, allow_negative_balance)
+                            )
+                          `)
+                          .eq('id', roomId)
+                          .eq('tenant_id', tenantId)
+                          .maybeSingle();
+                        return data;
+                      },
+                      staleTime: 30 * 1000,
+                    });
+                  }
                   setSelectedRoomId(roomId);
                   setContextDate(date);
                 }} />
