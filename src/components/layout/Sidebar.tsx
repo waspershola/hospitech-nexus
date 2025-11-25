@@ -155,6 +155,7 @@ export function AppSidebar() {
                   // Parent item with children (collapsible group)
                   if (item.children && item.children.length > 0) {
                     const isOpen = openGroups[item.id] ?? true;
+                    const isContainer = item.path.startsWith('#');
                     
                     return (
                       <Collapsible
@@ -216,7 +217,11 @@ export function AppSidebar() {
                     );
                   }
                   
-                  // Regular nav item (no children)
+                  // Regular nav item (no children) - Skip container paths that start with #
+                  if (item.path.startsWith('#')) {
+                    return null;
+                  }
+                  
                   return (
                     <SidebarMenuItem key={item.id}>
                       <SidebarMenuButton asChild tooltip={item.name}>
