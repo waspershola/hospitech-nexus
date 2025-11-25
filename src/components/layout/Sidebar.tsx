@@ -67,7 +67,7 @@ export function AppSidebar() {
     const filtered = filterItems(navItems || []);
     
     // Auto-expand groups that have matching children when searching
-    if (searchQuery.trim()) {
+    if (searchQuery.trim() && filtered.length > 0) {
       const newOpenGroups: Record<string, boolean> = {};
       filtered.forEach(item => {
         if (item.children && item.children.length > 0) {
@@ -119,9 +119,9 @@ export function AppSidebar() {
         </div>
       </SidebarHeader>
 
-      {/* Search Input */}
+      {/* Search Input - Only visible when sidebar is open */}
       {open && (
-        <div className="px-2 pt-2">
+        <div className="pt-2">
           <SidebarSearch 
             value={searchQuery} 
             onChange={setSearchQuery}
@@ -195,6 +195,11 @@ export function AppSidebar() {
                                             {child.path === '/dashboard/department-requests' && notificationCount > 0 && (
                                               <span className="ml-2 flex h-5 min-w-[20px] items-center justify-center rounded-full bg-red-500 px-1.5 text-xs font-medium text-white">
                                                 {notificationCount > 99 ? '99+' : notificationCount}
+                                              </span>
+                                            )}
+                                            {child.path === '/dashboard/qr-billing-tasks' && billingTasksCount > 0 && (
+                                              <span className="ml-2 flex h-5 min-w-[20px] items-center justify-center rounded-full bg-blue-500 px-1.5 text-xs font-medium text-white">
+                                                {billingTasksCount > 99 ? '99+' : billingTasksCount}
                                               </span>
                                             )}
                                           </span>
