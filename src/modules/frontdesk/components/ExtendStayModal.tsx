@@ -17,6 +17,13 @@ interface ExtendStayModalProps {
   roomNumber: string;
 }
 
+// Helper to format date for HTML date input (requires yyyy-MM-dd format)
+const formatDateForInput = (dateStr: string): string => {
+  if (!dateStr) return '';
+  // Handle both ISO timestamps "2025-11-25T00:00:00+00:00" and date-only "2025-11-25"
+  return dateStr.split('T')[0];
+};
+
 export function ExtendStayModal({ 
   open, 
   onClose, 
@@ -26,7 +33,7 @@ export function ExtendStayModal({
 }: ExtendStayModalProps) {
   const queryClient = useQueryClient();
   const { tenantId } = useAuth();
-  const [newCheckOut, setNewCheckOut] = useState(currentCheckOut);
+  const [newCheckOut, setNewCheckOut] = useState(formatDateForInput(currentCheckOut));
 
   const extendMutation = useMutation({
     mutationFn: async () => {
@@ -127,7 +134,7 @@ export function ExtendStayModal({
             <Input
               id="currentCheckOut"
               type="date"
-              value={currentCheckOut}
+              value={formatDateForInput(currentCheckOut)}
               disabled
             />
           </div>
