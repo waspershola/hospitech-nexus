@@ -2,8 +2,7 @@ import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
-import { TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { CheckSquare, Search, LayoutGrid, Calendar } from 'lucide-react';
+import { CheckSquare, Search } from 'lucide-react';
 import { RoomGrid } from './RoomGrid';
 import { FilterBar } from './FilterBar';
 import { BulkRoomActions } from './BulkRoomActions';
@@ -16,11 +15,9 @@ interface RoomStatusOverviewProps {
   statusFilter: string | null;
   onRoomClick: (roomId: string) => void;
   globalSearchQuery?: string;
-  viewMode?: 'status' | 'date';
-  onViewModeChange?: (mode: 'status' | 'date') => void;
 }
 
-export function RoomStatusOverview({ statusFilter, onRoomClick, globalSearchQuery = '', viewMode = 'status', onViewModeChange }: RoomStatusOverviewProps) {
+export function RoomStatusOverview({ statusFilter, onRoomClick, globalSearchQuery = '' }: RoomStatusOverviewProps) {
   const { tenantId } = useAuth();
   const queryClient = useQueryClient();
   const [localSearchQuery, setLocalSearchQuery] = useState('');
@@ -94,28 +91,8 @@ export function RoomStatusOverview({ statusFilter, onRoomClick, globalSearchQuer
 
   return (
     <div className="space-y-3">
-      {/* Tabs + Filters Row */}
-      <div className="flex flex-wrap items-center gap-2">
-        <TabsList className="grid grid-cols-2 w-fit shrink-0">
-          <TabsTrigger 
-            value="status" 
-            className="gap-2 text-xs px-3"
-            onClick={() => onViewModeChange?.('status')}
-          >
-            <LayoutGrid className="h-3 w-3" />
-            Room Status
-          </TabsTrigger>
-          <TabsTrigger 
-            value="date" 
-            className="gap-2 text-xs px-3"
-            onClick={() => onViewModeChange?.('date')}
-          >
-            <Calendar className="h-3 w-3" />
-            By Date
-          </TabsTrigger>
-        </TabsList>
-
-        <FilterBar
+      {/* Filters Row */}
+      <FilterBar
         statusFilter={statusFilter}
         categoryFilter={categoryFilter}
         floorFilter={floorFilter}
@@ -123,16 +100,15 @@ export function RoomStatusOverview({ statusFilter, onRoomClick, globalSearchQuer
         categories={categories}
         floors={floors}
         organizations={organizations}
-            onStatusChange={(value) => {
-              // Filter bar can change status, but will be overridden by parent
-              // This allows clearing the filter from the dropdown
-            }}
-            onCategoryChange={setCategoryFilter}
-            onFloorChange={setFloorFilter}
-            onOrganizationChange={setOrganizationFilter}
+        onStatusChange={(value) => {
+          // Filter bar can change status, but will be overridden by parent
+          // This allows clearing the filter from the dropdown
+        }}
+        onCategoryChange={setCategoryFilter}
+        onFloorChange={setFloorFilter}
+        onOrganizationChange={setOrganizationFilter}
         onClearAll={handleClearFilters}
       />
-      </div>
 
       {/* Search + Select Row */}
       <div className="flex items-center gap-2">
