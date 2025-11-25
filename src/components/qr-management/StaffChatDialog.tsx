@@ -108,24 +108,55 @@ export default function StaffChatDialog({
                   }`}
                 >
                   <div
-                    className={`max-w-[70%] rounded-lg p-3 ${
+                    className={`max-w-[70%] rounded-lg p-3 space-y-2 ${
                       msg.direction === 'outbound'
                         ? 'bg-primary text-primary-foreground'
                         : 'bg-muted'
                     }`}
                   >
-                    <div className="text-sm font-medium mb-1">
-                      {msg.sender_name}
+                    <div className="flex items-center gap-2">
+                      <div className="text-sm font-medium">
+                        {msg.sender_name}
+                      </div>
+                      {msg.intent && (
+                        <Badge variant="secondary" className="text-xs">
+                          {msg.intent.replace('_', ' ')}
+                        </Badge>
+                      )}
                     </div>
-                    <div className="text-sm whitespace-pre-wrap">{msg.message}</div>
-                    <div
-                      className={`text-xs mt-1 ${
-                        msg.direction === 'outbound'
-                          ? 'text-primary-foreground/70'
-                          : 'text-muted-foreground'
-                      }`}
-                    >
-                      {format(new Date(msg.created_at), 'h:mm a')}
+                    
+                    {msg.original_text && msg.cleaned_text && msg.original_text !== msg.cleaned_text ? (
+                      <div className="space-y-1">
+                        <div className="text-sm whitespace-pre-wrap">{msg.cleaned_text}</div>
+                        <details className="text-xs opacity-70">
+                          <summary className="cursor-pointer">Original</summary>
+                          <div className="mt-1">{msg.original_text}</div>
+                        </details>
+                      </div>
+                    ) : (
+                      <div className="text-sm whitespace-pre-wrap">{msg.message}</div>
+                    )}
+                    
+                    <div className="flex items-center gap-2">
+                      <div
+                        className={`text-xs ${
+                          msg.direction === 'outbound'
+                            ? 'text-primary-foreground/70'
+                            : 'text-muted-foreground'
+                        }`}
+                      >
+                        {format(new Date(msg.created_at), 'h:mm a')}
+                      </div>
+                      {msg.detected_language && msg.detected_language !== 'en' && (
+                        <Badge variant="outline" className="text-xs">
+                          {msg.detected_language.toUpperCase()}
+                        </Badge>
+                      )}
+                      {msg.confidence && msg.confidence < 0.8 && (
+                        <span className="text-xs opacity-70">
+                          {(msg.confidence * 100).toFixed(0)}%
+                        </span>
+                      )}
                     </div>
                   </div>
                 </div>

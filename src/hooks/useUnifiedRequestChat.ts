@@ -31,6 +31,15 @@ interface ChatMessage {
   sender_name: string;
   sender_role?: string;
   created_at: string;
+  // AI fields
+  original_text?: string;
+  cleaned_text?: string;
+  translated_text?: string;
+  detected_language?: string;
+  intent?: string;
+  confidence?: number;
+  ai_auto_response?: boolean;
+  metadata?: any;
 }
 
 interface UseUnifiedRequestChatOptions {
@@ -62,7 +71,7 @@ async function fetchMessages(
 
   const { data, error } = await supabase
     .from('guest_communications')
-    .select('id, message, direction, sent_by, created_at, metadata')
+    .select('id, message, direction, sent_by, created_at, metadata, original_text, cleaned_text, translated_text, detected_language, intent, confidence, ai_auto_response')
     .eq('metadata->>request_id', requestId)
     .eq('tenant_id', tenantId)
     .order('created_at', { ascending: true });
@@ -120,6 +129,15 @@ async function fetchMessages(
           ? staff.role
           : undefined,
       created_at: msg.created_at,
+      // AI fields
+      original_text: msg.original_text,
+      cleaned_text: msg.cleaned_text,
+      translated_text: msg.translated_text,
+      detected_language: msg.detected_language,
+      intent: msg.intent,
+      confidence: msg.confidence,
+      ai_auto_response: msg.ai_auto_response,
+      metadata: msg.metadata,
     };
   });
 
@@ -186,10 +204,66 @@ export function useUnifiedRequestChat(
         metadata: { request_id: requestId },
       };
 
+      // Process guest messages through AI
       if (userType === 'guest') {
+        try {
+          const aiResponse = await supabase.functions.invoke('ai-message', {
+            body: {
+              action: 'process_guest_message',
+              message: message.trim(),
+              tenant_id: requestData.tenant_id,
+              context: 'guest_chat',
+              request_id: requestId,
+            }
+          });
+
+          if (aiResponse.data?.success) {
+            const aiData = aiResponse.data.data;
+            messageData.original_text = message.trim();
+            messageData.cleaned_text = aiData.cleaned_text;
+            messageData.translated_text = aiData.translated_to_english;
+            messageData.detected_language = aiData.detected_language;
+            messageData.intent = aiData.intent;
+            messageData.confidence = aiData.confidence;
+            messageData.ai_auto_response = !!aiData.auto_response;
+            
+            // If auto-response, insert it after
+            if (aiData.auto_response) {
+              messageData.metadata.auto_response_category = aiData.auto_response_category;
+            }
+          }
+        } catch (aiError) {
+          console.error('[UNIFIED-CHAT-V1] AI processing failed:', aiError);
+          // Continue without AI metadata
+        }
+        
         messageData.metadata.guest_name = guestName;
         messageData.sent_by = null;
       } else {
+        // Process staff replies through AI
+        try {
+          const guestLang = 'en'; // TODO: Get from request metadata
+          const aiResponse = await supabase.functions.invoke('ai-message', {
+            body: {
+              action: 'process_staff_reply',
+              message: message.trim(),
+              tenant_id: requestData.tenant_id,
+              guest_language: guestLang,
+            }
+          });
+
+          if (aiResponse.data?.success) {
+            const aiData = aiResponse.data.data;
+            messageData.original_text = message.trim();
+            messageData.cleaned_text = aiData.enhanced_text;
+            messageData.translated_text = aiData.translated_text;
+            messageData.message = aiData.translated_text; // Use translated version
+          }
+        } catch (aiError) {
+          console.error('[UNIFIED-CHAT-V1] AI enhancement failed:', aiError);
+          // Continue with original message
+        }
+        
         messageData.sent_by = userId;
       }
 
@@ -199,6 +273,38 @@ export function useUnifiedRequestChat(
         .insert(messageData)
         .select()
         .single();
+
+      // If guest message had auto-response, insert it now
+      if (userType === 'guest' && messageData.ai_auto_response && messageData.metadata.auto_response_category) {
+        try {
+          const aiResponse = await supabase.functions.invoke('ai-message', {
+            body: {
+              action: 'process_guest_message',
+              message: message.trim(),
+              tenant_id: requestData.tenant_id,
+            }
+          });
+          
+          if (aiResponse.data?.success && aiResponse.data.data.auto_response) {
+            await supabase.from('guest_communications').insert({
+              tenant_id: requestData.tenant_id,
+              guest_id: requestData.guest_id,
+              type: 'qr_request',
+              message: aiResponse.data.data.auto_response,
+              direction: 'outbound',
+              sent_by: null,
+              ai_auto_response: true,
+              metadata: {
+                request_id: requestId,
+                ai_generated: true,
+                category: aiResponse.data.data.auto_response_category,
+              },
+            });
+          }
+        } catch (autoError) {
+          console.error('[UNIFIED-CHAT-V1] Auto-response failed:', autoError);
+        }
+      }
 
       if (error) {
         console.error('[UNIFIED-CHAT-V1] SEND-ERROR:', {
