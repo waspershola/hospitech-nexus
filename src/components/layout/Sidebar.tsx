@@ -29,6 +29,7 @@ export function AppSidebar() {
   const { tenantName } = useAuth();
   const { open, isMobile, setOpenMobile } = useSidebar();
   const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({});
+  const [openSubGroups, setOpenSubGroups] = useState<Record<string, boolean>>({});
   const [searchQuery, setSearchQuery] = useState('');
   const location = useLocation();
   const notificationCount = useRequestNotificationCount();
@@ -207,15 +208,31 @@ export function AppSidebar() {
                               {item.children.map((child) => {
                                 const ChildIcon = Icons[child.icon as keyof typeof Icons] as any;
                                 const hasGrandChildren = child.children && child.children.length > 0;
+                                const isSubGroupOpen = openSubGroups[child.id] ?? false;
+                                
                                 return (
                                   <SidebarMenuSubItem key={child.id}>
-                                    <SidebarMenuSubButton asChild>
-                                      {hasGrandChildren ? (
-                                        <div className="flex flex-col gap-1">
-                                          <div className="flex items-center gap-3 px-3 py-2 rounded-xl text-sidebar-foreground/90">
+                                    {hasGrandChildren ? (
+                                      <Collapsible
+                                        open={isSubGroupOpen}
+                                        onOpenChange={(isOpen) => 
+                                          setOpenSubGroups(prev => ({ ...prev, [child.id]: isOpen }))
+                                        }
+                                      >
+                                        <CollapsibleTrigger asChild>
+                                          <div className="flex items-center gap-3 px-3 py-2 rounded-xl text-sidebar-foreground/90 hover:bg-sidebar-accent/20 hover:text-sidebar-primary cursor-pointer transition-colors">
                                             {ChildIcon && <ChildIcon className="h-4 w-4 shrink-0" />}
-                                            {open && <span className="font-medium text-sm">{child.name}</span>}
+                                            {open && <span className="font-medium text-sm flex-1">{child.name}</span>}
+                                            {open && (
+                                              <ChevronDown 
+                                                className={`h-4 w-4 transition-transform duration-200 ${
+                                                  isSubGroupOpen ? 'rotate-180' : ''
+                                                }`} 
+                                              />
+                                            )}
                                           </div>
+                                        </CollapsibleTrigger>
+                                        <CollapsibleContent>
                                           <div className="flex flex-col gap-1 pl-7">
                                             {child.children!.map((grand) => {
                                               const GrandIcon = Icons[grand.icon as keyof typeof Icons] as any;
@@ -238,8 +255,10 @@ export function AppSidebar() {
                                               );
                                             })}
                                           </div>
-                                        </div>
-                                      ) : (
+                                        </CollapsibleContent>
+                                      </Collapsible>
+                                    ) : (
+                                      <SidebarMenuSubButton asChild>
                                         <NavLink
                                           to={child.path}
                                           onClick={handleNavClick}
@@ -268,8 +287,8 @@ export function AppSidebar() {
                                             </span>
                                           )}
                                         </NavLink>
-                                      )}
-                                    </SidebarMenuSubButton>
+                                      </SidebarMenuSubButton>
+                                    )}
                                   </SidebarMenuSubItem>
                                 );
                               })}
