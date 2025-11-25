@@ -149,9 +149,9 @@ export default function BillingCenter() {
           Access Billing Center from a specific booking or folio.<br />
           Go to Finance Center → Folios to view all folios.
         </p>
-        <Button onClick={() => navigate('/dashboard/finance-center')}>
+        <Button onClick={() => navigate('/dashboard/front-desk')}>
           <ArrowLeft className="w-4 h-4 mr-2" />
-          Go to Finance Center
+          Back to Front Desk
         </Button>
       </div>
     );
@@ -161,9 +161,9 @@ export default function BillingCenter() {
     return (
       <div className="flex flex-col items-center justify-center min-h-[400px] gap-4">
         <div className="text-muted-foreground">Folio not found</div>
-        <Button onClick={() => navigate('/dashboard/finance-center')}>
+        <Button onClick={() => navigate('/dashboard/front-desk')}>
           <ArrowLeft className="w-4 h-4 mr-2" />
-          Back to Finance Center
+          Back to Front Desk
         </Button>
       </div>
     );
@@ -178,7 +178,7 @@ export default function BillingCenter() {
       {/* Header with Folio Switcher */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <Button variant="ghost" size="sm" onClick={() => navigate('/dashboard/finance-center')}>
+          <Button variant="ghost" size="sm" onClick={() => navigate('/dashboard/front-desk')}>
             <ArrowLeft className="w-4 h-4" />
           </Button>
           <div>
