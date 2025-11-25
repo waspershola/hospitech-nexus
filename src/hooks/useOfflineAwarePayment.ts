@@ -7,6 +7,8 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { useAuth } from '@/contexts/AuthContext';
 import { offlineAwareEdgeFunction } from '@/lib/offline/offlineAwareClient';
+import { offlinePaymentManager } from '@/lib/offline/offlinePaymentManager';
+import { isElectronContext } from '@/lib/offline/offlineTypes';
 
 interface RecordPaymentParams {
   bookingId: string;
@@ -32,7 +34,38 @@ export function useOfflineAwarePayment() {
 
   return useMutation({
     mutationFn: async (params: RecordPaymentParams) => {
-      // Use offline-aware wrapper
+      // Check if offline and in Electron context
+      const offline = !navigator.onLine && isElectronContext();
+      
+      if (offline) {
+        // Record payment locally
+        const localPayment = await offlinePaymentManager.recordPaymentOffline({
+          booking_id: params.bookingId,
+          guest_id: params.guestId,
+          guest_name: params.guestName,
+          amount: params.amount,
+          payment_method: params.paymentMethod,
+          provider_id: params.providerId,
+          provider_name: params.providerName,
+          location_id: params.locationId,
+          location_name: params.locationName,
+          overpayment_action: params.overpaymentAction,
+          metadata: params.metadata,
+        });
+
+        console.log('[OFFLINE-PAYMENT-V1] Recorded payment locally:', localPayment.id);
+
+        return { 
+          success: true, 
+          queued: true, 
+          offline: true,
+          message: 'Payment recorded locally, will sync when online',
+          payment_id: localPayment.id,
+          transaction_ref: localPayment.transaction_ref,
+        };
+      }
+
+      // Use offline-aware wrapper (handles online queueing)
       const { data, error, queued } = await offlineAwareEdgeFunction('create-payment', {
         tenantId,
         staffId: user?.id,
@@ -54,7 +87,12 @@ export function useOfflineAwarePayment() {
       queryClient.invalidateQueries({ queryKey: ['qr-request'] });
       queryClient.invalidateQueries({ queryKey: ['staff-requests'] });
       
-      if (data.queued) {
+      if (data.offline) {
+        toast.success('Payment recorded locally (offline mode)', {
+          description: 'Payment will sync automatically when connection is restored',
+          duration: 5000,
+        });
+      } else if (data.queued) {
         toast.info('Payment queued for sync when online', {
           description: 'Payment will be processed automatically when connection is restored'
         });

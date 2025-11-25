@@ -66,6 +66,7 @@ export interface CachedFolio {
   total_charges: number;
   total_payments: number;
   balance: number;
+  created_at: string;
   cached_at: number;
 }
 
@@ -81,6 +82,7 @@ export interface CachedFolioTransaction {
   department: string | null;
   created_by: string | null;
   created_at: string;
+  metadata?: Record<string, any>;
   cached_at: number;
 }
 
@@ -96,7 +98,9 @@ export interface CachedPayment {
   status: 'pending' | 'completed' | 'failed';
   stay_folio_id: string | null;
   transaction_ref: string | null;
+  recorded_by: string | null;
   created_at: string;
+  metadata?: Record<string, any>;
   cached_at: number;
 }
 
