@@ -1393,8 +1393,11 @@ export function QRRequestDrawer({
                           <h3 className="font-semibold text-lg">Activity Log</h3>
                         </div>
                         
-                        {/* PHASE 1: Payment Information */}
-                        <RequestPaymentInfo request={displayRequest} />
+                        {/* AUDIT-TRAIL-V2: Activity Timeline (Primary) */}
+                        <ActivityTimeline 
+                          requestId={displayRequest?.id}
+                          tenantId={tenantId}
+                        />
                         
                         {/* PHASE 1: Request History Stats */}
                         {historyStats && historyStats.totalRequests > 1 && (
@@ -1437,14 +1440,6 @@ export function QRRequestDrawer({
                             )}
                           </div>
                         )}
-                        
-                        <ActivityTimeline 
-                          requestId={displayRequest?.id}
-                          tenantId={tenantId}
-                        />
-                        
-                        {/* Legacy activity timeline */}
-                        <RequestActivityTimeline requestId={displayRequest?.id} />
                       </div>
                     </ScrollArea>
                   </TabsContent>
