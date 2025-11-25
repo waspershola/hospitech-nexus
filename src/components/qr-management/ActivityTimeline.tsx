@@ -85,6 +85,12 @@ export function ActivityTimeline({ requestId, tenantId }: ActivityTimelineProps)
           const Icon = ACTION_ICONS[activity.action_type] || AlertCircle;
           const label = ACTION_LABELS[activity.action_type] || activity.action_type;
           
+          // PARAMETER-FIX-V1: Extract values from metadata JSONB
+          const amount = activity.metadata?.amount ? parseFloat(activity.metadata.amount) : activity.amount;
+          const paymentMethod = activity.metadata?.payment_method || activity.payment_method;
+          const providerId = activity.metadata?.payment_provider_id || activity.payment_provider_id;
+          const locationId = activity.metadata?.payment_location_id || activity.payment_location_id;
+          
           return (
             <div key={activity.id} className="flex gap-3">
               <div className="flex-shrink-0 mt-0.5">
@@ -104,15 +110,15 @@ export function ActivityTimeline({ requestId, tenantId }: ActivityTimelineProps)
                     {formatDistanceToNow(new Date(activity.created_at), { addSuffix: true })}
                   </p>
                 )}
-                {activity.amount && (
+                {amount && (
                   <p className="text-sm font-semibold text-primary mt-1">
-                    ₦{activity.amount.toLocaleString()}
+                    ₦{amount.toLocaleString()}
                   </p>
                 )}
-                {activity.payment_method && (
+                {paymentMethod && (
                   <div className="flex flex-wrap gap-1 mt-1">
                     <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-primary/10 text-primary">
-                      {activity.payment_method}
+                      {paymentMethod}
                     </span>
                     {activity.provider && (
                       <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-secondary text-secondary-foreground">
