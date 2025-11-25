@@ -39,6 +39,7 @@ export function QRRequestActions({ request, onStatusUpdate, onClose }: QRRequest
   const [showPaymentForm, setShowPaymentForm] = useState(false);
   const [showComplimentaryApproval, setShowComplimentaryApproval] = useState(false);
   const [showTransferDialog, setShowTransferDialog] = useState(false);
+  const [isProcessingPayment, setIsProcessingPayment] = useState(false);
 
   const isAssignedToMe = request.assigned_to === user?.id;
   const guestPaymentPreference = request.metadata?.payment_choice || 'pay_now';
@@ -122,14 +123,19 @@ export function QRRequestActions({ request, onStatusUpdate, onClose }: QRRequest
 
     setIsUpdating(true);
     try {
-      // PHASE 2: Mark request as completed with complimentary flag AND update billing status
+      console.log('[QRRequestActions] PAYMENT-FIX-V2: Processing complimentary with approval');
+      
+      const amount = expectedAmount;
+      
+      // Update request with complimentary status AND billing fields
       const { error: requestError } = await supabase
         .from('requests')
         .update({
           status: 'completed',
-          billing_status: 'paid_direct', // PHASE 2: Update billing status
-          paid_at: new Date().toISOString(), // PHASE 2: Record payment timestamp
-          billing_processed_by: user?.id, // PHASE 2: Record who approved
+          billing_status: 'paid_direct',
+          paid_at: new Date().toISOString(),
+          billing_processed_by: user?.id,
+          billed_amount: amount,
           metadata: {
             ...request.metadata,
             complimentary: true,
@@ -143,15 +149,23 @@ export function QRRequestActions({ request, onStatusUpdate, onClose }: QRRequest
         .eq('tenant_id', tenantId);
 
       if (requestError) throw requestError;
+      
+      console.log('[QRRequestActions] PAYMENT-FIX-V2: Complimentary status updated, forcing refetch...');
+      
+      // Force immediate refetch
+      await Promise.all([
+        queryClient.refetchQueries({ queryKey: ['staff-requests'], type: 'active' }),
+        queryClient.refetchQueries({ queryKey: ['qr-request-detail', request.id], type: 'active' }),
+      ]);
 
-      toast.success('Marked as complimentary (no charge)');
-      queryClient.invalidateQueries({ queryKey: ['staff-requests'] });
-      queryClient.invalidateQueries({ queryKey: ['qr-request-detail', request.id] });
+      toast.success('Marked as complimentary (no charge)', {
+        description: `₦${amount.toLocaleString()} - Billing status updated`,
+      });
       setShowComplimentaryApproval(false);
       onStatusUpdate?.();
       onClose?.();
     } catch (error: any) {
-      console.error('[QRRequestActions] Error marking complimentary:', error);
+      console.error('[QRRequestActions] Complimentary error:', error);
       toast.error(error.message || 'Failed to mark as complimentary');
     } finally {
       setIsUpdating(false);
@@ -328,15 +342,19 @@ export function QRRequestActions({ request, onStatusUpdate, onClose }: QRRequest
               {/* Collect Payment (all QR types) - PHASE 3: Show remaining amount if partial */}
               <Button
                 onClick={() => setShowPaymentForm(true)}
-                disabled={isUpdating}
+                disabled={isUpdating || isProcessingPayment}
                 className="w-full"
                 variant="outline"
               >
-                <DollarSign className="h-4 w-4 mr-2" />
-                {remainingBalance > 0 && billedAmount > 0 
-                  ? `Collect Remaining ₦${remainingBalance.toLocaleString()}` 
-                  : 'Collect Payment'
-                }
+                {isProcessingPayment ? (
+                  <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Processing...</>
+                ) : (
+                  <><DollarSign className="h-4 w-4 mr-2" />
+                  {remainingBalance > 0 && billedAmount > 0 
+                    ? `Collect Remaining ₦${remainingBalance.toLocaleString()}` 
+                    : 'Collect Payment'
+                  }</>
+                )}
               </Button>
 
               {/* Mark as Complimentary */}
@@ -399,40 +417,72 @@ export function QRRequestActions({ request, onStatusUpdate, onClose }: QRRequest
             requestId={request.id}
             expectedAmount={remainingBalance > 0 ? remainingBalance : expectedAmount} // PHASE 3: Pre-fill remaining amount
             onSuccess={async () => {
-              const amount = remainingBalance > 0 ? remainingBalance : expectedAmount;
-              const guestName = request.metadata?.guest_name || 'Guest';
-              
-              // PHASE 2: Update billing_status to paid_direct after successful payment
-              const { error: statusError } = await supabase
-                .from('requests')
-                .update({
-                  billing_status: 'paid_direct',
-                  paid_at: new Date().toISOString(),
-                  billing_processed_by: user?.id,
-                  billed_amount: billedAmount + amount, // PHASE 3: Accumulate payment
-                  updated_at: new Date().toISOString(),
-                })
-                .eq('id', request.id)
-                .eq('tenant_id', tenantId);
-              
-              if (statusError) {
-                console.error('[QRRequestActions] Failed to update billing status:', statusError);
+              setIsProcessingPayment(true);
+              try {
+                const amount = remainingBalance > 0 ? remainingBalance : expectedAmount;
+                const guestName = request.metadata?.guest_name || 'Guest';
+                
+                console.log('[QRRequestActions] PAYMENT-FIX-V2: Payment recorded, updating billing status...');
+                
+                // Get current billed_amount from database for accurate calculation
+                const { data: currentRequest } = await supabase
+                  .from('requests')
+                  .select('billed_amount')
+                  .eq('id', request.id)
+                  .single();
+                
+                const currentBilled = currentRequest?.billed_amount || 0;
+                const newBilledAmount = currentBilled + amount;
+                
+                // Step 1: Update billing_status in database
+                const { error: statusError } = await supabase
+                  .from('requests')
+                  .update({
+                    billing_status: 'paid_direct',
+                    paid_at: new Date().toISOString(),
+                    billing_processed_by: user?.id,
+                    billed_amount: newBilledAmount,
+                    updated_at: new Date().toISOString(),
+                  })
+                  .eq('id', request.id)
+                  .eq('tenant_id', tenantId);
+                
+                if (statusError) {
+                  console.error('[QRRequestActions] PAYMENT-FIX-V2: Failed to update billing status:', statusError);
+                  toast.error('Payment recorded but status update failed. Please refresh.');
+                  return;
+                }
+                
+                console.log('[QRRequestActions] PAYMENT-FIX-V2: Billing status updated, forcing refetch...');
+                
+                // Step 2: Force immediate refetch (don't just invalidate)
+                await Promise.all([
+                  queryClient.refetchQueries({ 
+                    queryKey: ['staff-requests'],
+                    type: 'active'
+                  }),
+                  queryClient.refetchQueries({ 
+                    queryKey: ['qr-request-detail', request.id],
+                    type: 'active'
+                  }),
+                ]);
+                
+                console.log('[QRRequestActions] PAYMENT-FIX-V2: Refetch complete');
+                
+                // Step 3: Update local request status
+                handleStatusChange('completed');
+                
+                // Step 4: Close form and notify
+                setShowPaymentForm(false);
+                onStatusUpdate?.();
+                
+                toast.success('Payment Collected Successfully', {
+                  description: `₦${amount.toLocaleString()} from ${guestName} - Status updated to Paid`,
+                  duration: 5000,
+                });
+              } finally {
+                setIsProcessingPayment(false);
               }
-              
-              setShowPaymentForm(false);
-              handleStatusChange('completed');
-              
-              // Invalidate queries to refresh UI
-              queryClient.invalidateQueries({ queryKey: ['staff-requests'] });
-              queryClient.invalidateQueries({ queryKey: ['qr-request-detail', request.id] });
-              onStatusUpdate?.();
-              
-              // Enhanced payment success notification
-              toast.success('Payment Collected Successfully', {
-                description: `₦${amount.toLocaleString()} received from ${guestName}`,
-                duration: 5000,
-                icon: <CheckCircle className="h-5 w-5 text-green-500" />
-              });
             }}
             onCancel={() => setShowPaymentForm(false)}
           />
