@@ -15,7 +15,7 @@ import * as React from 'npm:react@18.3.1';
 interface CheckoutReminderEmailProps {
   guestName: string;
   hotelName: string;
-  roomNumber: string;
+  roomType: string;
   checkoutDate: string;
   checkoutTime: string;
   hoursUntilCheckout: number;
@@ -28,7 +28,7 @@ interface CheckoutReminderEmailProps {
 export const CheckoutReminderEmail = ({
   guestName,
   hotelName,
-  roomNumber,
+  roomType,
   checkoutDate,
   checkoutTime,
   hoursUntilCheckout,
@@ -58,8 +58,8 @@ export const CheckoutReminderEmail = ({
             <Hr style={hr} />
             <table style={infoTable}>
               <tr>
-                <td style={infoLabel}>Room Number:</td>
-                <td style={infoValue}>{roomNumber}</td>
+                <td style={infoLabel}>Room Type:</td>
+                <td style={infoValue}>{roomType}</td>
               </tr>
               <tr>
                 <td style={infoLabel}>Checkout Date:</td>

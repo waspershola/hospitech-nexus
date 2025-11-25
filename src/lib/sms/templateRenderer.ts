@@ -1,7 +1,7 @@
 export interface TemplateContext {
   guestName: string;
   hotelName: string;
-  roomNumber?: string;
+  roomType?: string;
   checkInDate?: string;
   checkOutDate?: string;
   checkOutTime?: string;
@@ -23,15 +23,15 @@ export function renderSMSTemplate(
 
 // Default templates
 export const DEFAULT_TEMPLATES = {
-  booking_confirmed: `Hi {{guestName}}, your booking at {{hotelName}} is confirmed! Room: {{roomNumber}}, Check-in: {{checkInDate}}. Ref: {{bookingReference}}`,
+  booking_confirmed: `Hi {{guestName}}, your booking at {{hotelName}} is confirmed! Room Type: {{roomType}}, Check-in: {{checkInDate}}. Ref: {{bookingReference}}`,
   
-  checkin_notification: `Hi {{guestName}}, welcome to {{hotelName}}! You're checked into Room {{roomNumber}}. Enjoy your stay!`,
+  checkin_notification: `Hi {{guestName}}, welcome to {{hotelName}}! You're checked into a {{roomType}} room. Enjoy your stay!`,
   
-  checkin_reminder: `Hi {{guestName}}, reminder: Your check-in at {{hotelName}} is tomorrow ({{checkInDate}}). Room {{roomNumber}} will be ready. See you soon!`,
+  checkin_reminder: `Hi {{guestName}}, reminder: Your check-in at {{hotelName}} is tomorrow ({{checkInDate}}). Your {{roomType}} room will be ready. See you soon!`,
   
-  checkout_confirmation: `Thank you for staying at {{hotelName}}! We hope you enjoyed your stay in Room {{roomNumber}}. Safe travels!`,
+  checkout_confirmation: `Thank you for staying at {{hotelName}}! We hope you enjoyed your stay. Safe travels!`,
   
-  checkout_reminder: `Hi {{guestName}}, checkout from {{hotelName}} Room {{roomNumber}} is at {{checkOutTime}} today. Outstanding balance: {{currency}}{{balance}}. Safe travels!`,
+  checkout_reminder: `Hi {{guestName}}, checkout from {{hotelName}} is at {{checkOutTime}} today. Outstanding balance: {{currency}}{{balance}}. Safe travels!`,
   
   payment_received: `Payment received: {{currency}}{{amount}} via {{method}}. Ref: {{transactionRef}}. Thank you! - {{hotelName}}`,
   
