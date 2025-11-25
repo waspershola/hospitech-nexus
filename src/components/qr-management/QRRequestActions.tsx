@@ -123,7 +123,19 @@ export function QRRequestActions({ request, onStatusUpdate, onClose }: QRRequest
 
     setIsUpdating(true);
     try {
-      console.log('[QRRequestActions] PAYMENT-FIX-V2: Processing complimentary with approval');
+      console.log('[QRRequestActions] PAYMENT-FIX-V3: Processing complimentary with approval');
+      
+      // Get staff ID from user ID (FIX: billing_processed_by requires staff.id not user.id)
+      const { data: staffData } = await supabase
+        .from('staff')
+        .select('id')
+        .eq('user_id', user?.id)
+        .eq('tenant_id', tenantId)
+        .single();
+      
+      if (!staffData) {
+        throw new Error('Staff record not found');
+      }
       
       const amount = expectedAmount;
       
@@ -134,7 +146,7 @@ export function QRRequestActions({ request, onStatusUpdate, onClose }: QRRequest
           status: 'completed',
           billing_status: 'paid_direct',
           paid_at: new Date().toISOString(),
-          billing_processed_by: user?.id,
+          billing_processed_by: staffData.id, // FIX: Use staff.id not user.id
           billed_amount: amount,
           metadata: {
             ...request.metadata,
@@ -422,7 +434,19 @@ export function QRRequestActions({ request, onStatusUpdate, onClose }: QRRequest
                 const amount = remainingBalance > 0 ? remainingBalance : expectedAmount;
                 const guestName = request.metadata?.guest_name || 'Guest';
                 
-                console.log('[QRRequestActions] PAYMENT-FIX-V2: Payment recorded, updating billing status...');
+                console.log('[QRRequestActions] PAYMENT-FIX-V3: Payment recorded, updating billing status...');
+                
+                // Get staff ID from user ID (FIX: billing_processed_by requires staff.id not user.id)
+                const { data: staffData } = await supabase
+                  .from('staff')
+                  .select('id')
+                  .eq('user_id', user?.id)
+                  .eq('tenant_id', tenantId)
+                  .single();
+                
+                if (!staffData) {
+                  throw new Error('Staff record not found');
+                }
                 
                 // Get current billed_amount from database for accurate calculation
                 const { data: currentRequest } = await supabase
@@ -440,7 +464,7 @@ export function QRRequestActions({ request, onStatusUpdate, onClose }: QRRequest
                   .update({
                     billing_status: 'paid_direct',
                     paid_at: new Date().toISOString(),
-                    billing_processed_by: user?.id,
+                    billing_processed_by: staffData.id, // FIX: Use staff.id not user.id
                     billed_amount: newBilledAmount,
                     updated_at: new Date().toISOString(),
                   })
