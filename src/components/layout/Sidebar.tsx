@@ -1,12 +1,12 @@
 import { Hotel, ChevronDown } from 'lucide-react';
 import * as Icons from 'lucide-react';
-import { NavLink } from 'react-router-dom';
+import { NavLink, useLocation } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { useNavigation, NavigationItem } from '@/hooks/useNavigation';
 import { useRequestNotificationCount } from '@/hooks/useRequestNotificationCount';
 import { useQRBillingTasks } from '@/hooks/useQRBillingTasks';
 import { Skeleton } from '@/components/ui/skeleton';
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import {
   Sidebar,
   SidebarContent,
@@ -30,11 +30,30 @@ export function AppSidebar() {
   const { open, isMobile, setOpenMobile } = useSidebar();
   const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({});
   const [searchQuery, setSearchQuery] = useState('');
+  const location = useLocation();
   const notificationCount = useRequestNotificationCount();
   const { count: billingTasksCount } = useQRBillingTasks();
   
   // Use unified navigation hook for all users (platform and tenant)
   const { data: navItems, isLoading, error } = useNavigation();
+
+  // Auto-expand parent group containing active route on initial load
+  useEffect(() => {
+    if (!navItems || searchQuery) return;
+    
+    // Find parent group containing the active route
+    const activeParent = navItems.find(item => 
+      item.children?.some(child => 
+        location.pathname === child.path || 
+        location.pathname.startsWith(child.path + '/')
+      )
+    );
+    
+    if (activeParent) {
+      // Only expand the active parent, close all others (accordion mode)
+      setOpenGroups({ [activeParent.id]: true });
+    }
+  }, [navItems, location.pathname, searchQuery]);
 
   // Filter navigation items based on search query (fuzzy matching)
   const filteredNavItems = useMemo(() => {
@@ -154,14 +173,26 @@ export function AppSidebar() {
                   
                   // Parent item with children (collapsible group)
                   if (item.children && item.children.length > 0) {
-                    const isOpen = openGroups[item.id] ?? true;
+                    // Accordion mode: default closed unless explicitly opened or during search
+                    const isOpen = searchQuery ? (openGroups[item.id] ?? false) : (openGroups[item.id] ?? false);
                     const isContainer = item.path.startsWith('#');
+                    
+                    // Accordion mode: close all others when opening one
+                    const handleGroupToggle = (open: boolean) => {
+                      if (open) {
+                        // Close all other groups, open only this one
+                        setOpenGroups({ [item.id]: true });
+                      } else {
+                        // Close this group
+                        setOpenGroups(prev => ({ ...prev, [item.id]: false }));
+                      }
+                    };
                     
                     return (
                       <Collapsible
                         key={item.id}
                         open={isOpen}
-                        onOpenChange={(open) => setOpenGroups(prev => ({ ...prev, [item.id]: open }))}
+                        onOpenChange={searchQuery ? ((open) => setOpenGroups(prev => ({ ...prev, [item.id]: open }))) : handleGroupToggle}
                       >
                         <SidebarMenuItem>
                           <CollapsibleTrigger asChild>
