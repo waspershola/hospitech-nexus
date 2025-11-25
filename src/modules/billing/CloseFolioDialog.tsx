@@ -50,7 +50,8 @@ export function CloseFolioDialog({
       return newStatus;
     },
     onSuccess: (newStatus) => {
-      queryClient.invalidateQueries({ queryKey: ['folio-by-id', folioId, tenantId] });
+      // QUERY-KEY-FIX-V1: Use standard folio key format
+      queryClient.invalidateQueries({ queryKey: ['folio', folioId, tenantId] });
       queryClient.invalidateQueries({ queryKey: ['closed-folios', tenantId] });
       
       toast.success(

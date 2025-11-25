@@ -106,11 +106,16 @@ export function ExtendStayModal({
       }
     },
     onSuccess: (data) => {
+      // QUERY-KEY-FIX-V1: Specific cache invalidation with IDs
+      const folioId = data?.data?.folio_id;
+      
       queryClient.invalidateQueries({ queryKey: ['rooms-grid'] });
       queryClient.invalidateQueries({ queryKey: ['frontdesk-kpis'] });
       queryClient.invalidateQueries({ queryKey: ['booking', bookingId] });
-      queryClient.invalidateQueries({ queryKey: ['booking-folio', bookingId] });
-      queryClient.invalidateQueries({ queryKey: ['folio-by-id'] });
+      queryClient.invalidateQueries({ queryKey: ['booking-folio', bookingId, tenantId] });
+      if (folioId) {
+        queryClient.invalidateQueries({ queryKey: ['folio', folioId, tenantId] });
+      }
       
       toast.success(
         `Stay extended for Room ${roomNumber}. ${data?.data?.additional_nights} additional night(s) charged.`

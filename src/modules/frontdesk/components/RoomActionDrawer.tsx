@@ -339,10 +339,11 @@ export function RoomActionDrawer({ roomId, contextDate, open, onClose, onOpenAss
   useEffect(() => {
     const handleFolioUpdate = (event: MessageEvent) => {
       if (event.data?.type === 'FOLIO_UPDATED' && event.data?.bookingId === activeBooking?.id) {
+        // QUERY-KEY-FIX-V1: Specific cache invalidation with consistent keys
         console.log('[drawer] VIEW-FOLIO-BUTTON-V1: Cross-tab folio update received - refetching');
         queryClient.invalidateQueries({ queryKey: ['booking-folio', activeBooking.id, tenantId] });
         if (folio?.folioId) {
-          queryClient.invalidateQueries({ queryKey: ['folio-by-id', folio.folioId] });
+          queryClient.invalidateQueries({ queryKey: ['folio', folio.folioId, tenantId] });
         }
       }
     };
@@ -1156,10 +1157,13 @@ export function RoomActionDrawer({ roomId, contextDate, open, onClose, onOpenAss
                             guestId={currentBooking.guest?.id || ''}
                             expectedAmount={folio?.balance || 0}
                             onSuccess={() => {
+                              // QUERY-KEY-FIX-V1: Specific cache invalidation with IDs
                               setQuickPaymentOpen(false);
                               queryClient.invalidateQueries({ queryKey: ['room-detail', roomId] });
                               queryClient.invalidateQueries({ queryKey: ['rooms-grid'] });
-                              queryClient.invalidateQueries({ queryKey: ['booking-folio'] });
+                              if (currentBooking?.id) {
+                                queryClient.invalidateQueries({ queryKey: ['booking-folio', currentBooking.id, tenantId] });
+                              }
                             }}
                             onCancel={() => setQuickPaymentOpen(false)}
                           />

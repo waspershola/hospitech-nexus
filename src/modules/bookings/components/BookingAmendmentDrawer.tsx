@@ -177,13 +177,18 @@ export function BookingAmendmentDrawer({ open, onClose, bookingId }: BookingAmen
       }
     },
     onSuccess: (data) => {
+      // QUERY-KEY-FIX-V1: Specific cache invalidation with IDs
+      const folioId = data?.data?.folio_id;
+      
       queryClient.invalidateQueries({ queryKey: ['booking', bookingId] });
       queryClient.invalidateQueries({ queryKey: ['bookings'] });
       queryClient.invalidateQueries({ queryKey: ['rooms'] });
       queryClient.invalidateQueries({ queryKey: ['rooms-grid'] });
       queryClient.invalidateQueries({ queryKey: ['room-detail'] });
-      queryClient.invalidateQueries({ queryKey: ['booking-folio', bookingId] });
-      queryClient.invalidateQueries({ queryKey: ['folio-by-id'] });
+      queryClient.invalidateQueries({ queryKey: ['booking-folio', bookingId, tenantId] });
+      if (folioId) {
+        queryClient.invalidateQueries({ queryKey: ['folio', folioId, tenantId] });
+      }
       queryClient.invalidateQueries({ queryKey: ['frontdesk-kpis'] });
       
       const message = data?.data?.folio_adjusted 

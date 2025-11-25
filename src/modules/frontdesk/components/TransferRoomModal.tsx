@@ -124,10 +124,11 @@ export function TransferRoomModal({
       }
     },
     onSuccess: (data) => {
+      // QUERY-KEY-FIX-V1: Specific cache invalidation with IDs
       toast.success(`Room transferred successfully to ${data.data.new_room_number}`);
       queryClient.invalidateQueries({ queryKey: ["bookings"] });
       queryClient.invalidateQueries({ queryKey: ["rooms"] });
-      queryClient.invalidateQueries({ queryKey: ["booking-folio"] });
+      queryClient.invalidateQueries({ queryKey: ["booking-folio", bookingId, tenantId] });
       setNewRoomId("");
       setReason("");
       onClose();

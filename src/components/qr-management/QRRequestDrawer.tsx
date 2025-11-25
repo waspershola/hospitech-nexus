@@ -487,9 +487,14 @@ export function QRRequestDrawer({
 
       toast.success(`₦${amount.toLocaleString()} charged to folio ${data.folio_number}`);
       
+      // QUERY-KEY-FIX-V1: Specific cache invalidation with IDs
       queryClient.invalidateQueries({ queryKey: ['staff-requests'] });
-      queryClient.invalidateQueries({ queryKey: ['folio-by-id', selectedRequest.stay_folio_id] });
-      queryClient.invalidateQueries({ queryKey: ['booking-folio'] });
+      if (selectedRequest.stay_folio_id) {
+        queryClient.invalidateQueries({ queryKey: ['folio', selectedRequest.stay_folio_id, tenantId] });
+      }
+      if (selectedRequest.booking_id) {
+        queryClient.invalidateQueries({ queryKey: ['booking-folio', selectedRequest.booking_id, tenantId] });
+      }
       
       onOpenChange(false);
     } catch (error: any) {
@@ -666,9 +671,11 @@ export function QRRequestDrawer({
           console.log('[Payment Idempotency] Payment already exists:', existingPayment);
           toast.info('Payment already recorded for this request');
           
-          // Invalidate queries and close drawer
+          // QUERY-KEY-FIX-V1: Specific cache invalidation with IDs
           queryClient.invalidateQueries({ queryKey: ['staff-requests'] });
-          queryClient.invalidateQueries({ queryKey: ['folio-by-id', selectedRequest.stay_folio_id] });
+          if (selectedRequest.stay_folio_id) {
+            queryClient.invalidateQueries({ queryKey: ['folio', selectedRequest.stay_folio_id, tenantId] });
+          }
           onOpenChange(false);
           return;
         }
