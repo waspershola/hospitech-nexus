@@ -247,10 +247,6 @@ export function BookingConfirmationDocument({ bookingId }: BookingConfirmationDo
               <p className="text-xs text-muted-foreground">Until 12:00 PM</p>
             </div>
             <div>
-              <p className="text-sm text-muted-foreground">Room Number</p>
-              <p className="font-medium">{booking.room?.number}</p>
-            </div>
-            <div>
               <p className="text-sm text-muted-foreground">Room Type</p>
               <p className="font-medium">{booking.room?.category?.name || booking.room?.type}</p>
             </div>
