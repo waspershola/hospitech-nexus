@@ -36,7 +36,19 @@ export function ActivityTimeline({ requestId, tenantId }: ActivityTimelineProps)
     queryFn: async () => {
       const { data, error } = await supabase
         .from('request_activity_log' as any)
-        .select('*')
+        .select(`
+          *,
+          staff:staff_id (
+            full_name,
+            email
+          ),
+          provider:payment_provider_id (
+            name
+          ),
+          location:payment_location_id (
+            name
+          )
+        `)
         .eq('request_id', requestId)
         .eq('tenant_id', tenantId)
         .order('created_at', { ascending: false });
@@ -82,22 +94,41 @@ export function ActivityTimeline({ requestId, tenantId }: ActivityTimelineProps)
               </div>
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-medium">{label}</p>
-                <p className="text-xs text-muted-foreground">
-                  by {activity.staff?.full_name || 'System'} · {formatDistanceToNow(new Date(activity.created_at), { addSuffix: true })}
-                </p>
+                {activity.staff && (
+                  <p className="text-xs text-muted-foreground">
+                    by {activity.staff.full_name} · {formatDistanceToNow(new Date(activity.created_at), { addSuffix: true })}
+                  </p>
+                )}
+                {!activity.staff && (
+                  <p className="text-xs text-muted-foreground">
+                    {formatDistanceToNow(new Date(activity.created_at), { addSuffix: true })}
+                  </p>
+                )}
                 {activity.amount && (
-                  <p className="text-xs text-muted-foreground mt-1">
-                    Amount: ₦{activity.amount.toLocaleString()}
+                  <p className="text-sm font-semibold text-primary mt-1">
+                    ₦{activity.amount.toLocaleString()}
                   </p>
                 )}
                 {activity.payment_method && (
-                  <p className="text-xs text-muted-foreground">
-                    Method: {activity.payment_method}
-                  </p>
+                  <div className="flex flex-wrap gap-1 mt-1">
+                    <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-primary/10 text-primary">
+                      {activity.payment_method}
+                    </span>
+                    {activity.provider && (
+                      <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-secondary text-secondary-foreground">
+                        {activity.provider.name}
+                      </span>
+                    )}
+                    {activity.location && (
+                      <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-muted text-muted-foreground">
+                        {activity.location.name}
+                      </span>
+                    )}
+                  </div>
                 )}
-                {activity.metadata?.note && (
+                {activity.metadata?.reason && (
                   <p className="text-xs text-muted-foreground italic mt-1">
-                    "{activity.metadata.note}"
+                    "{activity.metadata.reason}"
                   </p>
                 )}
               </div>
