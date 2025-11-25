@@ -24,6 +24,13 @@ import { PlatformFeesTab } from '@/components/finance/PlatformFeesTab';
 import { Wallet, Building2, TrendingUp, Building, RefreshCcw, MapPin, Shield, BarChart3, Settings, Receipt, CreditCard, Sliders, FileText, Printer, DollarSign } from 'lucide-react';
 
 export default function FinanceCenter() {
+  const [searchParams, setSearchParams] = useSearchParams();
+  const activeTab = searchParams.get('tab') || 'settings';
+  
+  const handleTabChange = (value: string) => {
+    setSearchParams({ tab: value });
+  };
+  
   return (
     <ErrorBoundary>
       <div className="h-full flex flex-col">
