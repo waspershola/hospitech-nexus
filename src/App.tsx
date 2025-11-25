@@ -5,6 +5,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { lazy, Suspense } from "react";
 import { AuthProvider } from "./contexts/AuthContext";
+import { UpdateNotification } from "./components/offline/UpdateNotification";
 import Index from "./pages/Index";
 import NotFound from "./pages/NotFound";
 import Login from './pages/auth/Login';
@@ -107,6 +108,7 @@ import LaundryManagement from "./pages/dashboard/LaundryManagement";
 import SpaManagement from "./pages/dashboard/SpaManagement";
 import QuickReplyTemplatesManagement from "./pages/dashboard/QuickReplyTemplatesManagement";
 import QRBillingTasks from "./pages/dashboard/QRBillingTasks";
+import OfflineDiagnosticsPage from "./pages/dashboard/OfflineDiagnostics";
 
 function PlatformGuard({ children }: { children: React.ReactNode }) {
   const { isPlatformAdmin, isLoading } = usePlatformRole();
@@ -125,6 +127,8 @@ const App = () => (
       <TooltipProvider>
         <Toaster />
         <Sonner />
+        {/* Offline Desktop Auto-Update Notification (Electron only) */}
+        <UpdateNotification />
         <BrowserRouter>
           <Routes>
             <Route path="/" element={<Index />} />
@@ -186,6 +190,7 @@ const App = () => (
               <Route path="quick-reply-templates" element={<RoleGuard allowedRoles={['owner', 'manager']}><QuickReplyTemplatesManagement /></RoleGuard>} />
               
           <Route path="settings" element={<Settings />} />
+          <Route path="offline-diagnostics" element={<RoleGuard allowedRoles={['owner', 'manager']}><OfflineDiagnosticsPage /></RoleGuard>} />
           <Route path="user-roles" element={<RoleGuard allowedRoles={['owner']}><UserRoles /></RoleGuard>} />
           <Route path="navigation-manager" element={<RoleGuard allowedRoles={['owner']}><NavigationManager /></RoleGuard>} />
           <Route path="staff" element={<RoleGuard allowedRoles={['owner', 'manager', 'supervisor']}><Staff /></RoleGuard>} />

@@ -1,0 +1,24 @@
+# Windows App Icon Required
+
+Place a Windows icon file here named `icon.ico` before building the desktop app.
+
+## Requirements:
+- **Filename:** `icon.ico`
+- **Size:** 256x256 pixels (minimum)
+- **Format:** .ico (Windows icon format, multi-resolution)
+
+## Where to Get Icon:
+1. Use hotel logo/branding
+2. Convert from PNG/SVG using online tools like:
+   - https://convertio.co/png-ico/
+   - https://www.icoconverter.com/
+3. Ensure multi-resolution support (16x16, 32x32, 48x48, 256x256)
+
+## How It's Used:
+- Application icon in Windows
+- Installer icon
+- Taskbar icon
+- Desktop shortcut icon
+- Start menu icon
+
+Once you add `icon.ico` to this directory, the build process will automatically use it.

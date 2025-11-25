@@ -38,8 +38,8 @@ portable:
 
 publish:
   provider: github
-  owner: your-github-username
-  repo: luxuryhotelpro
+  owner: luxuryhotelpro
+  repo: luxury-hotel-pro-desktop
   releaseType: release
 
 compression: maximum
