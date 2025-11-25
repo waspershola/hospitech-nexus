@@ -22,7 +22,7 @@ import { CrossFolioSummary } from '@/components/folio/CrossFolioSummary';
 import { TransferChargeDialog } from '@/components/folio/TransferChargeDialog';
 import { SplitChargeDialog } from '@/components/folio/SplitChargeDialog';
 import { MergeFolioDialog } from '@/components/folio/MergeFolioDialog';
-import { QuickPaymentForm } from '@/modules/frontdesk/components/QuickPaymentForm';
+import { AddPaymentDialog } from '@/modules/billing/AddPaymentDialog';
 import { ReopenFolioDialog } from '@/components/folio/ReopenFolioDialog';
 import { FolioTypeBadge } from '@/components/folio/FolioTypeBadge';
 import { RealTimeSyncIndicator } from '@/components/folio/RealTimeSyncIndicator';
@@ -589,15 +589,13 @@ export default function BillingCenter() {
               folioId={folioId!}
               folioNumber={folio.folio_number}
             />
-            {addPaymentOpen && (
-              <QuickPaymentForm
-                bookingId={folio.booking_id}
-                guestId={folio.guest_id}
-                expectedAmount={folio.balance}
-                onSuccess={() => setAddPaymentOpen(false)}
-                onCancel={() => setAddPaymentOpen(false)}
-              />
-            )}
+            <AddPaymentDialog
+              open={addPaymentOpen}
+              onOpenChange={setAddPaymentOpen}
+              bookingId={folio.booking_id}
+              guestId={folio.guest_id}
+              expectedAmount={folio.balance}
+            />
             {/* REBATE-INTEGRATION-V1: Room Rebate Modal */}
             <RoomRebateModal
               open={roomRebateOpen}
