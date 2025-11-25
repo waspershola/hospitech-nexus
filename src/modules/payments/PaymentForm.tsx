@@ -273,7 +273,7 @@ export function PaymentForm({
     ? parseFloat(amount) - parseFloat(expectedAmountField)
     : 0;
   
-  const isLargeOverpayment = paymentDifference > 50000;
+  const isLargeOverpayment = paymentDifference > (preferences?.large_overpayment_threshold || 50000);
 
   const onSubmit = (data: PaymentFormData) => {
     setValidationError(null);
@@ -292,7 +292,7 @@ export function PaymentForm({
     // Handle overpayment - show dialog for user choice
     if (paymentType === 'overpayment' && paymentDifference > 0 && !showOverpaymentDialog) {
       // Check if requires manager approval for LARGE OVERPAYMENT
-      if (paymentDifference > 50000) {
+      if (paymentDifference > (preferences?.large_overpayment_threshold || 50000)) {
         setManagerApprovalType('overpayment');
         setRequiresApprovalAmount(paymentDifference);
         setShowManagerApproval(true);
@@ -306,7 +306,7 @@ export function PaymentForm({
     // Handle underpayment - check if requires manager approval for LARGE BALANCE DUE
     if (paymentType === 'partial') {
       const balanceDue = parseFloat(data.expected_amount || '0') - parseFloat(data.amount);
-      if (balanceDue > 50000) {
+      if (balanceDue > (preferences?.manager_approval_threshold || 50000)) {
         setManagerApprovalType('underpayment');
         setRequiresApprovalAmount(balanceDue); // The REMAINING balance
         setShowManagerApproval(true);
