@@ -163,22 +163,19 @@ export function QRRequestActions({ request, onStatusUpdate, onClose }: QRRequest
 
       if (requestError) throw requestError;
       
-      // PHASE 2: Log complimentary approval activity
+      // PHASE 2: Log complimentary approval activity (PARAMETER-FIX-V1)
       try {
         const { error: logError } = await supabase.rpc('log_request_activity', {
           p_tenant_id: tenantId,
           p_request_id: request.id,
           p_staff_id: staffData.id,
           p_action_type: 'complimentary',
-          p_amount: amount,
-          p_payment_method: null,
-          p_payment_provider_id: null,
-          p_payment_location_id: null,
           p_metadata: {
+            amount: amount.toString(),
             reason: reason,
             approval_token: approvalToken,
             staff_name: staffData.full_name,
-            version: 'COMPLIMENTARY-AUDIT-V2',
+            version: 'COMPLIMENTARY-AUDIT-V2-PARAM-FIX',
           },
         });
         if (logError) {
@@ -543,7 +540,7 @@ export function QRRequestActions({ request, onStatusUpdate, onClose }: QRRequest
                   return;
                 }
                 
-                // PHASE 1: Log payment collection activity with detailed error logging
+                // PHASE 1: Log payment collection activity (PARAMETER-FIX-V1)
                 if (paymentContext) {
                   try {
                     const { error: logError } = await supabase.rpc('log_request_activity', {
@@ -551,14 +548,14 @@ export function QRRequestActions({ request, onStatusUpdate, onClose }: QRRequest
                       p_request_id: request.id,
                       p_staff_id: staffData.id,
                       p_action_type: 'payment_collected',
-                      p_amount: amount,
-                      p_payment_method: paymentContext.method,
-                      p_payment_provider_id: paymentContext.provider_id,
-                      p_payment_location_id: paymentContext.location_id || null,
                       p_metadata: {
+                        amount: amount.toString(),
+                        payment_method: paymentContext.method,
+                        payment_provider_id: paymentContext.provider_id,
+                        payment_location_id: paymentContext.location_id || null,
                         payment_id: paymentContext.paymentId,
                         provider_name: paymentContext.provider_name,
-                        version: 'PAYMENT-AUDIT-V2',
+                        version: 'PAYMENT-AUDIT-V2-PARAM-FIX',
                       },
                     });
                     if (logError) {
