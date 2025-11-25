@@ -319,5 +319,6 @@ export function useBookingFolio(bookingId: string | null) {
       };
     },
     enabled: !!bookingId && !!tenantId,
+    staleTime: 30 * 1000, // Cache for 30 seconds
   });
 }
