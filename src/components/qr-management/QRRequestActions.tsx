@@ -51,9 +51,10 @@ export function QRRequestActions({ request, onStatusUpdate, onClose }: QRRequest
   const remainingBalance = Math.max(0, expectedAmount - billedAmount);
   const isFullyPaid = remainingBalance === 0 && billedAmount > 0;
   
-  // Phase 4: Check if billing is completed AND fully paid
+  // Phase 4: Check if billing is completed AND fully paid OR transferred to front desk
   const billingCompleted = isBillingCompleted(request.billing_status);
-  const shouldHideActions = billingCompleted && isFullyPaid;
+  const shouldHideActions = (billingCompleted && isFullyPaid) || request.transferred_to_frontdesk;
+  const isComplimentary = request.metadata?.complimentary === true;
 
   const handleStatusChange = async (newStatus: string) => {
     if (!tenantId) return;
@@ -164,7 +165,7 @@ export function QRRequestActions({ request, onStatusUpdate, onClose }: QRRequest
       
       // PHASE 2: Log complimentary approval activity
       try {
-        await supabase.rpc('log_request_activity', {
+        const { error: logError } = await supabase.rpc('log_request_activity', {
           p_tenant_id: tenantId,
           p_request_id: request.id,
           p_staff_id: staffData.id,
@@ -177,13 +178,26 @@ export function QRRequestActions({ request, onStatusUpdate, onClose }: QRRequest
             reason: reason,
             approval_token: approvalToken,
             staff_name: staffData.full_name,
-            version: 'COMPLIMENTARY-AUDIT-V1',
+            version: 'COMPLIMENTARY-AUDIT-V2',
           },
         });
-        console.log('[QRRequestActions] COMPLIMENTARY-AUDIT-V1: Activity logged successfully');
-      } catch (logError) {
-        console.error('[QRRequestActions] Failed to log complimentary activity:', logError);
-        // Don't block success flow
+        if (logError) {
+          console.error('[QRRequestActions] COMPLIMENTARY-AUDIT-V2 RPC Error:', {
+            error: logError,
+            code: logError.code,
+            message: logError.message,
+            details: logError.details,
+            hint: logError.hint,
+          });
+        } else {
+          console.log('[QRRequestActions] COMPLIMENTARY-AUDIT-V2: Activity logged successfully');
+        }
+      } catch (logError: any) {
+        console.error('[QRRequestActions] COMPLIMENTARY-AUDIT-V2 Exception:', {
+          error: logError,
+          message: logError?.message,
+          stack: logError?.stack,
+        });
       }
       
       console.log('[QRRequestActions] PAYMENT-FIX-V2: Complimentary status updated, forcing refetch...');
@@ -325,8 +339,30 @@ export function QRRequestActions({ request, onStatusUpdate, onClose }: QRRequest
           Financial Actions
         </h3>
         
-        {/* PHASE 2 & 3: Show billing completed status or partial payment alert */}
-        {billingCompleted && isFullyPaid && (
+        {/* PHASE 2: Show complimentary vs payment completed status */}
+        {billingCompleted && isFullyPaid && isComplimentary && (
+          <Alert className="border-amber-500 bg-amber-50 dark:bg-amber-950/20 mb-3">
+            <Gift className="h-4 w-4 text-amber-600" />
+            <AlertDescription className="text-amber-800 dark:text-amber-200">
+              <strong>Marked Complimentary</strong>
+              <div className="text-sm mt-1">
+                ₦{billedAmount.toLocaleString()} - No charge applied
+              </div>
+              {request.metadata?.approval_reason && (
+                <div className="text-xs text-amber-600 dark:text-amber-400 mt-1 italic">
+                  Reason: {request.metadata.approval_reason}
+                </div>
+              )}
+              {request.billing_processed_by && (
+                <div className="text-xs text-amber-600 dark:text-amber-400 mt-1">
+                  Approved by staff
+                </div>
+              )}
+            </AlertDescription>
+          </Alert>
+        )}
+        
+        {billingCompleted && isFullyPaid && !isComplimentary && (
           <Alert className="border-green-500 bg-green-50 dark:bg-green-950/20 mb-3">
             <CheckCircle className="h-4 w-4 text-green-600" />
             <AlertDescription className="text-green-800 dark:text-green-200">
@@ -334,11 +370,9 @@ export function QRRequestActions({ request, onStatusUpdate, onClose }: QRRequest
               <div className="text-sm mt-1">
                 ₦{billedAmount.toLocaleString()} paid on {request.paid_at ? format(new Date(request.paid_at), 'MMM d, h:mm a') : 'N/A'}
               </div>
-              {request.billing_status === 'paid_direct' && (
-                <div className="text-xs text-green-600 dark:text-green-400 mt-1">
-                  ✓ Payment collected successfully
-                </div>
-              )}
+              <div className="text-xs text-green-600 dark:text-green-400 mt-1">
+                ✓ Payment collected successfully
+              </div>
             </AlertDescription>
           </Alert>
         )}
@@ -431,10 +465,18 @@ export function QRRequestActions({ request, onStatusUpdate, onClose }: QRRequest
           </Button>
 
           {request.transferred_to_frontdesk && (
-            <Alert>
-              <AlertTriangle className="h-4 w-4" />
-              <AlertDescription>
-                Transferred to Front Desk on {format(new Date(request.transferred_at), 'MMM d, h:mm a')}
+            <Alert className="border-blue-500 bg-blue-50 dark:bg-blue-950/20">
+              <MoveRight className="h-4 w-4 text-blue-600" />
+              <AlertDescription className="text-blue-800 dark:text-blue-200">
+                <strong>Transferred to Front Desk</strong>
+                <div className="text-sm mt-1">
+                  {request.transferred_at && format(new Date(request.transferred_at), 'MMM d, h:mm a')}
+                </div>
+                {request.billing_reference_code && (
+                  <div className="text-xs text-blue-600 dark:text-blue-400 mt-1 font-mono">
+                    Ref: {request.billing_reference_code}
+                  </div>
+                )}
               </AlertDescription>
             </Alert>
           )}
@@ -501,10 +543,10 @@ export function QRRequestActions({ request, onStatusUpdate, onClose }: QRRequest
                   return;
                 }
                 
-                // PHASE 1: Log payment collection activity with full context
+                // PHASE 1: Log payment collection activity with detailed error logging
                 if (paymentContext) {
                   try {
-                    await supabase.rpc('log_request_activity', {
+                    const { error: logError } = await supabase.rpc('log_request_activity', {
                       p_tenant_id: tenantId,
                       p_request_id: request.id,
                       p_staff_id: staffData.id,
@@ -516,13 +558,33 @@ export function QRRequestActions({ request, onStatusUpdate, onClose }: QRRequest
                       p_metadata: {
                         payment_id: paymentContext.paymentId,
                         provider_name: paymentContext.provider_name,
-                        version: 'PAYMENT-AUDIT-V1',
+                        version: 'PAYMENT-AUDIT-V2',
                       },
                     });
-                    console.log('[QRRequestActions] PAYMENT-AUDIT-V1: Activity logged successfully');
-                  } catch (logError) {
-                    console.error('[QRRequestActions] Failed to log activity:', logError);
-                    // Don't block success flow
+                    if (logError) {
+                      console.error('[QRRequestActions] PAYMENT-AUDIT-V2 RPC Error:', {
+                        error: logError,
+                        code: logError.code,
+                        message: logError.message,
+                        details: logError.details,
+                        hint: logError.hint,
+                        params: {
+                          p_tenant_id: tenantId,
+                          p_request_id: request.id,
+                          p_staff_id: staffData.id,
+                          p_action_type: 'payment_collected',
+                          p_amount: amount,
+                        }
+                      });
+                    } else {
+                      console.log('[QRRequestActions] PAYMENT-AUDIT-V2: Activity logged successfully');
+                    }
+                  } catch (logError: any) {
+                    console.error('[QRRequestActions] PAYMENT-AUDIT-V2 Exception:', {
+                      error: logError,
+                      message: logError?.message,
+                      stack: logError?.stack,
+                    });
                   }
                 }
                 

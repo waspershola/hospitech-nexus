@@ -20,6 +20,7 @@ import {
 import { useOverdueRequests } from '@/hooks/useOverdueRequests';
 import { generateRequestReference } from '@/lib/qr/requestReference';
 import { getBillingStatusLabel, getBillingStatusColor } from '@/lib/qr/billingStatus';
+import { Gift, FileText, DollarSign, ArrowRight } from 'lucide-react';
 
 interface RequestsTableProps {
   requests: any[];
@@ -81,6 +82,60 @@ export default function RequestsTable({
         {priority}
       </Badge>
     );
+  };
+
+  // Phase 3: Enhanced billing context display
+  const getBillingBadge = (request: any) => {
+    // Priority 1: Check if complimentary
+    if (request.metadata?.complimentary === true) {
+      return (
+        <Badge variant="secondary" className="gap-1 bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-200">
+          <Gift className="h-3 w-3" />
+          Complimentary
+        </Badge>
+      );
+    }
+
+    // Priority 2: Check if transferred to front desk
+    if (request.transferred_to_frontdesk) {
+      return (
+        <Badge variant="secondary" className="gap-1 bg-blue-100 text-blue-800 dark:bg-blue-950 dark:text-blue-200">
+          <ArrowRight className="h-3 w-3" />
+          Pending Front Desk
+        </Badge>
+      );
+    }
+
+    // Priority 3: Check if billed to folio
+    if (request.billing_status === 'posted_to_folio') {
+      return (
+        <Badge variant="default" className="gap-1">
+          <FileText className="h-3 w-3" />
+          Billed to Folio
+        </Badge>
+      );
+    }
+
+    // Priority 4: Check if paid direct
+    if (request.billing_status === 'paid_direct') {
+      return (
+        <Badge variant="default" className="gap-1 bg-green-100 text-green-800 dark:bg-green-950 dark:text-green-200">
+          <DollarSign className="h-3 w-3" />
+          Paid
+        </Badge>
+      );
+    }
+
+    // Default: No billing action yet
+    if (request.billing_status && request.billing_status !== 'none') {
+      return (
+        <Badge variant={getBillingStatusColor(request.billing_status)}>
+          {getBillingStatusLabel(request.billing_status)}
+        </Badge>
+      );
+    }
+
+    return <span className="text-muted-foreground text-xs">—</span>;
   };
 
   if (isLoading) {
@@ -178,14 +233,8 @@ export default function RequestsTable({
                 {getStatusBadge(request.status, overdueInfo)}
               </TableCell>
               <TableCell>
-                {/* Phase 4: Billing status badge */}
-                {request.billing_status && request.billing_status !== 'none' ? (
-                  <Badge variant={getBillingStatusColor(request.billing_status)}>
-                    {getBillingStatusLabel(request.billing_status)}
-                  </Badge>
-                ) : (
-                  <span className="text-muted-foreground text-xs">—</span>
-                )}
+                {/* Phase 3: Enhanced billing context display */}
+                {getBillingBadge(request)}
               </TableCell>
               <TableCell>
                 {format(new Date(request.created_at), 'MMM d, h:mm a')}
