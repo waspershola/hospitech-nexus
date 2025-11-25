@@ -109,6 +109,8 @@ import SpaManagement from "./pages/dashboard/SpaManagement";
 import QuickReplyTemplatesManagement from "./pages/dashboard/QuickReplyTemplatesManagement";
 import QRBillingTasks from "./pages/dashboard/QRBillingTasks";
 import OfflineDiagnosticsPage from "./pages/dashboard/OfflineDiagnostics";
+import FAQManagement from './pages/dashboard/FAQManagement';
+import SOPManagement from './pages/dashboard/SOPManagement';
 
 function PlatformGuard({ children }: { children: React.ReactNode }) {
   const { isPlatformAdmin, isLoading } = usePlatformRole();
@@ -191,6 +193,8 @@ const App = () => (
               
           <Route path="settings" element={<Settings />} />
           <Route path="offline-diagnostics" element={<RoleGuard allowedRoles={['owner', 'manager']}><OfflineDiagnosticsPage /></RoleGuard>} />
+          <Route path="faq-management" element={<RoleGuard allowedRoles={['owner', 'manager']}><FAQManagement /></RoleGuard>} />
+          <Route path="sop-management" element={<RoleGuard allowedRoles={['owner', 'manager']}><SOPManagement /></RoleGuard>} />
           <Route path="user-roles" element={<RoleGuard allowedRoles={['owner']}><UserRoles /></RoleGuard>} />
           <Route path="navigation-manager" element={<RoleGuard allowedRoles={['owner']}><NavigationManager /></RoleGuard>} />
           <Route path="staff" element={<RoleGuard allowedRoles={['owner', 'manager', 'supervisor']}><Staff /></RoleGuard>} />

@@ -1,3 +1,4 @@
+import { useState, useEffect } from 'react';
 import { Outlet } from 'react-router-dom';
 import { SidebarProvider, SidebarTrigger } from '@/components/ui/sidebar';
 import { AppSidebar } from './Sidebar';
@@ -7,10 +8,28 @@ import { AudioPermissionPrompt } from '@/components/notifications/AudioPermissio
 import { useQRNotifications } from '@/hooks/useQRNotifications';
 import { OfflineStatusIndicator } from '@/components/offline/OfflineStatusIndicator';
 import { SyncStatusIndicator } from '@/components/offline/SyncStatusIndicator';
+import { StaffAIAssistant } from '@/components/staff/StaffAIAssistant';
+import { Button } from '@/components/ui/button';
+import { Bot } from 'lucide-react';
 
 export default function DashboardShell() {
+  const [isAIOpen, setIsAIOpen] = useState(false);
+  
   // Phase 5: Unified ringtone system
   useQRNotifications();
+
+  // Keyboard shortcut for AI Assistant (Ctrl+K or Cmd+K)
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
+        e.preventDefault();
+        setIsAIOpen(true);
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
   
   return (
     <SidebarProvider>
@@ -41,6 +60,18 @@ export default function DashboardShell() {
       
       {/* Audio permission prompt - shows once on first visit */}
       <AudioPermissionPrompt />
+
+      {/* Staff AI Assistant */}
+      <StaffAIAssistant open={isAIOpen} onOpenChange={setIsAIOpen} />
+
+      {/* Floating AI Button */}
+      <Button
+        onClick={() => setIsAIOpen(true)}
+        className="fixed bottom-6 right-6 rounded-full h-14 w-14 shadow-lg z-50"
+        size="icon"
+      >
+        <Bot className="h-6 w-6" />
+      </Button>
     </SidebarProvider>
   );
 }

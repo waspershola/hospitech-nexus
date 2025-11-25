@@ -1132,42 +1132,66 @@ export type Database = {
       }
       guest_communications: {
         Row: {
+          ai_auto_response: boolean | null
+          cleaned_text: string | null
+          confidence: number | null
           created_at: string | null
+          detected_language: string | null
           direction: string
           guest_id: string | null
           id: string
+          intent: string | null
           message: string | null
           metadata: Json | null
+          original_text: string | null
           sent_by: string | null
           status: string | null
           subject: string | null
+          target_language: string | null
           tenant_id: string
+          translated_text: string | null
           type: string
         }
         Insert: {
+          ai_auto_response?: boolean | null
+          cleaned_text?: string | null
+          confidence?: number | null
           created_at?: string | null
+          detected_language?: string | null
           direction: string
           guest_id?: string | null
           id?: string
+          intent?: string | null
           message?: string | null
           metadata?: Json | null
+          original_text?: string | null
           sent_by?: string | null
           status?: string | null
           subject?: string | null
+          target_language?: string | null
           tenant_id: string
+          translated_text?: string | null
           type: string
         }
         Update: {
+          ai_auto_response?: boolean | null
+          cleaned_text?: string | null
+          confidence?: number | null
           created_at?: string | null
+          detected_language?: string | null
           direction?: string
           guest_id?: string | null
           id?: string
+          intent?: string | null
           message?: string | null
           metadata?: Json | null
+          original_text?: string | null
           sent_by?: string | null
           status?: string | null
           subject?: string | null
+          target_language?: string | null
           tenant_id?: string
+          translated_text?: string | null
           type?: string
         }
         Relationships: [
@@ -1683,6 +1707,53 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "hotel_domains_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      hotel_faqs: {
+        Row: {
+          active: boolean | null
+          answer: string
+          category: string
+          created_at: string | null
+          id: string
+          keywords: Json | null
+          language: string | null
+          question: string
+          tenant_id: string
+          updated_at: string | null
+        }
+        Insert: {
+          active?: boolean | null
+          answer: string
+          category: string
+          created_at?: string | null
+          id?: string
+          keywords?: Json | null
+          language?: string | null
+          question: string
+          tenant_id: string
+          updated_at?: string | null
+        }
+        Update: {
+          active?: boolean | null
+          answer?: string
+          category?: string
+          created_at?: string | null
+          id?: string
+          keywords?: Json | null
+          language?: string | null
+          question?: string
+          tenant_id?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "hotel_faqs_tenant_id_fkey"
             columns: ["tenant_id"]
             isOneToOne: false
             referencedRelation: "tenants"
@@ -5781,6 +5852,53 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "sms_templates_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      sop_knowledge_base: {
+        Row: {
+          active: boolean | null
+          applicable_roles: Json | null
+          content: string
+          created_at: string | null
+          department: string
+          id: string
+          keywords: Json | null
+          tenant_id: string
+          title: string
+          updated_at: string | null
+        }
+        Insert: {
+          active?: boolean | null
+          applicable_roles?: Json | null
+          content: string
+          created_at?: string | null
+          department: string
+          id?: string
+          keywords?: Json | null
+          tenant_id: string
+          title: string
+          updated_at?: string | null
+        }
+        Update: {
+          active?: boolean | null
+          applicable_roles?: Json | null
+          content?: string
+          created_at?: string | null
+          department?: string
+          id?: string
+          keywords?: Json | null
+          tenant_id?: string
+          title?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sop_knowledge_base_tenant_id_fkey"
             columns: ["tenant_id"]
             isOneToOne: false
             referencedRelation: "tenants"
