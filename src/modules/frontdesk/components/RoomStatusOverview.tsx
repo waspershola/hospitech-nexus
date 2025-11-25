@@ -2,7 +2,8 @@ import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
-import { CheckSquare, Search } from 'lucide-react';
+import { TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { CheckSquare, Search, LayoutGrid, Calendar } from 'lucide-react';
 import { RoomGrid } from './RoomGrid';
 import { FilterBar } from './FilterBar';
 import { BulkRoomActions } from './BulkRoomActions';
@@ -15,9 +16,11 @@ interface RoomStatusOverviewProps {
   statusFilter: string | null;
   onRoomClick: (roomId: string) => void;
   globalSearchQuery?: string;
+  viewMode?: 'status' | 'date';
+  onViewModeChange?: (mode: 'status' | 'date') => void;
 }
 
-export function RoomStatusOverview({ statusFilter, onRoomClick, globalSearchQuery = '' }: RoomStatusOverviewProps) {
+export function RoomStatusOverview({ statusFilter, onRoomClick, globalSearchQuery = '', viewMode = 'status', onViewModeChange }: RoomStatusOverviewProps) {
   const { tenantId } = useAuth();
   const queryClient = useQueryClient();
   const [localSearchQuery, setLocalSearchQuery] = useState('');
@@ -90,68 +93,29 @@ export function RoomStatusOverview({ statusFilter, onRoomClick, globalSearchQuer
   };
 
   return (
-    <div className="space-y-3 sm:space-y-4">
-      {!globalSearchQuery && (
-        <div className="flex items-center gap-2 sm:gap-3">
-          <div className="relative flex-1">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-            <Input
-              placeholder="Search rooms or guests..."
-              value={localSearchQuery}
-              onChange={(e) => setLocalSearchQuery(e.target.value)}
-              className="pl-10"
-            />
-          </div>
-          <Button
-            variant={isSelectionMode ? "default" : "outline"}
-            size="default"
-            onClick={() => {
-              setIsSelectionMode(!isSelectionMode);
-              if (isSelectionMode) {
-                setSelectedRoomIds([]);
-              }
-            }}
-            className="rounded-xl whitespace-nowrap shrink-0"
+    <div className="space-y-3">
+      {/* Tabs + Filters Row */}
+      <div className="flex flex-wrap items-center gap-2">
+        <TabsList className="grid grid-cols-2 w-fit shrink-0">
+          <TabsTrigger 
+            value="status" 
+            className="gap-2 text-xs px-3"
+            onClick={() => onViewModeChange?.('status')}
           >
-            <CheckSquare className="w-4 h-4 mr-2" />
-            <span className="hidden sm:inline">{isSelectionMode ? 'Exit' : 'Select'}</span>
-            {isSelectionMode && selectedRoomIds.length > 0 && (
-              <Badge variant="secondary" className="ml-2">
-                {selectedRoomIds.length}
-              </Badge>
-            )}
-          </Button>
-        </div>
-      )}
-      
-      {globalSearchQuery && (
-        <div className="flex items-center justify-between gap-2 sm:gap-3">
-          <p className="text-sm text-muted-foreground truncate">
-            Searching: <span className="font-medium text-foreground">"{globalSearchQuery}"</span>
-          </p>
-          <Button
-            variant={isSelectionMode ? "default" : "outline"}
-            size="sm"
-            onClick={() => {
-              setIsSelectionMode(!isSelectionMode);
-              if (isSelectionMode) {
-                setSelectedRoomIds([]);
-              }
-            }}
-            className="rounded-xl whitespace-nowrap shrink-0"
+            <LayoutGrid className="h-3 w-3" />
+            Room Status
+          </TabsTrigger>
+          <TabsTrigger 
+            value="date" 
+            className="gap-2 text-xs px-3"
+            onClick={() => onViewModeChange?.('date')}
           >
-            <CheckSquare className="w-4 h-4 mr-2" />
-            <span className="hidden sm:inline">{isSelectionMode ? 'Exit' : 'Select'}</span>
-            {isSelectionMode && selectedRoomIds.length > 0 && (
-              <Badge variant="secondary" className="ml-2">
-                {selectedRoomIds.length}
-              </Badge>
-            )}
-          </Button>
-        </div>
-      )}
+            <Calendar className="h-3 w-3" />
+            By Date
+          </TabsTrigger>
+        </TabsList>
 
-      <FilterBar
+        <FilterBar
         statusFilter={statusFilter}
         categoryFilter={categoryFilter}
         floorFilter={floorFilter}
@@ -168,6 +132,48 @@ export function RoomStatusOverview({ statusFilter, onRoomClick, globalSearchQuer
             onOrganizationChange={setOrganizationFilter}
         onClearAll={handleClearFilters}
       />
+      </div>
+
+      {/* Search + Select Row */}
+      <div className="flex items-center gap-2">
+        {!globalSearchQuery && (
+          <div className="relative flex-1">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+            <Input
+              placeholder="Search rooms or guests..."
+              value={localSearchQuery}
+              onChange={(e) => setLocalSearchQuery(e.target.value)}
+              className="pl-10"
+            />
+          </div>
+        )}
+        
+        {globalSearchQuery && (
+          <p className="text-sm text-muted-foreground truncate flex-1">
+            Searching: <span className="font-medium text-foreground">"{globalSearchQuery}"</span>
+          </p>
+        )}
+        
+        <Button
+          variant={isSelectionMode ? "default" : "outline"}
+          size="default"
+          onClick={() => {
+            setIsSelectionMode(!isSelectionMode);
+            if (isSelectionMode) {
+              setSelectedRoomIds([]);
+            }
+          }}
+          className="whitespace-nowrap shrink-0"
+        >
+          <CheckSquare className="w-4 h-4 mr-2" />
+          <span className="hidden sm:inline">{isSelectionMode ? 'Exit' : 'Select'}</span>
+          {isSelectionMode && selectedRoomIds.length > 0 && (
+            <Badge variant="secondary" className="ml-2">
+              {selectedRoomIds.length}
+            </Badge>
+          )}
+        </Button>
+      </div>
 
       <RoomGrid
         searchQuery={searchQuery}

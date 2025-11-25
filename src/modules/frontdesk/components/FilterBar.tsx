@@ -35,13 +35,13 @@ export function FilterBar({
   const hasFilters = statusFilter || categoryFilter || floorFilter !== null || organizationFilter;
 
   return (
-    <div className="space-y-2">
-      <div className="flex flex-wrap gap-1.5 sm:gap-2 items-center">
-        <Filter className="w-4 h-4 text-muted-foreground shrink-0" />
+    <div className="space-y-2 flex-1">
+      <div className="flex flex-wrap gap-1.5 items-center">
+        <Filter className="w-3 h-3 text-muted-foreground shrink-0" />
         
         <div className="relative">
           <Select value={statusFilter || 'all'} onValueChange={(v) => onStatusChange(v === 'all' ? null : v)}>
-            <SelectTrigger className="w-32 sm:w-36 h-9 text-xs">
+            <SelectTrigger className="w-28 sm:w-32 h-8 text-xs">
               <SelectValue placeholder="Status" />
             </SelectTrigger>
             <SelectContent>
@@ -58,7 +58,7 @@ export function FilterBar({
         </div>
 
         <Select value={categoryFilter || 'all'} onValueChange={(v) => onCategoryChange(v === 'all' ? null : v)}>
-          <SelectTrigger className="w-32 sm:w-36 h-9 text-xs">
+          <SelectTrigger className="w-28 sm:w-32 h-8 text-xs">
             <SelectValue placeholder="Category" />
           </SelectTrigger>
           <SelectContent>
@@ -75,7 +75,7 @@ export function FilterBar({
           value={floorFilter !== null ? String(floorFilter) : 'all'}
           onValueChange={(v) => onFloorChange(v === 'all' ? null : parseInt(v))}
         >
-          <SelectTrigger className="w-24 sm:w-28 h-9 text-xs">
+          <SelectTrigger className="w-20 sm:w-24 h-8 text-xs">
             <SelectValue placeholder="Floor" />
           </SelectTrigger>
           <SelectContent>
@@ -89,7 +89,7 @@ export function FilterBar({
         </Select>
 
         <Select value={organizationFilter || 'all'} onValueChange={(v) => onOrganizationChange(v === 'all' ? null : v)}>
-          <SelectTrigger className="w-36 sm:w-44 h-9 text-xs">
+          <SelectTrigger className="w-32 sm:w-40 h-8 text-xs">
             <SelectValue placeholder="Organization" />
           </SelectTrigger>
           <SelectContent>
@@ -103,9 +103,9 @@ export function FilterBar({
         </Select>
 
         {hasFilters && (
-          <Button variant="ghost" size="sm" onClick={onClearAll} className="h-9">
-            <X className="w-3 h-3 mr-1" />
-            <span className="text-xs">Clear</span>
+          <Button variant="ghost" size="sm" onClick={onClearAll} className="h-8">
+            <X className="w-2.5 h-2.5 mr-1" />
+            <span className="text-[10px]">Clear</span>
           </Button>
         )}
       </div>
