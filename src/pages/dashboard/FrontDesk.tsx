@@ -96,6 +96,20 @@ export default function FrontDesk() {
       
       <div className="flex-1 flex flex-col overflow-hidden">
         <Tabs value={viewMode} onValueChange={(v) => setViewMode(v as 'status' | 'date')} className="flex-1 flex flex-col">
+          {/* TABS ROW - Always visible */}
+          <div className="px-3 sm:px-4 lg:px-6 pt-2">
+            <TabsList className="grid grid-cols-2 w-fit h-8">
+              <TabsTrigger value="status" className="gap-1.5 text-xs px-2.5">
+                <LayoutGrid className="h-3 w-3" />
+                Room Status
+              </TabsTrigger>
+              <TabsTrigger value="date" className="gap-1.5 text-xs px-2.5">
+                <Calendar className="h-3 w-3" />
+                By Date
+              </TabsTrigger>
+            </TabsList>
+          </div>
+
           <TabsContent value="status" className="flex-1 flex flex-col m-0 overflow-hidden data-[state=inactive]:absolute data-[state=inactive]:invisible data-[state=inactive]:pointer-events-none">
             <div className="px-3 sm:px-4 lg:px-6 pt-2 space-y-2">
               <StatusSyncMonitor />
@@ -116,8 +130,6 @@ export default function FrontDesk() {
                     setContextDate(null);
                   }}
                   globalSearchQuery={searchQuery}
-                  viewMode={viewMode}
-                  onViewModeChange={setViewMode}
                 />
                 
                 <div className="mt-4">
