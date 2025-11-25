@@ -1,3 +1,4 @@
+import { useSearchParams } from "react-router-dom";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { FinanceSettingsTab } from '@/modules/finance-center/FinanceSettingsTab';
 import { PaymentPreferencesTab } from '@/modules/finance-center/PaymentPreferencesTab';
