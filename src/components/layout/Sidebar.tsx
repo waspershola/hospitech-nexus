@@ -206,41 +206,74 @@ export function AppSidebar() {
                             <SidebarMenuSub>
                               {item.children.map((child) => {
                                 const ChildIcon = Icons[child.icon as keyof typeof Icons] as any;
+                                const hasGrandChildren = child.children && child.children.length > 0;
                                 return (
                                   <SidebarMenuSubItem key={child.id}>
                                     <SidebarMenuSubButton asChild>
-                                       <NavLink
-                                        to={child.path}
-                                        onClick={handleNavClick}
-                                        className={({ isActive }) =>
-                                          `flex items-center gap-3 px-3 py-2 rounded-xl transition-colors ${
-                                            isActive
-                                              ? 'bg-sidebar-primary/20 text-sidebar-primary font-semibold'
-                                              : 'text-sidebar-foreground hover:bg-sidebar-accent/20 hover:text-sidebar-primary'
-                                          }`
-                                        }
-                                      >
-                                        {ChildIcon && <ChildIcon className="h-4 w-4 shrink-0" />}
-                                        {open && (
-                                          <span className="flex items-center justify-between flex-1">
-                                            <span>{child.name}</span>
-                                            {child.path === '/dashboard/department-requests' && notificationCount > 0 && (
-                                              <span className="ml-2 flex h-5 min-w-[20px] items-center justify-center rounded-full bg-red-500 px-1.5 text-xs font-medium text-white">
-                                                {notificationCount > 99 ? '99+' : notificationCount}
-                                              </span>
-                                            )}
-                                            {child.path === '/dashboard/qr-billing-tasks' && billingTasksCount > 0 && (
-                                              <span className="ml-2 flex h-5 min-w-[20px] items-center justify-center rounded-full bg-blue-500 px-1.5 text-xs font-medium text-white">
-                                                {billingTasksCount > 99 ? '99+' : billingTasksCount}
-                                              </span>
-                                            )}
-                                          </span>
-                                        )}
-                                      </NavLink>
+                                      {hasGrandChildren ? (
+                                        <div className="flex flex-col gap-1">
+                                          <div className="flex items-center gap-3 px-3 py-2 rounded-xl text-sidebar-foreground/90">
+                                            {ChildIcon && <ChildIcon className="h-4 w-4 shrink-0" />}
+                                            {open && <span className="font-medium text-sm">{child.name}</span>}
+                                          </div>
+                                          <div className="flex flex-col gap-1 pl-7">
+                                            {child.children!.map((grand) => {
+                                              const GrandIcon = Icons[grand.icon as keyof typeof Icons] as any;
+                                              return (
+                                                <NavLink
+                                                  key={grand.id}
+                                                  to={grand.path}
+                                                  onClick={handleNavClick}
+                                                  className={({ isActive }) =>
+                                                    `flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs transition-colors ${
+                                                      isActive
+                                                        ? 'bg-sidebar-primary/20 text-sidebar-primary font-semibold'
+                                                        : 'text-sidebar-foreground/80 hover:bg-sidebar-accent/20 hover:text-sidebar-primary'
+                                                    }`
+                                                  }
+                                                >
+                                                  {GrandIcon && <GrandIcon className="h-3 w-3 shrink-0" />}
+                                                  {open && <span>{grand.name}</span>}
+                                                </NavLink>
+                                              );
+                                            })}
+                                          </div>
+                                        </div>
+                                      ) : (
+                                        <NavLink
+                                          to={child.path}
+                                          onClick={handleNavClick}
+                                          className={({ isActive }) =>
+                                            `flex items-center gap-3 px-3 py-2 rounded-xl transition-colors ${
+                                              isActive
+                                                ? 'bg-sidebar-primary/20 text-sidebar-primary font-semibold'
+                                                : 'text-sidebar-foreground hover:bg-sidebar-accent/20 hover:text-sidebar-primary'
+                                            }`
+                                          }
+                                        >
+                                          {ChildIcon && <ChildIcon className="h-4 w-4 shrink-0" />}
+                                          {open && (
+                                            <span className="flex items-center justify-between flex-1">
+                                              <span>{child.name}</span>
+                                              {child.path === '/dashboard/department-requests' && notificationCount > 0 && (
+                                                <span className="ml-2 flex h-5 min-w-[20px] items-center justify-center rounded-full bg-red-500 px-1.5 text-xs font-medium text-white">
+                                                  {notificationCount > 99 ? '99+' : notificationCount}
+                                                </span>
+                                              )}
+                                              {child.path === '/dashboard/qr-billing-tasks' && billingTasksCount > 0 && (
+                                                <span className="ml-2 flex h-5 min-w-[20px] items-center justify-center rounded-full bg-blue-500 px-1.5 text-xs font-medium text-white">
+                                                  {billingTasksCount > 99 ? '99+' : billingTasksCount}
+                                                </span>
+                                              )}
+                                            </span>
+                                          )}
+                                        </NavLink>
+                                      )}
                                     </SidebarMenuSubButton>
                                   </SidebarMenuSubItem>
                                 );
                               })}
+
                             </SidebarMenuSub>
                           </CollapsibleContent>
                         </SidebarMenuItem>
