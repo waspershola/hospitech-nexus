@@ -43,7 +43,7 @@ export default function FinanceCenter() {
         <BackfillFoliosButton />
       </div>
 
-      <Tabs defaultValue="settings" className="flex-1 flex flex-col overflow-hidden">
+      <Tabs value={activeTab} onValueChange={handleTabChange} className="flex-1 flex flex-col overflow-hidden">
         <div className="overflow-x-auto pb-2 -mx-6 px-6">
           <TabsList className="inline-flex w-auto h-auto mb-4 gap-1 flex-nowrap">
             <TabsTrigger value="settings" className="flex items-center gap-2 whitespace-nowrap">
