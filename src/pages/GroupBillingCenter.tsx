@@ -81,9 +81,9 @@ export default function GroupBillingCenter() {
         <Card>
           <CardContent className="p-8 text-center">
             <p className="text-muted-foreground">No group master folio found for this booking.</p>
-            <Button onClick={() => navigate(-1)} className="mt-4">
+            <Button onClick={() => navigate('/dashboard/front-desk')} className="mt-4">
               <ArrowLeft className="mr-2 h-4 w-4" />
-              Go Back
+              Back to Front Desk
             </Button>
           </CardContent>
         </Card>
@@ -98,7 +98,7 @@ export default function GroupBillingCenter() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-4">
-          <Button variant="ghost" size="icon" onClick={() => navigate(-1)}>
+          <Button variant="ghost" size="icon" onClick={() => navigate('/dashboard/front-desk')}>
             <ArrowLeft className="h-5 w-5" />
           </Button>
           <div>
