@@ -101,6 +101,18 @@ serve(async (req) => {
 
     console.log('User authorized:', user.id, 'Role:', userRole.role, 'Tenant:', userRole.tenant_id);
 
+    // Fetch payment preferences for threshold validation
+    const { data: paymentPreferences } = await supabase
+      .from('hotel_payment_preferences')
+      .select('manager_approval_threshold, large_overpayment_threshold')
+      .eq('tenant_id', userRole.tenant_id)
+      .maybeSingle();
+
+    const managerApprovalThreshold = paymentPreferences?.manager_approval_threshold || 50000;
+    const largeOverpaymentThreshold = paymentPreferences?.large_overpayment_threshold || 50000;
+
+    console.log('Payment thresholds:', { managerApprovalThreshold, largeOverpaymentThreshold });
+
     // Parse and validate input
     const rawBody = await req.json();
     const validationResult = paymentSchema.safeParse(rawBody);
@@ -149,6 +161,54 @@ serve(async (req) => {
     }
 
     console.log('Processing payment:', { transaction_ref, amount, method, provider_id, location_id });
+
+    // PHASE 2B: Threshold validation for partial payments and overpayments
+    if (expected_amount && payment_type) {
+      const paymentDifference = amount - expected_amount;
+      
+      // Partial payment validation - check remaining balance
+      if (payment_type === 'partial') {
+        const balanceDue = expected_amount - amount;
+        if (balanceDue > managerApprovalThreshold) {
+          // Require manager approval for large remaining balance
+          if (!approval_token && !force_approve) {
+            console.log('BLOCKED: Partial payment requires manager approval. Balance due:', balanceDue);
+            return new Response(
+              JSON.stringify({ 
+                success: false, 
+                error: `Partial payment with balance ₦${balanceDue.toLocaleString()} requires manager approval`,
+                code: 'MANAGER_APPROVAL_REQUIRED_PARTIAL',
+                balance_due: balanceDue,
+                threshold: managerApprovalThreshold
+              }),
+              { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+            );
+          }
+          console.log('Manager approval provided for partial payment. Token:', approval_token?.substring(0, 10) + '...');
+        }
+      }
+      
+      // Overpayment validation - check excess amount
+      if (payment_type === 'overpayment' && paymentDifference > 0) {
+        if (paymentDifference > largeOverpaymentThreshold) {
+          // Require manager approval for large overpayment
+          if (!approval_token && !force_approve) {
+            console.log('BLOCKED: Large overpayment requires manager approval. Excess:', paymentDifference);
+            return new Response(
+              JSON.stringify({ 
+                success: false, 
+                error: `Overpayment of ₦${paymentDifference.toLocaleString()} requires manager approval`,
+                code: 'MANAGER_APPROVAL_REQUIRED_OVERPAYMENT',
+                overpayment_excess: paymentDifference,
+                threshold: largeOverpaymentThreshold
+              }),
+              { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+            );
+          }
+          console.log('Manager approval provided for large overpayment. Token:', approval_token?.substring(0, 10) + '...');
+        }
+      }
+    }
 
     // Note: For payments, we typically receive the final amount paid by the customer
     // We don't recalculate taxes here, just record what was received
