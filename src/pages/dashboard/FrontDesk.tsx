@@ -88,50 +88,16 @@ export default function FrontDesk() {
 
   return (
     <div className="h-full flex flex-col bg-background">
-      <HeaderBar searchQuery={searchQuery} onSearchChange={setSearchQuery} />
-      
-      <div className="p-3 sm:p-4 lg:p-6 border-b border-border flex items-center justify-between gap-4">
-        <div className="flex-1 min-w-0">
-          <h2 className="text-lg lg:text-xl font-display font-semibold text-foreground truncate">Room Management</h2>
-          <p className="text-xs lg:text-sm text-muted-foreground hidden sm:block">Monitor and manage all rooms from one dashboard</p>
-        </div>
-        <div className="flex items-center gap-2">
-          <QRRequestNotificationWidget />
-          <Button 
-            onClick={() => setIsBookingFlowOpen(true)} 
-            size="lg"
-            className="hidden sm:flex"
-          >
-            <Plus className="w-4 h-4 mr-2" />
-            New Booking
-          </Button>
-          <Button 
-            onClick={() => setIsBookingFlowOpen(true)} 
-            size="icon"
-            className="sm:hidden"
-          >
-            <Plus className="w-5 h-5" />
-          </Button>
-        </div>
-      </div>
+      <HeaderBar 
+        searchQuery={searchQuery} 
+        onSearchChange={setSearchQuery}
+        onNewBooking={() => setIsBookingFlowOpen(true)}
+      />
       
       <div className="flex-1 flex flex-col overflow-hidden">
         <Tabs value={viewMode} onValueChange={(v) => setViewMode(v as 'status' | 'date')} className="flex-1 flex flex-col">
-          <div className="px-3 sm:px-4 lg:px-6 pt-3 sm:pt-4 border-b">
-            <TabsList className="grid w-full max-w-md grid-cols-2">
-              <TabsTrigger value="status" className="gap-2">
-                <LayoutGrid className="h-4 w-4" />
-                Room Status
-              </TabsTrigger>
-              <TabsTrigger value="date" className="gap-2">
-                <Calendar className="h-4 w-4" />
-                By Date
-              </TabsTrigger>
-            </TabsList>
-          </div>
-
           <TabsContent value="status" className="flex-1 flex flex-col m-0 overflow-hidden data-[state=inactive]:absolute data-[state=inactive]:invisible data-[state=inactive]:pointer-events-none">
-            <div className="px-3 sm:px-4 lg:px-6 pt-3 sm:pt-4 space-y-4">
+            <div className="px-3 sm:px-4 lg:px-6 pt-3 sm:pt-4 space-y-3">
               <StatusSyncMonitor />
               <CheckoutRemindersWidget />
               <QuickKPIs 
@@ -142,7 +108,7 @@ export default function FrontDesk() {
             </div>
             
             <ScrollArea className="flex-1">
-              <div className="px-3 sm:px-4 lg:px-6 pt-3 sm:pt-4 pb-20 lg:pb-6">
+              <div className="px-3 sm:px-4 lg:px-6 pt-2 pb-20 lg:pb-6">
                 <RoomStatusOverview 
                   statusFilter={statusFilter}
                   onRoomClick={(roomId) => {
@@ -150,6 +116,8 @@ export default function FrontDesk() {
                     setContextDate(null);
                   }}
                   globalSearchQuery={searchQuery}
+                  viewMode={viewMode}
+                  onViewModeChange={setViewMode}
                 />
                 
                 <div className="mt-6">

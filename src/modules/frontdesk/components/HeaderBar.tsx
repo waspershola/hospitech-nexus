@@ -1,16 +1,19 @@
-import { Search, Hotel, Clock } from 'lucide-react';
+import { Search, Hotel, Clock, Plus } from 'lucide-react';
 import { Input } from '@/components/ui/input';
+import { Button } from '@/components/ui/button';
 import { useAuth } from '@/contexts/AuthContext';
 import { useEffect, useState } from 'react';
 import { OfflineIndicator } from './OfflineIndicator';
 import { FrontDeskAlerts } from './FrontDeskAlerts';
+import { QRRequestNotificationWidget } from '@/components/frontdesk/QRRequestNotificationWidget';
 
 interface HeaderBarProps {
   searchQuery?: string;
   onSearchChange?: (query: string) => void;
+  onNewBooking?: () => void;
 }
 
-export function HeaderBar({ searchQuery = '', onSearchChange }: HeaderBarProps) {
+export function HeaderBar({ searchQuery = '', onSearchChange, onNewBooking }: HeaderBarProps) {
   const { tenantName } = useAuth();
   const [currentTime, setCurrentTime] = useState(new Date());
 
@@ -41,18 +44,34 @@ export function HeaderBar({ searchQuery = '', onSearchChange }: HeaderBarProps) 
           </div>
         </div>
 
-        <div className="flex items-center gap-6">
+        <div className="flex items-center gap-3">
           <OfflineIndicator />
           <FrontDeskAlerts />
-          <div className="text-sm">
+          <div className="text-sm hidden lg:block">
             <p className="font-medium text-foreground">{tenantName}</p>
           </div>
-          <div className="flex items-center gap-2 text-muted-foreground">
+          <div className="flex items-center gap-2 text-muted-foreground hidden md:flex">
             <Clock className="w-4 h-4" />
             <span className="text-sm font-mono">
               {currentTime.toLocaleTimeString()}
             </span>
           </div>
+          <QRRequestNotificationWidget />
+          <Button 
+            onClick={onNewBooking} 
+            size="default"
+            className="hidden sm:flex"
+          >
+            <Plus className="w-4 h-4 mr-2" />
+            New Booking
+          </Button>
+          <Button 
+            onClick={onNewBooking} 
+            size="icon"
+            className="sm:hidden"
+          >
+            <Plus className="w-5 h-5" />
+          </Button>
         </div>
       </div>
     </div>
