@@ -191,3 +191,6 @@ verify_jwt = true
 
 [functions.reset-manager-pin]
 verify_jwt = true
+
+[functions.ai-message]
+verify_jwt = false
