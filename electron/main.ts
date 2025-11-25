@@ -11,9 +11,10 @@
 
 import { app, BrowserWindow, ipcMain, shell, net } from 'electron';
 import { autoUpdater } from 'electron-updater';
+import AutoLaunch from 'auto-launch';
 import * as path from 'path';
 import * as fs from 'fs';
-import type { QueuedRequest, QueueStatus, LogEvent, PrintOptions } from './types';
+import type { QueuedRequest, QueueStatus, LogEvent, PrintOptions, UpdateCheckResult, UpdateInfo } from './types';
 
 // ============= Configuration =============
 
@@ -279,15 +280,36 @@ ipcMain.handle('print:html', async (_event, htmlContent: string) => {
   }
 });
 
-// Auto-launch
+// ============= Auto-Launch Setup =============
+
+const autoLauncher = new AutoLaunch({
+  name: 'LuxuryHotelPro',
+  path: app.getPath('exe'),
+});
+
+// Auto-launch handlers
 ipcMain.handle('autolaunch:get', async (): Promise<boolean> => {
-  // TODO: Phase 7 - Windows registry manipulation
-  return false;
+  try {
+    return await autoLauncher.isEnabled();
+  } catch (error) {
+    logger.error('Failed to check auto-launch status', { error: String(error) });
+    return false;
+  }
 });
 
 ipcMain.handle('autolaunch:set', async (_event, enabled: boolean) => {
   logger.info(`Auto-launch ${enabled ? 'enabled' : 'disabled'}`);
-  // TODO: Phase 7 - Windows registry manipulation
+  
+  try {
+    if (enabled) {
+      await autoLauncher.enable();
+    } else {
+      await autoLauncher.disable();
+    }
+  } catch (error) {
+    logger.error('Failed to set auto-launch', { error: String(error) });
+    throw error;
+  }
 });
 
 // App version
@@ -303,6 +325,7 @@ function setupAutoUpdater() {
     return;
   }
 
+  // Configure auto-updater
   autoUpdater.logger = {
     info: (msg: string) => logger.info(`[UPDATER] ${msg}`),
     warn: (msg: string) => logger.warn(`[UPDATER] ${msg}`),
@@ -310,23 +333,120 @@ function setupAutoUpdater() {
     debug: (msg: string) => logger.info(`[UPDATER] ${msg}`),
   };
 
-  autoUpdater.on('update-available', () => {
-    logger.info('Update available');
-    // TODO: Phase 7 - Show toast notification
+  autoUpdater.autoDownload = false; // Manual download control
+  autoUpdater.autoInstallOnAppQuit = true; // Install on quit
+
+  // Update available
+  autoUpdater.on('update-available', (info) => {
+    logger.info('Update available', { version: info.version });
+    
+    if (mainWindow && !mainWindow.isDestroyed()) {
+      mainWindow.webContents.send('update:available', {
+        version: info.version,
+        releaseDate: info.releaseDate,
+        releaseNotes: info.releaseNotes || 'No release notes available',
+      });
+    }
   });
 
-  autoUpdater.on('update-downloaded', () => {
-    logger.info('Update downloaded - ready to install');
-    // TODO: Phase 7 - Show restart prompt
+  // No update available
+  autoUpdater.on('update-not-available', () => {
+    logger.info('No updates available');
   });
 
-  // Check for updates on startup
+  // Download progress
+  autoUpdater.on('download-progress', (progress) => {
+    if (mainWindow && !mainWindow.isDestroyed()) {
+      mainWindow.webContents.send('update:progress', progress.percent);
+    }
+  });
+
+  // Update downloaded
+  autoUpdater.on('update-downloaded', (info) => {
+    logger.info('Update downloaded - ready to install', { version: info.version });
+    
+    if (mainWindow && !mainWindow.isDestroyed()) {
+      const updateInfo: UpdateInfo = {
+        version: info.version,
+        releaseDate: info.releaseDate,
+        releaseNotes: info.releaseNotes || 'No release notes available',
+        downloadUrl: '',
+      };
+      mainWindow.webContents.send('update:downloaded', updateInfo);
+    }
+  });
+
+  // Error handling
+  autoUpdater.on('error', (error) => {
+    logger.error('Auto-updater error', { error: String(error) });
+  });
+
+  // Check for updates on startup (after 3 seconds)
   setTimeout(() => {
     autoUpdater.checkForUpdates().catch(err => {
       logger.error('Update check failed', { error: String(err) });
     });
   }, 3000);
+
+  // Check for updates every 4 hours
+  setInterval(() => {
+    autoUpdater.checkForUpdates().catch(err => {
+      logger.error('Scheduled update check failed', { error: String(err) });
+    });
+  }, 4 * 60 * 60 * 1000);
 }
+
+// Auto-update IPC handlers
+ipcMain.handle('update:check', async (): Promise<UpdateCheckResult> => {
+  logger.info('Manual update check requested');
+  
+  try {
+    const result = await autoUpdater.checkForUpdates();
+    
+    if (result && result.updateInfo) {
+      const info: UpdateInfo = {
+        version: result.updateInfo.version,
+        releaseDate: result.updateInfo.releaseDate,
+        releaseNotes: result.updateInfo.releaseNotes || 'No release notes available',
+        downloadUrl: '',
+      };
+      
+      return {
+        available: true,
+        info,
+      };
+    }
+    
+    return {
+      available: false,
+      info: null,
+    };
+  } catch (error) {
+    logger.error('Update check failed', { error: String(error) });
+    return {
+      available: false,
+      info: null,
+    };
+  }
+});
+
+ipcMain.handle('update:download', async (): Promise<void> => {
+  logger.info('Update download requested');
+  
+  try {
+    await autoUpdater.downloadUpdate();
+  } catch (error) {
+    logger.error('Update download failed', { error: String(error) });
+    throw error;
+  }
+});
+
+ipcMain.handle('update:install', async (): Promise<void> => {
+  logger.info('Update install requested - quitting and installing');
+  
+  // This will quit the app and install the update
+  autoUpdater.quitAndInstall(false, true);
+});
 
 // ============= App Lifecycle =============
 
