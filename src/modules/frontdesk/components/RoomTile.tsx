@@ -2,7 +2,7 @@ import { Card, CardHeader } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
-import { Sparkles, CreditCard, IdCard, Wrench, Building2, AlertTriangle, BellOff } from 'lucide-react';
+import { Building2, BellOff } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useOrganizationWallet } from '@/hooks/useOrganizationWallet';
 import { getRoomStatusNow } from '@/lib/roomAvailability';
@@ -121,7 +121,7 @@ export function RoomTile({ room, onClick, isSelectionMode, isSelected, onSelecti
     <TooltipProvider>
       <Card 
         className={cn(
-          'group cursor-pointer transition-all duration-200 active:scale-95 border-l-4 rounded-lg relative touch-manipulation',
+          'cursor-pointer transition-all duration-200 active:scale-95 border-l-4 rounded-lg relative touch-manipulation',
           'lg:hover:shadow-md flex flex-col bg-card min-h-[100px]',
           accentColor,
           isSelected && 'ring-2 ring-primary ring-offset-2'
@@ -174,15 +174,9 @@ export function RoomTile({ room, onClick, isSelectionMode, isSelected, onSelecti
               <div className="mb-1">
                 <div className="flex items-center justify-between gap-0.5">
                   <div className="flex items-center gap-0.5 min-w-0 flex-1">
-                    <Building2 className="w-2 h-2 text-primary shrink-0 opacity-0 group-hover:opacity-100 transition-opacity" />
+                    <Building2 className="w-2 h-2 text-primary shrink-0" />
                     <span className="text-[9px] font-medium text-primary truncate">{organization.name}</span>
                   </div>
-                  {(orgWallet?.nearLimit || orgWallet?.overLimit) && (
-                    <AlertTriangle className={cn(
-                      "w-2 h-2 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity",
-                      orgWallet?.overLimit ? "text-destructive" : "text-yellow-500"
-                    )} />
-                  )}
                 </div>
                 {orgWallet && (
                   <p className="text-[8px] text-muted-foreground">
@@ -198,49 +192,6 @@ export function RoomTile({ room, onClick, isSelectionMode, isSelected, onSelecti
             </div>
           </div>
         )}
-
-        <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-          {currentStatus === 'cleaning' && (
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <div className="p-0.5 rounded bg-[hsl(var(--status-dirty)/0.1)] cursor-help">
-                  <Sparkles className="w-2.5 h-2.5 text-[hsl(var(--status-dirty))]" />
-                </div>
-              </TooltipTrigger>
-              <TooltipContent>Needs housekeeping</TooltipContent>
-            </Tooltip>
-          )}
-          {(currentStatus === 'occupied' || currentStatus === 'overstay') && (
-            <>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <div className="p-0.5 rounded bg-[hsl(var(--status-reserved)/0.1)] cursor-help">
-                    <IdCard className="w-2.5 h-2.5 text-[hsl(var(--status-reserved))]" />
-                  </div>
-                </TooltipTrigger>
-                <TooltipContent>ID on file</TooltipContent>
-              </Tooltip>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <div className="p-0.5 rounded bg-[hsl(var(--success)/0.1)] cursor-help">
-                    <CreditCard className="w-2.5 h-2.5 text-[hsl(var(--success))]" />
-                  </div>
-                </TooltipTrigger>
-                <TooltipContent>Has deposit/balance</TooltipContent>
-              </Tooltip>
-            </>
-          )}
-          {currentStatus === 'maintenance' && (
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <div className="p-0.5 rounded bg-[hsl(var(--status-oos)/0.1)] cursor-help">
-                  <Wrench className="w-2.5 h-2.5 text-[hsl(var(--status-oos))]" />
-                </div>
-              </TooltipTrigger>
-              <TooltipContent>Under maintenance</TooltipContent>
-            </Tooltip>
-          )}
-        </div>
       </CardHeader>
     </Card>
     </TooltipProvider>

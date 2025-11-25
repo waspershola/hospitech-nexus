@@ -15,11 +15,9 @@ interface RoomStatusOverviewProps {
   statusFilter: string | null;
   onRoomClick: (roomId: string) => void;
   globalSearchQuery?: string;
-  viewMode?: 'status' | 'date';
-  onViewModeChange?: (mode: 'status' | 'date') => void;
 }
 
-export function RoomStatusOverview({ statusFilter, onRoomClick, globalSearchQuery = '', viewMode = 'status', onViewModeChange }: RoomStatusOverviewProps) {
+export function RoomStatusOverview({ statusFilter, onRoomClick, globalSearchQuery = '' }: RoomStatusOverviewProps) {
   const { tenantId } = useAuth();
   const queryClient = useQueryClient();
   const [localSearchQuery, setLocalSearchQuery] = useState('');
@@ -111,8 +109,6 @@ export function RoomStatusOverview({ statusFilter, onRoomClick, globalSearchQuer
           onFloorChange={setFloorFilter}
           onOrganizationChange={setOrganizationFilter}
           onClearAll={handleClearFilters}
-          viewMode={viewMode}
-          onViewModeChange={onViewModeChange}
         />
         
         <Button
