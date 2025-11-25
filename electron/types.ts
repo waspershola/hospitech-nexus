@@ -57,6 +57,7 @@ export interface ElectronAPI {
 
   // Printing
   printPdf: (bufferOrUrl: string | ArrayBuffer, options?: PrintOptions) => Promise<void>;
+  printHtml: (htmlContent: string) => Promise<void>;
 
   // Auto-launch
   getAutoLaunchEnabled: () => Promise<boolean>;

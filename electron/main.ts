@@ -202,9 +202,9 @@ app.on('before-quit', () => {
   stopSyncScheduler();
 });
 
-// Printing
+// Printing - PDF
 ipcMain.handle('print:pdf', async (_event, { bufferOrUrl, options }: { bufferOrUrl: string | ArrayBuffer; options?: PrintOptions }) => {
-  logger.info('Print request received');
+  logger.info('Print PDF request received');
   
   if (!mainWindow) {
     throw new Error('Main window not available');
@@ -232,9 +232,49 @@ ipcMain.handle('print:pdf', async (_event, { bufferOrUrl, options }: { bufferOrU
     await printWindow.webContents.print(options || {});
     printWindow.close();
     
-    logger.info('Print completed successfully');
+    logger.info('Print PDF completed successfully');
   } catch (error) {
-    logger.error('Print failed', { error: String(error) });
+    logger.error('Print PDF failed', { error: String(error) });
+    throw error;
+  }
+});
+
+// Printing - HTML
+ipcMain.handle('print:html', async (_event, htmlContent: string) => {
+  logger.info('Print HTML request received');
+  
+  if (!mainWindow) {
+    throw new Error('Main window not available');
+  }
+
+  try {
+    // Create temporary window for printing
+    const printWindow = new BrowserWindow({
+      show: false,
+      webPreferences: {
+        nodeIntegration: false,
+        contextIsolation: true,
+      },
+    });
+
+    // Load HTML content with proper encoding
+    const encodedHtml = encodeURIComponent(htmlContent);
+    await printWindow.loadURL(`data:text/html;charset=utf-8,${encodedHtml}`);
+
+    // Wait for content to render
+    await new Promise(resolve => setTimeout(resolve, 500));
+
+    // Print with options
+    await printWindow.webContents.print({
+      silent: false,
+      printBackground: true,
+      margins: { marginType: 'none' },
+    });
+    
+    printWindow.close();
+    logger.info('Print HTML completed successfully');
+  } catch (error) {
+    logger.error('Print HTML failed', { error: String(error) });
     throw error;
   }
 });

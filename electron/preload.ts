@@ -53,6 +53,10 @@ const electronAPI: ElectronAPI = {
     return ipcRenderer.invoke('print:pdf', { bufferOrUrl, options });
   },
 
+  printHtml: async (htmlContent: string): Promise<void> => {
+    return ipcRenderer.invoke('print:html', htmlContent);
+  },
+
   // Auto-launch
   getAutoLaunchEnabled: async (): Promise<boolean> => {
     return ipcRenderer.invoke('autolaunch:get');
