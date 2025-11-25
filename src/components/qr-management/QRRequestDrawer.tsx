@@ -23,6 +23,7 @@ import { usePlatformFee } from '@/hooks/usePlatformFee';
 import { calculateQRPlatformFee } from '@/lib/finance/platformFee';
 import { useAuth } from '@/contexts/AuthContext';
 import { useOverdueRequests } from '@/hooks/useOverdueRequests';
+import { useRequestRealtime } from '@/hooks/useRequestRealtime';
 import { RequestPaymentInfo } from './RequestPaymentInfo';
 import { RequestCardSkeleton } from './RequestCardSkeleton';
 import { PaymentHistoryTimeline } from './PaymentHistoryTimeline';
@@ -98,6 +99,9 @@ export function QRRequestDrawer({
 
   // Use department request if in department mode, otherwise use selected from list
   const displayRequest = mode === 'department' ? departmentRequest : selectedRequest;
+  
+  // PAYMENT-FIX-V2 Phase 1: Real-time subscription for individual request
+  useRequestRealtime(displayRequest?.id, tenantId);
   
   // PHASE 4: Migrated to unified chat hook (must be after displayRequest is defined)
   const { messages, sendMessage, isSending } = useUnifiedRequestChat({
