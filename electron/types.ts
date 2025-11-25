@@ -41,6 +41,18 @@ export interface PrintOptions {
 /**
  * Typed Electron API exposed to renderer via preload bridge
  */
+export interface UpdateInfo {
+  version: string;
+  releaseDate: string;
+  releaseNotes: string;
+  downloadUrl: string;
+}
+
+export interface UpdateCheckResult {
+  available: boolean;
+  info: UpdateInfo | null;
+}
+
 export interface ElectronAPI {
   // Desktop detection
   isDesktop: boolean;
@@ -62,6 +74,13 @@ export interface ElectronAPI {
   // Auto-launch
   getAutoLaunchEnabled: () => Promise<boolean>;
   setAutoLaunchEnabled: (enabled: boolean) => Promise<void>;
+
+  // Auto-updates
+  checkForUpdates: () => Promise<UpdateCheckResult>;
+  downloadUpdate: () => Promise<void>;
+  installUpdate: () => Promise<void>;
+  onUpdateDownloadProgress?: (callback: (percent: number) => void) => () => void;
+  onUpdateDownloaded?: (callback: (info: UpdateInfo) => void) => () => void;
 
   // App info
   getAppVersion: () => Promise<string>;

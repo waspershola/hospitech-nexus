@@ -6,7 +6,7 @@
  */
 
 import { contextBridge, ipcRenderer } from 'electron';
-import type { ElectronAPI, QueuedRequest, QueueStatus, LogEvent, PrintOptions } from './types';
+import type { ElectronAPI, QueuedRequest, QueueStatus, LogEvent, PrintOptions, UpdateCheckResult, UpdateInfo } from './types';
 
 // Validate we're in a secure context
 if (!process.contextIsolated) {
@@ -64,6 +64,41 @@ const electronAPI: ElectronAPI = {
 
   setAutoLaunchEnabled: async (enabled: boolean): Promise<void> => {
     return ipcRenderer.invoke('autolaunch:set', enabled);
+  },
+
+  // Auto-updates
+  checkForUpdates: async (): Promise<UpdateCheckResult> => {
+    return ipcRenderer.invoke('update:check');
+  },
+
+  downloadUpdate: async (): Promise<void> => {
+    return ipcRenderer.invoke('update:download');
+  },
+
+  installUpdate: async (): Promise<void> => {
+    return ipcRenderer.invoke('update:install');
+  },
+
+  onUpdateDownloadProgress: (callback: (percent: number) => void): (() => void) => {
+    const listener = (_event: Electron.IpcRendererEvent, percent: number) => {
+      callback(percent);
+    };
+    ipcRenderer.on('update:progress', listener);
+    
+    return () => {
+      ipcRenderer.removeListener('update:progress', listener);
+    };
+  },
+
+  onUpdateDownloaded: (callback: (info: UpdateInfo) => void): (() => void) => {
+    const listener = (_event: Electron.IpcRendererEvent, info: UpdateInfo) => {
+      callback(info);
+    };
+    ipcRenderer.on('update:downloaded', listener);
+    
+    return () => {
+      ipcRenderer.removeListener('update:downloaded', listener);
+    };
   },
 
   // App info
