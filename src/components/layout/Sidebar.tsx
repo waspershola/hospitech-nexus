@@ -2,11 +2,11 @@ import { Hotel, ChevronDown } from 'lucide-react';
 import * as Icons from 'lucide-react';
 import { NavLink } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
-import { useNavigation } from '@/hooks/useNavigation';
+import { useNavigation, NavigationItem } from '@/hooks/useNavigation';
 import { useRequestNotificationCount } from '@/hooks/useRequestNotificationCount';
 import { useQRBillingTasks } from '@/hooks/useQRBillingTasks';
 import { Skeleton } from '@/components/ui/skeleton';
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import {
   Sidebar,
   SidebarContent,
@@ -23,20 +23,75 @@ import {
   useSidebar,
 } from '@/components/ui/sidebar';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
+import { SidebarSearch } from './SidebarSearch';
 
 export function AppSidebar() {
   const { tenantName } = useAuth();
-  const { open } = useSidebar();
+  const { open, isMobile, setOpenMobile } = useSidebar();
   const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({});
+  const [searchQuery, setSearchQuery] = useState('');
   const notificationCount = useRequestNotificationCount();
   const { count: billingTasksCount } = useQRBillingTasks();
   
   // Use unified navigation hook for all users (platform and tenant)
   const { data: navItems, isLoading, error } = useNavigation();
 
+  // Filter navigation items based on search query (fuzzy matching)
+  const filteredNavItems = useMemo(() => {
+    if (!searchQuery.trim()) return navItems || [];
+    
+    const query = searchQuery.toLowerCase();
+    
+    const filterItems = (items: NavigationItem[]): NavigationItem[] => {
+      return items.reduce((acc, item) => {
+        const matchesName = item.name.toLowerCase().includes(query);
+        const matchesDescription = item.description?.toLowerCase().includes(query);
+        const matchesPath = item.path.toLowerCase().includes(query);
+        const matches = matchesName || matchesDescription || matchesPath;
+        
+        // Check if any children match
+        const filteredChildren = item.children ? filterItems(item.children) : [];
+        
+        // Include item if it matches OR has matching children
+        if (matches || filteredChildren.length > 0) {
+          acc.push({
+            ...item,
+            children: filteredChildren.length > 0 ? filteredChildren : item.children,
+          });
+        }
+        
+        return acc;
+      }, [] as NavigationItem[]);
+    };
+    
+    const filtered = filterItems(navItems || []);
+    
+    // Auto-expand groups that have matching children when searching
+    if (searchQuery.trim()) {
+      const newOpenGroups: Record<string, boolean> = {};
+      filtered.forEach(item => {
+        if (item.children && item.children.length > 0) {
+          newOpenGroups[item.id] = true;
+        }
+      });
+      setOpenGroups(prev => ({ ...prev, ...newOpenGroups }));
+    }
+    
+    return filtered;
+  }, [navItems, searchQuery]);
+  
+  // Auto-close sidebar on mobile after navigation
+  const handleNavClick = () => {
+    if (isMobile) {
+      setOpenMobile(false);
+    }
+  };
+
   // Debug logging
   console.log('📱 [Sidebar] Render:', { 
     navItemsCount: navItems?.length, 
+    filteredCount: filteredNavItems.length,
+    searchQuery,
     isLoading, 
     hasError: !!error,
     errorMessage: error?.message 
@@ -64,6 +119,17 @@ export function AppSidebar() {
         </div>
       </SidebarHeader>
 
+      {/* Search Input */}
+      {open && (
+        <div className="px-2 pt-2">
+          <SidebarSearch 
+            value={searchQuery} 
+            onChange={setSearchQuery}
+            placeholder="Search menu..."
+          />
+        </div>
+      )}
+
       <SidebarContent>
         <SidebarGroup>
           <SidebarGroupLabel className="text-sidebar-foreground/70">
@@ -81,9 +147,9 @@ export function AppSidebar() {
                 <p className="font-semibold">Navigation Error</p>
                 <p className="text-xs mt-1">{error.message}</p>
               </div>
-            ) : navItems && navItems.length > 0 ? (
+            ) : filteredNavItems && filteredNavItems.length > 0 ? (
               <SidebarMenu>
-                {navItems.map((item) => {
+                {filteredNavItems.map((item) => {
                   const IconComponent = Icons[item.icon as keyof typeof Icons] as any;
                   
                   // Parent item with children (collapsible group)
@@ -113,6 +179,7 @@ export function AppSidebar() {
                                     <SidebarMenuSubButton asChild>
                                        <NavLink
                                         to={child.path}
+                                        onClick={handleNavClick}
                                         className={({ isActive }) =>
                                           `flex items-center gap-3 px-3 py-2 rounded-xl transition-colors ${
                                             isActive
@@ -151,6 +218,7 @@ export function AppSidebar() {
                         <NavLink
                           to={item.path}
                           end={item.path === '/dashboard'}
+                          onClick={handleNavClick}
                           className={({ isActive }) =>
                             `flex items-center gap-3 px-3 py-2 rounded-xl transition-colors ${
                               isActive
@@ -181,6 +249,10 @@ export function AppSidebar() {
                   );
                 })}
               </SidebarMenu>
+            ) : searchQuery ? (
+              <div className="px-4 py-3 text-sm text-muted-foreground text-center">
+                No results found for "{searchQuery}"
+              </div>
             ) : (
               <div className="px-4 py-3 text-sm text-muted-foreground">
                 No navigation items
