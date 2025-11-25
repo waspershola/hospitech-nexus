@@ -1,9 +1,12 @@
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { X, Filter } from 'lucide-react';
+import { X, Filter, LayoutGrid, Calendar } from 'lucide-react';
 
 interface FilterBarProps {
+  viewMode?: 'status' | 'date';
+  onViewModeChange?: (mode: 'status' | 'date') => void;
   statusFilter: string | null;
   categoryFilter: string | null;
   floorFilter: number | null;
@@ -19,6 +22,8 @@ interface FilterBarProps {
 }
 
 export function FilterBar({
+  viewMode = 'status',
+  onViewModeChange,
   statusFilter,
   categoryFilter,
   floorFilter,
@@ -37,6 +42,28 @@ export function FilterBar({
   return (
     <div className="space-y-2 flex-1">
       <div className="flex flex-wrap gap-1.5 items-center">
+        {/* Tabs for Room Status / By Date */}
+        {viewMode !== undefined && onViewModeChange && (
+          <TabsList className="grid grid-cols-2 w-fit shrink-0 h-8">
+            <TabsTrigger 
+              value="status" 
+              className="gap-1.5 text-xs px-2.5"
+              onClick={() => onViewModeChange('status')}
+            >
+              <LayoutGrid className="h-3 w-3" />
+              Room Status
+            </TabsTrigger>
+            <TabsTrigger 
+              value="date" 
+              className="gap-1.5 text-xs px-2.5"
+              onClick={() => onViewModeChange('date')}
+            >
+              <Calendar className="h-3 w-3" />
+              By Date
+            </TabsTrigger>
+          </TabsList>
+        )}
+        
         <Filter className="w-3 h-3 text-muted-foreground shrink-0" />
         
         <div className="relative">

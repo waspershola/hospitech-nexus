@@ -15,9 +15,11 @@ interface RoomStatusOverviewProps {
   statusFilter: string | null;
   onRoomClick: (roomId: string) => void;
   globalSearchQuery?: string;
+  viewMode?: 'status' | 'date';
+  onViewModeChange?: (mode: 'status' | 'date') => void;
 }
 
-export function RoomStatusOverview({ statusFilter, onRoomClick, globalSearchQuery = '' }: RoomStatusOverviewProps) {
+export function RoomStatusOverview({ statusFilter, onRoomClick, globalSearchQuery = '', viewMode = 'status', onViewModeChange }: RoomStatusOverviewProps) {
   const { tenantId } = useAuth();
   const queryClient = useQueryClient();
   const [localSearchQuery, setLocalSearchQuery] = useState('');
@@ -90,61 +92,44 @@ export function RoomStatusOverview({ statusFilter, onRoomClick, globalSearchQuer
   };
 
   return (
-    <div className="space-y-3">
-      {/* Filters Row */}
-      <FilterBar
-        statusFilter={statusFilter}
-        categoryFilter={categoryFilter}
-        floorFilter={floorFilter}
-        organizationFilter={organizationFilter}
-        categories={categories}
-        floors={floors}
-        organizations={organizations}
-        onStatusChange={(value) => {
-          // Filter bar can change status, but will be overridden by parent
-          // This allows clearing the filter from the dropdown
-        }}
-        onCategoryChange={setCategoryFilter}
-        onFloorChange={setFloorFilter}
-        onOrganizationChange={setOrganizationFilter}
-        onClearAll={handleClearFilters}
-      />
-
-      {/* Search + Select Row */}
-      <div className="flex items-center gap-2">
-        {!globalSearchQuery && (
-          <div className="relative flex-1">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-            <Input
-              placeholder="Search rooms or guests..."
-              value={localSearchQuery}
-              onChange={(e) => setLocalSearchQuery(e.target.value)}
-              className="pl-10"
-            />
-          </div>
-        )}
-        
-        {globalSearchQuery && (
-          <p className="text-sm text-muted-foreground truncate flex-1">
-            Searching: <span className="font-medium text-foreground">"{globalSearchQuery}"</span>
-          </p>
-        )}
+    <div className="space-y-2">
+      {/* Filters Row with Tabs and Select */}
+      <div className="flex flex-wrap items-center gap-2">
+        <FilterBar
+          statusFilter={statusFilter}
+          categoryFilter={categoryFilter}
+          floorFilter={floorFilter}
+          organizationFilter={organizationFilter}
+          categories={categories}
+          floors={floors}
+          organizations={organizations}
+          onStatusChange={(value) => {
+            // Filter bar can change status, but will be overridden by parent
+            // This allows clearing the filter from the dropdown
+          }}
+          onCategoryChange={setCategoryFilter}
+          onFloorChange={setFloorFilter}
+          onOrganizationChange={setOrganizationFilter}
+          onClearAll={handleClearFilters}
+          viewMode={viewMode}
+          onViewModeChange={onViewModeChange}
+        />
         
         <Button
           variant={isSelectionMode ? "default" : "outline"}
-          size="default"
+          size="sm"
           onClick={() => {
             setIsSelectionMode(!isSelectionMode);
             if (isSelectionMode) {
               setSelectedRoomIds([]);
             }
           }}
-          className="whitespace-nowrap shrink-0"
+          className="whitespace-nowrap shrink-0 h-8"
         >
-          <CheckSquare className="w-4 h-4 mr-2" />
-          <span className="hidden sm:inline">{isSelectionMode ? 'Exit' : 'Select'}</span>
+          <CheckSquare className="w-3.5 h-3.5 mr-1.5" />
+          <span className="hidden sm:inline text-xs">{isSelectionMode ? 'Exit' : 'Select'}</span>
           {isSelectionMode && selectedRoomIds.length > 0 && (
-            <Badge variant="secondary" className="ml-2">
+            <Badge variant="secondary" className="ml-1.5 text-[9px] h-4 px-1">
               {selectedRoomIds.length}
             </Badge>
           )}

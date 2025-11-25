@@ -32,7 +32,7 @@ export function HeaderBar({ searchQuery = '', onSearchChange, onNewBooking }: He
           </h1>
         </div>
 
-        <div className="flex-1 max-w-md">
+        <div className="flex-1 max-w-sm">
           <div className="relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
             <Input
@@ -60,7 +60,7 @@ export function HeaderBar({ searchQuery = '', onSearchChange, onNewBooking }: He
           <Button 
             onClick={onNewBooking} 
             size="default"
-            className="hidden sm:flex"
+            className="hidden sm:flex h-8"
           >
             <Plus className="w-4 h-4 mr-2" />
             New Booking
@@ -68,9 +68,9 @@ export function HeaderBar({ searchQuery = '', onSearchChange, onNewBooking }: He
           <Button 
             onClick={onNewBooking} 
             size="icon"
-            className="sm:hidden"
+            className="sm:hidden h-8 w-8"
           >
-            <Plus className="w-5 h-5" />
+            <Plus className="w-4 h-4" />
           </Button>
         </div>
       </div>

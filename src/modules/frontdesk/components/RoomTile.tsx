@@ -8,6 +8,16 @@ import { useOrganizationWallet } from '@/hooks/useOrganizationWallet';
 import { getRoomStatusNow } from '@/lib/roomAvailability';
 import { useOperationsHours } from '@/hooks/useOperationsHours';
 
+// Helper to extract surname only from full name
+const extractSurname = (fullName: string) => {
+  if (!fullName) return '';
+  // Remove common prefixes
+  const cleaned = fullName.replace(/^(ALH|ALHAJI|ALHAJA|MR|MRS|MS|DR|PROF|CHIEF|HON)\s+/i, '');
+  const parts = cleaned.trim().split(' ');
+  // Return last word (surname)
+  return parts[parts.length - 1];
+};
+
 interface RoomTileProps {
   room: any;
   onClick: () => void;
@@ -112,7 +122,7 @@ export function RoomTile({ room, onClick, isSelectionMode, isSelected, onSelecti
       <Card 
         className={cn(
           'group cursor-pointer transition-all duration-200 active:scale-95 border-l-4 rounded-lg relative touch-manipulation',
-          'lg:hover:shadow-md flex flex-col bg-card',
+          'lg:hover:shadow-md flex flex-col bg-card min-h-[100px]',
           accentColor,
           isSelected && 'ring-2 ring-primary ring-offset-2'
         )}
@@ -181,12 +191,11 @@ export function RoomTile({ room, onClick, isSelectionMode, isSelected, onSelecti
                 )}
               </div>
             )}
-            <p className="text-[10px] font-medium text-foreground truncate">
-              {guest?.name || 'Guest'}
-            </p>
-            <p className="text-[9px] text-muted-foreground">
-              Bal: ₦{totalAmount.toLocaleString()}
-            </p>
+            <div className="h-6 flex items-center">
+              <p className="text-[10px] font-medium text-foreground truncate">
+                {extractSurname(guest?.name || 'Guest')}
+              </p>
+            </div>
           </div>
         )}
 
