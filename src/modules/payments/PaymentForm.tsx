@@ -54,6 +54,15 @@ const paymentSchema = z.object({
 
 type PaymentFormData = z.infer<typeof paymentSchema>;
 
+interface PaymentContext {
+  paymentId: string;
+  amount: number;
+  method: string;
+  provider_id: string;
+  location_id?: string;
+  provider_name: string;
+}
+
 interface PaymentFormProps {
   guestId?: string;
   organizationId?: string;
@@ -62,7 +71,7 @@ interface PaymentFormProps {
   expectedAmount?: number;
   isBookingPayment?: boolean;
   dashboardContext?: string;
-  onSuccess?: (paymentId?: string) => void;
+  onSuccess?: (paymentId?: string, paymentContext?: PaymentContext) => void;
   onCancel?: () => void;
   billingReferenceCode?: string; // Optional billing reference for QR Billing Tasks
   requestId?: string; // Optional request ID to update billing status
@@ -344,6 +353,16 @@ export function PaymentForm({
           setShowOverpaymentDialog(false);
           setShowManagerApproval(false);
           
+          // PHASE 1: Build payment context for parent handler
+          const paymentContext: PaymentContext = {
+            paymentId: paymentData?.payment?.id || '',
+            amount: parseFloat(data.amount),
+            method: selectedProvider.type,
+            provider_id: data.provider_id,
+            location_id: data.location_id,
+            provider_name: selectedProvider.name,
+          };
+          
           // If this is a QR Billing Task, update billing status
           if (requestId && billingReferenceCode) {
             try {
@@ -393,7 +412,7 @@ export function PaymentForm({
             }
           }
           
-          onSuccess?.(paymentData?.payment?.id);
+          onSuccess?.(paymentData?.payment?.id, paymentContext);
         },
         onError: (error: Error) => {
           setValidationError(error.message);

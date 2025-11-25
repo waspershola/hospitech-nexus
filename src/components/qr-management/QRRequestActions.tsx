@@ -123,12 +123,12 @@ export function QRRequestActions({ request, onStatusUpdate, onClose }: QRRequest
 
     setIsUpdating(true);
     try {
-      console.log('[QRRequestActions] PAYMENT-FIX-V3: Processing complimentary with approval');
+      console.log('[QRRequestActions] PAYMENT-FIX-V4-AUDIT: Processing complimentary with approval');
       
       // Get staff ID from user ID (FIX: billing_processed_by requires staff.id not user.id)
       const { data: staffData } = await supabase
         .from('staff')
-        .select('id')
+        .select('id, full_name')
         .eq('user_id', user?.id)
         .eq('tenant_id', tenantId)
         .single();
@@ -161,6 +161,30 @@ export function QRRequestActions({ request, onStatusUpdate, onClose }: QRRequest
         .eq('tenant_id', tenantId);
 
       if (requestError) throw requestError;
+      
+      // PHASE 2: Log complimentary approval activity
+      try {
+        await supabase.rpc('log_request_activity', {
+          p_tenant_id: tenantId,
+          p_request_id: request.id,
+          p_staff_id: staffData.id,
+          p_action_type: 'complimentary',
+          p_amount: amount,
+          p_payment_method: null,
+          p_payment_provider_id: null,
+          p_payment_location_id: null,
+          p_metadata: {
+            reason: reason,
+            approval_token: approvalToken,
+            staff_name: staffData.full_name,
+            version: 'COMPLIMENTARY-AUDIT-V1',
+          },
+        });
+        console.log('[QRRequestActions] COMPLIMENTARY-AUDIT-V1: Activity logged successfully');
+      } catch (logError) {
+        console.error('[QRRequestActions] Failed to log complimentary activity:', logError);
+        // Don't block success flow
+      }
       
       console.log('[QRRequestActions] PAYMENT-FIX-V2: Complimentary status updated, forcing refetch...');
       
@@ -428,13 +452,13 @@ export function QRRequestActions({ request, onStatusUpdate, onClose }: QRRequest
             guestId={request.guest_id}
             requestId={request.id}
             expectedAmount={remainingBalance > 0 ? remainingBalance : expectedAmount} // PHASE 3: Pre-fill remaining amount
-            onSuccess={async () => {
+            onSuccess={async (paymentId, paymentContext) => {
               setIsProcessingPayment(true);
               try {
                 const amount = remainingBalance > 0 ? remainingBalance : expectedAmount;
                 const guestName = request.metadata?.guest_name || 'Guest';
                 
-                console.log('[QRRequestActions] PAYMENT-FIX-V3: Payment recorded, updating billing status...');
+                console.log('[QRRequestActions] PAYMENT-FIX-V4-AUDIT: Payment recorded, logging activity...');
                 
                 // Get staff ID from user ID (FIX: billing_processed_by requires staff.id not user.id)
                 const { data: staffData } = await supabase
@@ -475,6 +499,31 @@ export function QRRequestActions({ request, onStatusUpdate, onClose }: QRRequest
                   console.error('[QRRequestActions] PAYMENT-FIX-V2: Failed to update billing status:', statusError);
                   toast.error('Payment recorded but status update failed. Please refresh.');
                   return;
+                }
+                
+                // PHASE 1: Log payment collection activity with full context
+                if (paymentContext) {
+                  try {
+                    await supabase.rpc('log_request_activity', {
+                      p_tenant_id: tenantId,
+                      p_request_id: request.id,
+                      p_staff_id: staffData.id,
+                      p_action_type: 'payment_collected',
+                      p_amount: amount,
+                      p_payment_method: paymentContext.method,
+                      p_payment_provider_id: paymentContext.provider_id,
+                      p_payment_location_id: paymentContext.location_id || null,
+                      p_metadata: {
+                        payment_id: paymentContext.paymentId,
+                        provider_name: paymentContext.provider_name,
+                        version: 'PAYMENT-AUDIT-V1',
+                      },
+                    });
+                    console.log('[QRRequestActions] PAYMENT-AUDIT-V1: Activity logged successfully');
+                  } catch (logError) {
+                    console.error('[QRRequestActions] Failed to log activity:', logError);
+                    // Don't block success flow
+                  }
                 }
                 
                 console.log('[QRRequestActions] PAYMENT-FIX-V2: Billing status updated, forcing refetch...');
