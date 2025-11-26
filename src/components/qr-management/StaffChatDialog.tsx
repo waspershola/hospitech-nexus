@@ -27,6 +27,7 @@ export default function StaffChatDialog({
   request,
 }: StaffChatDialogProps) {
   const [message, setMessage] = useState('');
+  const [showOriginal, setShowOriginal] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const { user, tenantId } = useAuth();
   
@@ -85,7 +86,19 @@ export default function StaffChatDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-2xl h-[600px] flex flex-col">
         <DialogHeader>
-          <DialogTitle>Guest Request Chat</DialogTitle>
+          <div className="flex items-center justify-between">
+            <DialogTitle>Guest Request Chat</DialogTitle>
+            {messages.some(m => m.translated_text && m.original_text && m.translated_text !== m.original_text) && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setShowOriginal(!showOriginal)}
+              >
+                <Globe className="h-3 w-3 mr-1" />
+                {showOriginal ? 'View Translated' : 'View Original'}
+              </Button>
+            )}
+          </div>
           <DialogDescription className="space-y-1">
             <div className="flex items-center gap-2">
               <span className="font-medium">
@@ -142,29 +155,20 @@ export default function StaffChatDialog({
                       )}
                     </div>
                     
-                    {/* Phase 3: Show "Translated from X" tag */}
-                    {msg.detected_language && msg.detected_language !== 'en' && msg.translated_text && msg.translated_text !== msg.original_text && (
+                    {/* PHASE-4: Translation display with toggle */}
+                    {msg.detected_language && msg.detected_language !== 'en' && msg.translated_text && (
                       <div className="flex items-center gap-1 text-xs opacity-70 mb-1">
                         <Globe className="h-3 w-3" />
                         <span>Translated from {getLanguageName(msg.detected_language)}</span>
                       </div>
                     )}
                     
-                    {msg.original_text && msg.cleaned_text && msg.original_text !== msg.cleaned_text ? (
-                      <div className="space-y-1">
-                        <div className="text-sm whitespace-pre-wrap">
-                          {msg.translated_text || msg.cleaned_text}
-                        </div>
-                        <details className="text-xs opacity-70">
-                          <summary className="cursor-pointer">Original</summary>
-                          <div className="mt-1">{msg.original_text}</div>
-                        </details>
-                      </div>
-                    ) : (
-                      <div className="text-sm whitespace-pre-wrap">
-                        {msg.translated_text || msg.cleaned_text || msg.message}
-                      </div>
-                    )}
+                    <div className="text-sm whitespace-pre-wrap">
+                      {showOriginal 
+                        ? (msg.original_text || msg.message)
+                        : (msg.translated_text || msg.cleaned_text || msg.message)
+                      }
+                    </div>
                     
                     <div className="flex items-center gap-2">
                       <div

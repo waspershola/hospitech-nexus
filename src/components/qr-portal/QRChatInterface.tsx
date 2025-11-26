@@ -183,17 +183,20 @@ export function QRChatInterface() {
                       {message.sender_name}
                     </p>
                     
-                    {/* Phase 3: Show "Translated from X" tag */}
-                    {message.detected_language && message.detected_language !== 'en' && message.translated_text && message.translated_text !== message.original_text && (
-                      <div className="flex items-center gap-1 text-xs opacity-70 mb-1">
+                    {/* PHASE-4: Guest sees original + translated (if different) */}
+                    <p className="whitespace-pre-wrap">
+                      {message.direction === 'inbound' 
+                        ? message.message // Guest always sees their own original text
+                        : (message.translated_text || message.message) // Guest sees translated staff reply
+                      }
+                    </p>
+                    
+                    {message.direction === 'outbound' && message.detected_language && message.detected_language !== 'en' && message.translated_text && (
+                      <div className="flex items-center gap-1 text-xs opacity-70 mt-1">
                         <Globe className="h-3 w-3" />
-                        <span>Translated from {getLanguageName(message.detected_language)}</span>
+                        <span>Translated to {getLanguageName(message.detected_language)}</span>
                       </div>
                     )}
-                    
-                    <p className="whitespace-pre-wrap">
-                      {message.translated_text || message.cleaned_text || message.message}
-                    </p>
                     <div className="flex items-center gap-2 justify-end">
                       <p className="text-xs opacity-70">
                         {format(new Date(message.created_at), 'HH:mm')}
