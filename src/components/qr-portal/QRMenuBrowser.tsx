@@ -154,12 +154,36 @@ export function QRMenuBrowser() {
 
       return { order: data.order, request: data.request };
     },
-    onSuccess: (data) => {
+    onSuccess: async (data) => {
       toast.success('Order placed successfully!');
       saveGuestInfo(guestName, guestPhone);
       setCart([]);
       setSpecialInstructions('');
       setIsCartOpen(false);
+      
+      // PHASE-5: Send AI acknowledgment message after order creation
+      if (data?.request?.id && qrData?.tenant_id) {
+        try {
+          await supabase.from('guest_communications').insert({
+            tenant_id: qrData.tenant_id,
+            type: 'qr_request',
+            message: `Thank you for your order! We've received your request and our team will begin preparing it shortly. Your order will be delivered to you soon.\n\nIf you need to discuss anything about your order, feel free to chat with us here.`,
+            direction: 'outbound',
+            sent_by: null,
+            ai_auto_response: true,
+            metadata: {
+              request_id: data.request.id,
+              qr_token: token,
+              ai_generated: true,
+              order_confirmation: true,
+              order_id: data.order?.id,
+            },
+          });
+        } catch (error) {
+          console.error('[ORDER-AUTO-COMM] Failed to send AI acknowledgment:', error);
+        }
+      }
+      
       if (data?.order) {
         // Navigate to order status page instead of chat
         navigate(`/qr/${token}/order/${data.order.id}`);
