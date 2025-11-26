@@ -101,7 +101,7 @@ export function useStaffRequests() {
 
     let isSubscribed = true;
     const channel = supabase
-      .channel(`staff-requests-${tenantId}-${Date.now()}`) // Unique channel name
+      .channel(`staff-requests-${tenantId}`) // REALTIME-STABILITY-FIX: Stable channel name
       .on(
         'postgres_changes',
         {

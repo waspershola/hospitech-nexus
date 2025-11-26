@@ -55,6 +55,23 @@ export function QRChatInterface() {
     }
   }, [messages]);
 
+  // PHASE-5: Sound notification for new staff messages
+  useEffect(() => {
+    if (messages.length === 0) return;
+    
+    const lastMessage = messages[messages.length - 1];
+    // Play sound when staff replies (outbound messages to guest)
+    if (lastMessage.direction === 'outbound' && lastMessage.id) {
+      try {
+        const audio = new Audio('/sounds/notification-default.mp3');
+        audio.volume = 0.5;
+        audio.play().catch(err => console.warn('Sound play failed:', err));
+      } catch (err) {
+        console.warn('Sound notification failed:', err);
+      }
+    }
+  }, [messages.length]); // Only trigger when message count changes
+
   const handleSendMessage = async (e: React.FormEvent) => {
     e.preventDefault();
     
