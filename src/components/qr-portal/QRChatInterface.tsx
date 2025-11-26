@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useUnifiedRequestChat } from '@/hooks/useUnifiedRequestChat';
 import { useAuth } from '@/contexts/AuthContext';
@@ -31,14 +31,16 @@ export function QRChatInterface() {
     return names[code?.toLowerCase()] || code?.toUpperCase();
   };
   
-  // PHASE 3: Migrated to unified chat hook
-  const { messages, isLoading, isSending, sendMessage } = useUnifiedRequestChat({
+  // REALTIME-FIX-V2: Memoize chat options to prevent subscription recreation
+  const chatOptions = useMemo(() => ({
     tenantId: tenantId || '',
     requestId: requestId || '',
-    userType: 'guest',
+    userType: 'guest' as const,
     guestName: 'Guest',
-    qrToken: qrToken || token || '', // Add qrToken for RLS compliance
-  });
+    qrToken: qrToken || token || '',
+  }), [tenantId, requestId, qrToken, token]);
+  
+  const { messages, isLoading, isSending, sendMessage } = useUnifiedRequestChat(chatOptions);
   
   // Check if this request has a linked order
   const { data: orderDetails } = useOrderDetails(requestId);
