@@ -7148,6 +7148,7 @@ export type Database = {
           logo_url: string | null
           metadata: Json | null
           name: string
+          preferred_staff_language: string
           slug: string
           status: string | null
           suspended_at: string | null
@@ -7166,6 +7167,7 @@ export type Database = {
           logo_url?: string | null
           metadata?: Json | null
           name: string
+          preferred_staff_language?: string
           slug: string
           status?: string | null
           suspended_at?: string | null
@@ -7184,6 +7186,7 @@ export type Database = {
           logo_url?: string | null
           metadata?: Json | null
           name?: string
+          preferred_staff_language?: string
           slug?: string
           status?: string | null
           suspended_at?: string | null

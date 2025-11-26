@@ -1216,7 +1216,7 @@ export function QRRequestDrawer({
                           className={`flex ${msg.direction === 'outbound' ? 'justify-end' : 'justify-start'}`}
                         >
                           <div
-                            className={`max-w-[80%] rounded-lg px-3 py-2 ${
+                            className={`max-w-[80%] rounded-lg px-3 py-2 space-y-2 ${
                               msg.direction === 'outbound'
                                 ? 'bg-primary text-primary-foreground'
                                 : 'bg-muted'
@@ -1232,6 +1232,29 @@ export function QRRequestDrawer({
                                 </Badge>
                               )}
                             </div>
+                            
+                            {/* AI Badges */}
+                            {(msg.ai_auto_response || msg.translated_text || msg.intent) && (
+                              <div className="flex flex-wrap items-center gap-1 mb-1">
+                                {msg.ai_auto_response && (
+                                  <AIMessageBadge isAutoResponse={true} />
+                                )}
+                                {msg.translated_text && !msg.ai_auto_response && (
+                                  <AIMessageBadge 
+                                    hasTranslation={true}
+                                    detectedLanguage={msg.detected_language}
+                                    confidence={msg.confidence}
+                                  />
+                                )}
+                                {msg.intent && msg.direction === 'inbound' && (
+                                  <AIIntentBadge 
+                                    intent={msg.intent}
+                                    confidence={msg.confidence}
+                                  />
+                                )}
+                              </div>
+                            )}
+                            
                             <p className="text-sm">{msg.message}</p>
                             <p className="text-xs opacity-70 mt-1">
                               {format(new Date(msg.created_at), 'h:mm a')}

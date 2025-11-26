@@ -177,7 +177,7 @@ export function useUnifiedRequestChat(
   // Send message mutation
   const { mutateAsync: sendMessageMutation, isPending: isSending } = useMutation({
     mutationFn: async (message: string) => {
-      console.log('[UNIFIED-CHAT-V1] Sending message:', {
+      console.log('[UNIFIED-CHAT-AI-V2] Sending message:', {
         requestId,
         userType,
         messageLength: message.length,
@@ -207,6 +207,15 @@ export function useUnifiedRequestChat(
       // Process guest messages through AI
       if (userType === 'guest') {
         try {
+          // Fetch tenant's preferred staff language
+          const { data: tenant } = await supabase
+            .from('tenants')
+            .select('preferred_staff_language')
+            .eq('id', requestData.tenant_id)
+            .single();
+          
+          const staffLang = tenant?.preferred_staff_language || 'en';
+          
           const aiResponse = await supabase.functions.invoke('ai-message', {
             body: {
               action: 'process_guest_message',
@@ -223,9 +232,11 @@ export function useUnifiedRequestChat(
             messageData.cleaned_text = aiData.cleaned_text;
             messageData.translated_text = aiData.translated_to_english;
             messageData.detected_language = aiData.detected_language;
+            messageData.target_language = staffLang;
             messageData.intent = aiData.intent;
             messageData.confidence = aiData.confidence;
             messageData.ai_auto_response = !!aiData.auto_response;
+            messageData.message = aiData.translated_to_english; // Show translated to staff
             
             // If auto-response, insert it after
             if (aiData.auto_response) {
@@ -240,9 +251,29 @@ export function useUnifiedRequestChat(
         messageData.metadata.guest_name = guestName;
         messageData.sent_by = null;
       } else {
-        // Process staff replies through AI
+      // Process staff replies through AI
         try {
-          const guestLang = 'en'; // TODO: Get from request metadata
+          // Fetch tenant's preferred staff language and guest's detected language
+          const { data: tenant } = await supabase
+            .from('tenants')
+            .select('preferred_staff_language')
+            .eq('id', requestData.tenant_id)
+            .single();
+          
+          const staffLang = tenant?.preferred_staff_language || 'en';
+          
+          // Get guest language from previous messages
+          const { data: guestMessages } = await supabase
+            .from('guest_communications')
+            .select('detected_language')
+            .eq('metadata->>request_id', requestId)
+            .eq('direction', 'inbound')
+            .not('detected_language', 'is', null)
+            .order('created_at', { ascending: false })
+            .limit(1);
+          
+          const guestLang = guestMessages?.[0]?.detected_language || 'en';
+          
           const aiResponse = await supabase.functions.invoke('ai-message', {
             body: {
               action: 'process_staff_reply',
@@ -257,7 +288,8 @@ export function useUnifiedRequestChat(
             messageData.original_text = message.trim();
             messageData.cleaned_text = aiData.enhanced_text;
             messageData.translated_text = aiData.translated_text;
-            messageData.message = aiData.translated_text; // Use translated version
+            messageData.target_language = guestLang;
+            messageData.message = aiData.translated_text; // Use translated version for guest
           }
         } catch (aiError) {
           console.error('[UNIFIED-CHAT-V1] AI enhancement failed:', aiError);
@@ -334,6 +366,15 @@ export function useUnifiedRequestChat(
         ...data,
         sender_name: userType === 'guest' ? guestName : staffData?.full_name || 'Staff',
         sender_role: staffData?.role,
+        // Pass through AI fields
+        original_text: messageData.original_text,
+        cleaned_text: messageData.cleaned_text,
+        translated_text: messageData.translated_text,
+        detected_language: messageData.detected_language,
+        target_language: messageData.target_language,
+        intent: messageData.intent,
+        confidence: messageData.confidence,
+        ai_auto_response: messageData.ai_auto_response,
       };
     },
     onSuccess: (newMessage) => {
@@ -352,6 +393,15 @@ export function useUnifiedRequestChat(
           sender_name: newMessage.sender_name,
           sender_role: newMessage.sender_role,
           created_at: newMessage.created_at,
+          // AI fields
+          original_text: newMessage.original_text,
+          cleaned_text: newMessage.cleaned_text,
+          translated_text: newMessage.translated_text,
+          detected_language: newMessage.detected_language,
+          intent: newMessage.intent,
+          confidence: newMessage.confidence,
+          ai_auto_response: newMessage.ai_auto_response,
+          metadata: newMessage.metadata,
         };
         
         return [...old, formattedMessage];
@@ -433,6 +483,15 @@ export function useUnifiedRequestChat(
                   : staffData?.full_name || 'Staff',
               sender_role: staffData?.role,
               created_at: newMessage.created_at,
+              // AI fields
+              original_text: newMessage.original_text,
+              cleaned_text: newMessage.cleaned_text,
+              translated_text: newMessage.translated_text,
+              detected_language: newMessage.detected_language,
+              intent: newMessage.intent,
+              confidence: newMessage.confidence,
+              ai_auto_response: newMessage.ai_auto_response,
+              metadata: newMessage.metadata,
             };
 
             return [...old, formattedMessage];
