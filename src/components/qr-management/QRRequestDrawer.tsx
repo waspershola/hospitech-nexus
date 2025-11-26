@@ -31,6 +31,9 @@ import { RequestActivityTimeline } from './RequestActivityTimeline';
 import { ActivityTimeline } from './ActivityTimeline';
 import { QRRequestActions } from './QRRequestActions';
 import { RequestFolioLink } from '@/components/staff/RequestFolioLink';
+import { AISuggestionsPanel } from '@/components/ai/AISuggestionsPanel';
+import { AIMessageBadge } from '@/components/qr-portal/AIMessageBadge';
+import { AIIntentBadge } from '@/components/qr-management/AIIntentBadge';
 import { format } from 'date-fns';
 import { useQuery, useQueries, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
@@ -117,10 +120,6 @@ export function QRRequestDrawer({
   const [selectedProviderId, setSelectedProviderId] = useState<string | null>(null);
   const [adjustmentAmount, setAdjustmentAmount] = useState('');
   const [isAdjustingAmount, setIsAdjustingAmount] = useState(false);
-  const [quickRepliesOpen, setQuickRepliesOpen] = useState(() => {
-    const saved = localStorage.getItem('qr-quick-replies-open');
-    return saved !== null ? JSON.parse(saved) : false;
-  });
   
   const { stats: historyStats, isLoading: historyLoading } = useRequestHistory(
     displayRequest?.room_id || null,
@@ -231,9 +230,6 @@ export function QRRequestDrawer({
     }
   }, [open, pendingRequests.length, selectedRequest?.status]);
 
-  useEffect(() => {
-    localStorage.setItem('qr-quick-replies-open', JSON.stringify(quickRepliesOpen));
-  }, [quickRepliesOpen]);
 
   // PHASE-2A-V1: Subscribe to cross-tab status updates via BroadcastChannel
   useEffect(() => {
@@ -275,20 +271,6 @@ export function QRRequestDrawer({
     }
   }, [displayRequest?.id]);
 
-  const handleQuickReply = async (template: string) => {
-    if (!selectedRequest) return;
-    
-    try {
-      const success = await sendMessage(template);
-      if (success) {
-        await updateRequestStatus(selectedRequest.id, 'in_progress');
-        toast.success('Reply sent successfully');
-        setCustomMessage('');
-      }
-    } catch (error) {
-      toast.error('Failed to send reply');
-    }
-  };
 
   const handleCustomReply = async () => {
     if (!customMessage.trim() || !selectedRequest) return;
@@ -789,43 +771,6 @@ export function QRRequestDrawer({
     }
   };
 
-  const getQuickReplyTemplates = (serviceCategory: string) => {
-    const templates: Record<string, string[]> = {
-      room_service: [
-        "Your order is being prepared and will arrive shortly.",
-        "Your meal will be delivered in 15-20 minutes.",
-      ],
-      housekeeping: [
-        "Housekeeping has been dispatched to your room.",
-        "Your room will be serviced within 30 minutes.",
-      ],
-      maintenance: [
-        "Maintenance team has been notified and will attend shortly.",
-        "Our technician will be there within 15 minutes.",
-      ],
-      concierge: [
-        "Our concierge team will contact you shortly.",
-        "We're looking into your request and will respond soon.",
-      ],
-      laundry: [
-        "Laundry team has been notified of your request.",
-        "Your laundry will be collected shortly.",
-      ],
-      spa: [
-        "Your spa booking has been confirmed.",
-        "Our spa team will contact you to confirm timing.",
-      ],
-      digital_menu: [
-        "Your order has been received.",
-        "Kitchen is preparing your order.",
-      ]
-    };
-    
-    return templates[serviceCategory] || [
-      "We've received your request and are processing it.",
-      "Staff has been notified of your request.",
-    ];
-  };
 
   const getStatusConfig = (status: string) => {
     const configs: Record<string, { icon: any; variant: any; label: string }> = {
@@ -1237,51 +1182,6 @@ export function QRRequestDrawer({
                       </div>
                     )}
 
-                    {/* Request History Stats - MOVED TO ACTIVITY LOG TAB (Phase 1) */}
-
-                    {/* COLLAPSIBLE Quick Replies - Moved inside scrollable area */}
-                    {displayRequest?.status !== 'completed' && (
-                      <Collapsible open={quickRepliesOpen} onOpenChange={setQuickRepliesOpen}>
-                        <CollapsibleTrigger asChild>
-                          <Button variant="outline" size="sm" className="w-full justify-between">
-                            <div className="flex items-center gap-2">
-                              <Zap className="h-3 w-3" />
-                              <span className="text-xs font-medium">Quick Replies</span>
-                            </div>
-                            <svg
-                              className={`h-4 w-4 transition-transform ${quickRepliesOpen ? 'rotate-180' : ''}`}
-                              xmlns="http://www.w3.org/2000/svg"
-                              viewBox="0 0 24 24"
-                              fill="none"
-                              stroke="currentColor"
-                              strokeWidth="2"
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                            >
-                              <polyline points="6 9 12 15 18 9" />
-                            </svg>
-                          </Button>
-                        </CollapsibleTrigger>
-                        <CollapsibleContent className="mt-2">
-                          <div className="grid grid-cols-2 gap-2">
-                            {getQuickReplyTemplates(displayRequest.type).map((template, idx) => (
-                              <Button
-                                key={idx}
-                                size="sm"
-                                variant="outline"
-                                onClick={() => handleQuickReply(template)}
-                                disabled={isSending}
-                                className="justify-start text-left h-auto py-2"
-                              >
-                                <Zap className="h-3 w-3 mr-1 shrink-0" />
-                                <span className="text-xs truncate">{template.substring(0, 20)}...</span>
-                              </Button>
-                            ))}
-                          </div>
-                        </CollapsibleContent>
-                      </Collapsible>
-                    )}
-
                     {/* Request Context */}
                     {displayRequest && (
                       <div className="p-3 bg-muted/50 border rounded-lg">
@@ -1452,12 +1352,20 @@ export function QRRequestDrawer({
                   </TabsContent>
                 </Tabs>
 
-                {/* FIXED FOOTER - Message Input */}
+                {/* FIXED FOOTER - AI Suggestions + Message Input */}
                 {displayRequest?.status !== 'completed' && (
-                  <div className="p-4 border-t shrink-0">
+                  <div className="p-4 border-t shrink-0 space-y-3">
+                    {/* AI Suggestions Panel */}
+                    <AISuggestionsPanel
+                      tenantId={tenantId || ''}
+                      requestId={displayRequest?.id || ''}
+                      recentMessages={messages.slice(-5)}
+                      onApplySuggestion={(text) => setCustomMessage(text)}
+                    />
+                    
                     <div className="flex gap-2">
                       <Textarea
-                        placeholder="Type a custom message..."
+                        placeholder="Type a message..."
                         value={customMessage}
                         onChange={(e) => setCustomMessage(e.target.value)}
                         onKeyDown={(e) => {

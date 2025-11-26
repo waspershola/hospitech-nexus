@@ -42,14 +42,24 @@ serve(async (req) => {
     let userPrompt = '';
     let generateStructuredOutput = false;
 
+    // Fetch tenant settings for staff language
+    const { data: tenant } = await supabaseClient
+      .from('tenants')
+      .select('preferred_staff_language')
+      .eq('id', tenant_id)
+      .single();
+    
+    const staffLanguage = tenant?.preferred_staff_language || 'en';
+
     // Handle different actions
     if (action === 'process_guest_message') {
       systemPrompt = `You are a luxury hotel AI assistant processing guest messages. Your tasks:
 1. Detect the language (return ISO code like 'en', 'zh', 'yo', 'fr', etc.)
-2. Clean and normalize the message (fix typos, slang, broken English)
-3. Translate to English if needed
+2. Clean and normalize the message (fix typos, slang, broken English, pidgin)
+3. Translate to ${staffLanguage.toUpperCase()} (staff language) if needed
 4. Detect intent: housekeeping, maintenance, room_service, spa, pool, wifi, breakfast, complaint, request, faq, other
 5. Determine if this is a simple FAQ that can be auto-answered (confidence > 0.90)
+6. NEVER suggest operational actions - only provide information
 
 Available FAQs: ${JSON.stringify(faqs || [])}
 
@@ -61,10 +71,11 @@ Return structured JSON with: detected_language, cleaned_text, translated_to_engl
     } else if (action === 'process_staff_reply') {
       systemPrompt = `You are a luxury hotel AI assistant enhancing staff replies. Your tasks:
 1. Enhance the tone to be professional, courteous, and luxury-appropriate
-2. Translate to the guest's language: ${guest_language}
+2. Translate from ${staffLanguage.toUpperCase()} to the guest's language: ${guest_language}
 3. Keep it concise and actionable
+4. Generate 2-3 alternative suggestion replies that staff can use
 
-Return JSON with: enhanced_text (in English), translated_text (in guest language)`;
+Return JSON with: enhanced_text (in ${staffLanguage}), translated_text (in guest language), suggestions (array of 2-3 alternative replies in guest language)`;
 
       userPrompt = `Staff reply: "${message}"`;
       generateStructuredOutput = true;
