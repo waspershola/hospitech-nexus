@@ -147,7 +147,9 @@ export function QRChatInterface() {
                     <p className="text-sm font-medium">
                       {message.sender_name}
                     </p>
-                    <p className="whitespace-pre-wrap">{message.cleaned_text || message.message}</p>
+                    <p className="whitespace-pre-wrap">
+                      {message.translated_text || message.cleaned_text || message.message}
+                    </p>
                     <div className="flex items-center gap-2 justify-end">
                       <p className="text-xs opacity-70">
                         {format(new Date(message.created_at), 'HH:mm')}

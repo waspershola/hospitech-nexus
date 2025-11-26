@@ -110,8 +110,9 @@ Provide clear, step-by-step guidance based on standard hotel operations. If the 
       };
     }
 
+    // Phase 1: Fixed API endpoint from v1beta to v1
     const geminiResponse = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GEMINI_API_KEY}`,
+      `https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key=${GEMINI_API_KEY}`,
       {
         method: 'POST',
         headers: {
@@ -121,6 +122,7 @@ Provide clear, step-by-step guidance based on standard hotel operations. If the 
       }
     );
 
+    // Phase 2: Enhanced error handling with detailed logging
     if (!geminiResponse.ok) {
       if (geminiResponse.status === 429) {
         return new Response(JSON.stringify({ error: 'Rate limits exceeded' }), {
@@ -129,8 +131,34 @@ Provide clear, step-by-step guidance based on standard hotel operations. If the 
         });
       }
       const errorText = await geminiResponse.text();
-      console.error('Gemini API error:', geminiResponse.status, errorText);
-      throw new Error('Gemini API error');
+      console.error('[AI-MESSAGE] Gemini API error:', {
+        status: geminiResponse.status,
+        statusText: geminiResponse.statusText,
+        error: errorText,
+        action,
+        model: 'gemini-1.5-flash'
+      });
+      
+      // Return partial success with original text if AI fails
+      if (action === 'process_guest_message') {
+        return new Response(JSON.stringify({ 
+          success: true, 
+          data: {
+            original_text: message,
+            cleaned_text: message,
+            translated_text: message,
+            detected_language: guest_language || 'en',
+            target_language: staffLanguage,
+            intent: 'other',
+            confidence: 0.0,
+            auto_response: null,
+          }
+        }), {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+      
+      throw new Error(`Gemini API error: ${geminiResponse.status}`);
     }
 
     const geminiData = await geminiResponse.json();

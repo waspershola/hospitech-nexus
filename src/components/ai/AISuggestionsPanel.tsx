@@ -41,6 +41,9 @@ export function AISuggestionsPanel({
         return;
       }
 
+      // Phase 4: Detect guest language from recent messages
+      const guestLanguage = (lastGuestMessage as any).detected_language || 'en';
+
       setIsLoading(true);
       try {
         // Generate 3 different reply suggestions
@@ -53,7 +56,7 @@ export function AISuggestionsPanel({
             const response = await processStaffReply(
               tenantId,
               template,
-              'en' // TODO: Get from guest profile
+              guestLanguage
             );
             
             if (response.success && response.data) {
