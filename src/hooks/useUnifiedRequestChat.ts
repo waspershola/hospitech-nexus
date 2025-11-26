@@ -186,12 +186,15 @@ export function useUnifiedRequestChat(
     enabled: !!tenantId && !!requestId,
   });
 
-  // PHASE-3: Send AI welcome message for new guest chats
+  // PHASE-2: Send AI welcome message for new guest chats (fixed trigger logic)
   useEffect(() => {
-    if (messages.length === 0 && userType === 'guest' && !isLoading) {
+    // Check if NO welcome message exists instead of messages.length === 0
+    const hasWelcomeMessage = messages.some(m => m.metadata?.welcome_message === true);
+    
+    if (!hasWelcomeMessage && userType === 'guest' && !isLoading && messages.length <= 1) {
       sendAIWelcomeMessage();
     }
-  }, [messages.length, userType, isLoading, sendAIWelcomeMessage]);
+  }, [messages, userType, isLoading, sendAIWelcomeMessage]);
 
   // Send message mutation
   const { mutateAsync: sendMessageMutation, isPending: isSending } = useMutation({

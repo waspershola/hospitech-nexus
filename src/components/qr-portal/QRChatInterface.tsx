@@ -1,7 +1,8 @@
 import { useState, useEffect, useRef, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useUnifiedRequestChat } from '@/hooks/useUnifiedRequestChat';
-import { useAuth } from '@/contexts/AuthContext';
+import { useQRToken } from '@/hooks/useQRToken';
+import { useGuestNotifications } from '@/hooks/useGuestNotifications';
 import { useOrderDetails } from '@/hooks/useOrderDetails';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -14,7 +15,9 @@ import { ConnectionHealthIndicator } from '@/components/ui/ConnectionHealthIndic
 export function QRChatInterface() {
   const { token, requestId } = useParams<{ token: string; requestId: string }>();
   const navigate = useNavigate();
-  const { qrToken, guestId, tenantId } = useAuth();
+  
+  // PHASE-1: Fix guest message persistence - use useQRToken for session restoration
+  const { qrData, isValidating, error: qrError } = useQRToken(token);
   
   const getLanguageName = (code: string): string => {
     const names: Record<string, string> = {
@@ -32,15 +35,23 @@ export function QRChatInterface() {
   };
   
   // REALTIME-FIX-V2: Memoize chat options to prevent subscription recreation
+  // PHASE-1: Use qrData.tenant_id from validated session instead of AuthContext
   const chatOptions = useMemo(() => ({
-    tenantId: tenantId || '',
+    tenantId: qrData?.tenant_id || '',
     requestId: requestId || '',
     userType: 'guest' as const,
     guestName: 'Guest',
-    qrToken: qrToken || token || '',
-  }), [tenantId, requestId, qrToken, token]);
+    qrToken: token || '',
+  }), [qrData?.tenant_id, requestId, token]);
   
   const { messages, isLoading, isSending, sendMessage } = useUnifiedRequestChat(chatOptions);
+  
+  // PHASE-3: Enable global guest notifications for real-time updates
+  useGuestNotifications({
+    tenantId: qrData?.tenant_id || '',
+    qrToken: token || '',
+    enabled: !!qrData && !!token,
+  });
   
   // Check if this request has a linked order
   const { data: orderDetails } = useOrderDetails(requestId);
@@ -55,22 +66,28 @@ export function QRChatInterface() {
     }
   }, [messages]);
 
-  // PHASE-5: Sound notification for new staff messages
+  // PHASE-6: Enhanced sound notification for new staff messages only
+  const previousMessageCountRef = useRef(messages.length);
   useEffect(() => {
     if (messages.length === 0) return;
     
-    const lastMessage = messages[messages.length - 1];
-    // Play sound when staff replies (outbound messages to guest)
-    if (lastMessage.direction === 'outbound' && lastMessage.id) {
-      try {
-        const audio = new Audio('/sounds/notification-default.mp3');
-        audio.volume = 0.5;
-        audio.play().catch(err => console.warn('Sound play failed:', err));
-      } catch (err) {
-        console.warn('Sound notification failed:', err);
+    // Only play sound for NEW messages (not on initial load)
+    if (messages.length > previousMessageCountRef.current) {
+      const lastMessage = messages[messages.length - 1];
+      // Play sound when staff replies (outbound messages to guest)
+      if (lastMessage.direction === 'outbound' && lastMessage.id) {
+        try {
+          const audio = new Audio('/sounds/notification-default.mp3');
+          audio.volume = 0.5;
+          audio.play().catch(err => console.warn('Sound play failed:', err));
+        } catch (err) {
+          console.warn('Sound notification failed:', err);
+        }
       }
     }
-  }, [messages.length]); // Only trigger when message count changes
+    
+    previousMessageCountRef.current = messages.length;
+  }, [messages.length]);
 
   const handleSendMessage = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -83,6 +100,32 @@ export function QRChatInterface() {
       setMessageText('');
     }
   };
+
+  // PHASE-1: Show loading state while validating QR token
+  if (isValidating) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-background to-muted">
+        <div className="text-center space-y-4">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto"></div>
+          <p className="text-muted-foreground">Validating session...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // PHASE-1: Show error state if QR validation failed
+  if (qrError || !qrData) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-background to-muted p-4">
+        <div className="text-center space-y-4 max-w-md">
+          <p className="text-destructive">{qrError || 'Invalid QR session'}</p>
+          <Button onClick={() => navigate(`/qr/${token}`)}>
+            Return to Home
+          </Button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-background to-muted flex flex-col">
@@ -183,19 +226,29 @@ export function QRChatInterface() {
                       {message.sender_name}
                     </p>
                     
-                    {/* PHASE-4: Guest sees original + translated (if different) */}
-                    <p className="whitespace-pre-wrap">
-                      {message.direction === 'inbound' 
-                        ? message.message // Guest always sees their own original text
-                        : (message.translated_text || message.message) // Guest sees translated staff reply
-                      }
-                    </p>
-                    
-                    {message.direction === 'outbound' && message.detected_language && message.detected_language !== 'en' && message.translated_text && (
-                      <div className="flex items-center gap-1 text-xs opacity-70 mt-1">
-                        <Globe className="h-3 w-3" />
-                        <span>Translated to {getLanguageName(message.detected_language)}</span>
-                      </div>
+                    {/* PHASE-4: Guest sees original + language detection for own messages */}
+                    {message.direction === 'inbound' ? (
+                      <>
+                        <p className="whitespace-pre-wrap">{message.message}</p>
+                        {message.detected_language && message.detected_language !== 'en' && (
+                          <div className="flex items-center gap-1 text-xs opacity-70 mt-1">
+                            <Globe className="h-3 w-3" />
+                            <span>Detected: {getLanguageName(message.detected_language)}</span>
+                          </div>
+                        )}
+                      </>
+                    ) : (
+                      <>
+                        <p className="whitespace-pre-wrap">
+                          {message.translated_text || message.message}
+                        </p>
+                        {message.translated_text && message.original_text && message.translated_text !== message.original_text && (
+                          <div className="flex items-center gap-1 text-xs opacity-70 mt-1 pt-1 border-t border-white/20">
+                            <Globe className="h-3 w-3" />
+                            <span>Translated from English</span>
+                          </div>
+                        )}
+                      </>
                     )}
                     <div className="flex items-center gap-2 justify-end">
                       <p className="text-xs opacity-70">

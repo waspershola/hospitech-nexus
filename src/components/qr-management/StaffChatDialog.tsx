@@ -155,19 +155,32 @@ export default function StaffChatDialog({
                       )}
                     </div>
                     
-                    {/* PHASE-4: Translation display with toggle */}
-                    {msg.detected_language && msg.detected_language !== 'en' && msg.translated_text && (
+                    {/* PHASE-4: Enhanced translation display with clear labels */}
+                    {msg.direction === 'inbound' && msg.detected_language && msg.detected_language !== 'en' && (
                       <div className="flex items-center gap-1 text-xs opacity-70 mb-1">
                         <Globe className="h-3 w-3" />
-                        <span>Translated from {getLanguageName(msg.detected_language)}</span>
+                        <span>Language: {getLanguageName(msg.detected_language)}</span>
                       </div>
                     )}
                     
-                    <div className="text-sm whitespace-pre-wrap">
-                      {showOriginal 
-                        ? (msg.original_text || msg.message)
-                        : (msg.translated_text || msg.cleaned_text || msg.message)
-                      }
+                    <div className="text-sm whitespace-pre-wrap space-y-1">
+                      {msg.direction === 'inbound' && msg.translated_text && msg.original_text && msg.translated_text !== msg.original_text ? (
+                        <>
+                          {showOriginal ? (
+                            <>
+                              <div className="font-medium text-xs opacity-60 mb-1">Original Text:</div>
+                              <div>{msg.original_text}</div>
+                            </>
+                          ) : (
+                            <>
+                              <div className="font-medium text-xs opacity-60 mb-1">Translated to English:</div>
+                              <div>{msg.translated_text || msg.cleaned_text}</div>
+                            </>
+                          )}
+                        </>
+                      ) : (
+                        <div>{msg.message}</div>
+                      )}
                     </div>
                     
                     <div className="flex items-center gap-2">
