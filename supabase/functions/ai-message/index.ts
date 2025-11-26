@@ -112,7 +112,7 @@ Provide clear, step-by-step guidance based on standard hotel operations. If the 
 
     // Phase 1: Fixed API endpoint from v1beta to v1
     const geminiResponse = await fetch(
-      `https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key=${GEMINI_API_KEY}`,
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GEMINI_API_KEY}`,
       {
         method: 'POST',
         headers: {
@@ -158,6 +158,19 @@ Provide clear, step-by-step guidance based on standard hotel operations. If the 
         });
       }
       
+      if (action === 'process_staff_reply') {
+        return new Response(JSON.stringify({ 
+          success: true, 
+          data: {
+            enhanced_text: message,
+            translated_text: message,
+            suggestions: [],
+          }
+        }), {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+      
       throw new Error(`Gemini API error: ${geminiResponse.status}`);
     }
 
@@ -171,12 +184,41 @@ Provide clear, step-by-step guidance based on standard hotel operations. If the 
     }
 
     if (generateStructuredOutput) {
-      // Parse JSON response
+      // Parse JSON response with robust cleanup
       try {
-        result = JSON.parse(contentText);
+        let cleanedText = contentText.trim();
+        // Remove markdown code blocks if present
+        if (cleanedText.startsWith('```json')) {
+          cleanedText = cleanedText.slice(7);
+        }
+        if (cleanedText.startsWith('```')) {
+          cleanedText = cleanedText.slice(3);
+        }
+        if (cleanedText.endsWith('```')) {
+          cleanedText = cleanedText.slice(0, -3);
+        }
+        result = JSON.parse(cleanedText.trim());
       } catch (e) {
         console.error('Failed to parse Gemini JSON:', contentText);
-        throw new Error('Invalid JSON response from Gemini');
+        // Return fallback based on action type
+        if (action === 'process_guest_message') {
+          result = {
+            detected_language: 'unknown',
+            cleaned_text: message,
+            translated_to_english: message,
+            intent: 'other',
+            confidence: 0.0,
+            auto_response: null,
+          };
+        } else if (action === 'process_staff_reply') {
+          result = {
+            enhanced_text: message,
+            translated_text: message,
+            suggestions: [],
+          };
+        } else {
+          throw new Error('Invalid JSON response from Gemini');
+        }
       }
     } else {
       // Regular text response for staff training
