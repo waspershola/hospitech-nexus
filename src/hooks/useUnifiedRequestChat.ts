@@ -203,7 +203,7 @@ export function useUnifiedRequestChat(
         direction: userType === 'guest' ? 'inbound' : 'outbound',
         metadata: { 
           request_id: requestId,
-          qr_token: userType === 'guest' ? qrToken : undefined, // Add qr_token for RLS
+          qr_token: qrToken || undefined, // CRITICAL: Always include qr_token for RLS
         },
       };
 
@@ -481,18 +481,15 @@ export function useUnifiedRequestChat(
     },
   });
 
-  // Set up unified realtime subscription
+  // REALTIME-FIX-V2: Set up unified realtime subscription with stable dependencies
   useEffect(() => {
     if (!tenantId || !requestId) return;
 
-    console.log('[UNIFIED-CHAT-V1] Setting up realtime channel:', {
-      tenantId,
-      requestId,
-      channelName: `qr-request-chat-${tenantId}-${requestId}`,
-    });
+    const channelName = `qr-request-chat-${tenantId}-${requestId}`;
+    console.log('[REALTIME-FIX-V2] Subscribing:', channelName);
 
     const channel = supabase
-      .channel(`qr-request-chat-${tenantId}-${requestId}`)
+      .channel(channelName)
       .on(
         'postgres_changes',
         {
@@ -504,19 +501,14 @@ export function useUnifiedRequestChat(
         async (payload) => {
           const newMessage = payload.new as any;
 
-          console.log('[UNIFIED-CHAT-V1] Realtime message received:', {
+          console.log('[REALTIME-FIX-V2] Message received:', {
             messageId: newMessage.id,
             direction: newMessage.direction,
-            messageTenant: newMessage.tenant_id,
-            currentTenant: tenantId,
           });
 
           // Validate tenant_id for security
           if (newMessage.tenant_id !== tenantId) {
-            console.warn('[UNIFIED-CHAT-V1] SECURITY: Cross-tenant message blocked', {
-              expected: tenantId,
-              received: newMessage.tenant_id,
-            });
+            console.warn('[REALTIME-FIX-V2] SECURITY: Cross-tenant message blocked');
             return;
           }
 
@@ -532,14 +524,12 @@ export function useUnifiedRequestChat(
           }
 
           // Add to React Query cache
-          queryClient.setQueryData<ChatMessage[]>(cacheKey, (old = []) => {
+          queryClient.setQueryData<ChatMessage[]>(['qr-chat', tenantId, requestId], (old = []) => {
             // Prevent duplicates
             if (old.some((m) => m.id === newMessage.id)) {
-              console.log('[UNIFIED-CHAT-V1] Duplicate message ignored:', newMessage.id);
+              console.log('[REALTIME-FIX-V2] Duplicate ignored:', newMessage.id);
               return old;
             }
-
-            console.log('[UNIFIED-CHAT-V1] Adding realtime message to cache');
 
             const formattedMessage: ChatMessage = {
               id: newMessage.id,
@@ -568,14 +558,14 @@ export function useUnifiedRequestChat(
         }
       )
       .subscribe((status) => {
-        console.log('[UNIFIED-CHAT-V1] Realtime subscription status:', status);
+        console.log('[REALTIME-FIX-V2] Subscription status:', status);
       });
 
     return () => {
-      console.log('[UNIFIED-CHAT-V1] Cleaning up realtime subscription');
+      console.log('[REALTIME-FIX-V2] Cleanup subscription');
       supabase.removeChannel(channel);
     };
-  }, [tenantId, requestId, queryClient, cacheKey]);
+  }, [tenantId, requestId]); // ONLY these deps - no queryClient, no cacheKey
 
   // Send message wrapper
   const sendMessage = useCallback(

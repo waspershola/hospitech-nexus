@@ -106,13 +106,15 @@ export function QRRequestDrawer({
   // PAYMENT-FIX-V2 Phase 1: Real-time subscription for individual request
   useRequestRealtime(displayRequest?.id, tenantId);
   
-  // PHASE 4: Migrated to unified chat hook (must be after displayRequest is defined)
-  const { messages, sendMessage, isSending } = useUnifiedRequestChat({
+  // REALTIME-FIX-V2: Memoize chat options to prevent subscription recreation
+  const chatOptions = useMemo(() => ({
     tenantId: tenantId || '',
     requestId: displayRequest?.id || '',
-    userType: 'staff',
+    userType: 'staff' as const,
     userId: user?.id,
-  });
+  }), [tenantId, displayRequest?.id, user?.id]);
+  
+  const { messages, sendMessage, isSending } = useUnifiedRequestChat(chatOptions);
   const [customMessage, setCustomMessage] = useState('');
   const [activeTab, setActiveTab] = useState('pending');
   const [isCollectingPayment, setIsCollectingPayment] = useState(false);

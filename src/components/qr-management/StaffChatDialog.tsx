@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 import { Send, Globe } from 'lucide-react';
 import { format } from 'date-fns';
 import {
@@ -30,13 +30,15 @@ export default function StaffChatDialog({
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const { user, tenantId } = useAuth();
   
-  // PHASE 4: Migrated to unified chat hook
-  const { messages, isLoading, isSending, sendMessage } = useUnifiedRequestChat({
+  // REALTIME-FIX-V2: Memoize chat options to prevent subscription recreation
+  const chatOptions = useMemo(() => ({
     tenantId: tenantId || '',
     requestId: request?.id || '',
-    userType: 'staff',
+    userType: 'staff' as const,
     userId: user?.id,
-  });
+  }), [tenantId, request?.id, user?.id]);
+  
+  const { messages, isLoading, isSending, sendMessage } = useUnifiedRequestChat(chatOptions);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
