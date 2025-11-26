@@ -153,7 +153,7 @@ async function fetchMessages(
 export function useUnifiedRequestChat(
   options: UseUnifiedRequestChatOptions
 ): UseUnifiedRequestChatReturn {
-  const { tenantId, requestId, userType, userId, guestName = 'Guest' } = options;
+  const { tenantId, requestId, userType, userId, guestName = 'Guest', qrToken } = options;
   const queryClient = useQueryClient();
 
   // Unified cache key for all chat UIs
@@ -201,7 +201,10 @@ export function useUnifiedRequestChat(
         type: 'qr_request',
         message: message.trim(),
         direction: userType === 'guest' ? 'inbound' : 'outbound',
-        metadata: { request_id: requestId },
+        metadata: { 
+          request_id: requestId,
+          qr_token: userType === 'guest' ? qrToken : undefined, // Add qr_token for RLS
+        },
       };
 
       // Process guest messages through AI
@@ -271,6 +274,7 @@ export function useUnifiedRequestChat(
                     ai_auto_response: true,
                     metadata: {
                       request_id: requestId,
+                      qr_token: qrToken, // Add for RLS
                       ai_first_responder: true,
                       guest_language: aiData.detected_language,
                     },
@@ -392,6 +396,7 @@ export function useUnifiedRequestChat(
               ai_auto_response: true,
               metadata: {
                 request_id: requestId,
+                qr_token: qrToken, // Add for RLS
                 ai_generated: true,
                 category: aiResponse.data.data.auto_response_category,
               },

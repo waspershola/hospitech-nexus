@@ -37,6 +37,7 @@ export function QRChatInterface() {
     requestId: requestId || '',
     userType: 'guest',
     guestName: 'Guest',
+    qrToken: qrToken || token || '', // Add qrToken for RLS compliance
   });
   
   // Check if this request has a linked order
