@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { subscribeToStatusUpdates } from '@/lib/qr/statusBroadcast';
 import { Button } from '@/components/ui/button';
@@ -201,24 +201,13 @@ export function QRRequestDrawer({
     orderDetailsQueries.map((q, idx) => [allRequestIds[idx], q.isLoading])
   );
 
-  // PHASE-2A-COMPLETE: Force refetch when drawer opens + aggressive polling
+  // Fetch requests once when drawer opens (realtime subscription handles updates)
   useEffect(() => {
     if (open) {
-      console.log('[QRRequestDrawer] PHASE-2A-COMPLETE: Drawer opened - force refreshing requests');
+      console.log('[QRRequestDrawer] Drawer opened - fetching requests');
       fetchRequests();
-      
-      // Poll every 2 seconds while drawer is open for guaranteed real-time updates
-      const pollInterval = setInterval(() => {
-        console.log('[QRRequestDrawer] PHASE-2A-POLLING: Refreshing requests');
-        fetchRequests();
-      }, 2000);
-      
-      return () => {
-        console.log('[QRRequestDrawer] PHASE-2A-POLLING: Clearing poll interval');
-        clearInterval(pollInterval);
-      };
     }
-  }, [open, fetchRequests]);
+  }, [open]); // Remove fetchRequests from deps to prevent re-triggers
 
   useEffect(() => {
     if (open && !selectedRequest && pendingRequests.length > 0) {
@@ -781,6 +770,12 @@ export function QRRequestDrawer({
     };
     return configs[status] || configs.pending;
   };
+
+  // Memoize recent messages to prevent AISuggestionsPanel infinite loop
+  const recentMessagesStable = useMemo(
+    () => messages.slice(-5),
+    [messages.map(m => m.id).join(',')] // Only update when message IDs change
+  );
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
@@ -1382,7 +1377,7 @@ export function QRRequestDrawer({
                     <AISuggestionsPanel
                       tenantId={tenantId || ''}
                       requestId={displayRequest?.id || ''}
-                      recentMessages={messages.slice(-5)}
+                      recentMessages={recentMessagesStable}
                       onApplySuggestion={(text) => setCustomMessage(text)}
                     />
                     

@@ -3,7 +3,7 @@
  * Phase 3: Displays AI-generated reply suggestions for staff
  */
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Sparkles, Loader2 } from 'lucide-react';
@@ -28,8 +28,21 @@ export function AISuggestionsPanel({
   const [suggestions, setSuggestions] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState(false);
 
+  // Create stable dependency using useMemo - only changes when last guest message content changes
+  const lastGuestMessageId = useMemo(() => {
+    const lastInbound = recentMessages.filter(m => m.direction === 'inbound').slice(-1)[0];
+    return lastInbound ? JSON.stringify(lastInbound) : null;
+  }, [recentMessages]);
+
+  // Track if we've already generated for this message to prevent duplicate calls
+  const hasGeneratedRef = useRef<string | null>(null);
+
   // Generate suggestions based on recent guest messages
   useEffect(() => {
+    // Prevent duplicate generation for same message
+    if (hasGeneratedRef.current === lastGuestMessageId) {
+      return;
+    }
     const generateSuggestions = async () => {
       // Only generate if there's a recent guest message
       const lastGuestMessage = recentMessages
@@ -38,8 +51,12 @@ export function AISuggestionsPanel({
 
       if (!lastGuestMessage) {
         setSuggestions([]);
+        hasGeneratedRef.current = null;
         return;
       }
+
+      // Mark this message as processed
+      hasGeneratedRef.current = lastGuestMessageId;
 
       // Phase 4: Detect guest language from recent messages
       const guestLanguage = (lastGuestMessage as any).detected_language || 'en';
@@ -85,7 +102,7 @@ export function AISuggestionsPanel({
     };
 
     generateSuggestions();
-  }, [tenantId, recentMessages]);
+  }, [tenantId, lastGuestMessageId]); // Use stable ID instead of array reference
 
   if (suggestions.length === 0 && !isLoading) {
     return null;
