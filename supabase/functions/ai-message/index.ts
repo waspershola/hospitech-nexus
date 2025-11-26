@@ -125,12 +125,7 @@ Provide clear, step-by-step guidance based on standard hotel operations. If the 
       }]
     };
 
-    // For structured output, add generation config
-    if (generateStructuredOutput) {
-      geminiPayload.generationConfig = {
-        responseMimeType: "application/json"
-      };
-    }
+    // v1 API does not support responseMimeType - rely on prompt for JSON formatting
 
     // Phase 1: Use v1 API with gemini-1.5-flash-latest model
     const geminiResponse = await fetch(
