@@ -127,14 +127,18 @@ export default function StaffChatDialog({
                     
                     {msg.original_text && msg.cleaned_text && msg.original_text !== msg.cleaned_text ? (
                       <div className="space-y-1">
-                        <div className="text-sm whitespace-pre-wrap">{msg.cleaned_text}</div>
+                        <div className="text-sm whitespace-pre-wrap">
+                          {msg.translated_text || msg.cleaned_text}
+                        </div>
                         <details className="text-xs opacity-70">
                           <summary className="cursor-pointer">Original</summary>
                           <div className="mt-1">{msg.original_text}</div>
                         </details>
                       </div>
                     ) : (
-                      <div className="text-sm whitespace-pre-wrap">{msg.message}</div>
+                      <div className="text-sm whitespace-pre-wrap">
+                        {msg.translated_text || msg.cleaned_text || msg.message}
+                      </div>
                     )}
                     
                     <div className="flex items-center gap-2">
