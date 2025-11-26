@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { ArrowLeft, Send, CheckCheck, Package } from 'lucide-react';
+import { ArrowLeft, Send, CheckCheck, Package, Globe } from 'lucide-react';
 import { format } from 'date-fns';
 import { ConnectionHealthIndicator } from '@/components/ui/ConnectionHealthIndicator';
 
@@ -15,6 +15,21 @@ export function QRChatInterface() {
   const { token, requestId } = useParams<{ token: string; requestId: string }>();
   const navigate = useNavigate();
   const { qrToken, guestId, tenantId } = useAuth();
+  
+  const getLanguageName = (code: string): string => {
+    const names: Record<string, string> = {
+      'zh': 'Chinese',
+      'ar': 'Arabic',
+      'fr': 'French',
+      'es': 'Spanish',
+      'yo': 'Yoruba',
+      'ha': 'Hausa',
+      'ig': 'Igbo',
+      'pidgin': 'Nigerian Pidgin',
+      'en': 'English',
+    };
+    return names[code?.toLowerCase()] || code?.toUpperCase();
+  };
   
   // PHASE 3: Migrated to unified chat hook
   const { messages, isLoading, isSending, sendMessage } = useUnifiedRequestChat({
@@ -147,6 +162,15 @@ export function QRChatInterface() {
                     <p className="text-sm font-medium">
                       {message.sender_name}
                     </p>
+                    
+                    {/* Phase 3: Show "Translated from X" tag */}
+                    {message.detected_language && message.detected_language !== 'en' && message.translated_text && message.translated_text !== message.original_text && (
+                      <div className="flex items-center gap-1 text-xs opacity-70 mb-1">
+                        <Globe className="h-3 w-3" />
+                        <span>Translated from {getLanguageName(message.detected_language)}</span>
+                      </div>
+                    )}
+                    
                     <p className="whitespace-pre-wrap">
                       {message.translated_text || message.cleaned_text || message.message}
                     </p>

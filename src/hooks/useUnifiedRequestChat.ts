@@ -247,6 +247,42 @@ export function useUnifiedRequestChat(
               intent: aiData.intent,
             });
             
+            // Phase 4: Trigger AI First Responder if guest language differs from staff language
+            if (aiData.detected_language && aiData.detected_language !== staffLang) {
+              try {
+                console.log('[AI-FIRST-RESPONDER] Triggering for guest language:', aiData.detected_language);
+                const firstResponderResult = await supabase.functions.invoke('ai-message', {
+                  body: {
+                    action: 'ai_first_responder',
+                    message: message.trim(),
+                    tenant_id: requestData.tenant_id,
+                    guest_language: aiData.detected_language,
+                  }
+                });
+                
+                if (firstResponderResult.data?.success && firstResponderResult.data.data?.acknowledgment_text) {
+                  await supabase.from('guest_communications').insert({
+                    tenant_id: requestData.tenant_id,
+                    guest_id: requestData.guest_id,
+                    type: 'qr_request',
+                    message: firstResponderResult.data.data.acknowledgment_text,
+                    direction: 'outbound',
+                    sent_by: null,
+                    ai_auto_response: true,
+                    metadata: {
+                      request_id: requestId,
+                      ai_first_responder: true,
+                      guest_language: aiData.detected_language,
+                    },
+                  });
+                  console.log('[AI-FIRST-RESPONDER] Acknowledgment sent:', firstResponderResult.data.data.acknowledgment_text);
+                }
+              } catch (firstResponderError) {
+                console.error('[AI-FIRST-RESPONDER] Failed:', firstResponderError);
+                // Non-blocking: continue even if first responder fails
+              }
+            }
+            
             // If auto-response, insert it after
             if (aiData.auto_response) {
               messageData.metadata.auto_response_category = aiData.auto_response_category;
