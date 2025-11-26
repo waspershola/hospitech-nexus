@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { Send } from 'lucide-react';
+import { Send, Globe } from 'lucide-react';
 import { format } from 'date-fns';
 import {
   Dialog,
@@ -60,6 +60,21 @@ export default function StaffChatDialog({
       e.preventDefault();
       handleSend();
     }
+  };
+
+  const getLanguageName = (code: string): string => {
+    const names: Record<string, string> = {
+      'zh': 'Chinese',
+      'ar': 'Arabic',
+      'fr': 'French',
+      'es': 'Spanish',
+      'yo': 'Yoruba',
+      'ha': 'Hausa',
+      'ig': 'Igbo',
+      'pidgin': 'Nigerian Pidgin',
+      'en': 'English',
+    };
+    return names[code?.toLowerCase()] || code?.toUpperCase();
   };
 
   if (!request) return null;
@@ -124,6 +139,14 @@ export default function StaffChatDialog({
                         </Badge>
                       )}
                     </div>
+                    
+                    {/* Phase 3: Show "Translated from X" tag */}
+                    {msg.detected_language && msg.detected_language !== 'en' && msg.translated_text && msg.translated_text !== msg.original_text && (
+                      <div className="flex items-center gap-1 text-xs opacity-70 mb-1">
+                        <Globe className="h-3 w-3" />
+                        <span>Translated from {getLanguageName(msg.detected_language)}</span>
+                      </div>
+                    )}
                     
                     {msg.original_text && msg.cleaned_text && msg.original_text !== msg.cleaned_text ? (
                       <div className="space-y-1">

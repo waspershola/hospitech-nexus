@@ -56,10 +56,17 @@ serve(async (req) => {
       systemPrompt = `You are a luxury hotel AI assistant processing guest messages. Your tasks:
 1. Detect the language (return ISO code like 'en', 'zh', 'yo', 'fr', etc.)
 2. Clean and normalize the message (fix typos, slang, broken English, pidgin)
-3. Translate to ${staffLanguage.toUpperCase()} (staff language) if needed
+3. CONDITIONAL TRANSLATION: ONLY translate to ${staffLanguage.toUpperCase()} if the detected language is DIFFERENT from ${staffLanguage.toUpperCase()}
+   - If detected_language === "${staffLanguage}", set translated_to_english = cleaned_text (no translation needed)
+   - If detected_language !== "${staffLanguage}", translate the cleaned_text to ${staffLanguage.toUpperCase()}
 4. Detect intent: housekeeping, maintenance, room_service, spa, pool, wifi, breakfast, complaint, request, faq, other
-5. Determine if this is a simple FAQ that can be auto-answered (confidence > 0.90)
-6. NEVER suggest operational actions - only provide information
+5. FAQ AUTO-RESPONSE RULES - ONLY provide auto_response when ALL of these are true:
+   - Question is purely informational (time, location, amenity info)
+   - NO service request is implied
+   - Confidence > 0.90
+   - Question matches a known FAQ category (breakfast_hours, pool_hours, wifi_password, checkout_time, amenity_location)
+6. If ANY operational action is requested (order food, room service, cleaning), set auto_response to null
+7. NEVER suggest operational actions - only provide information
 
 Available FAQs: ${JSON.stringify(faqs || [])}
 
@@ -71,13 +78,28 @@ Return structured JSON with: detected_language, cleaned_text, translated_to_engl
     } else if (action === 'process_staff_reply') {
       systemPrompt = `You are a luxury hotel AI assistant enhancing staff replies. Your tasks:
 1. Enhance the tone to be professional, courteous, and luxury-appropriate
-2. Translate from ${staffLanguage.toUpperCase()} to the guest's language: ${guest_language}
+2. CONDITIONAL TRANSLATION: ONLY translate if needed:
+   - If guest language "${guest_language}" is DIFFERENT from staff language "${staffLanguage}", translate to ${guest_language}
+   - If guest language === staff language, set translated_text = enhanced_text (no translation needed)
 3. Keep it concise and actionable
-4. Generate 2-3 alternative suggestion replies that staff can use
+4. Generate 2-3 alternative suggestion replies that staff can use (in guest language)
 
-Return JSON with: enhanced_text (in ${staffLanguage}), translated_text (in guest language), suggestions (array of 2-3 alternative replies in guest language)`;
+Return JSON with: enhanced_text (in ${staffLanguage}), translated_text (in guest language if needed, otherwise same as enhanced_text), suggestions (array of 2-3 alternative replies)`;
 
       userPrompt = `Staff reply: "${message}"`;
+      generateStructuredOutput = true;
+
+    } else if (action === 'ai_first_responder') {
+      // AI First Responder: immediate acknowledgment in guest's language
+      systemPrompt = `You are a luxury hotel AI assistant providing immediate acknowledgment to guests.
+The guest wrote in ${guest_language || 'their language'}. Generate a brief, polite acknowledgment in their language:
+- Thank them for reaching out
+- Let them know staff will assist shortly
+- Keep it under 30 words
+- Be warm and professional
+
+Return JSON with: acknowledgment_text (in guest language), language (guest language code)`;
+      userPrompt = `Guest message: "${message}"`;
       generateStructuredOutput = true;
 
     } else if (action === 'staff_training_query') {
@@ -110,9 +132,9 @@ Provide clear, step-by-step guidance based on standard hotel operations. If the 
       };
     }
 
-    // Phase 1: Fixed API endpoint from v1beta to v1
+    // Phase 1: Use gemini-1.5-flash-latest model
     const geminiResponse = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GEMINI_API_KEY}`,
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent?key=${GEMINI_API_KEY}`,
       {
         method: 'POST',
         headers: {
