@@ -99,8 +99,9 @@ export function useStaffRequests() {
     // Set up real-time subscription for new requests
     if (!tenantId) return;
 
+    let isSubscribed = true;
     const channel = supabase
-      .channel(`staff-requests-${tenantId}`)
+      .channel(`staff-requests-${tenantId}-${Date.now()}`) // Unique channel name
       .on(
         'postgres_changes',
         {
@@ -110,23 +111,30 @@ export function useStaffRequests() {
           filter: `tenant_id=eq.${tenantId}`,
         },
         (payload) => {
-          console.log('[useStaffRequests] PHASE-2A-COMPLETE: Realtime INSERT/UPDATE received:', payload.eventType);
-          fetchRequests();
+          if (isSubscribed) {
+            console.log('[useStaffRequests] REALTIME-FIX-V1: INSERT/UPDATE received:', payload.eventType);
+            fetchRequests();
+          }
         }
       )
       .subscribe((status) => {
-        console.log('[useStaffRequests] PHASE-2A-COMPLETE: Subscription status:', status);
+        console.log('[useStaffRequests] REALTIME-FIX-V1: Subscription status:', status);
       });
 
     // PHASE-2A-COMPLETE: Listen to status broadcast channel from Phase 2A
     const statusBc = new BroadcastChannel('qr-request-status-updates');
-    statusBc.onmessage = (event) => {
-      console.log('[useStaffRequests] PHASE-2A-COMPLETE: Status update broadcast received:', event.data);
-      fetchRequests();
+    const handleBroadcast = (event: MessageEvent) => {
+      if (isSubscribed) {
+        console.log('[useStaffRequests] REALTIME-FIX-V1: Status update broadcast received:', event.data);
+        fetchRequests();
+      }
     };
+    statusBc.addEventListener('message', handleBroadcast);
 
     return () => {
+      isSubscribed = false;
       supabase.removeChannel(channel);
+      statusBc.removeEventListener('message', handleBroadcast);
       statusBc.close();
     };
   }, [tenantId]);
