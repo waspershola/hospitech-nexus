@@ -67,8 +67,6 @@ async function fetchMessages(
   tenantId: string,
   requestId: string
 ): Promise<ChatMessage[]> {
-  console.log('[UNIFIED-CHAT-V1] Fetching messages:', { tenantId, requestId });
-
   const { data, error } = await supabase
     .from('guest_communications')
     .select('id, message, direction, sent_by, created_at, metadata, original_text, cleaned_text, translated_text, detected_language, intent, confidence, ai_auto_response')
@@ -77,17 +75,9 @@ async function fetchMessages(
     .order('created_at', { ascending: true });
 
   if (error) {
-    console.error('[UNIFIED-CHAT-V1] FETCH-ERROR:', {
-      requestId,
-      tenantId,
-      error: error.message,
-      code: error.code,
-      timestamp: new Date().toISOString(),
-    });
+    console.error('[UNIFIED-CHAT-V1] Failed to load messages:', error.message);
     throw new Error(`Failed to load messages: ${error.message}`);
   }
-
-  console.log('[UNIFIED-CHAT-V1] Fetched messages:', data?.length || 0);
 
   // Get unique staff IDs from outbound messages
   const staffIds = [...new Set(
@@ -156,6 +146,28 @@ export function useUnifiedRequestChat(
   const { tenantId, requestId, userType, userId, guestName = 'Guest', qrToken } = options;
   const queryClient = useQueryClient();
 
+  // PHASE-3: AI welcome message for new guest chats
+  const sendAIWelcomeMessage = useCallback(async () => {
+    if (userType !== 'guest' || !qrToken || !tenantId) return;
+
+    try {
+      await supabase.from('guest_communications').insert({
+        tenant_id: tenantId,
+        type: 'qr_chat',
+        message: 'Hello! I am your virtual concierge. How may I assist you today?\n\nWould you like me to translate our conversation to your preferred language?',
+        direction: 'outbound',
+        metadata: {
+          request_id: requestId,
+          qr_token: qrToken,
+          ai_generated: true,
+          welcome_message: true,
+        },
+      });
+    } catch (error) {
+      console.error('[AI-WELCOME] Failed:', error);
+    }
+  }, [tenantId, requestId, userType, qrToken]);
+
   // Unified cache key for all chat UIs
   const cacheKey = ['qr-chat', tenantId, requestId];
 
@@ -173,6 +185,13 @@ export function useUnifiedRequestChat(
     refetchOnMount: true,
     enabled: !!tenantId && !!requestId,
   });
+
+  // PHASE-3: Send AI welcome message for new guest chats
+  useEffect(() => {
+    if (messages.length === 0 && userType === 'guest' && !isLoading) {
+      sendAIWelcomeMessage();
+    }
+  }, [messages.length, userType, isLoading, sendAIWelcomeMessage]);
 
   // Send message mutation
   const { mutateAsync: sendMessageMutation, isPending: isSending } = useMutation({
