@@ -32,7 +32,7 @@ export function useOverdueRequestsReminder(tenantId: string) {
   useEffect(() => {
     // Initialize audio element
     if (!audioRef.current) {
-      audioRef.current = new Audio('/sounds/notification.mp3');
+      audioRef.current = new Audio('/sounds/notification-default.mp3');
       audioRef.current.volume = 0.5;
     }
 

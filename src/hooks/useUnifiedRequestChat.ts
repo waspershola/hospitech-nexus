@@ -194,6 +194,11 @@ export function useUnifiedRequestChat(
         throw new Error('Failed to fetch request context');
       }
 
+      // CRITICAL: Validate qr_token for guest messages (RLS requirement)
+      if (userType === 'guest' && !qrToken) {
+        throw new Error('QR token required for guest messages');
+      }
+
       // Prepare message data
       const messageData: any = {
         tenant_id: requestData.tenant_id,
@@ -203,7 +208,7 @@ export function useUnifiedRequestChat(
         direction: userType === 'guest' ? 'inbound' : 'outbound',
         metadata: { 
           request_id: requestId,
-          qr_token: qrToken || undefined, // CRITICAL: Always include qr_token for RLS
+          qr_token: qrToken || null, // CRITICAL: Always include qr_token for RLS
         },
       };
 

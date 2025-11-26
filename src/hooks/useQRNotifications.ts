@@ -119,5 +119,5 @@ export function useQRNotifications() {
         (channel as any).cleanup();
       }
     };
-  }, [tenantId, permissionGranted, playRingtone]);
+  }, [tenantId]); // REALTIME-STABILITY-FIX: Remove unstable function deps
 }
