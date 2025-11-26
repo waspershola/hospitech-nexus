@@ -176,6 +176,12 @@ Provide clear, step-by-step guidance based on standard hotel operations. If the 
 
     const geminiData = await geminiResponse.json();
     
+    console.log('[AI-MESSAGE] Gemini response received:', {
+      action,
+      hasContent: !!geminiData.candidates?.[0]?.content?.parts?.[0]?.text,
+      contentPreview: geminiData.candidates?.[0]?.content?.parts?.[0]?.text?.substring(0, 200),
+    });
+    
     let result;
     const contentText = geminiData.candidates?.[0]?.content?.parts?.[0]?.text;
     

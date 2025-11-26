@@ -229,23 +229,38 @@ export function useUnifiedRequestChat(
           if (aiResponse.data?.success) {
             const aiData = aiResponse.data.data;
             messageData.original_text = message.trim();
-            messageData.cleaned_text = aiData.cleaned_text;
-            messageData.translated_text = aiData.translated_to_english;
+            messageData.cleaned_text = aiData.cleaned_text || message.trim();
+            messageData.translated_text = aiData.translated_to_english || aiData.cleaned_text;
             messageData.detected_language = aiData.detected_language;
             messageData.target_language = staffLang;
             messageData.intent = aiData.intent;
             messageData.confidence = aiData.confidence;
             messageData.ai_auto_response = !!aiData.auto_response;
-            messageData.message = aiData.translated_to_english; // Show translated to staff
+            // Ensure message field always has a value
+            messageData.message = aiData.translated_to_english || aiData.cleaned_text || message.trim();
+            
+            console.log('[UNIFIED-CHAT-AI-V2] Guest message AI processed:', {
+              original: message.trim(),
+              cleaned: aiData.cleaned_text,
+              translated: aiData.translated_to_english,
+              detected_language: aiData.detected_language,
+              intent: aiData.intent,
+            });
             
             // If auto-response, insert it after
             if (aiData.auto_response) {
               messageData.metadata.auto_response_category = aiData.auto_response_category;
             }
+          } else {
+            console.error('[UNIFIED-CHAT-AI-V2] AI response failed:', aiResponse);
+            // Fallback: use original message
+            messageData.message = message.trim();
           }
         } catch (aiError) {
-          console.error('[UNIFIED-CHAT-V1] AI processing failed:', aiError);
-          // Continue without AI metadata
+          console.error('[UNIFIED-CHAT-AI-V2] AI processing failed:', aiError);
+          // Fallback: use original message so it displays
+          messageData.message = message.trim();
+          messageData.cleaned_text = message.trim();
         }
         
         messageData.metadata.guest_name = guestName;
@@ -286,14 +301,27 @@ export function useUnifiedRequestChat(
           if (aiResponse.data?.success) {
             const aiData = aiResponse.data.data;
             messageData.original_text = message.trim();
-            messageData.cleaned_text = aiData.enhanced_text;
-            messageData.translated_text = aiData.translated_text;
+            messageData.cleaned_text = aiData.enhanced_text || message.trim();
+            messageData.translated_text = aiData.translated_text || message.trim();
             messageData.target_language = guestLang;
-            messageData.message = aiData.translated_text; // Use translated version for guest
+            // Ensure message field always has a value
+            messageData.message = aiData.translated_text || aiData.enhanced_text || message.trim();
+            
+            console.log('[UNIFIED-CHAT-AI-V2] Staff reply AI processed:', {
+              original: message.trim(),
+              enhanced: aiData.enhanced_text,
+              translated: aiData.translated_text,
+              guest_language: guestLang,
+            });
+          } else {
+            console.error('[UNIFIED-CHAT-AI-V2] AI staff reply failed:', aiResponse);
+            // Fallback: use original message
+            messageData.message = message.trim();
           }
         } catch (aiError) {
-          console.error('[UNIFIED-CHAT-V1] AI enhancement failed:', aiError);
-          // Continue with original message
+          console.error('[UNIFIED-CHAT-AI-V2] AI enhancement failed:', aiError);
+          // Fallback: use original message so it displays
+          messageData.message = message.trim();
         }
         
         messageData.sent_by = userId;
