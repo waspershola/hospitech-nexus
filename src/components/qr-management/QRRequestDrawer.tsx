@@ -220,23 +220,29 @@ export function QRRequestDrawer({
   }, [open, pendingRequests.length, selectedRequest?.status]);
 
 
-  // PHASE-2A-V1: Subscribe to cross-tab status updates via BroadcastChannel
+  // REALTIME-FIX-V1: Subscribe to cross-tab status updates via BroadcastChannel
   useEffect(() => {
-    console.log('[QRRequestDrawer] PHASE-2A-V1: Setting up BroadcastChannel listener');
+    if (!open) return; // Only subscribe when drawer is open
+    
+    console.log('[QRRequestDrawer] REALTIME-FIX-V1: Setting up BroadcastChannel listener');
+    let isActive = true;
     
     const unsubscribe = subscribeToStatusUpdates((payload) => {
-      console.log('[QRRequestDrawer] PHASE-2A-V1: Received status update from another tab:', payload);
-      
-      // Invalidate queries to refresh data
-      queryClient.invalidateQueries({ queryKey: ['staff-requests'] });
-      queryClient.invalidateQueries({ queryKey: ['qr-requests'] });
+      if (isActive) {
+        console.log('[QRRequestDrawer] REALTIME-FIX-V1: Received status update from another tab:', payload);
+        
+        // Invalidate queries to refresh data
+        queryClient.invalidateQueries({ queryKey: ['staff-requests'] });
+        queryClient.invalidateQueries({ queryKey: ['qr-requests'] });
+      }
     });
 
     return () => {
-      console.log('[QRRequestDrawer] PHASE-2A-V1: Cleaning up BroadcastChannel listener');
+      isActive = false;
+      console.log('[QRRequestDrawer] REALTIME-FIX-V1: Cleaning up BroadcastChannel listener');
       unsubscribe();
     };
-  }, [queryClient]);
+  }, [open, queryClient]);
 
   // Auto-select payment location based on service category
   useEffect(() => {
