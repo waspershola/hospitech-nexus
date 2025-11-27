@@ -1139,6 +1139,7 @@ export type Database = {
           detected_language: string | null
           direction: string
           guest_id: string | null
+          guest_session_token: string | null
           id: string
           intent: string | null
           message: string | null
@@ -1161,6 +1162,7 @@ export type Database = {
           detected_language?: string | null
           direction: string
           guest_id?: string | null
+          guest_session_token?: string | null
           id?: string
           intent?: string | null
           message?: string | null
@@ -1183,6 +1185,7 @@ export type Database = {
           detected_language?: string | null
           direction?: string
           guest_id?: string | null
+          guest_session_token?: string | null
           id?: string
           intent?: string | null
           message?: string | null
@@ -5187,6 +5190,7 @@ export type Database = {
           completed_at: string | null
           created_at: string | null
           guest_id: string | null
+          guest_session_token: string | null
           id: string
           metadata: Json | null
           note: string | null
@@ -5220,6 +5224,7 @@ export type Database = {
           completed_at?: string | null
           created_at?: string | null
           guest_id?: string | null
+          guest_session_token?: string | null
           id?: string
           metadata?: Json | null
           note?: string | null
@@ -5253,6 +5258,7 @@ export type Database = {
           completed_at?: string | null
           created_at?: string | null
           guest_id?: string | null
+          guest_session_token?: string | null
           id?: string
           metadata?: Json | null
           note?: string | null
