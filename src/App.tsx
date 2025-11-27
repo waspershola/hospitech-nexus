@@ -95,6 +95,8 @@ const QRLoadingFallback = () => (
   </div>
 );
 
+import { QRPortalWrapper } from "./components/qr-portal/QRPortalWrapper";
+
 import QRManagement from "./pages/dashboard/QRManagement";
 import GuestRequestsManagement from "./pages/dashboard/GuestRequestsManagement";
 import DepartmentRequestsDashboard from "./pages/dashboard/DepartmentRequestsDashboard";
@@ -235,20 +237,28 @@ const App = () => (
             <Route path="/payment/success" element={<PaymentSuccess />} />
             <Route path="/payment/cancel" element={<PaymentCancel />} />
 
-            {/* QR Portal - Public routes (no authentication required) - ALL LAZY LOADED */}
-            <Route path="/qr/:token" element={
+            {/* QR Portal - Public routes with global notification wrapper */}
+            <Route path="/qr/:token/*" element={
               <Suspense fallback={<QRLoadingFallback />}>
-                <QRLandingPage />
-              </Suspense>
-            } />
-            <Route path="/qr/:token/service/:service" element={
-              <Suspense fallback={<QRLoadingFallback />}>
-                <QRServiceRequestForm />
-              </Suspense>
-            } />
-            <Route path="/qr/:token/chat/:requestId" element={
-              <Suspense fallback={<QRLoadingFallback />}>
-                <QRChatInterface />
+                <QRPortalWrapper>
+                  <Routes>
+                    <Route index element={<QRLandingPage />} />
+                    <Route path="service/:service" element={<QRServiceRequestForm />} />
+                    <Route path="chat/:requestId" element={<QRChatInterface />} />
+                    <Route path="menu" element={<QRMenuBrowser />} />
+                    <Route path="wifi" element={<QRWifiCredentials />} />
+                    <Route path="feedback" element={<QRFeedback />} />
+                    <Route path="laundry" element={<QRLaundryService />} />
+                    <Route path="spa" element={<QRSpaBooking />} />
+                    <Route path="housekeeping" element={<QRHousekeepingService />} />
+                    <Route path="dining" element={<QRDiningReservation />} />
+                    <Route path="room-service" element={<QRRoomService />} />
+                    <Route path="order-status/:orderId" element={<QROrderStatus />} />
+                    <Route path="request-status/:requestId" element={<QRRequestStatus />} />
+                    <Route path="payment-history" element={<QRPaymentHistory />} />
+                    <Route path="redirect" element={<QRRedirect />} />
+                  </Routes>
+                </QRPortalWrapper>
               </Suspense>
             } />
             <Route path="/qr/:token/menu" element={
