@@ -5,6 +5,7 @@ import { useQRTheme } from '@/hooks/useQRTheme';
 import { useMyRequests } from '@/hooks/useMyRequests';
 import { useGuestInfo } from '@/hooks/useGuestInfo';
 import { useGuestNotifications } from '@/hooks/useGuestNotifications';
+import { useGuestSessionContext } from '@/components/qr-portal/QRPortalWrapper';
 import { useChatVisibility } from '@/contexts/ChatVisibilityContext';
 import { GuestInfoModal } from '@/components/qr-portal/GuestInfoModal';
 import { UtensilsCrossed, Wifi, Wrench, Bell, MessageCircle, Phone, Clock, Sparkles, Crown, Utensils, Shirt as ShirtIcon, Headphones, Receipt, LucideIcon, CheckCircle, AlertCircle } from 'lucide-react';
@@ -88,9 +89,12 @@ export function QRLandingPage() {
   
   // Auto-validate token with 24h caching
   const { qrData, isValidating, error } = useQRToken(token);
+  
+  // GUEST-SESSION-SECURITY: Get session token from context
+  const { guestSessionToken } = useGuestSessionContext();
 
-  // Phase 3: Dynamic My Requests
-  const { requests, pendingCount } = useMyRequests(token || null);
+  // Phase 3: Dynamic My Requests with session filtering
+  const { requests, pendingCount } = useMyRequests(token || null, guestSessionToken);
 
   // PHASE-1C: Guest Info Persistence
   const { guestInfo, isLoading: guestInfoLoading, hasGuestInfo, saveGuestInfo } = useGuestInfo(token);

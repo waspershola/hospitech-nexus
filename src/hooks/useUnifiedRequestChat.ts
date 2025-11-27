@@ -51,6 +51,7 @@ interface UseUnifiedRequestChatOptions {
   userId?: string; // For staff messages
   guestName?: string; // For guest messages
   qrToken?: string; // For guest validation (optional)
+  guestSessionToken?: string; // GUEST-SESSION-SECURITY: Per-device session isolation
 }
 
 interface UseUnifiedRequestChatReturn {
@@ -147,7 +148,7 @@ async function fetchMessages(
 export function useUnifiedRequestChat(
   options: UseUnifiedRequestChatOptions
 ): UseUnifiedRequestChatReturn {
-  const { tenantId, requestId, userType, userId, guestName = 'Guest', qrToken } = options;
+  const { tenantId, requestId, userType, userId, guestName = 'Guest', qrToken, guestSessionToken } = options;
   const queryClient = useQueryClient();
 
   // PHASE-3: Enhanced AI welcome message asking about language preference
@@ -232,9 +233,12 @@ export function useUnifiedRequestChat(
         type: 'qr_request',
         message: message.trim(),
         direction: userType === 'guest' ? 'inbound' : 'outbound',
+        // GUEST-SESSION-SECURITY: Include session token for per-device isolation
+        guest_session_token: userType === 'guest' ? guestSessionToken : null,
         metadata: { 
           request_id: requestId,
           qr_token: qrToken || null, // CRITICAL: Always include qr_token for RLS
+          guest_session_token: guestSessionToken || null, // Store in metadata too for debugging
         },
       };
 
@@ -322,6 +326,7 @@ export function useUnifiedRequestChat(
                   metadata: {
                     request_id: requestId,
                     qr_token: qrToken,
+                    guest_session_token: guestSessionToken, // GUEST-SESSION-SECURITY
                     ai_generated: true,
                     language_acknowledgment: true,
                     selected_language: aiData.selected_language,
@@ -430,6 +435,7 @@ export function useUnifiedRequestChat(
                     metadata: {
                       request_id: requestId,
                       qr_token: qrToken, // Add for RLS
+                      guest_session_token: guestSessionToken, // GUEST-SESSION-SECURITY
                       ai_first_responder: true,
                       guest_language: aiData.detected_language,
                     },
