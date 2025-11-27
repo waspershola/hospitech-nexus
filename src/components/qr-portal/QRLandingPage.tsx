@@ -27,6 +27,8 @@ const SERVICE_ICONS: Record<string, LucideIcon> = {
   spa: Sparkles,
   laundry: ShirtIcon,
   dining: UtensilsCrossed,
+  front_desk: Phone,
+  do_not_disturb: Bell,
 };
 
 const SERVICE_CONFIG: Record<string, { title: string; description: string }> = {
@@ -69,6 +71,14 @@ const SERVICE_CONFIG: Record<string, { title: string; description: string }> = {
   dining: { 
     title: 'Dining Reservations', 
     description: 'Reserve a table at our restaurant' 
+  },
+  front_desk: {
+    title: 'Front Desk',
+    description: 'Contact the front desk for assistance'
+  },
+  do_not_disturb: {
+    title: 'Do Not Disturb',
+    description: 'Toggle room privacy mode'
   },
 };
 
@@ -289,6 +299,8 @@ export function QRLandingPage() {
               if (service === 'spa') route = `/qr/${token}/spa`;
               if (service === 'dining') route = `/qr/${token}/dining`;
               if (service === 'housekeeping') route = `/qr/${token}/housekeeping`;
+              if (service === 'front_desk') route = `/qr/${token}/service/front_desk`;
+              if (service === 'do_not_disturb') route = `/qr/${token}/do-not-disturb`;
 
               return (
                 <ServiceCard
