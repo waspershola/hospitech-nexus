@@ -26,13 +26,21 @@ export function useGuestNotifications({
   const { playRingtone } = useRingtone();
 
   useEffect(() => {
-    if (!enabled || !tenantId || !qrToken) return;
+    if (!enabled || !tenantId || !qrToken) {
+      console.log('[GUEST-NOTIFICATIONS-DEBUG] Subscription disabled:', {
+        enabled,
+        tenantId: !!tenantId,
+        qrToken: !!qrToken,
+      });
+      return;
+    }
 
-    console.log('[GUEST-NOTIFICATIONS-OPTION-C-DEBUG] Setting up global listener:', {
+    console.log('[GUEST-NOTIFICATIONS-V4-DEBUG] Setting up global listener:', {
       qrToken,
       tenantId,
       enabled,
       suppressSound,
+      timestamp: new Date().toISOString(),
     });
 
     // PHASE-4: Fix Supabase filter - use table-level subscription with client-side filtering
@@ -67,14 +75,23 @@ export function useGuestNotifications({
           
           // Only notify for staff replies (outbound messages)
           if (message.direction === 'outbound' && message.tenant_id === tenantId) {
-            console.log('[GUEST-NOTIFICATIONS-OPTION-C] New staff reply received, triggering notification');
+            console.log('[GUEST-NOTIFICATIONS-V4] ✅ New staff reply received, triggering notification', {
+              messageId: message.id,
+              suppressSound,
+              timestamp: new Date().toISOString(),
+            });
             
             // PHASE-3: Only play sound if NOT suppressed (chat is open)
             if (!suppressSound) {
-              console.log('[GUEST-NOTIFICATIONS-OPTION-C] Playing ringtone');
-              playRingtone('/sounds/notification-default.mp3', { volume: 0.5 });
+              console.log('[GUEST-NOTIFICATIONS-V4] 🔔 Attempting to play ringtone');
+              try {
+                playRingtone('/sounds/notification-default.mp3', { volume: 0.5 });
+                console.log('[GUEST-NOTIFICATIONS-V4] ✅ Ringtone playback initiated');
+              } catch (error) {
+                console.error('[GUEST-NOTIFICATIONS-V4] ❌ Ringtone playback failed:', error);
+              }
             } else {
-              console.log('[GUEST-NOTIFICATIONS-OPTION-C] Sound suppressed - chat is active');
+              console.log('[GUEST-NOTIFICATIONS-V4] 🔇 Sound suppressed - chat is active');
             }
             
             // Always show toast notification (even if sound suppressed)
@@ -82,15 +99,26 @@ export function useGuestNotifications({
               description: message.message?.substring(0, 100) || 'Staff has replied to your request',
               duration: 5000,
             });
+            console.log('[GUEST-NOTIFICATIONS-V4] 💬 Toast notification displayed');
+          } else {
+            console.log('[GUEST-NOTIFICATIONS-V4] ⏭️ Message filtered out:', {
+              direction: message.direction,
+              isOutbound: message.direction === 'outbound',
+              tenantMatch: message.tenant_id === tenantId,
+            });
           }
         }
       )
       .subscribe((status) => {
-        console.log('[GUEST-NOTIFICATIONS-OPTION-C-DEBUG] Subscription status:', status);
+        console.log('[GUEST-NOTIFICATIONS-V4-DEBUG] Subscription status:', {
+          status,
+          channelName: `guest-notifications-${qrToken}`,
+          timestamp: new Date().toISOString(),
+        });
       });
 
     return () => {
-      console.log('[GUEST-NOTIFICATIONS-V3] Cleaning up global listener');
+      console.log('[GUEST-NOTIFICATIONS-V4] Cleaning up global listener');
       supabase.removeChannel(channel);
     };
   }, [tenantId, qrToken, enabled, suppressSound, playRingtone]);
