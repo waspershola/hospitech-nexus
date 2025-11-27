@@ -160,9 +160,9 @@ Provide clear, step-by-step guidance based on standard hotel operations. If the 
 
     // v1 API does not support responseMimeType - rely on prompt for JSON formatting
 
-    // Phase 1: Use v1beta API with gemini-1.5-flash model (GEMINI-FIX-V3)
+    // Phase 1: Use v1beta API with gemini-2.0-flash model (GEMINI-FIX-V4)
     const geminiResponse = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GEMINI_API_KEY}`,
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_API_KEY}`,
       {
         method: 'POST',
         headers: {
@@ -184,10 +184,10 @@ Provide clear, step-by-step guidance based on standard hotel operations. If the 
       console.error('[AI-MESSAGE] Gemini API error:', {
         status: geminiResponse.status,
         statusText: geminiResponse.statusText,
-        error: errorText,
-        action,
-        model: 'gemini-1.5-flash'
-      });
+          error: errorText,
+          action,
+          model: 'gemini-2.0-flash'
+        });
       
       // Return partial success with original text if AI fails
       if (action === 'process_guest_message') {

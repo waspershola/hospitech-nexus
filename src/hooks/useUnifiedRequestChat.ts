@@ -417,9 +417,12 @@ export function useUnifiedRequestChat(
           }
         } catch (aiError) {
           console.error('[UNIFIED-CHAT-AI-V2] AI processing failed:', aiError);
-          // Fallback: use original message so it displays
+          // PHASE-2: Fallback - always populate original_text and translated_text
           messageData.message = message.trim();
+          messageData.original_text = message.trim(); // ALWAYS set
           messageData.cleaned_text = message.trim();
+          messageData.translated_text = message.trim(); // ALWAYS set (same as original when no translation)
+          messageData.detected_language = 'unknown';
         }
         
         messageData.metadata.guest_name = guestName;
