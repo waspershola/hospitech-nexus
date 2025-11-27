@@ -151,11 +151,47 @@ export function QRSpaBooking() {
     : { baseAmount: 0, platformFee: 0, totalAmount: 0 };
   const finalTotal = platformFeeBreakdown.totalAmount;
 
-  if (isLoading || !qrData || !qrData.tenant_id) {
+  // Session validation
+  if (!qrData || !qrData.tenant_id) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
         <p className="ml-3 text-muted-foreground">Loading your session...</p>
+      </div>
+    );
+  }
+
+  // Services loading state
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-background via-background to-accent/5">
+        <div className="sticky top-0 z-50 bg-background/95 backdrop-blur-md border-b border-border shadow-md">
+          <div className="max-w-6xl mx-auto px-4 py-4 flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => navigate(`/qr/${token}`)}
+                className="rounded-full"
+              >
+                <ArrowLeft className="h-5 w-5" />
+              </Button>
+              <div>
+                <h1 className="text-xl font-display font-bold text-foreground flex items-center gap-2">
+                  <Sparkles className="h-5 w-5 text-primary" />
+                  Spa Services
+                </h1>
+                <p className="text-sm text-muted-foreground">{qrData?.tenant?.hotel_name}</p>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div className="max-w-6xl mx-auto px-4 py-8 flex items-center justify-center min-h-[60vh]">
+          <div className="text-center space-y-4">
+            <Loader2 className="h-12 w-12 animate-spin text-primary mx-auto" />
+            <p className="text-muted-foreground">Loading spa services...</p>
+          </div>
+        </div>
       </div>
     );
   }

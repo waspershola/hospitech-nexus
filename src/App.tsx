@@ -80,6 +80,7 @@ const QRSpaBooking = lazy(() => import("./components/qr-portal/QRSpaBooking").th
 const QRDiningReservation = lazy(() => import("./components/qr-portal/QRDiningReservation").then(m => ({ default: m.QRDiningReservation })));
 const QRRoomService = lazy(() => import("./components/qr-portal/QRRoomService").then(m => ({ default: m.QRRoomService })));
 const QRHousekeepingService = lazy(() => import("./components/qr-portal/QRHousekeepingService").then(m => ({ default: m.QRHousekeepingService })));
+const QRDoNotDisturb = lazy(() => import("./components/qr-portal/QRDoNotDisturb").then(m => ({ default: m.QRDoNotDisturb })));
 const QROrderStatus = lazy(() => import("./components/qr-portal/QROrderStatus").then(m => ({ default: m.QROrderStatus })));
 const QRRequestStatus = lazy(() => import("./components/qr-portal/QRRequestStatus").then(m => ({ default: m.QRRequestStatus })));
 const QRPaymentHistory = lazy(() => import("./components/qr-portal/QRPaymentHistory"));
@@ -253,6 +254,7 @@ const App = () => (
                     <Route path="laundry" element={<QRLaundryService />} />
                     <Route path="spa" element={<QRSpaBooking />} />
                     <Route path="housekeeping" element={<QRHousekeepingService />} />
+                    <Route path="do-not-disturb" element={<QRDoNotDisturb />} />
                     <Route path="dining" element={<QRDiningReservation />} />
                     <Route path="room-service" element={<QRRoomService />} />
                     <Route path="order/:orderId" element={<QROrderStatus />} />
