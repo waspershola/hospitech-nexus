@@ -156,8 +156,8 @@ export default function StaffChatDialog({
                             </div>
                           )}
                           
-                          {/* Always show both if translation exists */}
-                          {msg.translated_text && msg.original_text && msg.translated_text !== msg.original_text ? (
+                          {/* ALWAYS show both original and translated if we have the fields */}
+                          {msg.translated_text && msg.original_text ? (
                             <div className="space-y-3">
                               {/* Primary: Translated version for staff to read */}
                               <div className="space-y-1">
@@ -169,10 +169,10 @@ export default function StaffChatDialog({
                                 </div>
                               </div>
                               
-                              {/* Secondary: Original guest text */}
+                              {/* Secondary: Original guest text - ALWAYS show */}
                               <div className="pt-2 border-t border-muted-foreground/30 space-y-1">
                                 <div className="text-xs font-semibold opacity-60 uppercase tracking-wide">
-                                  Original ({getLanguageName(msg.detected_language)}):
+                                  Original ({getLanguageName(msg.detected_language || 'unknown')}):
                                 </div>
                                 <div className="opacity-70 text-sm">
                                   {msg.original_text}
@@ -185,8 +185,8 @@ export default function StaffChatDialog({
                         </>
                       ) : (
                         <>
-                          {/* Staff message: show original (what staff typed) + translated (what guest sees) */}
-                          {msg.translated_text && msg.original_text && msg.translated_text !== msg.original_text ? (
+                          {/* Staff message: ALWAYS show both original and translated if we have the fields */}
+                          {msg.translated_text && msg.original_text ? (
                             <div className="space-y-3">
                               {/* Primary: What staff typed */}
                               <div className="space-y-1">
@@ -198,7 +198,7 @@ export default function StaffChatDialog({
                                 </div>
                               </div>
                               
-                              {/* Secondary: What guest will see */}
+                              {/* Secondary: What guest will see - ALWAYS show */}
                               <div className="pt-2 border-t border-primary-foreground/30 space-y-1">
                                 <div className="text-xs font-semibold opacity-60 uppercase tracking-wide flex items-center gap-1">
                                   <Globe className="h-3 w-3" />

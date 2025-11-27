@@ -219,7 +219,7 @@ export function QRChatInterface() {
                       {message.sender_name}
                     </p>
                     
-                    {/* PHASE-3: Fixed translation UI - ALWAYS show both original and translated text */}
+                    {/* PHASE-3: ALWAYS show both original and translated text */}
                     {message.direction === 'inbound' ? (
                       <>
                         {/* Guest's own message: show what they typed (original) */}
@@ -235,24 +235,25 @@ export function QRChatInterface() {
                             </div>
                           )}
                           
-                          {message.translated_text && message.original_text && message.translated_text !== message.original_text && (
+                          {/* ALWAYS show translation notice if we have both fields */}
+                          {message.translated_text && message.original_text && (
                             <div className="text-xs opacity-70 pt-1">
-                              ✓ Staff will see this translated to English
+                              ✓ Staff will see this {message.translated_text !== message.original_text ? 'translated to English' : 'in original language'}
                             </div>
                           )}
                         </div>
                       </>
                     ) : (
                       <>
-                        {/* Staff message: show what guest will see (translated) + original */}
+                        {/* Staff message: ALWAYS show both original and translated */}
                         <div className="space-y-2">
                           {/* Primary: What guest sees (translated version) */}
                           <p className="whitespace-pre-wrap font-medium">
                             {message.translated_text || message.message}
                           </p>
                           
-                          {/* Secondary: Original staff text if translation occurred */}
-                          {message.translated_text && message.original_text && message.translated_text !== message.original_text && (
+                          {/* ALWAYS show original staff text if we have both fields */}
+                          {message.translated_text && message.original_text && (
                             <div className="pt-2 border-t border-muted-foreground/20 space-y-1">
                               <div className="flex items-center gap-1 text-xs opacity-70">
                                 <Globe className="h-3 w-3" />
