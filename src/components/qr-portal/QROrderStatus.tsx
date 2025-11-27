@@ -26,7 +26,7 @@ export function QROrderStatus() {
         .select('*, request:requests(id, status, created_at, metadata)')
         .eq('id', orderId!)
         .eq('qr_token', token!)
-        .single();
+        .maybeSingle();
 
       if (error) throw error;
       return data;
