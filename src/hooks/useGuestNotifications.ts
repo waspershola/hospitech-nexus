@@ -1,7 +1,7 @@
 /**
- * PHASE-3: Global Guest Notification System
+ * Global Guest Notification System
  * 
- * Provides real-time notifications for guests even when not in chat interface.
+ * Provides real-time notifications for guests on all QR portal pages.
  * Plays sound and shows toast when staff replies.
  */
 
@@ -14,14 +14,12 @@ interface UseGuestNotificationsOptions {
   tenantId: string;
   qrToken: string;
   enabled?: boolean;
-  suppressSound?: boolean; // PHASE-3: Suppress sound when chat is actively open
 }
 
 export function useGuestNotifications({
   tenantId,
   qrToken,
   enabled = true,
-  suppressSound = false,
 }: UseGuestNotificationsOptions) {
   const { playRingtone } = useRingtone();
 
@@ -35,11 +33,10 @@ export function useGuestNotifications({
       return;
     }
 
-    console.log('[GUEST-NOTIFICATIONS-V4-DEBUG] Setting up global listener:', {
+    console.log('[GUEST-NOTIFICATIONS-V5-DEBUG] Setting up global listener:', {
       qrToken,
       tenantId,
       enabled,
-      suppressSound,
       timestamp: new Date().toISOString(),
     });
 
@@ -75,33 +72,28 @@ export function useGuestNotifications({
           
           // Only notify for staff replies (outbound messages)
           if (message.direction === 'outbound' && message.tenant_id === tenantId) {
-            console.log('[GUEST-NOTIFICATIONS-V4] ✅ New staff reply received, triggering notification', {
+            console.log('[GUEST-NOTIFICATIONS-V5] ✅ New staff reply received, triggering notification', {
               messageId: message.id,
-              suppressSound,
               timestamp: new Date().toISOString(),
             });
             
-            // PHASE-3: Only play sound if NOT suppressed (chat is open)
-            if (!suppressSound) {
-              console.log('[GUEST-NOTIFICATIONS-V4] 🔔 Attempting to play ringtone');
-              try {
-                playRingtone('/sounds/notification-default.mp3', { volume: 0.5 });
-                console.log('[GUEST-NOTIFICATIONS-V4] ✅ Ringtone playback initiated');
-              } catch (error) {
-                console.error('[GUEST-NOTIFICATIONS-V4] ❌ Ringtone playback failed:', error);
-              }
-            } else {
-              console.log('[GUEST-NOTIFICATIONS-V4] 🔇 Sound suppressed - chat is active');
+            // ALWAYS play sound for guest notifications (no suppression)
+            console.log('[GUEST-NOTIFICATIONS-V5] 🔔 Attempting to play ringtone');
+            try {
+              playRingtone('/sounds/notification-default.mp3', { volume: 0.5 });
+              console.log('[GUEST-NOTIFICATIONS-V5] ✅ Ringtone playback initiated');
+            } catch (error) {
+              console.error('[GUEST-NOTIFICATIONS-V5] ❌ Ringtone playback failed:', error);
             }
             
-            // Always show toast notification (even if sound suppressed)
+            // Always show toast notification
             toast.info('New message from Hotel Staff', {
               description: message.message?.substring(0, 100) || 'Staff has replied to your request',
               duration: 5000,
             });
-            console.log('[GUEST-NOTIFICATIONS-V4] 💬 Toast notification displayed');
+            console.log('[GUEST-NOTIFICATIONS-V5] 💬 Toast notification displayed');
           } else {
-            console.log('[GUEST-NOTIFICATIONS-V4] ⏭️ Message filtered out:', {
+            console.log('[GUEST-NOTIFICATIONS-V5] ⏭️ Message filtered out:', {
               direction: message.direction,
               isOutbound: message.direction === 'outbound',
               tenantMatch: message.tenant_id === tenantId,
@@ -110,7 +102,7 @@ export function useGuestNotifications({
         }
       )
       .subscribe((status) => {
-        console.log('[GUEST-NOTIFICATIONS-V4-DEBUG] Subscription status:', {
+        console.log('[GUEST-NOTIFICATIONS-V5-DEBUG] Subscription status:', {
           status,
           channelName: `guest-notifications-${qrToken}`,
           timestamp: new Date().toISOString(),
@@ -118,8 +110,8 @@ export function useGuestNotifications({
       });
 
     return () => {
-      console.log('[GUEST-NOTIFICATIONS-V4] Cleaning up global listener');
+      console.log('[GUEST-NOTIFICATIONS-V5] Cleaning up global listener');
       supabase.removeChannel(channel);
     };
-  }, [tenantId, qrToken, enabled, suppressSound, playRingtone]);
+  }, [tenantId, qrToken, enabled, playRingtone]);
 }
