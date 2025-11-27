@@ -28,7 +28,12 @@ export function useGuestNotifications({
   useEffect(() => {
     if (!enabled || !tenantId || !qrToken) return;
 
-    console.log('[GUEST-NOTIFICATIONS-V2] Setting up global listener for QR token:', qrToken);
+    console.log('[GUEST-NOTIFICATIONS-OPTION-C-DEBUG] Setting up global listener:', {
+      qrToken,
+      tenantId,
+      enabled,
+      suppressSound,
+    });
 
     // PHASE-4: Fix Supabase filter - use table-level subscription with client-side filtering
     // The metadata->>qr_token filter doesn't work reliably for JSONB columns
@@ -43,23 +48,33 @@ export function useGuestNotifications({
           // Remove unreliable JSONB filter, do client-side filtering instead
         },
         (payload) => {
+          console.log('[GUEST-NOTIFICATIONS-OPTION-C-DEBUG] Received INSERT event:', {
+            messageId: payload.new?.id,
+            direction: payload.new?.direction,
+            messageQrToken: payload.new?.metadata?.qr_token,
+            targetQrToken: qrToken,
+            match: payload.new?.metadata?.qr_token === qrToken,
+          });
+
           const message = payload.new as any;
           
           // Client-side filter for qr_token
           const messageQrToken = message.metadata?.qr_token;
           if (messageQrToken !== qrToken) {
+            console.log('[GUEST-NOTIFICATIONS-OPTION-C-DEBUG] Filtered out - not for this guest');
             return; // Not for this guest
           }
           
           // Only notify for staff replies (outbound messages)
           if (message.direction === 'outbound' && message.tenant_id === tenantId) {
-            console.log('[GUEST-NOTIFICATIONS-V3] New staff reply received');
+            console.log('[GUEST-NOTIFICATIONS-OPTION-C] New staff reply received, triggering notification');
             
             // PHASE-3: Only play sound if NOT suppressed (chat is open)
             if (!suppressSound) {
+              console.log('[GUEST-NOTIFICATIONS-OPTION-C] Playing ringtone');
               playRingtone('/sounds/notification-default.mp3', { volume: 0.5 });
             } else {
-              console.log('[GUEST-NOTIFICATIONS-V3] Sound suppressed - chat is active');
+              console.log('[GUEST-NOTIFICATIONS-OPTION-C] Sound suppressed - chat is active');
             }
             
             // Always show toast notification (even if sound suppressed)
@@ -70,7 +85,9 @@ export function useGuestNotifications({
           }
         }
       )
-      .subscribe();
+      .subscribe((status) => {
+        console.log('[GUEST-NOTIFICATIONS-OPTION-C-DEBUG] Subscription status:', status);
+      });
 
     return () => {
       console.log('[GUEST-NOTIFICATIONS-V3] Cleaning up global listener');

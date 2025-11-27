@@ -19,6 +19,7 @@ interface AISettings {
   welcome_message_template: string;
   translation_prompt_template: string | null;
   ai_response_style: 'luxury' | 'formal' | 'casual';
+  translation_style: 'literal' | 'polite' | 'hybrid';
   enable_auto_translation: boolean;
   enable_ai_auto_responses: boolean;
   enable_ai_suggestions: boolean;
@@ -55,6 +56,7 @@ export default function AIConciergeSetting() {
           welcome_message_template: data.welcome_message_template,
           translation_prompt_template: data.translation_prompt_template,
           ai_response_style: data.ai_response_style as 'luxury' | 'formal' | 'casual',
+          translation_style: data.translation_style as 'literal' | 'polite' | 'hybrid' || 'literal',
           enable_auto_translation: data.enable_auto_translation,
           enable_ai_auto_responses: data.enable_ai_auto_responses,
           enable_ai_suggestions: data.enable_ai_suggestions,
@@ -82,11 +84,13 @@ export default function AIConciergeSetting() {
           welcome_message_template: settings.welcome_message_template,
           translation_prompt_template: settings.translation_prompt_template,
           ai_response_style: settings.ai_response_style,
+          translation_style: settings.translation_style,
           enable_auto_translation: settings.enable_auto_translation,
           enable_ai_auto_responses: settings.enable_ai_auto_responses,
           enable_ai_suggestions: settings.enable_ai_suggestions,
-        })
-        .eq('tenant_id', tenantId!);
+        }, {
+          onConflict: 'tenant_id'
+        });
 
       if (error) throw error;
       toast.success('AI settings saved successfully');
@@ -165,12 +169,49 @@ export default function AIConciergeSetting() {
 
       <Card>
         <CardHeader>
-          <CardTitle>AI Response Style</CardTitle>
+          <CardTitle>Translation & AI Response Style</CardTitle>
           <CardDescription>
-            Choose the tone and style for AI-generated responses
+            Configure translation behavior and AI response tone
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
+          <div className="space-y-2">
+            <Label htmlFor="translation-style">Translation Mode</Label>
+            <Select
+              value={settings.translation_style}
+              onValueChange={(value: 'literal' | 'polite' | 'hybrid') =>
+                setSettings({ ...settings, translation_style: value })
+              }
+            >
+              <SelectTrigger id="translation-style">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="literal">
+                  <div className="space-y-1">
+                    <div className="font-medium">Literal Translation</div>
+                    <div className="text-xs text-muted-foreground">Strict translation only - preserves exact meaning</div>
+                  </div>
+                </SelectItem>
+                <SelectItem value="polite">
+                  <div className="space-y-1">
+                    <div className="font-medium">Polite Mode</div>
+                    <div className="text-xs text-muted-foreground">Translation + AI-polished version for staff suggestions</div>
+                  </div>
+                </SelectItem>
+                <SelectItem value="hybrid">
+                  <div className="space-y-1">
+                    <div className="font-medium">Hybrid Mode</div>
+                    <div className="text-xs text-muted-foreground">Both literal translation + separate AI reply suggestion</div>
+                  </div>
+                </SelectItem>
+              </SelectContent>
+            </Select>
+            <p className="text-xs text-muted-foreground">
+              Controls how messages are translated between guest and staff
+            </p>
+          </div>
+
           <div className="space-y-2">
             <Label htmlFor="response-style">Response Style</Label>
             <Select
