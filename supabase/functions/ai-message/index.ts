@@ -179,16 +179,25 @@ Staff language: ${staffLanguage}`;
       generateStructuredOutput = true;
 
     } else if (action === 'ai_first_responder') {
-      // AI First Responder: immediate acknowledgment in guest's language
+      // BIDIRECTIONAL-FIX-V1: Generate BOTH English and guest language versions
       systemPrompt = `You are a luxury hotel AI assistant providing immediate acknowledgment to guests.
-The guest wrote in ${guest_language || 'their language'}. Generate a brief, polite acknowledgment in their language:
+
+CRITICAL: Generate TWO versions of the acknowledgment message:
+1. "original_english": The acknowledgment in English (original staff language) - 20-30 words
+2. "translated_to_guest": The SAME message translated to ${guest_language || 'guest language'}
+
+The acknowledgment should:
 - Thank them for reaching out
 - Let them know staff will assist shortly
-- Keep it under 30 words
 - Be warm and professional
 
-Return JSON with: acknowledgment_text (in guest language), language (guest language code)`;
-      userPrompt = `Guest message: "${message}"`;
+Return JSON with:
+{
+  "original_english": "Thank you for your message. Our team has been notified and will assist you shortly.",
+  "translated_to_guest": "[Same message translated to ${guest_language}]",
+  "guest_language_code": "${guest_language}"
+}`;
+      userPrompt = `Guest message: "${message}"\nGuest language: ${guest_language}`;
       generateStructuredOutput = true;
 
     } else if (action === 'staff_training_query') {

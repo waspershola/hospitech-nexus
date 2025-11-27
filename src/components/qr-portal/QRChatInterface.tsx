@@ -219,54 +219,66 @@ export function QRChatInterface() {
                       {message.sender_name}
                     </p>
                     
-                    {/* PHASE-4: ALWAYS show both original and translated text for ALL messages */}
+                    {/* BIDIRECTIONAL-FIX-V1: Show actual translations for ALL messages */}
                     {message.direction === 'inbound' ? (
-                      <>
-                        {/* Guest's own message: show what they typed (original) */}
-                        <div className="space-y-2">
-                          <p className="whitespace-pre-wrap font-medium">
-                            {message.original_text || message.message}
-                          </p>
-                          
-                          {message.detected_language && message.detected_language !== 'en' && (
-                            <div className="flex items-center gap-1 text-xs opacity-70 pt-2 border-t border-primary-foreground/20">
-                              <Globe className="h-3 w-3" />
-                              <span>Language: {getLanguageName(message.detected_language)}</span>
-                            </div>
-                          )}
-                          
-                          {/* ALWAYS show translation notice - even if languages match */}
-                          <div className="text-xs opacity-70 pt-1">
-                            ✓ Staff will see this {message.translated_text !== message.original_text ? 'translated to English' : 'in original language'}
+                      <div className="space-y-2">
+                        {/* Guest's original text (primary) */}
+                        <p className="whitespace-pre-wrap font-medium">
+                          {message.original_text || message.message}
+                        </p>
+                        
+                        {/* Language badge */}
+                        {message.detected_language && message.detected_language !== 'en' && (
+                          <div className="flex items-center gap-1 text-xs opacity-70">
+                            <Globe className="h-3 w-3" />
+                            <span>Language: {getLanguageName(message.detected_language)}</span>
                           </div>
-                        </div>
-                      </>
-                    ) : (
-                      <>
-                        {/* Staff message: ALWAYS show BOTH original and translated versions */}
-                        <div className="space-y-3">
-                          {/* PRIMARY: Translated version (what guest sees) */}
-                          <div className="space-y-1">
-                            <div className="flex items-center gap-1 text-xs opacity-70">
-                              <Globe className="h-3 w-3" />
-                              <span>Translated:</span>
+                        )}
+                        
+                        {/* BIDIRECTIONAL FIX: Show ACTUAL translation that staff will see */}
+                        {message.translated_text && message.translated_text !== message.original_text && (
+                          <div className="pt-2 border-t border-primary-foreground/20 space-y-1">
+                            <div className="text-xs opacity-70">
+                              📤 Staff will see (English):
                             </div>
-                            <p className="whitespace-pre-wrap font-medium">
-                              {message.translated_text || message.message}
+                            <p className="text-xs opacity-70 whitespace-pre-wrap">
+                              {message.translated_text}
                             </p>
                           </div>
-                          
-                          {/* SECONDARY: Original staff text - ALWAYS display */}
+                        )}
+                        
+                        {/* If no translation needed (same language) */}
+                        {(!message.translated_text || message.translated_text === message.original_text) && (
+                          <div className="text-xs opacity-70 pt-1">
+                            ✓ Staff will see this in original language
+                          </div>
+                        )}
+                      </div>
+                    ) : (
+                      <div className="space-y-3">
+                        {/* PRIMARY: Translated version (what guest sees in their language) */}
+                        <div className="space-y-1">
+                          <div className="flex items-center gap-1 text-xs opacity-70">
+                            <Globe className="h-3 w-3" />
+                            <span>Translated{message.target_language ? ` to ${getLanguageName(message.target_language)}` : ''}:</span>
+                          </div>
+                          <p className="whitespace-pre-wrap font-medium">
+                            {message.translated_text || message.message}
+                          </p>
+                        </div>
+                        
+                        {/* SECONDARY: Original staff text - ONLY show if different */}
+                        {message.original_text && message.original_text !== message.translated_text && (
                           <div className="pt-2 border-t border-muted-foreground/20 space-y-1">
                             <div className="text-xs opacity-70">
                               📄 Original (Staff):
                             </div>
                             <p className="text-xs opacity-70 whitespace-pre-wrap">
-                              {message.original_text || message.message}
+                              {message.original_text}
                             </p>
                           </div>
-                        </div>
-                      </>
+                        )}
+                      </div>
                     )}
                     <div className="flex items-center gap-2 justify-end">
                       <p className="text-xs opacity-70">

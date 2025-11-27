@@ -36,6 +36,7 @@ interface ChatMessage {
   cleaned_text?: string;
   translated_text?: string;
   detected_language?: string;
+  target_language?: string; // BIDIRECTIONAL-FIX-V1: Add target_language for translation display
   intent?: string;
   confidence?: number;
   ai_auto_response?: boolean;
@@ -70,7 +71,7 @@ async function fetchMessages(
 ): Promise<ChatMessage[]> {
   const { data, error } = await supabase
     .from('guest_communications')
-    .select('id, message, direction, sent_by, created_at, metadata, original_text, cleaned_text, translated_text, detected_language, intent, confidence, ai_auto_response, polite_suggestion')
+    .select('id, message, direction, sent_by, created_at, metadata, original_text, cleaned_text, translated_text, detected_language, target_language, intent, confidence, ai_auto_response, polite_suggestion')
     .eq('metadata->>request_id', requestId)
     .eq('tenant_id', tenantId)
     .order('created_at', { ascending: true });
@@ -125,6 +126,7 @@ async function fetchMessages(
       cleaned_text: msg.cleaned_text,
       translated_text: msg.translated_text,
       detected_language: msg.detected_language,
+      target_language: msg.target_language, // BIDIRECTIONAL-FIX-V1
       intent: msg.intent,
       confidence: msg.confidence,
       ai_auto_response: msg.ai_auto_response,
@@ -395,15 +397,21 @@ export function useUnifiedRequestChat(
                   }
                 });
                 
-                if (firstResponderResult.data?.success && firstResponderResult.data.data?.acknowledgment_text) {
+                if (firstResponderResult.data?.success && firstResponderResult.data.data?.translated_to_guest) {
+                  // BIDIRECTIONAL-FIX-V1: Set BOTH original_text (English) and translated_text (guest language)
                   await supabase.from('guest_communications').insert({
                     tenant_id: requestData.tenant_id,
                     guest_id: requestData.guest_id,
                     type: 'qr_request',
-                    message: firstResponderResult.data.data.acknowledgment_text,
+                    message: firstResponderResult.data.data.translated_to_guest, // Guest sees this
                     direction: 'outbound',
                     sent_by: null,
                     ai_auto_response: true,
+                    // BIDIRECTIONAL FIX: Set BOTH versions
+                    original_text: firstResponderResult.data.data.original_english || 'Thank you for your message. Our team will assist you shortly.',
+                    translated_text: firstResponderResult.data.data.translated_to_guest,
+                    detected_language: 'en', // AI generated in English
+                    target_language: aiData.detected_language, // Translated to guest language
                     metadata: {
                       request_id: requestId,
                       qr_token: qrToken, // Add for RLS
@@ -411,7 +419,10 @@ export function useUnifiedRequestChat(
                       guest_language: aiData.detected_language,
                     },
                   });
-                  console.log('[AI-FIRST-RESPONDER] Acknowledgment sent:', firstResponderResult.data.data.acknowledgment_text);
+                  console.log('[AI-FIRST-RESPONDER-BIDIRECTIONAL-V1] Both versions stored:', {
+                    original_english: firstResponderResult.data.data.original_english,
+                    translated_to_guest: firstResponderResult.data.data.translated_to_guest,
+                  });
                 }
               } catch (firstResponderError) {
                 console.error('[AI-FIRST-RESPONDER] Failed:', firstResponderError);
