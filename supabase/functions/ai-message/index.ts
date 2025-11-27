@@ -55,11 +55,31 @@ serve(async (req) => {
     const welcomeTemplate = aiSettings?.welcome_message_template || 'Welcome to our hotel! How may I assist you today?';
     const enableAutoResponses = aiSettings?.enable_ai_auto_responses ?? false;
     const translationStyle = aiSettings?.translation_style || 'literal';
+    const enableAutoTranslation = aiSettings?.enable_auto_translation ?? true;
     
-    console.log('[AI-MESSAGE-OPTION-C] Translation style:', translationStyle);
+    console.log('[AI-MESSAGE-OPTION-C] Translation style:', translationStyle, 'Auto-translation:', enableAutoTranslation);
 
     // Handle different actions
     if (action === 'process_guest_message') {
+      // PHASE-1: Check if auto-translation is disabled
+      if (!enableAutoTranslation) {
+        console.log('[AI-MESSAGE] Auto-translation DISABLED - returning original message');
+        return new Response(JSON.stringify({
+          success: true,
+          data: {
+            detected_language: 'en',
+            cleaned_text: message,
+            literal_translation: message,
+            translated_to_english: message,
+            intent: 'other',
+            confidence: 1.0,
+            auto_response: null,
+            mode_used: 'disabled',
+          }
+        }), {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
       // PHASE-1: Enhanced language selection detection
       const languageSelectionPattern = /^(french|chinese|arabic|spanish|german|portuguese|italian|russian|japanese|korean|hindi|yoruba|hausa|igbo|pidgin|no translation|english|français|中文|العربية|español|deutsch|português|italiano|русский|日本語|한국어|हिन्दी)/i;
       const isLanguageSelection = languageSelectionPattern.test(message.trim().toLowerCase());
@@ -140,6 +160,24 @@ Return structured JSON with: detected_language, cleaned_text, literal_translatio
       generateStructuredOutput = true;
 
     } else if (action === 'process_staff_reply') {
+      // PHASE-1: Check if translation is disabled OR if languages match
+      if (!enableAutoTranslation || guest_language === staffLanguage) {
+        const reason = !enableAutoTranslation ? 'disabled' : 'same_language';
+        console.log(`[AI-MESSAGE] Translation ${reason} - returning original message`);
+        return new Response(JSON.stringify({
+          success: true,
+          data: {
+            original_text: message,
+            literal_translation: message,
+            polite_suggestion: null,
+            suggestions: [],
+            mode_used: reason,
+          }
+        }), {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+      
       // OPTION-C-V1: Enhanced prompt with translation_style support
       systemPrompt = `You are a ${aiResponseStyle} hotel AI assistant. Process this staff message with these CRITICAL requirements:
 
