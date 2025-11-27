@@ -1,5 +1,7 @@
+import { Fragment } from 'react';
 import { format } from 'date-fns';
 import { MessageSquare, Clock, CheckCircle2, XCircle, UtensilsCrossed, MapPin, AlertCircle } from 'lucide-react';
+import { RequestGroup } from '@/utils/dateGrouping';
 import {
   Table,
   TableBody,
@@ -23,7 +25,8 @@ import { getBillingStatusLabel, getBillingStatusColor } from '@/lib/qr/billingSt
 import { Gift, FileText, DollarSign, ArrowRight } from 'lucide-react';
 
 interface RequestsTableProps {
-  requests: any[];
+  requests: any[] | RequestGroup[];
+  grouped?: boolean;
   isLoading: boolean;
   onViewChat: (request: any) => void;
   onUpdateStatus: (requestId: string, status: string) => Promise<boolean>;
@@ -31,8 +34,17 @@ interface RequestsTableProps {
   onViewDetails?: (request: any) => void;
 }
 
+const GroupHeader = ({ title }: { title: string }) => (
+  <TableRow className="bg-muted/50 hover:bg-muted/50">
+    <TableCell colSpan={8} className="py-2.5 font-semibold text-sm text-foreground">
+      — {title} —
+    </TableCell>
+  </TableRow>
+);
+
 export default function RequestsTable({
   requests,
+  grouped = false,
   isLoading,
   onViewChat,
   onUpdateStatus,
@@ -146,7 +158,12 @@ export default function RequestsTable({
     );
   }
 
-  if (requests.length === 0) {
+  // Check if empty
+  const isEmpty = grouped 
+    ? (requests as RequestGroup[]).every(g => g.items.length === 0)
+    : requests.length === 0;
+
+  if (isEmpty) {
     return (
       <div className="text-center py-12 border border-border rounded-lg bg-card">
         <p className="text-muted-foreground">
@@ -155,6 +172,105 @@ export default function RequestsTable({
       </div>
     );
   }
+
+  // Render function for a single request row
+  const renderRequestRow = (request: any) => {
+    const overdueInfo = calculateOverdue(request);
+    return (
+      <TableRow key={request.id} className={overdueInfo.isOverdue ? 'bg-destructive/5' : ''}>
+        <TableCell>
+          <div className="space-y-1">
+            <div className="text-xs font-mono text-muted-foreground mb-1">
+              {generateRequestReference(request.id)}
+            </div>
+            <div className="flex items-center gap-2">
+              {request.type === 'menu_order' && (
+                <Badge variant="secondary" className="gap-1">
+                  <UtensilsCrossed className="h-3 w-3" />
+                  Menu Order
+                </Badge>
+              )}
+              <span className="font-medium capitalize">
+                {request.type.replace('_', ' ')}
+              </span>
+            </div>
+            {request.note && (
+              <div className="text-sm text-muted-foreground line-clamp-1">
+                {request.type === 'housekeeping'
+                  ? (() => {
+                      try {
+                        const parsed = JSON.parse(request.note);
+                        return `${parsed.length} services selected`;
+                      } catch {
+                        return request.note;
+                      }
+                    })()
+                  : request.note}
+              </div>
+            )}
+          </div>
+        </TableCell>
+        <TableCell>
+          <div className="text-sm">
+            <div className="font-medium">
+              {request.guest_name ||
+                request.metadata?.guest_name ||
+                request.guest_order?.[0]?.guest_name ||
+                'Guest'}
+            </div>
+            {(request.guest_contact || request.metadata?.guest_contact) && (
+              <div className="text-xs text-muted-foreground">
+                {request.guest_contact || request.metadata?.guest_contact}
+              </div>
+            )}
+          </div>
+        </TableCell>
+        <TableCell>
+          <div className="flex items-center gap-1">
+            {request.metadata?.room_number || request.room?.number ? (
+              <>
+                <MapPin className="h-3 w-3 text-muted-foreground" />
+                <span>{request.metadata?.room_number || request.room?.number}</span>
+              </>
+            ) : (
+              <span className="text-muted-foreground">Common Area</span>
+            )}
+          </div>
+        </TableCell>
+        <TableCell>{getPriorityBadge(request.priority)}</TableCell>
+        <TableCell>
+          {getStatusBadge(request.status, overdueInfo)}
+        </TableCell>
+        <TableCell>
+          {getBillingBadge(request)}
+        </TableCell>
+        <TableCell>
+          {format(new Date(request.created_at), 'MMM d, h:mm a')}
+        </TableCell>
+        <TableCell className="text-right">
+          <div className="flex gap-2 justify-end">
+            {onViewDetails && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => onViewDetails(request)}
+              >
+                View Actions
+              </Button>
+            )}
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => onViewChat(request)}
+            >
+              <MessageSquare className="h-4 w-4 mr-2" />
+              Chat
+            </Button>
+          </div>
+        </TableCell>
+      </TableRow>
+    );
+  };
 
   return (
     <div className="border border-border rounded-lg overflow-hidden bg-card">
@@ -172,103 +288,18 @@ export default function RequestsTable({
           </TableRow>
         </TableHeader>
         <TableBody>
-          {requests.map((request) => {
-            const overdueInfo = calculateOverdue(request);
-            return (
-            <TableRow key={request.id} className={overdueInfo.isOverdue ? 'bg-destructive/5' : ''}>
-              <TableCell>
-                <div className="space-y-1">
-                  <div className="text-xs font-mono text-muted-foreground mb-1">
-                    {generateRequestReference(request.id)}
-                  </div>
-                  <div className="flex items-center gap-2">
-                    {request.type === 'menu_order' && (
-                      <Badge variant="secondary" className="gap-1">
-                        <UtensilsCrossed className="h-3 w-3" />
-                        Menu Order
-                      </Badge>
-                    )}
-                    <span className="font-medium capitalize">
-                      {request.type.replace('_', ' ')}
-                    </span>
-                  </div>
-                  {request.note && (
-                    <div className="text-sm text-muted-foreground line-clamp-1">
-                      {request.type === 'housekeeping'
-                        ? (() => {
-                            try {
-                              const parsed = JSON.parse(request.note);
-                              return `${parsed.length} services selected`;
-                            } catch {
-                              return request.note;
-                            }
-                          })()
-                        : request.note}
-                    </div>
-                  )}
-                </div>
-              </TableCell>
-              <TableCell>
-                <div className="text-sm">
-                  <div className="font-medium">
-                    {request.guest_name ||
-                      request.metadata?.guest_name ||
-                      request.guest_order?.[0]?.guest_name ||
-                      'Guest'}
-                  </div>
-                  {(request.guest_contact || request.metadata?.guest_contact) && (
-                    <div className="text-xs text-muted-foreground">
-                      {request.guest_contact || request.metadata?.guest_contact}
-                    </div>
-                  )}
-                </div>
-              </TableCell>
-              <TableCell>
-                <div className="flex items-center gap-1">
-                  {request.metadata?.room_number || request.room?.number ? (
-                    <>
-                      <MapPin className="h-3 w-3 text-muted-foreground" />
-                      <span>{request.metadata?.room_number || request.room?.number}</span>
-                    </>
-                  ) : (
-                    <span className="text-muted-foreground">Common Area</span>
-                  )}
-                </div>
-              </TableCell>
-              <TableCell>{getPriorityBadge(request.priority)}</TableCell>
-              <TableCell>
-                {getStatusBadge(request.status, overdueInfo)}
-              </TableCell>
-              <TableCell>
-                {/* Phase 3: Enhanced billing context display */}
-                {getBillingBadge(request)}
-              </TableCell>
-              <TableCell>
-                {format(new Date(request.created_at), 'MMM d, h:mm a')}
-              </TableCell>
-              <TableCell className="text-right">
-                <div className="flex gap-2 justify-end">
-                  {onViewDetails && (
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => onViewDetails(request)}
-                    >
-                      View Actions
-                    </Button>
-                  )}
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => onViewChat(request)}
-                  >
-                    <MessageSquare className="h-4 w-4 mr-2" />
-                    Chat
-                  </Button>
-                </div>
-              </TableCell>
-            </TableRow>
-          )})}
+          {grouped ? (
+            // Render grouped requests with headers
+            (requests as RequestGroup[]).map((group) => (
+              <Fragment key={group.group}>
+                <GroupHeader title={group.group} />
+                {group.items.map((request) => renderRequestRow(request))}
+              </Fragment>
+            ))
+          ) : (
+            // Render flat list (fallback for backward compatibility)
+            (requests as any[]).map((request) => renderRequestRow(request))
+          )}
         </TableBody>
       </Table>
     </div>
