@@ -6487,6 +6487,59 @@ export type Database = {
           },
         ]
       }
+      tenant_ai_settings: {
+        Row: {
+          ai_behavior_prompt: string | null
+          ai_response_style: string | null
+          created_at: string
+          enable_ai_auto_responses: boolean
+          enable_ai_suggestions: boolean
+          enable_auto_translation: boolean
+          id: string
+          staff_language_preference: string
+          tenant_id: string
+          translation_prompt_template: string | null
+          updated_at: string
+          welcome_message_template: string
+        }
+        Insert: {
+          ai_behavior_prompt?: string | null
+          ai_response_style?: string | null
+          created_at?: string
+          enable_ai_auto_responses?: boolean
+          enable_ai_suggestions?: boolean
+          enable_auto_translation?: boolean
+          id?: string
+          staff_language_preference?: string
+          tenant_id: string
+          translation_prompt_template?: string | null
+          updated_at?: string
+          welcome_message_template?: string
+        }
+        Update: {
+          ai_behavior_prompt?: string | null
+          ai_response_style?: string | null
+          created_at?: string
+          enable_ai_auto_responses?: boolean
+          enable_ai_suggestions?: boolean
+          enable_auto_translation?: boolean
+          id?: string
+          staff_language_preference?: string
+          tenant_id?: string
+          translation_prompt_template?: string | null
+          updated_at?: string
+          welcome_message_template?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tenant_ai_settings_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: true
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       tenant_email_usage_logs: {
         Row: {
           booking_id: string | null

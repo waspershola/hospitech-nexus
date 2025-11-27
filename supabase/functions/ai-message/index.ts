@@ -42,14 +42,18 @@ serve(async (req) => {
     let userPrompt = '';
     let generateStructuredOutput = false;
 
-    // Fetch tenant settings for staff language
-    const { data: tenant } = await supabaseClient
-      .from('tenants')
-      .select('preferred_staff_language')
-      .eq('id', tenant_id)
+    // Fetch tenant AI settings
+    const { data: aiSettings } = await supabaseClient
+      .from('tenant_ai_settings')
+      .select('*')
+      .eq('tenant_id', tenant_id)
       .single();
     
-    const staffLanguage = tenant?.preferred_staff_language || 'en';
+    const staffLanguage = aiSettings?.staff_language_preference || 'en';
+    const aiResponseStyle = aiSettings?.ai_response_style || 'luxury';
+    const aiBehaviorPrompt = aiSettings?.ai_behavior_prompt || '';
+    const welcomeTemplate = aiSettings?.welcome_message_template || 'Welcome to our hotel! How may I assist you today?';
+    const enableAutoResponses = aiSettings?.enable_ai_auto_responses ?? false;
 
     // Handle different actions
     if (action === 'process_guest_message') {
@@ -84,19 +88,28 @@ Map common language names/words to ISO codes:
 Return JSON with: language_selection (true), selected_language (ISO code), acknowledgment_message (in the selected language: "Thank you! I will communicate with you in [Language] and translate everything for our staff.")`;
         userPrompt = `Detect language from: "${message}"`;
       } else {
-        // Regular message processing
-        systemPrompt = `You are a luxury hotel AI assistant processing guest messages. Your tasks:
+        // Regular message processing with tenant-specific AI behavior
+        const behaviorContext = aiBehaviorPrompt ? `\n\nTENANT-SPECIFIC BEHAVIOR: ${aiBehaviorPrompt}` : '';
+        const responseStyleGuide = aiResponseStyle === 'luxury' 
+          ? 'Use warm, elegant, premium tone'
+          : aiResponseStyle === 'formal' 
+          ? 'Use professional, courteous tone'
+          : 'Use friendly, approachable tone';
+        
+        systemPrompt = `You are a ${aiResponseStyle} hotel AI assistant processing guest messages. ${responseStyleGuide}.${behaviorContext}
+
+Your tasks:
 1. Detect the language (return ISO code like 'en', 'zh', 'yo', 'fr', etc.)
 2. Clean and normalize the message (fix typos, slang, broken English, pidgin)
 3. CONDITIONAL TRANSLATION: ONLY translate to ${staffLanguage.toUpperCase()} if the detected language is DIFFERENT from ${staffLanguage.toUpperCase()}
    - If detected_language === "${staffLanguage}", set translated_to_english = cleaned_text (no translation needed)
    - If detected_language !== "${staffLanguage}", translate the cleaned_text to ${staffLanguage.toUpperCase()}
 4. Detect intent: housekeeping, maintenance, room_service, spa, pool, wifi, breakfast, complaint, request, faq, other
-5. FAQ AUTO-RESPONSE RULES - ONLY provide auto_response when ALL of these are true:
-   - Question is purely informational (time, location, amenity info)
+5. FAQ AUTO-RESPONSE RULES - ${enableAutoResponses ? 'ENABLED' : 'DISABLED'}:
+   ${enableAutoResponses ? `- Question is purely informational (time, location, amenity info)
    - NO service request is implied
    - Confidence > 0.90
-   - Question matches a known FAQ category (breakfast_hours, pool_hours, wifi_password, checkout_time, amenity_location)
+   - Question matches a known FAQ category (breakfast_hours, pool_hours, wifi_password, checkout_time, amenity_location)` : '- Auto-responses are DISABLED for this tenant, always return null for auto_response'}
 6. If ANY operational action is requested (order food, room service, cleaning), set auto_response to null
 7. NEVER suggest operational actions - only provide information
 
