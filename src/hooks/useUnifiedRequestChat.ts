@@ -146,7 +146,7 @@ export function useUnifiedRequestChat(
   const { tenantId, requestId, userType, userId, guestName = 'Guest', qrToken } = options;
   const queryClient = useQueryClient();
 
-  // PHASE-3: AI welcome message for new guest chats
+  // PHASE-3: Enhanced AI welcome message asking about language preference
   const sendAIWelcomeMessage = useCallback(async () => {
     if (userType !== 'guest' || !qrToken || !tenantId) return;
 
@@ -154,7 +154,7 @@ export function useUnifiedRequestChat(
       await supabase.from('guest_communications').insert({
         tenant_id: tenantId,
         type: 'qr_chat',
-        message: 'Hello! I am your virtual concierge. How may I assist you today?\n\nWould you like me to translate our conversation to your preferred language?',
+        message: 'Welcome! 🏨 Thank you for your request. We\'ve received it and our team will begin processing it shortly.\n\n**Would you like translation assistance?**\nIf you prefer, you can chat in your own language and we will translate it for our staff. Just reply in any language you\'re comfortable with (Chinese, Arabic, French, Spanish, etc.) and we\'ll automatically translate the conversation!\n\nOr reply in English if you prefer. 😊',
         direction: 'outbound',
         metadata: {
           request_id: requestId,
@@ -186,12 +186,12 @@ export function useUnifiedRequestChat(
     enabled: !!tenantId && !!requestId,
   });
 
-  // PHASE-2: Send AI welcome message for new guest chats (fixed trigger logic)
+  // PHASE-3: Fixed AI welcome message trigger - only check for welcome_message flag
   useEffect(() => {
-    // Check if NO welcome message exists instead of messages.length === 0
+    // ONLY check if welcome message exists - ignore message count completely
     const hasWelcomeMessage = messages.some(m => m.metadata?.welcome_message === true);
     
-    if (!hasWelcomeMessage && userType === 'guest' && !isLoading && messages.length <= 1) {
+    if (!hasWelcomeMessage && userType === 'guest' && !isLoading && messages !== undefined) {
       sendAIWelcomeMessage();
     }
   }, [messages, userType, isLoading, sendAIWelcomeMessage]);
@@ -276,6 +276,38 @@ export function useUnifiedRequestChat(
               detected_language: aiData.detected_language,
               intent: aiData.intent,
             });
+            
+            // PHASE-6: Store language preference in request metadata after first message
+            if (aiData.detected_language && aiData.detected_language !== staffLang) {
+              try {
+                const { data: existingRequest } = await supabase
+                  .from('requests')
+                  .select('metadata')
+                  .eq('id', requestId)
+                  .single();
+                
+                const currentMetadata = (existingRequest?.metadata as Record<string, any>) || {};
+                
+                await supabase
+                  .from('requests')
+                  .update({
+                    metadata: {
+                      ...currentMetadata,
+                      ai_language_enabled: true,
+                      guest_language_code: aiData.detected_language,
+                    }
+                  })
+                  .eq('id', requestId);
+                
+                console.log('[UNIFIED-CHAT-AI-V2] Language preference stored:', {
+                  requestId,
+                  guestLanguage: aiData.detected_language,
+                });
+              } catch (langPrefError) {
+                console.error('[UNIFIED-CHAT-AI-V2] Failed to store language preference:', langPrefError);
+                // Non-blocking: continue even if preference storage fails
+              }
+            }
             
             // Phase 4: Trigger AI First Responder if guest language differs from staff language
             if (aiData.detected_language && aiData.detected_language !== staffLang) {
