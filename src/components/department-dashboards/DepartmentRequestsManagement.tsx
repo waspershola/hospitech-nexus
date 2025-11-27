@@ -1,13 +1,16 @@
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
-import { Filter } from 'lucide-react';
+import { Filter, AlertCircle } from 'lucide-react';
 import { useStaffRequests } from '@/hooks/useStaffRequests';
+import { useOverdueRequests } from '@/hooks/useOverdueRequests';
+import { groupRequestsByDate } from '@/utils/dateGrouping';
 import RequestsTable from '@/components/qr-management/RequestsTable';
 import StaffChatDialog from '@/components/qr-management/StaffChatDialog';
 import { OrderDetailsDrawer } from '@/components/qr-management/OrderDetailsDrawer';
-import { RequestDetailsDrawer } from '@/components/qr-management/RequestDetailsDrawer';
+import { QRRequestDrawer } from '@/components/qr-management/QRRequestDrawer';
 import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
 import {
   Select,
   SelectContent,
@@ -31,6 +34,7 @@ export function DepartmentRequestsManagement({
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [priorityFilter, setPriorityFilter] = useState<string>('all');
   const { requests, isLoading, updateRequestStatus } = useStaffRequests();
+  const { calculateOverdue, getOverdueRequests } = useOverdueRequests();
 
   // Filter requests by department
   const departmentRequests = requests.filter(
@@ -60,6 +64,10 @@ export function DepartmentRequestsManagement({
     return true;
   });
 
+  // Apply date grouping
+  const groupedRequests = groupRequestsByDate(filteredRequests, calculateOverdue);
+  const overdueRequests = getOverdueRequests(departmentRequests);
+
   const handleUpdateOrderStatus = async (status: string) => {
     if (!orderData) return;
     
@@ -88,6 +96,12 @@ export function DepartmentRequestsManagement({
             <span>{inProgressCount} In Progress</span>
           </div>
         </div>
+        {overdueRequests.length > 0 && (
+          <Badge variant="destructive" className="gap-2 animate-pulse">
+            <AlertCircle className="h-4 w-4" />
+            {overdueRequests.length} Overdue
+          </Badge>
+        )}
       </div>
 
       <div className="flex items-center gap-4 bg-card p-4 rounded-lg border border-border">
@@ -137,10 +151,12 @@ export function DepartmentRequestsManagement({
       </div>
 
       <RequestsTable
-        requests={filteredRequests}
+        requests={groupedRequests}
+        grouped={true}
         isLoading={isLoading}
         onViewChat={setSelectedRequest}
         onUpdateStatus={updateRequestStatus}
+        onViewDetails={setSelectedRequestDetails}
         onViewOrder={(request) => {
           // Route to correct drawer based on service type
           if (['digital_menu', 'room_service'].includes(request.type)) {
@@ -168,14 +184,12 @@ export function DepartmentRequestsManagement({
         }}
       />
 
-      <RequestDetailsDrawer
-        request={selectedRequestDetails}
+      <QRRequestDrawer
         open={!!selectedRequestDetails}
         onOpenChange={(open) => !open && setSelectedRequestDetails(null)}
-        onOpenChat={() => {
-          setSelectedRequest(selectedRequestDetails);
-          setSelectedRequestDetails(null);
-        }}
+        mode="department"
+        selectedRequestId={selectedRequestDetails?.id}
+        hideRequestList={true}
       />
     </div>
   );
