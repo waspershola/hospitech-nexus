@@ -2209,6 +2209,337 @@ export type Database = {
           },
         ]
       }
+      ledger_audit_logs: {
+        Row: {
+          action: string
+          device_info: string | null
+          id: string
+          ip_address: string | null
+          ledger_entry_id: string | null
+          new_value: Json | null
+          old_value: Json | null
+          staff_id: string | null
+          staff_name: string | null
+          tenant_id: string
+          timestamp: string
+          user_agent: string | null
+        }
+        Insert: {
+          action: string
+          device_info?: string | null
+          id?: string
+          ip_address?: string | null
+          ledger_entry_id?: string | null
+          new_value?: Json | null
+          old_value?: Json | null
+          staff_id?: string | null
+          staff_name?: string | null
+          tenant_id: string
+          timestamp?: string
+          user_agent?: string | null
+        }
+        Update: {
+          action?: string
+          device_info?: string | null
+          id?: string
+          ip_address?: string | null
+          ledger_entry_id?: string | null
+          new_value?: Json | null
+          old_value?: Json | null
+          staff_id?: string | null
+          staff_name?: string | null
+          tenant_id?: string
+          timestamp?: string
+          user_agent?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ledger_audit_logs_ledger_entry_id_fkey"
+            columns: ["ledger_entry_id"]
+            isOneToOne: false
+            referencedRelation: "ledger_entries"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ledger_audit_logs_staff_id_fkey"
+            columns: ["staff_id"]
+            isOneToOne: false
+            referencedRelation: "staff"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ledger_audit_logs_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      ledger_batches: {
+        Row: {
+          batch_date: string
+          batch_type: string
+          closed_at: string | null
+          closed_by: string | null
+          created_at: string
+          id: string
+          metadata: Json | null
+          status: string
+          tenant_id: string
+          total_amount: number
+          total_credits: number
+          total_debits: number
+          total_transactions: number
+          updated_at: string
+        }
+        Insert: {
+          batch_date: string
+          batch_type?: string
+          closed_at?: string | null
+          closed_by?: string | null
+          created_at?: string
+          id?: string
+          metadata?: Json | null
+          status?: string
+          tenant_id: string
+          total_amount?: number
+          total_credits?: number
+          total_debits?: number
+          total_transactions?: number
+          updated_at?: string
+        }
+        Update: {
+          batch_date?: string
+          batch_type?: string
+          closed_at?: string | null
+          closed_by?: string | null
+          created_at?: string
+          id?: string
+          metadata?: Json | null
+          status?: string
+          tenant_id?: string
+          total_amount?: number
+          total_credits?: number
+          total_debits?: number
+          total_transactions?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ledger_batches_closed_by_fkey"
+            columns: ["closed_by"]
+            isOneToOne: false
+            referencedRelation: "staff"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ledger_batches_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      ledger_entries: {
+        Row: {
+          amount: number
+          booking_id: string | null
+          created_at: string
+          currency: string
+          department: string | null
+          folio_id: string | null
+          group_booking_id: string | null
+          guest_id: string | null
+          guest_name: string | null
+          id: string
+          metadata: Json | null
+          payment_id: string | null
+          payment_location: string | null
+          payment_method: string | null
+          payment_provider: string | null
+          qr_request_id: string | null
+          reconciliation_status: Database["public"]["Enums"]["ledger_reconciliation_status"]
+          room_category: string | null
+          room_number: string | null
+          service_charge_amount: number | null
+          shift: Database["public"]["Enums"]["ledger_shift"] | null
+          staff_id_confirmed: string | null
+          staff_id_initiated: string | null
+          status: Database["public"]["Enums"]["ledger_status"]
+          tax_amount: number | null
+          tenant_id: string
+          transaction_category: string
+          transaction_type: Database["public"]["Enums"]["ledger_transaction_type"]
+          updated_at: string
+          wallet_transaction_id: string | null
+        }
+        Insert: {
+          amount: number
+          booking_id?: string | null
+          created_at?: string
+          currency?: string
+          department?: string | null
+          folio_id?: string | null
+          group_booking_id?: string | null
+          guest_id?: string | null
+          guest_name?: string | null
+          id?: string
+          metadata?: Json | null
+          payment_id?: string | null
+          payment_location?: string | null
+          payment_method?: string | null
+          payment_provider?: string | null
+          qr_request_id?: string | null
+          reconciliation_status?: Database["public"]["Enums"]["ledger_reconciliation_status"]
+          room_category?: string | null
+          room_number?: string | null
+          service_charge_amount?: number | null
+          shift?: Database["public"]["Enums"]["ledger_shift"] | null
+          staff_id_confirmed?: string | null
+          staff_id_initiated?: string | null
+          status?: Database["public"]["Enums"]["ledger_status"]
+          tax_amount?: number | null
+          tenant_id: string
+          transaction_category: string
+          transaction_type: Database["public"]["Enums"]["ledger_transaction_type"]
+          updated_at?: string
+          wallet_transaction_id?: string | null
+        }
+        Update: {
+          amount?: number
+          booking_id?: string | null
+          created_at?: string
+          currency?: string
+          department?: string | null
+          folio_id?: string | null
+          group_booking_id?: string | null
+          guest_id?: string | null
+          guest_name?: string | null
+          id?: string
+          metadata?: Json | null
+          payment_id?: string | null
+          payment_location?: string | null
+          payment_method?: string | null
+          payment_provider?: string | null
+          qr_request_id?: string | null
+          reconciliation_status?: Database["public"]["Enums"]["ledger_reconciliation_status"]
+          room_category?: string | null
+          room_number?: string | null
+          service_charge_amount?: number | null
+          shift?: Database["public"]["Enums"]["ledger_shift"] | null
+          staff_id_confirmed?: string | null
+          staff_id_initiated?: string | null
+          status?: Database["public"]["Enums"]["ledger_status"]
+          tax_amount?: number | null
+          tenant_id?: string
+          transaction_category?: string
+          transaction_type?: Database["public"]["Enums"]["ledger_transaction_type"]
+          updated_at?: string
+          wallet_transaction_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ledger_entries_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: false
+            referencedRelation: "bookings"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ledger_entries_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: false
+            referencedRelation: "v_bookings"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ledger_entries_folio_id_fkey"
+            columns: ["folio_id"]
+            isOneToOne: false
+            referencedRelation: "stay_folios"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ledger_entries_group_booking_id_fkey"
+            columns: ["group_booking_id"]
+            isOneToOne: false
+            referencedRelation: "group_bookings"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ledger_entries_guest_id_fkey"
+            columns: ["guest_id"]
+            isOneToOne: false
+            referencedRelation: "guests"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ledger_entries_guest_id_fkey"
+            columns: ["guest_id"]
+            isOneToOne: false
+            referencedRelation: "v_guests"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ledger_entries_payment_id_fkey"
+            columns: ["payment_id"]
+            isOneToOne: false
+            referencedRelation: "payments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ledger_entries_payment_id_fkey"
+            columns: ["payment_id"]
+            isOneToOne: false
+            referencedRelation: "v_payments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ledger_entries_payment_id_fkey"
+            columns: ["payment_id"]
+            isOneToOne: false
+            referencedRelation: "v_today_payments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ledger_entries_qr_request_id_fkey"
+            columns: ["qr_request_id"]
+            isOneToOne: false
+            referencedRelation: "requests"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ledger_entries_staff_id_confirmed_fkey"
+            columns: ["staff_id_confirmed"]
+            isOneToOne: false
+            referencedRelation: "staff"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ledger_entries_staff_id_initiated_fkey"
+            columns: ["staff_id_initiated"]
+            isOneToOne: false
+            referencedRelation: "staff"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ledger_entries_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ledger_entries_wallet_transaction_id_fkey"
+            columns: ["wallet_transaction_id"]
+            isOneToOne: false
+            referencedRelation: "wallet_transactions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       menu_items: {
         Row: {
           approved_at: string | null
@@ -8370,6 +8701,20 @@ export type Database = {
         | "office"
         | "kitchen_equipment"
         | "other"
+      ledger_reconciliation_status: "reconciled" | "pending" | "disputed"
+      ledger_shift: "morning" | "afternoon" | "evening" | "night"
+      ledger_status: "completed" | "pending" | "refunded" | "failed"
+      ledger_transaction_type:
+        | "debit"
+        | "credit"
+        | "refund"
+        | "reversal"
+        | "wallet_topup"
+        | "wallet_deduction"
+        | "pos"
+        | "transfer"
+        | "cash"
+        | "invoice"
       movement_type:
         | "purchase"
         | "issue"
@@ -8575,6 +8920,21 @@ export const Constants = {
         "office",
         "kitchen_equipment",
         "other",
+      ],
+      ledger_reconciliation_status: ["reconciled", "pending", "disputed"],
+      ledger_shift: ["morning", "afternoon", "evening", "night"],
+      ledger_status: ["completed", "pending", "refunded", "failed"],
+      ledger_transaction_type: [
+        "debit",
+        "credit",
+        "refund",
+        "reversal",
+        "wallet_topup",
+        "wallet_deduction",
+        "pos",
+        "transfer",
+        "cash",
+        "invoice",
       ],
       movement_type: [
         "purchase",
