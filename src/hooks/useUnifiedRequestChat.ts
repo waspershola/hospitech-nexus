@@ -690,12 +690,12 @@ export function useUnifiedRequestChat(
     },
   });
 
-  // REALTIME-FIX-V2: Set up unified realtime subscription with stable dependencies
+  // REALTIME-FIX-V3: Set up unified realtime subscription with valid tenant-based filter + client-side filtering
   useEffect(() => {
     if (!tenantId || !requestId) return;
 
     const channelName = `qr-request-chat-${tenantId}-${requestId}`;
-    console.log('[REALTIME-FIX-V2] Subscribing:', channelName);
+    console.log('[REALTIME-FIX-V3] Subscribing:', channelName);
 
     const channel = supabase
       .channel(channelName)
@@ -705,19 +705,27 @@ export function useUnifiedRequestChat(
           event: 'INSERT',
           schema: 'public',
           table: 'guest_communications',
-          filter: `metadata->>request_id=eq.${requestId}`,
+          filter: `tenant_id=eq.${tenantId}`, // REALTIME-FIX-V3: Use valid filter (no JSONB operators)
         },
         async (payload) => {
           const newMessage = payload.new as any;
 
-          console.log('[REALTIME-FIX-V2] Message received:', {
+          console.log('[REALTIME-FIX-V3] Message received:', {
             messageId: newMessage.id,
             direction: newMessage.direction,
+            requestId: newMessage.metadata?.request_id,
           });
+
+          // CLIENT-SIDE FILTERING: Check if message belongs to this request
+          const messageRequestId = newMessage.metadata?.request_id;
+          if (messageRequestId !== requestId) {
+            console.log('[REALTIME-FIX-V3] Filtered out - wrong request:', messageRequestId);
+            return;
+          }
 
           // Validate tenant_id for security
           if (newMessage.tenant_id !== tenantId) {
-            console.warn('[REALTIME-FIX-V2] SECURITY: Cross-tenant message blocked');
+            console.warn('[REALTIME-FIX-V3] SECURITY: Cross-tenant message blocked');
             return;
           }
 
@@ -736,7 +744,7 @@ export function useUnifiedRequestChat(
           queryClient.setQueryData<ChatMessage[]>(['qr-chat', tenantId, requestId], (old = []) => {
             // Prevent duplicates
             if (old.some((m) => m.id === newMessage.id)) {
-              console.log('[REALTIME-FIX-V2] Duplicate ignored:', newMessage.id);
+              console.log('[REALTIME-FIX-V3] Duplicate ignored:', newMessage.id);
               return old;
             }
 
@@ -767,11 +775,11 @@ export function useUnifiedRequestChat(
         }
       )
       .subscribe((status) => {
-        console.log('[REALTIME-FIX-V2] Subscription status:', status);
+        console.log('[REALTIME-FIX-V3] Subscription status:', status);
       });
 
     return () => {
-      console.log('[REALTIME-FIX-V2] Cleanup subscription');
+      console.log('[REALTIME-FIX-V3] Cleanup subscription');
       supabase.removeChannel(channel);
     };
   }, [tenantId, requestId]); // ONLY these deps - no queryClient, no cacheKey
