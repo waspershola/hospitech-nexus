@@ -14,6 +14,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
 import { useUnifiedRequestChat } from '@/hooks/useUnifiedRequestChat';
 import { useAuth } from '@/contexts/AuthContext';
+import { AISuggestionsPanel } from '@/components/ai/AISuggestionsPanel';
 
 interface StaffChatDialogProps {
   open: boolean;
@@ -238,23 +239,36 @@ export default function StaffChatDialog({
           )}
         </ScrollArea>
 
-        <div className="flex gap-2 pt-4 border-t">
-          <Textarea
-            value={message}
-            onChange={(e) => setMessage(e.target.value)}
-            onKeyPress={handleKeyPress}
-            placeholder="Type your message..."
-            className="resize-none"
-            rows={3}
-            disabled={isSending}
+        <div className="space-y-3 pt-4 border-t">
+          {/* AI Suggestions Panel */}
+          <AISuggestionsPanel
+            tenantId={tenantId || ''}
+            requestId={request?.id || ''}
+            recentMessages={messages.map(msg => ({
+              message: msg.message || '',
+              direction: msg.direction
+            }))}
+            onApplySuggestion={(text) => setMessage(text)}
           />
-          <Button
-            onClick={handleSend}
-            disabled={!message.trim() || isSending}
-            className="h-full"
-          >
-            <Send className="h-4 w-4" />
-          </Button>
+          
+          <div className="flex gap-2">
+            <Textarea
+              value={message}
+              onChange={(e) => setMessage(e.target.value)}
+              onKeyPress={handleKeyPress}
+              placeholder="Type your message..."
+              className="resize-none"
+              rows={3}
+              disabled={isSending}
+            />
+            <Button
+              onClick={handleSend}
+              disabled={!message.trim() || isSending}
+              className="h-full"
+            >
+              <Send className="h-4 w-4" />
+            </Button>
+          </div>
         </div>
       </DialogContent>
     </Dialog>
