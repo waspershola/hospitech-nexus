@@ -1,7 +1,7 @@
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Wrench } from 'lucide-react';
 import { useRole } from '@/hooks/useRole';
 import { Navigate } from 'react-router-dom';
+import { DepartmentRequestsManagement } from '@/components/department-dashboards/DepartmentRequestsManagement';
 
 export default function MaintenanceDashboard() {
   const { role, staffInfo } = useRole();
@@ -20,16 +20,10 @@ export default function MaintenanceDashboard() {
         <Wrench className="h-8 w-8 text-primary" />
       </div>
       
-      <Card>
-        <CardHeader>
-          <CardTitle>Rooms Requiring Maintenance</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <p className="text-sm text-muted-foreground">
-            You only see rooms marked for maintenance or out of order.
-          </p>
-        </CardContent>
-      </Card>
+      <DepartmentRequestsManagement 
+        department="maintenance" 
+        departmentLabel="Maintenance"
+      />
     </div>
   );
 }
