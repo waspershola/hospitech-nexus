@@ -8,9 +8,11 @@ const corsHeaders = {
 };
 
 // PHASE-5A-VALIDATION: Zod schemas for QR request actions
+// GUEST-SESSION-SECURITY: Added guest_session_token for per-device isolation
 const createRequestSchema = z.object({
   action: z.literal('create_request'),
   qr_token: z.string().min(10, 'QR token too short').max(500, 'QR token too long'),
+  guest_session_token: z.string().min(1, 'Guest session token required'),
   type: z.string().min(1, 'Service type required').max(100),
   note: z.string().max(2000, 'Note too long (max 2000 characters)').optional(),
   priority: z.enum(['low', 'normal', 'high', 'urgent']).optional(),
@@ -37,6 +39,7 @@ const getMessagesSchema = z.object({
 
 interface ServiceRequest {
   qr_token: string;
+  guest_session_token: string;
   type: string;
   note?: string;
   priority?: 'low' | 'normal' | 'high' | 'urgent';
@@ -431,6 +434,7 @@ serve(async (req) => {
       });
 
       // Phase 5: Log request payload before insert
+      // GUEST-SESSION-SECURITY: Include guest_session_token for per-device isolation
       const requestPayload = {
         tenant_id: qr.tenant_id,
         room_id: resolvedRoomId,
@@ -439,6 +443,7 @@ serve(async (req) => {
         status: 'pending',
         priority: requestData.priority,
         qr_token: requestData.qr_token,
+        guest_session_token: requestData.guest_session_token, // 🔒 Per-device session isolation
         stay_folio_id: attachedFolioId, // 🔗 Link to folio
         assigned_department: finalDepartment,
         assigned_to: null, // NULL = pool assignment

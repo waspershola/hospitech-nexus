@@ -5,6 +5,7 @@ import { useQRToken } from '@/hooks/useQRToken';
 import { useGuestNotifications } from '@/hooks/useGuestNotifications';
 import { useOrderDetails } from '@/hooks/useOrderDetails';
 import { useChatVisibility } from '@/contexts/ChatVisibilityContext';
+import { useGuestSessionContext } from '@/components/qr-portal/QRPortalWrapper';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -16,6 +17,9 @@ import { ConnectionHealthIndicator } from '@/components/ui/ConnectionHealthIndic
 export function QRChatInterface() {
   const { token, requestId } = useParams<{ token: string; requestId: string }>();
   const navigate = useNavigate();
+  
+  // GUEST-SESSION-SECURITY: Get per-device session token
+  const { guestSessionToken, isReady: isSessionReady } = useGuestSessionContext();
   
   // PHASE-3: Track chat visibility to suppress duplicate sounds
   const { setIsChatVisible, setActiveRequestId } = useChatVisibility();
@@ -39,13 +43,15 @@ export function QRChatInterface() {
   };
   
   // PHASE-2: Only call chat hook when qrData is validated and tenant_id is available
-  const canLoadChat = !isValidating && !!qrData?.tenant_id && !!requestId;
+  // GUEST-SESSION-SECURITY: Also wait for session token to be ready
+  const canLoadChat = !isValidating && !!qrData?.tenant_id && !!requestId && isSessionReady;
   
   // REALTIME-FIX-V2: Memoize chat options to prevent subscription recreation
   // PHASE-1: Use qrData.tenant_id from validated session instead of AuthContext
+  // GUEST-SESSION-SECURITY: Include guest session token
   const chatOptions = useMemo(() => {
     if (!canLoadChat) {
-      return { tenantId: '', requestId: '', userType: 'guest' as const, guestName: 'Guest', qrToken: '' };
+      return { tenantId: '', requestId: '', userType: 'guest' as const, guestName: 'Guest', qrToken: '', guestSessionToken: '' };
     }
     return {
       tenantId: qrData?.tenant_id || '',
@@ -53,8 +59,9 @@ export function QRChatInterface() {
       userType: 'guest' as const,
       guestName: 'Guest',
       qrToken: token || '',
+      guestSessionToken: guestSessionToken || '',
     };
-  }, [canLoadChat, qrData?.tenant_id, requestId, token]);
+  }, [canLoadChat, qrData?.tenant_id, requestId, token, guestSessionToken, isSessionReady]);
   
   const { messages, isLoading, isSending, sendMessage } = useUnifiedRequestChat(chatOptions);
   
