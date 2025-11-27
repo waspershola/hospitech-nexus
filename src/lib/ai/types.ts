@@ -25,9 +25,11 @@ export interface ProcessGuestMessageResult {
 }
 
 export interface ProcessStaffReplyResult {
-  enhanced_text: string;
-  translated_text: string;
+  original_text: string;
+  literal_translation: string;
+  polite_suggestion: string | null;
   suggestions?: string[];
+  mode_used?: string;
 }
 
 export interface StaffTrainingResult {

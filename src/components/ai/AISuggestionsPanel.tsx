@@ -78,7 +78,7 @@ export function AISuggestionsPanel({
             
             if (response.success && response.data) {
               const data = response.data as ProcessStaffReplyResult;
-              return data.enhanced_text;
+              return data.literal_translation || data.original_text;
             }
             return template;
           } catch {
