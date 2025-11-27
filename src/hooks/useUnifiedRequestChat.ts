@@ -241,16 +241,31 @@ export function useUnifiedRequestChat(
       // Process guest messages through AI
       if (userType === 'guest') {
         try {
-          // Fetch tenant's preferred staff language
-          const { data: tenant } = await supabase
-            .from('tenants')
-            .select('preferred_staff_language')
-            .eq('id', requestData.tenant_id)
+          // PHASE-2: Check if auto-translation is enabled before calling AI
+          const { data: aiSettingsData } = await supabase
+            .from('tenant_ai_settings')
+            .select('enable_auto_translation, staff_language_preference')
+            .eq('tenant_id', requestData.tenant_id)
             .single();
           
-          const staffLang = tenant?.preferred_staff_language || 'en';
+          const enableTranslation = aiSettingsData?.enable_auto_translation ?? true;
+          const staffLang = aiSettingsData?.staff_language_preference || 'en';
           
-          const aiResponse = await supabase.functions.invoke('ai-message', {
+          if (!enableTranslation) {
+            // Skip AI processing - use original message
+            console.log('[UNIFIED-CHAT] Auto-translation DISABLED - skipping AI processing');
+            messageData.message = message.trim();
+            messageData.original_text = message.trim();
+            messageData.translated_text = message.trim();
+            messageData.detected_language = 'en';
+            messageData.metadata = {
+              ...messageData.metadata,
+              translation_disabled: true,
+            };
+            // Continue to insert without AI processing
+          } else {
+            // Proceed with AI processing
+            const aiResponse = await supabase.functions.invoke('ai-message', {
             body: {
               action: 'process_guest_message',
               message: message.trim(),
@@ -439,6 +454,7 @@ export function useUnifiedRequestChat(
             // Fallback: use original message
             messageData.message = message.trim();
           }
+          } // End of enableTranslation check
         } catch (aiError) {
           console.error('[UNIFIED-CHAT-AI-V2] AI processing failed:', aiError);
           // OPTION-C-V1: Fallback - always populate required fields
@@ -453,16 +469,17 @@ export function useUnifiedRequestChat(
         messageData.metadata.guest_name = guestName;
         messageData.sent_by = null;
       } else {
-      // Process staff replies through AI
+        // Process staff replies through AI
         try {
-          // Fetch tenant's preferred staff language
-          const { data: tenant } = await supabase
-            .from('tenants')
-            .select('preferred_staff_language')
-            .eq('id', requestData.tenant_id)
+          // PHASE-2: Check if auto-translation is enabled
+          const { data: aiSettingsData } = await supabase
+            .from('tenant_ai_settings')
+            .select('enable_auto_translation, staff_language_preference')
+            .eq('tenant_id', requestData.tenant_id)
             .single();
           
-          const staffLang = tenant?.preferred_staff_language || 'en';
+          const enableTranslation = aiSettingsData?.enable_auto_translation ?? true;
+          const staffLang = aiSettingsData?.staff_language_preference || 'en';
           
           // PHASE-1: Get guest language - PRIORITY ORDER:
           // 1. Check request.metadata.guest_language_code (set during language selection)
@@ -489,7 +506,20 @@ export function useUnifiedRequestChat(
             guestLang = guestMessages?.[0]?.detected_language || 'en';
           }
           
-          const aiResponse = await supabase.functions.invoke('ai-message', {
+          if (!enableTranslation) {
+            // Skip AI processing - use original message
+            console.log('[UNIFIED-CHAT] Auto-translation DISABLED for staff - skipping AI');
+            messageData.message = message.trim();
+            messageData.original_text = message.trim();
+            messageData.translated_text = message.trim();
+            messageData.target_language = guestLang;
+            messageData.metadata = {
+              ...messageData.metadata,
+              translation_disabled: true,
+            };
+          } else {
+            // Proceed with AI processing
+            const aiResponse = await supabase.functions.invoke('ai-message', {
             body: {
               action: 'process_staff_reply',
               message: message.trim(),
@@ -533,6 +563,7 @@ export function useUnifiedRequestChat(
             messageData.translated_text = message.trim();
             messageData.message = message.trim();
           }
+          } // End of enableTranslation check
         } catch (aiError) {
           console.error('[UNIFIED-CHAT-AI-V3] AI enhancement failed:', aiError);
           // OPTION-C-V1: Even on error, always set both fields so UI displays correctly
