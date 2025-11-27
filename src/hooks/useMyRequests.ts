@@ -11,20 +11,27 @@ interface ServiceRequest {
   metadata: any;
 }
 
-export function useMyRequests(qrToken: string | null) {
+export function useMyRequests(qrToken: string | null, guestSessionToken: string | null) {
   const [requests, setRequests] = useState<ServiceRequest[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const fetchRequests = async () => {
-    if (!qrToken) return;
+    if (!qrToken || !guestSessionToken) return;
     
     setIsLoading(true);
     try {
-      const { data, error: fetchError } = await supabase
+      // GUEST-SESSION-SECURITY: Filter by BOTH qr_token AND guest_session_token
+      // This prevents Device B from seeing Device A's requests even if same QR
+      let query = supabase
         .from('requests')
         .select('id, type, status, priority, note, created_at, metadata')
-        .eq('qr_token', qrToken)
+        .eq('qr_token', qrToken);
+      
+      // Filter by session token OR allow legacy NULL tokens (backward compatibility)
+      query = query.or(`guest_session_token.eq.${guestSessionToken},guest_session_token.is.null`);
+      
+      const { data, error: fetchError } = await query
         .order('created_at', { ascending: false });
 
       if (fetchError) throw fetchError;
@@ -62,7 +69,7 @@ export function useMyRequests(qrToken: string | null) {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [qrToken]);
+  }, [qrToken, guestSessionToken]);
 
   return { 
     requests, 

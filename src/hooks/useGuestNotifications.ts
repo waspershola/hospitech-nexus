@@ -13,6 +13,7 @@ import { useRingtone } from './useRingtone';
 interface UseGuestNotificationsOptions {
   tenantId: string;
   qrToken: string;
+  guestSessionToken?: string; // GUEST-SESSION-SECURITY: Per-device session isolation
   requestIds?: string[]; // Guest's request IDs for fallback matching
   enabled?: boolean;
 }
@@ -20,6 +21,7 @@ interface UseGuestNotificationsOptions {
 export function useGuestNotifications({
   tenantId,
   qrToken,
+  guestSessionToken,
   requestIds = [],
   enabled = true,
 }: UseGuestNotificationsOptions) {
@@ -65,25 +67,36 @@ export function useGuestNotifications({
 
           const message = payload.new as any;
           
-          // Client-side filter with fallback matching
+          // GUEST-SESSION-SECURITY: Enhanced client-side filter with session token validation
           const messageQrToken = message.metadata?.qr_token;
           const messageRequestId = message.metadata?.request_id;
+          const messageSessionToken = message.guest_session_token;
           
+          // Primary: Match by session token (most secure)
+          // Fallback: Match by QR token for legacy messages without session token
+          // Additional fallback: Match by request ID
+          const matchBySessionToken = guestSessionToken && messageSessionToken === guestSessionToken;
           const matchByQrToken = messageQrToken === qrToken;
           const matchByRequestId = requestIds.includes(messageRequestId);
           
-          if (!matchByQrToken && !matchByRequestId) {
-            console.log('[GUEST-NOTIFICATIONS-FALLBACK-DEBUG] Filtered out - no match', {
+          // Allow message if ANY match succeeds (with session token being strongest)
+          const isMatch = matchBySessionToken || (matchByQrToken && !messageSessionToken) || matchByRequestId;
+          
+          if (!isMatch) {
+            console.log('[GUEST-NOTIFICATIONS-SESSION-SECURITY] Filtered out - no match', {
+              messageSessionToken: messageSessionToken?.substring(0, 8) + '...',
+              targetSessionToken: guestSessionToken?.substring(0, 8) + '...',
               messageQrToken,
               targetQrToken: qrToken,
               messageRequestId,
               knownRequestIds: requestIds,
             });
-            return; // Not for this guest
+            return; // Not for this guest's session
           }
           
-          console.log('[GUEST-NOTIFICATIONS-FALLBACK-DEBUG] Match found', {
-            matchedBy: matchByQrToken ? 'qr_token' : 'request_id',
+          console.log('[GUEST-NOTIFICATIONS-SESSION-SECURITY] Match found', {
+            matchedBy: matchBySessionToken ? 'session_token' : matchByQrToken ? 'qr_token' : 'request_id',
+            messageSessionToken: messageSessionToken?.substring(0, 8) + '...',
             messageQrToken,
             messageRequestId,
           });
@@ -131,5 +144,5 @@ export function useGuestNotifications({
       console.log('[GUEST-NOTIFICATIONS-V5] Cleaning up global listener');
       supabase.removeChannel(channel);
     };
-  }, [tenantId, qrToken, requestIds, enabled, playRingtone]);
+  }, [tenantId, qrToken, guestSessionToken, requestIds, enabled, playRingtone]);
 }
