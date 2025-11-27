@@ -1144,6 +1144,7 @@ export type Database = {
           message: string | null
           metadata: Json | null
           original_text: string | null
+          polite_suggestion: string | null
           sent_by: string | null
           status: string | null
           subject: string | null
@@ -1165,6 +1166,7 @@ export type Database = {
           message?: string | null
           metadata?: Json | null
           original_text?: string | null
+          polite_suggestion?: string | null
           sent_by?: string | null
           status?: string | null
           subject?: string | null
@@ -1186,6 +1188,7 @@ export type Database = {
           message?: string | null
           metadata?: Json | null
           original_text?: string | null
+          polite_suggestion?: string | null
           sent_by?: string | null
           status?: string | null
           subject?: string | null
@@ -6499,6 +6502,7 @@ export type Database = {
           staff_language_preference: string
           tenant_id: string
           translation_prompt_template: string | null
+          translation_style: string
           updated_at: string
           welcome_message_template: string
         }
@@ -6513,6 +6517,7 @@ export type Database = {
           staff_language_preference?: string
           tenant_id: string
           translation_prompt_template?: string | null
+          translation_style?: string
           updated_at?: string
           welcome_message_template?: string
         }
@@ -6527,6 +6532,7 @@ export type Database = {
           staff_language_preference?: string
           tenant_id?: string
           translation_prompt_template?: string | null
+          translation_style?: string
           updated_at?: string
           welcome_message_template?: string
         }

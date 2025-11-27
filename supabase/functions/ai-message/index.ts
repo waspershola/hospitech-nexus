@@ -54,6 +54,9 @@ serve(async (req) => {
     const aiBehaviorPrompt = aiSettings?.ai_behavior_prompt || '';
     const welcomeTemplate = aiSettings?.welcome_message_template || 'Welcome to our hotel! How may I assist you today?';
     const enableAutoResponses = aiSettings?.enable_ai_auto_responses ?? false;
+    const translationStyle = aiSettings?.translation_style || 'literal';
+    
+    console.log('[AI-MESSAGE-OPTION-C] Translation style:', translationStyle);
 
     // Handle different actions
     if (action === 'process_guest_message') {
@@ -96,55 +99,78 @@ Return JSON with: language_selection (true), selected_language (ISO code), ackno
           ? 'Use professional, courteous tone'
           : 'Use friendly, approachable tone';
         
-        systemPrompt = `You are a ${aiResponseStyle} hotel AI assistant processing guest messages. ${responseStyleGuide}.${behaviorContext}
+        systemPrompt = `You are a ${aiResponseStyle} hotel AI translation and concierge assistant. ${responseStyleGuide}.${behaviorContext}
+
+CRITICAL RULES FOR TRANSLATION MODE: ${translationStyle.toUpperCase()}
+1. NEVER change or rewrite the guest's original text - preserve it exactly as typed
+2. Detect language and provide STRICT literal translation to ${staffLanguage.toUpperCase()}
+3. Translation mode behavior:
+   - literal: Return ONLY strict translation, polite_suggestion MUST be null
+   - polite: Return literal translation + polite_suggestion (concierge-style reply)
+   - hybrid: Return literal translation + polite_suggestion (separate AI reply)
 
 Your tasks:
 1. Detect the language (return ISO code like 'en', 'zh', 'yo', 'fr', etc.)
-2. Clean and normalize the message (fix typos, slang, broken English, pidgin)
+2. Clean and normalize the message (fix typos, slang, broken English, pidgin) - store as cleaned_text
 3. CONDITIONAL TRANSLATION: ONLY translate to ${staffLanguage.toUpperCase()} if the detected language is DIFFERENT from ${staffLanguage.toUpperCase()}
-   - If detected_language === "${staffLanguage}", set translated_to_english = cleaned_text (no translation needed)
+   - If detected_language === "${staffLanguage}", set literal_translation = cleaned_text (no translation needed)
    - If detected_language !== "${staffLanguage}", translate the cleaned_text to ${staffLanguage.toUpperCase()}
 4. Detect intent: housekeeping, maintenance, room_service, spa, pool, wifi, breakfast, complaint, request, faq, other
-5. FAQ AUTO-RESPONSE RULES - ${enableAutoResponses ? 'ENABLED' : 'DISABLED'}:
+5. POLITE SUGGESTION RULE (based on mode):
+   ${translationStyle === 'literal' 
+     ? '- polite_suggestion MUST be null (literal mode)' 
+     : `- Generate a polite concierge-style reply suggestion in ${staffLanguage.toUpperCase()}
+   - Keep meaning aligned with guest intent
+   - Use professional hotel tone
+   - 20-40 words maximum`}
+6. FAQ AUTO-RESPONSE RULES - ${enableAutoResponses ? 'ENABLED' : 'DISABLED'}:
    ${enableAutoResponses ? `- Question is purely informational (time, location, amenity info)
    - NO service request is implied
    - Confidence > 0.90
    - Question matches a known FAQ category (breakfast_hours, pool_hours, wifi_password, checkout_time, amenity_location)` : '- Auto-responses are DISABLED for this tenant, always return null for auto_response'}
-6. If ANY operational action is requested (order food, room service, cleaning), set auto_response to null
-7. NEVER suggest operational actions - only provide information
+7. If ANY operational action is requested (order food, room service, cleaning), set auto_response to null
+8. NEVER suggest operational actions - only provide information
 
 Available FAQs: ${JSON.stringify(faqs || [])}
 
-Return structured JSON with: detected_language, cleaned_text, translated_to_english, intent, confidence (0-1), auto_response (null or the answer text), auto_response_category`;
+Return structured JSON with: detected_language, cleaned_text, literal_translation, polite_suggestion (${translationStyle === 'literal' ? 'must be null' : 'concierge reply or null'}), intent, confidence (0-1), auto_response (null or the answer text), auto_response_category, mode_used ("${translationStyle}")`;
         userPrompt = `Guest message: "${message}"`;
       }
       
       generateStructuredOutput = true;
 
     } else if (action === 'process_staff_reply') {
-      // PHASE-2: Enhanced prompt to ALWAYS return both original and translated versions
-      systemPrompt = `You are a luxury hotel AI assistant. Process this staff message with these EXPLICIT requirements:
+      // OPTION-C-V1: Enhanced prompt with translation_style support
+      systemPrompt = `You are a ${aiResponseStyle} hotel AI assistant. Process this staff message with these CRITICAL requirements:
 
-CRITICAL: ALWAYS return BOTH fields, even if languages are the same.
+TRANSLATION MODE: ${translationStyle.toUpperCase()}
+STAFF LANGUAGE: ${staffLanguage}
+GUEST LANGUAGE: ${guest_language}
 
-1. Enhance the staff's message tone to be professional, courteous, and luxury-appropriate
-2. Store the enhanced message as "original_text" (this is what staff typed, in ${staffLanguage})
-3. TRANSLATION RULE:
-   - If guest language "${guest_language}" is DIFFERENT from staff language "${staffLanguage}":
-     * Translate the enhanced message to ${guest_language}
-     * Store as "translated_text"
-   - If guest language === staff language:
-     * Set "translated_text" = "original_text" (same content, no translation needed)
-4. Generate 2-3 alternative suggestion replies (in guest language ${guest_language})
+CRITICAL RULES:
+1. NEVER change or rewrite the staff's original text - preserve it exactly
+2. Provide STRICT literal translation to guest language
+3. Translation mode behavior:
+   - literal: Return ONLY strict translation, polite_suggestion MUST be null
+   - polite: Return literal translation + polite_suggestion (concierge-style reply)
+   - hybrid: Return literal translation + polite_suggestion (separate AI reply)
 
 REQUIRED RESPONSE STRUCTURE:
 {
-  "original_text": "Enhanced staff message in ${staffLanguage}",
-  "translated_text": "Translation in ${guest_language} (or same as original_text if same language)",
-  "suggestions": ["Alternative 1", "Alternative 2", "Alternative 3"]
+  "original_text": "Staff's exact message (unchanged) in ${staffLanguage}",
+  "literal_translation": "Strict translation to ${guest_language}",
+  "polite_suggestion": ${translationStyle === 'literal' ? 'null (literal mode)' : `"Polite concierge-style reply in ${guest_language}"`},
+  "suggestions": ["Alternative reply 1", "Alternative reply 2"],
+  "mode_used": "${translationStyle}"
 }
 
-Both fields MUST be populated. Never return null or undefined for either field.`;
+${translationStyle !== 'literal' ? `Polite suggestion rules:
+- Use professional hotel concierge tone
+- Keep meaning aligned with staff's intent
+- 20-40 words maximum
+- In guest language ${guest_language}` : ''}
+
+CRITICAL: Both original_text and literal_translation MUST be populated. Never return null.`;
 
       userPrompt = `Staff message to process: "${message}"
 

@@ -39,6 +39,7 @@ interface ChatMessage {
   intent?: string;
   confidence?: number;
   ai_auto_response?: boolean;
+  polite_suggestion?: string; // OPTION-C-V1: AI-generated polite reply (polite/hybrid modes)
   metadata?: any;
 }
 
@@ -69,7 +70,7 @@ async function fetchMessages(
 ): Promise<ChatMessage[]> {
   const { data, error } = await supabase
     .from('guest_communications')
-    .select('id, message, direction, sent_by, created_at, metadata, original_text, cleaned_text, translated_text, detected_language, intent, confidence, ai_auto_response')
+    .select('id, message, direction, sent_by, created_at, metadata, original_text, cleaned_text, translated_text, detected_language, intent, confidence, ai_auto_response, polite_suggestion')
     .eq('metadata->>request_id', requestId)
     .eq('tenant_id', tenantId)
     .order('created_at', { ascending: true });
@@ -127,6 +128,7 @@ async function fetchMessages(
       intent: msg.intent,
       confidence: msg.confidence,
       ai_auto_response: msg.ai_auto_response,
+      polite_suggestion: msg.polite_suggestion, // OPTION-C-V1
       metadata: msg.metadata,
     };
   });
@@ -317,17 +319,28 @@ export function useUnifiedRequestChat(
               return;
             }
             
-            // PHASE-2: Always populate original_text and translated_text correctly
-            messageData.original_text = message.trim(); // ALWAYS set
+            // OPTION-C-V1: Store all AI response fields including polite_suggestion
+            messageData.original_text = message.trim(); // ALWAYS set - never changed
             messageData.cleaned_text = aiData.cleaned_text || message.trim();
-            messageData.translated_text = aiData.translated_to_english || aiData.cleaned_text || message.trim(); // ALWAYS set
+            messageData.translated_text = aiData.literal_translation || aiData.translated_to_english || aiData.cleaned_text || message.trim(); // ALWAYS set
             messageData.detected_language = aiData.detected_language;
             messageData.target_language = staffLang;
             messageData.intent = aiData.intent;
             messageData.confidence = aiData.confidence;
             messageData.ai_auto_response = !!aiData.auto_response;
+            // Store polite_suggestion if present (for polite/hybrid modes)
+            if (aiData.polite_suggestion) {
+              messageData.polite_suggestion = aiData.polite_suggestion;
+            }
+            // Store translation mode in metadata
+            if (aiData.mode_used) {
+              messageData.metadata = {
+                ...messageData.metadata,
+                translation_mode: aiData.mode_used,
+              };
+            }
             // Ensure message field always has a value
-            messageData.message = aiData.translated_to_english || aiData.cleaned_text || message.trim();
+            messageData.message = aiData.literal_translation || aiData.translated_to_english || aiData.cleaned_text || message.trim();
             
             console.log('[UNIFIED-CHAT-AI-V3] Guest message AI processed:', {
               original: message.trim(),
@@ -417,12 +430,13 @@ export function useUnifiedRequestChat(
           }
         } catch (aiError) {
           console.error('[UNIFIED-CHAT-AI-V2] AI processing failed:', aiError);
-          // PHASE-2: Fallback - always populate original_text and translated_text
+          // OPTION-C-V1: Fallback - always populate required fields
           messageData.message = message.trim();
-          messageData.original_text = message.trim(); // ALWAYS set
+          messageData.original_text = message.trim(); // ALWAYS set - never changed
           messageData.cleaned_text = message.trim();
           messageData.translated_text = message.trim(); // ALWAYS set (same as original when no translation)
           messageData.detected_language = 'unknown';
+          messageData.polite_suggestion = null; // No AI suggestion on failure
         }
         
         messageData.metadata.guest_name = guestName;
@@ -475,13 +489,25 @@ export function useUnifiedRequestChat(
 
           if (aiResponse.data?.success) {
             const aiData = aiResponse.data.data;
-            // PHASE-2: Always populate original_text and translated_text correctly
+            // OPTION-C-V1: Store all AI response fields including polite_suggestion
             messageData.original_text = aiData.original_text || message.trim(); // ALWAYS set - use AI-enhanced version
             messageData.cleaned_text = aiData.enhanced_text || message.trim();
-            messageData.translated_text = aiData.translated_text || message.trim(); // ALWAYS set
+            messageData.translated_text = aiData.literal_translation || aiData.translated_text || message.trim(); // ALWAYS set
             messageData.target_language = guestLang;
+            // Store polite_suggestion if present (for polite/hybrid modes)
+            if (aiData.polite_suggestion) {
+              messageData.polite_suggestion = aiData.polite_suggestion;
+            }
+            // Store translation mode in metadata
+            if (aiData.mode_used) {
+              messageData.metadata = {
+                ...messageData.metadata,
+                translation_mode: aiData.mode_used,
+                ai_suggestions: aiData.suggestions || [],
+              };
+            }
             // Ensure message field always has a value
-            messageData.message = aiData.translated_text || aiData.enhanced_text || message.trim();
+            messageData.message = aiData.literal_translation || aiData.translated_text || aiData.enhanced_text || message.trim();
             
             console.log('[UNIFIED-CHAT-AI-V3] Staff reply AI processed:', {
               original: aiData.original_text || message.trim(),
@@ -498,10 +524,11 @@ export function useUnifiedRequestChat(
           }
         } catch (aiError) {
           console.error('[UNIFIED-CHAT-AI-V3] AI enhancement failed:', aiError);
-          // PHASE-2: Even on error, always set both fields so UI displays correctly
+          // OPTION-C-V1: Even on error, always set both fields so UI displays correctly
           messageData.original_text = message.trim();
           messageData.translated_text = message.trim();
           messageData.message = message.trim();
+          messageData.polite_suggestion = null; // No AI suggestion on failure
         }
         
         messageData.sent_by = userId;
