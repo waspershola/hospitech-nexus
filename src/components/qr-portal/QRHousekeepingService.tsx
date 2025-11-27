@@ -4,6 +4,7 @@ import { useMutation } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useQRToken } from '@/hooks/useQRToken';
 import { useGuestInfo } from '@/hooks/useGuestInfo';
+import { useGuestSessionContext } from '@/components/qr-portal/QRPortalWrapper'; // GUEST-SESSION-SECURITY
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -37,6 +38,7 @@ export function QRHousekeepingService() {
   const navigate = useNavigate();
   const { qrData } = useQRToken(token);
   const { guestInfo, saveGuestInfo } = useGuestInfo(token);
+  const { guestSessionToken } = useGuestSessionContext(); // GUEST-SESSION-SECURITY
   
   const [cleaningType, setCleaningType] = useState('full_clean');
   const [selectedItems, setSelectedItems] = useState<string[]>([]);
@@ -81,6 +83,7 @@ export function QRHousekeepingService() {
           qr_token: token,
           guest_name: guestName.trim() || 'Guest',
           guest_contact: guestPhone.trim(),
+          guest_session_token: guestSessionToken, // GUEST-SESSION-SECURITY: Include session token
           service_category: 'housekeeping',
           note,
           priority: 'normal',

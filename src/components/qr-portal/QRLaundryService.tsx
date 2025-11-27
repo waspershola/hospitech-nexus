@@ -6,6 +6,7 @@ import { useQRToken } from '@/hooks/useQRToken';
 import { useGuestInfo } from '@/hooks/useGuestInfo';
 import { usePlatformFee } from '@/hooks/usePlatformFee';
 import { calculateQRPlatformFee } from '@/lib/finance/platformFee';
+import { useGuestSessionContext } from '@/components/qr-portal/QRPortalWrapper'; // GUEST-SESSION-SECURITY
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -47,6 +48,7 @@ export function QRLaundryService() {
   const navigate = useNavigate();
   const { qrData } = useQRToken(token);
   const { guestInfo, saveGuestInfo } = useGuestInfo(token);
+  const { guestSessionToken } = useGuestSessionContext(); // GUEST-SESSION-SECURITY
   const [cart, setCart] = useState<CartItem[]>([]);
   const [specialInstructions, setSpecialInstructions] = useState('');
   const [activeCategory, setActiveCategory] = useState('all');
@@ -118,6 +120,7 @@ export function QRLaundryService() {
           qr_token: token,
           guest_name: guestName.trim() || 'Guest',
           guest_contact: guestPhone.trim(),
+          guest_session_token: guestSessionToken, // GUEST-SESSION-SECURITY: Include session token
           service_category: 'laundry',
           payment_choice: paymentChoice, // PHASE-2-SIMPLIFICATION: Store guest preference
           note: `Laundry Service: ${cart.length} items - ${items.map(i => `${i.quantity}x ${i.item_name} (${SERVICE_TYPE_LABELS[i.service_type]})`).join(', ')}${specialInstructions ? ` | Instructions: ${specialInstructions}` : ''}`,

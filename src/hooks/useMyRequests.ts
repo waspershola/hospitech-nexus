@@ -26,10 +26,8 @@ export function useMyRequests(qrToken: string | null, guestSessionToken: string 
       let query = supabase
         .from('requests')
         .select('id, type, status, priority, note, created_at, metadata')
-        .eq('qr_token', qrToken);
-      
-      // Filter by session token OR allow legacy NULL tokens (backward compatibility)
-      query = query.or(`guest_session_token.eq.${guestSessionToken},guest_session_token.is.null`);
+        .eq('qr_token', qrToken)
+        .eq('guest_session_token', guestSessionToken); // STRICT filtering - only show THIS device's requests
       
       const { data, error: fetchError } = await query
         .order('created_at', { ascending: false });

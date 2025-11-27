@@ -41,13 +41,13 @@ export function QRPortalWrapper({ children }: { children: React.ReactNode }) {
     queryFn: async () => {
       if (!token || !qrData?.tenant_id || !guestSessionToken) return [];
       
-      // GUEST-SESSION-SECURITY: Filter by session token OR allow legacy NULL
+      // GUEST-SESSION-SECURITY: STRICT filtering - only show THIS device's requests
       const { data, error } = await supabase
         .from('requests')
         .select('id')
         .eq('qr_token', token)
         .eq('tenant_id', qrData.tenant_id)
-        .or(`guest_session_token.eq.${guestSessionToken},guest_session_token.is.null`);
+        .eq('guest_session_token', guestSessionToken); // No permissive fallback
       
       if (error) {
         console.error('[QR-PORTAL-WRAPPER] Error fetching request IDs:', error);

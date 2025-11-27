@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useQRRequest } from '@/hooks/useQRRequest';
 import { useQRToken } from '@/hooks/useQRToken';
+import { useGuestSessionContext } from '@/components/qr-portal/QRPortalWrapper'; // GUEST-SESSION-SECURITY
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -17,6 +18,7 @@ export function QRServiceRequestForm() {
   const navigate = useNavigate();
   const { qrData } = useQRToken(token);
   const { isCreating, createRequest } = useQRRequest();
+  const { guestSessionToken } = useGuestSessionContext(); // GUEST-SESSION-SECURITY
 
   const [guestName, setGuestName] = useState('');
   const [guestContact, setGuestContact] = useState('');
@@ -77,6 +79,7 @@ export function QRServiceRequestForm() {
         priority,
         guest_name: guestName || 'Guest',
         guest_contact: guestContact,
+        guest_session_token: guestSessionToken || undefined, // GUEST-SESSION-SECURITY: Include session token
       });
 
       if (request) {
