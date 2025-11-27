@@ -89,16 +89,8 @@ export function QRLandingPage() {
   // Apply QR theme dynamically
   useQRTheme(qrData?.branding, 'qr-portal-root');
 
-  // PHASE-3: Get chat visibility to suppress sound notifications when chat is open
-  const { isChatVisible } = useChatVisibility();
-
-  // PHASE-3: Global guest notifications with dynamic sound suppression
-  useGuestNotifications({
-    tenantId: qrData?.tenant_id || '',
-    qrToken: token || '',
-    enabled: !!qrData && !!token,
-    suppressSound: isChatVisible, // Suppress sound when chat is actively open
-  });
+  // NOTE: Global guest notifications are now handled by QRPortalWrapper
+  // Removed duplicate useGuestNotifications call to prevent duplicate sound notifications
 
   // PHASE-1C: Show guest info modal on first visit
   useEffect(() => {

@@ -1258,7 +1258,51 @@ export function QRRequestDrawer({
                               </div>
                             )}
                             
-                            <p className="text-sm">{msg.message}</p>
+                            {/* PHASE-FIX: ALWAYS show both original and translated */}
+                            {msg.direction === 'inbound' ? (
+                              <div className="space-y-2">
+                                {/* Guest message: Primary = Translated (English), Secondary = Original */}
+                                <div className="space-y-1">
+                                  <div className="text-xs font-semibold opacity-60 uppercase tracking-wide">
+                                    Translated to English:
+                                  </div>
+                                  <p className="text-sm font-medium">
+                                    {msg.translated_text || msg.cleaned_text || msg.message}
+                                  </p>
+                                </div>
+                                
+                                <div className="pt-2 border-t border-muted-foreground/30 space-y-1">
+                                  <div className="text-xs opacity-60">
+                                    Original ({msg.detected_language ? msg.detected_language.toUpperCase() : 'Guest Language'}):
+                                  </div>
+                                  <p className="text-xs opacity-70">
+                                    {msg.original_text || msg.message}
+                                  </p>
+                                </div>
+                              </div>
+                            ) : (
+                              <div className="space-y-2">
+                                {/* Staff message: Primary = What staff typed, Secondary = What guest will see */}
+                                <div className="space-y-1">
+                                  <div className="text-xs font-semibold opacity-60 uppercase tracking-wide">
+                                    Your Message:
+                                  </div>
+                                  <p className="text-sm font-medium">
+                                    {msg.original_text || msg.message}
+                                  </p>
+                                </div>
+                                
+                                <div className="pt-2 border-t border-primary-foreground/30 space-y-1">
+                                  <div className="text-xs opacity-60">
+                                    Guest Will See (Translated):
+                                  </div>
+                                  <p className="text-xs opacity-70">
+                                    {msg.translated_text || msg.message}
+                                  </p>
+                                </div>
+                              </div>
+                            )}
+                            
                             <p className="text-xs opacity-70 mt-1">
                               {format(new Date(msg.created_at), 'h:mm a')}
                             </p>
