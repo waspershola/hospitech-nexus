@@ -14,12 +14,14 @@ interface UseGuestNotificationsOptions {
   tenantId: string;
   qrToken: string;
   enabled?: boolean;
+  suppressSound?: boolean; // PHASE-3: Suppress sound when chat is actively open
 }
 
 export function useGuestNotifications({
   tenantId,
   qrToken,
   enabled = true,
+  suppressSound = false,
 }: UseGuestNotificationsOptions) {
   const { playRingtone } = useRingtone();
 
@@ -51,12 +53,16 @@ export function useGuestNotifications({
           
           // Only notify for staff replies (outbound messages)
           if (message.direction === 'outbound' && message.tenant_id === tenantId) {
-            console.log('[GUEST-NOTIFICATIONS-V2] New staff reply received');
+            console.log('[GUEST-NOTIFICATIONS-V3] New staff reply received');
             
-            // Play notification sound
-            playRingtone('/sounds/notification-default.mp3', { volume: 0.5 });
+            // PHASE-3: Only play sound if NOT suppressed (chat is open)
+            if (!suppressSound) {
+              playRingtone('/sounds/notification-default.mp3', { volume: 0.5 });
+            } else {
+              console.log('[GUEST-NOTIFICATIONS-V3] Sound suppressed - chat is active');
+            }
             
-            // Show toast notification
+            // Always show toast notification (even if sound suppressed)
             toast.info('New message from Hotel Staff', {
               description: message.message?.substring(0, 100) || 'Staff has replied to your request',
               duration: 5000,
@@ -67,8 +73,8 @@ export function useGuestNotifications({
       .subscribe();
 
     return () => {
-      console.log('[GUEST-NOTIFICATIONS-V2] Cleaning up global listener');
+      console.log('[GUEST-NOTIFICATIONS-V3] Cleaning up global listener');
       supabase.removeChannel(channel);
     };
-  }, [tenantId, qrToken, enabled, playRingtone]);
+  }, [tenantId, qrToken, enabled, suppressSound, playRingtone]);
 }

@@ -5,6 +5,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { lazy, Suspense } from "react";
 import { AuthProvider } from "./contexts/AuthContext";
+import { ChatVisibilityProvider } from "./contexts/ChatVisibilityContext";
 import { UpdateNotification } from "./components/offline/UpdateNotification";
 import Index from "./pages/Index";
 import NotFound from "./pages/NotFound";
@@ -127,11 +128,12 @@ const App = () => (
   <QueryClientProvider client={queryClient}>
     <AuthProvider>
       <TooltipProvider>
-        <Toaster />
-        <Sonner />
-        {/* Offline Desktop Auto-Update Notification (Electron only) */}
-        <UpdateNotification />
-        <BrowserRouter>
+        <ChatVisibilityProvider>
+          <Toaster />
+          <Sonner />
+          {/* Offline Desktop Auto-Update Notification (Electron only) */}
+          <UpdateNotification />
+          <BrowserRouter>
           <Routes>
             <Route path="/" element={<Index />} />
         <Route path="/auth/login" element={<Login />} />
@@ -318,7 +320,8 @@ const App = () => (
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
           </Routes>
-        </BrowserRouter>
+          </BrowserRouter>
+        </ChatVisibilityProvider>
       </TooltipProvider>
     </AuthProvider>
   </QueryClientProvider>

@@ -4,6 +4,7 @@ import { useUnifiedRequestChat } from '@/hooks/useUnifiedRequestChat';
 import { useQRToken } from '@/hooks/useQRToken';
 import { useGuestNotifications } from '@/hooks/useGuestNotifications';
 import { useOrderDetails } from '@/hooks/useOrderDetails';
+import { useChatVisibility } from '@/contexts/ChatVisibilityContext';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -15,6 +16,9 @@ import { ConnectionHealthIndicator } from '@/components/ui/ConnectionHealthIndic
 export function QRChatInterface() {
   const { token, requestId } = useParams<{ token: string; requestId: string }>();
   const navigate = useNavigate();
+  
+  // PHASE-3: Track chat visibility to suppress duplicate sounds
+  const { setIsChatVisible, setActiveRequestId } = useChatVisibility();
   
   // PHASE-1: Fix guest message persistence - use useQRToken for session restoration
   const { qrData, isValidating, error: qrError } = useQRToken(token);
@@ -67,8 +71,16 @@ export function QRChatInterface() {
     }
   }, [messages]);
 
-  // PHASE-5: Removed duplicate sound notification - useGuestNotifications handles this globally
-  // No local sound playing needed to prevent duplicate sounds
+  // PHASE-3: Set chat visibility when component mounts to suppress sounds
+  useEffect(() => {
+    setIsChatVisible(true);
+    setActiveRequestId(requestId || null);
+    
+    return () => {
+      setIsChatVisible(false);
+      setActiveRequestId(null);
+    };
+  }, [requestId, setIsChatVisible, setActiveRequestId]);
 
   const handleSendMessage = async (e: React.FormEvent) => {
     e.preventDefault();
