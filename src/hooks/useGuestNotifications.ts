@@ -13,12 +13,14 @@ import { useRingtone } from './useRingtone';
 interface UseGuestNotificationsOptions {
   tenantId: string;
   qrToken: string;
+  requestIds?: string[]; // Guest's request IDs for fallback matching
   enabled?: boolean;
 }
 
 export function useGuestNotifications({
   tenantId,
   qrToken,
+  requestIds = [],
   enabled = true,
 }: UseGuestNotificationsOptions) {
   const { playRingtone } = useRingtone();
@@ -63,12 +65,28 @@ export function useGuestNotifications({
 
           const message = payload.new as any;
           
-          // Client-side filter for qr_token
+          // Client-side filter with fallback matching
           const messageQrToken = message.metadata?.qr_token;
-          if (messageQrToken !== qrToken) {
-            console.log('[GUEST-NOTIFICATIONS-OPTION-C-DEBUG] Filtered out - not for this guest');
+          const messageRequestId = message.metadata?.request_id;
+          
+          const matchByQrToken = messageQrToken === qrToken;
+          const matchByRequestId = requestIds.includes(messageRequestId);
+          
+          if (!matchByQrToken && !matchByRequestId) {
+            console.log('[GUEST-NOTIFICATIONS-FALLBACK-DEBUG] Filtered out - no match', {
+              messageQrToken,
+              targetQrToken: qrToken,
+              messageRequestId,
+              knownRequestIds: requestIds,
+            });
             return; // Not for this guest
           }
+          
+          console.log('[GUEST-NOTIFICATIONS-FALLBACK-DEBUG] Match found', {
+            matchedBy: matchByQrToken ? 'qr_token' : 'request_id',
+            messageQrToken,
+            messageRequestId,
+          });
           
           // Only notify for staff replies (outbound messages)
           if (message.direction === 'outbound' && message.tenant_id === tenantId) {
@@ -113,5 +131,5 @@ export function useGuestNotifications({
       console.log('[GUEST-NOTIFICATIONS-V5] Cleaning up global listener');
       supabase.removeChannel(channel);
     };
-  }, [tenantId, qrToken, enabled, playRingtone]);
+  }, [tenantId, qrToken, requestIds, enabled, playRingtone]);
 }
