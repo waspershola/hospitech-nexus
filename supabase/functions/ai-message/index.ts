@@ -53,7 +53,39 @@ serve(async (req) => {
 
     // Handle different actions
     if (action === 'process_guest_message') {
-      systemPrompt = `You are a luxury hotel AI assistant processing guest messages. Your tasks:
+      // PHASE-1: Enhanced language selection detection
+      const languageSelectionPattern = /^(french|chinese|arabic|spanish|german|portuguese|italian|russian|japanese|korean|hindi|yoruba|hausa|igbo|pidgin|no translation|english|français|中文|العربية|español|deutsch|português|italiano|русский|日本語|한국어|हिन्दी)/i;
+      const isLanguageSelection = languageSelectionPattern.test(message.trim().toLowerCase());
+      
+      if (isLanguageSelection) {
+        // Language selection intent detected
+        systemPrompt = `Detect the language the user is trying to select and return the appropriate language code and acknowledgment message.
+
+User message: "${message}"
+
+Map common language names/words to ISO codes:
+- french/français → fr
+- chinese/中文 → zh
+- arabic/العربية → ar
+- spanish/español → es
+- german/deutsch → de
+- portuguese/português → pt
+- italian/italiano → it
+- russian/русский → ru
+- japanese/日本語 → ja
+- korean/한국어 → ko
+- hindi/हिन्दी → hi
+- yoruba → yo
+- hausa → ha
+- igbo → ig
+- pidgin → pidgin
+- english → en
+
+Return JSON with: language_selection (true), selected_language (ISO code), acknowledgment_message (in the selected language: "Thank you! I will communicate with you in [Language] and translate everything for our staff.")`;
+        userPrompt = `Detect language from: "${message}"`;
+      } else {
+        // Regular message processing
+        systemPrompt = `You are a luxury hotel AI assistant processing guest messages. Your tasks:
 1. Detect the language (return ISO code like 'en', 'zh', 'yo', 'fr', etc.)
 2. Clean and normalize the message (fix typos, slang, broken English, pidgin)
 3. CONDITIONAL TRANSLATION: ONLY translate to ${staffLanguage.toUpperCase()} if the detected language is DIFFERENT from ${staffLanguage.toUpperCase()}
@@ -71,8 +103,9 @@ serve(async (req) => {
 Available FAQs: ${JSON.stringify(faqs || [])}
 
 Return structured JSON with: detected_language, cleaned_text, translated_to_english, intent, confidence (0-1), auto_response (null or the answer text), auto_response_category`;
-
-      userPrompt = `Guest message: "${message}"`;
+        userPrompt = `Guest message: "${message}"`;
+      }
+      
       generateStructuredOutput = true;
 
     } else if (action === 'process_staff_reply') {
