@@ -114,6 +114,7 @@ import QRBillingTasks from "./pages/dashboard/QRBillingTasks";
 import OfflineDiagnosticsPage from "./pages/dashboard/OfflineDiagnostics";
 import FAQManagement from './pages/dashboard/FAQManagement';
 import SOPManagement from './pages/dashboard/SOPManagement';
+import AIConciergeSetting from './pages/dashboard/AIConciergeSetting';
 
 function PlatformGuard({ children }: { children: React.ReactNode }) {
   const { isPlatformAdmin, isLoading } = usePlatformRole();
@@ -199,6 +200,7 @@ const App = () => (
           <Route path="offline-diagnostics" element={<RoleGuard allowedRoles={['owner', 'manager']}><OfflineDiagnosticsPage /></RoleGuard>} />
           <Route path="faq-management" element={<RoleGuard allowedRoles={['owner', 'manager']}><FAQManagement /></RoleGuard>} />
           <Route path="sop-management" element={<RoleGuard allowedRoles={['owner', 'manager']}><SOPManagement /></RoleGuard>} />
+          <Route path="ai-concierge" element={<RoleGuard allowedRoles={['owner', 'manager']}><AIConciergeSetting /></RoleGuard>} />
           <Route path="user-roles" element={<RoleGuard allowedRoles={['owner']}><UserRoles /></RoleGuard>} />
           <Route path="navigation-manager" element={<RoleGuard allowedRoles={['owner']}><NavigationManager /></RoleGuard>} />
           <Route path="staff" element={<RoleGuard allowedRoles={['owner', 'manager', 'supervisor']}><Staff /></RoleGuard>} />
@@ -259,71 +261,6 @@ const App = () => (
                     <Route path="redirect" element={<QRRedirect />} />
                   </Routes>
                 </QRPortalWrapper>
-              </Suspense>
-            } />
-            <Route path="/qr/:token/menu" element={
-              <Suspense fallback={<QRLoadingFallback />}>
-                <QRMenuBrowser />
-              </Suspense>
-            } />
-            <Route path="/qr/:token/wifi" element={
-              <Suspense fallback={<QRLoadingFallback />}>
-                <QRWifiCredentials />
-              </Suspense>
-            } />
-            <Route path="/qr/:token/feedback" element={
-              <Suspense fallback={<QRLoadingFallback />}>
-                <QRFeedback />
-              </Suspense>
-            } />
-            <Route path="/qr/:token/laundry" element={
-              <Suspense fallback={<QRLoadingFallback />}>
-                <QRLaundryService />
-              </Suspense>
-            } />
-            <Route path="/qr/:token/spa" element={
-              <Suspense fallback={<QRLoadingFallback />}>
-                <QRSpaBooking />
-              </Suspense>
-            } />
-            <Route path="/qr/:token/housekeeping" element={
-              <Suspense fallback={<QRLoadingFallback />}>
-                <QRHousekeepingService />
-              </Suspense>
-            } />
-            <Route path="/qr/:token/dining" element={
-              <Suspense fallback={<QRLoadingFallback />}>
-                <QRDiningReservation />
-              </Suspense>
-            } />
-            <Route path="/qr/:token/room-service" element={
-              <Suspense fallback={<QRLoadingFallback />}>
-                <QRRoomService />
-              </Suspense>
-            } />
-            <Route path="/qr/:token/order/:orderId" element={
-              <Suspense fallback={<QRLoadingFallback />}>
-                <QROrderStatus />
-              </Suspense>
-            } />
-            <Route path="/qr/:token/request/:requestId" element={
-              <Suspense fallback={<QRLoadingFallback />}>
-                <QRRequestStatus />
-              </Suspense>
-            } />
-            <Route path="/qr/:token/payments" element={
-              <Suspense fallback={<QRLoadingFallback />}>
-                <QRPaymentHistory />
-              </Suspense>
-            } />
-            <Route path="/qr/:token/qrredirect/:tenantId" element={
-              <Suspense fallback={<QRLoadingFallback />}>
-                <QRRedirect />
-              </Suspense>
-            } />
-            <Route path="/g/:token" element={
-              <Suspense fallback={<QRLoadingFallback />}>
-                <QRRedirect />
               </Suspense>
             } />
 
