@@ -142,76 +142,68 @@ export default function StaffChatDialog({
                       )}
                     </div>
                     
-                    {/* PHASE-3: Fixed translation UI - ALWAYS show both original and translated text */}
+                    {/* PHASE-4: ALWAYS show both original and translated text for ALL messages */}
                     <div className="text-sm whitespace-pre-wrap space-y-2">
                       {msg.direction === 'inbound' ? (
                         <>
-                          {/* Guest message: show translated (PRIMARY) + original (secondary) */}
-                          {msg.detected_language && msg.detected_language !== 'en' && (
-                            <div className="flex items-center gap-1 text-xs font-medium mb-2">
-                              <Globe className="h-3 w-3" />
-                              <Badge variant="secondary" className="text-xs">
-                                {getLanguageName(msg.detected_language)}
-                              </Badge>
-                            </div>
-                          )}
-                          
-                          {/* ALWAYS show both original and translated if we have the fields */}
-                          {msg.translated_text && msg.original_text ? (
-                            <div className="space-y-3">
-                              {/* Primary: Translated version for staff to read */}
-                              <div className="space-y-1">
-                                <div className="text-xs font-semibold opacity-60 uppercase tracking-wide">
-                                  Translated to English:
-                                </div>
-                                <div className="font-medium text-base">
-                                  {msg.translated_text || msg.cleaned_text || msg.message}
-                                </div>
+                          {/* Guest message: show translated (PRIMARY) + original (secondary) - ALWAYS */}
+                          <div className="space-y-3">
+                            {/* Language badge */}
+                            {msg.detected_language && msg.detected_language !== 'en' && (
+                              <div className="flex items-center gap-1 text-xs font-medium">
+                                <Globe className="h-3 w-3" />
+                                <Badge variant="secondary" className="text-xs">
+                                  {getLanguageName(msg.detected_language)}
+                                </Badge>
                               </div>
-                              
-                              {/* Secondary: Original guest text - ALWAYS show */}
-                              <div className="pt-2 border-t border-muted-foreground/30 space-y-1">
-                                <div className="text-xs font-semibold opacity-60 uppercase tracking-wide">
-                                  Original ({getLanguageName(msg.detected_language || 'unknown')}):
-                                </div>
-                                <div className="opacity-70 text-sm">
-                                  {msg.original_text}
-                                </div>
+                            )}
+                            
+                            {/* Primary: Translated version for staff to read */}
+                            <div className="space-y-1">
+                              <div className="text-xs font-semibold opacity-60 uppercase tracking-wide">
+                                Translated to English:
+                              </div>
+                              <div className="font-medium text-base">
+                                {msg.translated_text || msg.cleaned_text || msg.message}
                               </div>
                             </div>
-                          ) : (
-                            <div className="text-base">{msg.message}</div>
-                          )}
+                            
+                            {/* Secondary: Original guest text - ALWAYS show */}
+                            <div className="pt-2 border-t border-muted-foreground/30 space-y-1">
+                              <div className="text-xs font-semibold opacity-60 uppercase tracking-wide">
+                                Original ({getLanguageName(msg.detected_language || 'en')}):
+                              </div>
+                              <div className="opacity-70 text-sm">
+                                {msg.original_text || msg.message}
+                              </div>
+                            </div>
+                          </div>
                         </>
                       ) : (
                         <>
-                          {/* Staff message: ALWAYS show both original and translated if we have the fields */}
-                          {msg.translated_text && msg.original_text ? (
-                            <div className="space-y-3">
-                              {/* Primary: What staff typed */}
-                              <div className="space-y-1">
-                                <div className="text-xs font-semibold opacity-60 uppercase tracking-wide">
-                                  Your Message:
-                                </div>
-                                <div className="font-medium text-base">
-                                  {msg.original_text || msg.message}
-                                </div>
+                          {/* Staff message: ALWAYS show both original and translated versions */}
+                          <div className="space-y-3">
+                            {/* Primary: What staff typed */}
+                            <div className="space-y-1">
+                              <div className="text-xs font-semibold opacity-60 uppercase tracking-wide">
+                                Your Message:
                               </div>
-                              
-                              {/* Secondary: What guest will see - ALWAYS show */}
-                              <div className="pt-2 border-t border-primary-foreground/30 space-y-1">
-                                <div className="text-xs font-semibold opacity-60 uppercase tracking-wide flex items-center gap-1">
-                                  <Globe className="h-3 w-3" />
-                                  Guest Will See:
-                                </div>
-                                <div className="opacity-70 text-sm">
-                                  {msg.translated_text}
-                                </div>
+                              <div className="font-medium text-base">
+                                {msg.original_text || msg.message}
                               </div>
                             </div>
-                          ) : (
-                            <div className="text-base">{msg.original_text || msg.message}</div>
-                          )}
+                            
+                            {/* Secondary: What guest will see - ALWAYS show */}
+                            <div className="pt-2 border-t border-primary-foreground/30 space-y-1">
+                              <div className="text-xs font-semibold opacity-60 uppercase tracking-wide flex items-center gap-1">
+                                <Globe className="h-3 w-3" />
+                                Guest Will See:
+                              </div>
+                              <div className="opacity-70 text-sm">
+                                {msg.translated_text || msg.message}
+                              </div>
+                            </div>
+                          </div>
                         </>
                       )}
                     </div>

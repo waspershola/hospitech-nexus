@@ -109,17 +109,34 @@ Return structured JSON with: detected_language, cleaned_text, translated_to_engl
       generateStructuredOutput = true;
 
     } else if (action === 'process_staff_reply') {
-      systemPrompt = `You are a luxury hotel AI assistant enhancing staff replies. Your tasks:
-1. Enhance the tone to be professional, courteous, and luxury-appropriate
-2. CONDITIONAL TRANSLATION: ONLY translate if needed:
-   - If guest language "${guest_language}" is DIFFERENT from staff language "${staffLanguage}", translate to ${guest_language}
-   - If guest language === staff language, set translated_text = enhanced_text (no translation needed)
-3. Keep it concise and actionable
-4. Generate 2-3 alternative suggestion replies that staff can use (in guest language)
+      // PHASE-2: Enhanced prompt to ALWAYS return both original and translated versions
+      systemPrompt = `You are a luxury hotel AI assistant. Process this staff message with these EXPLICIT requirements:
 
-Return JSON with: enhanced_text (in ${staffLanguage}), translated_text (in guest language if needed, otherwise same as enhanced_text), suggestions (array of 2-3 alternative replies)`;
+CRITICAL: ALWAYS return BOTH fields, even if languages are the same.
 
-      userPrompt = `Staff reply: "${message}"`;
+1. Enhance the staff's message tone to be professional, courteous, and luxury-appropriate
+2. Store the enhanced message as "original_text" (this is what staff typed, in ${staffLanguage})
+3. TRANSLATION RULE:
+   - If guest language "${guest_language}" is DIFFERENT from staff language "${staffLanguage}":
+     * Translate the enhanced message to ${guest_language}
+     * Store as "translated_text"
+   - If guest language === staff language:
+     * Set "translated_text" = "original_text" (same content, no translation needed)
+4. Generate 2-3 alternative suggestion replies (in guest language ${guest_language})
+
+REQUIRED RESPONSE STRUCTURE:
+{
+  "original_text": "Enhanced staff message in ${staffLanguage}",
+  "translated_text": "Translation in ${guest_language} (or same as original_text if same language)",
+  "suggestions": ["Alternative 1", "Alternative 2", "Alternative 3"]
+}
+
+Both fields MUST be populated. Never return null or undefined for either field.`;
+
+      userPrompt = `Staff message to process: "${message}"
+
+Guest language: ${guest_language}
+Staff language: ${staffLanguage}`;
       generateStructuredOutput = true;
 
     } else if (action === 'ai_first_responder') {
