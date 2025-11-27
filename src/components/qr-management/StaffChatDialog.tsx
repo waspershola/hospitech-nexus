@@ -142,45 +142,75 @@ export default function StaffChatDialog({
                       )}
                     </div>
                     
-                    {/* PHASE-4: Enhanced staff-side translation display with both texts visible */}
+                    {/* PHASE-3: Fixed translation UI - ALWAYS show both original and translated text */}
                     <div className="text-sm whitespace-pre-wrap space-y-2">
                       {msg.direction === 'inbound' ? (
                         <>
-                          {/* Guest message: show translated (main) + original (secondary) */}
+                          {/* Guest message: show translated (PRIMARY) + original (secondary) */}
                           {msg.detected_language && msg.detected_language !== 'en' && (
-                            <div className="flex items-center gap-1 text-xs font-medium opacity-70 mb-1">
+                            <div className="flex items-center gap-1 text-xs font-medium mb-2">
                               <Globe className="h-3 w-3" />
-                              <span>🌐 {getLanguageName(msg.detected_language)}</span>
+                              <Badge variant="secondary" className="text-xs">
+                                {getLanguageName(msg.detected_language)}
+                              </Badge>
                             </div>
                           )}
                           
+                          {/* Always show both if translation exists */}
                           {msg.translated_text && msg.original_text && msg.translated_text !== msg.original_text ? (
-                            <>
+                            <div className="space-y-3">
+                              {/* Primary: Translated version for staff to read */}
                               <div className="space-y-1">
-                                <div className="font-semibold text-xs opacity-60">📝 Translated to English:</div>
-                                <div className="font-medium">{msg.translated_text || msg.cleaned_text}</div>
+                                <div className="text-xs font-semibold opacity-60 uppercase tracking-wide">
+                                  Translated to English:
+                                </div>
+                                <div className="font-medium text-base">
+                                  {msg.translated_text || msg.cleaned_text || msg.message}
+                                </div>
                               </div>
-                              <div className="pt-2 mt-2 border-t border-muted-foreground/20 space-y-1">
-                                <div className="font-semibold text-xs opacity-60">📄 Original Text ({getLanguageName(msg.detected_language)}):</div>
-                                <div className="opacity-70">{msg.original_text}</div>
+                              
+                              {/* Secondary: Original guest text */}
+                              <div className="pt-2 border-t border-muted-foreground/30 space-y-1">
+                                <div className="text-xs font-semibold opacity-60 uppercase tracking-wide">
+                                  Original ({getLanguageName(msg.detected_language)}):
+                                </div>
+                                <div className="opacity-70 text-sm">
+                                  {msg.original_text}
+                                </div>
                               </div>
-                            </>
+                            </div>
                           ) : (
-                            <div>{msg.message}</div>
+                            <div className="text-base">{msg.message}</div>
                           )}
                         </>
                       ) : (
                         <>
-                          {/* Staff message: show original + what guest sees */}
-                          <div className="space-y-1">
-                            <div className="font-semibold text-xs opacity-60">📝 Your message:</div>
-                            <div className="font-medium">{msg.original_text || msg.message}</div>
-                          </div>
-                          {msg.translated_text && msg.original_text && msg.translated_text !== msg.original_text && (
-                            <div className="pt-2 mt-2 border-t border-primary-foreground/20 space-y-1">
-                              <div className="font-semibold text-xs opacity-60">👁️ Guest will see:</div>
-                              <div className="opacity-70">{msg.translated_text}</div>
+                          {/* Staff message: show original (what staff typed) + translated (what guest sees) */}
+                          {msg.translated_text && msg.original_text && msg.translated_text !== msg.original_text ? (
+                            <div className="space-y-3">
+                              {/* Primary: What staff typed */}
+                              <div className="space-y-1">
+                                <div className="text-xs font-semibold opacity-60 uppercase tracking-wide">
+                                  Your Message:
+                                </div>
+                                <div className="font-medium text-base">
+                                  {msg.original_text || msg.message}
+                                </div>
+                              </div>
+                              
+                              {/* Secondary: What guest will see */}
+                              <div className="pt-2 border-t border-primary-foreground/30 space-y-1">
+                                <div className="text-xs font-semibold opacity-60 uppercase tracking-wide flex items-center gap-1">
+                                  <Globe className="h-3 w-3" />
+                                  Guest Will See:
+                                </div>
+                                <div className="opacity-70 text-sm">
+                                  {msg.translated_text}
+                                </div>
+                              </div>
                             </div>
+                          ) : (
+                            <div className="text-base">{msg.original_text || msg.message}</div>
                           )}
                         </>
                       )}

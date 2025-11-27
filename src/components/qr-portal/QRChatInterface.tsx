@@ -67,28 +67,8 @@ export function QRChatInterface() {
     }
   }, [messages]);
 
-  // PHASE-6: Enhanced sound notification for new staff messages only
-  const previousMessageCountRef = useRef(messages.length);
-  useEffect(() => {
-    if (messages.length === 0) return;
-    
-    // Only play sound for NEW messages (not on initial load)
-    if (messages.length > previousMessageCountRef.current) {
-      const lastMessage = messages[messages.length - 1];
-      // Play sound when staff replies (outbound messages to guest)
-      if (lastMessage.direction === 'outbound' && lastMessage.id) {
-        try {
-          const audio = new Audio('/sounds/notification-default.mp3');
-          audio.volume = 0.5;
-          audio.play().catch(err => console.warn('Sound play failed:', err));
-        } catch (err) {
-          console.warn('Sound notification failed:', err);
-        }
-      }
-    }
-    
-    previousMessageCountRef.current = messages.length;
-  }, [messages.length]);
+  // PHASE-5: Removed duplicate sound notification - useGuestNotifications handles this globally
+  // No local sound playing needed to prevent duplicate sounds
 
   const handleSendMessage = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -227,40 +207,51 @@ export function QRChatInterface() {
                       {message.sender_name}
                     </p>
                     
-                    {/* PHASE-5: Enhanced translation UI - show both original and translated text */}
+                    {/* PHASE-3: Fixed translation UI - ALWAYS show both original and translated text */}
                     {message.direction === 'inbound' ? (
                       <>
-                        {/* Guest's own message: show original + translation status */}
-                        <p className="whitespace-pre-wrap">{message.original_text || message.message}</p>
-                        {message.detected_language && message.detected_language !== 'en' && (
-                          <div className="flex items-center gap-1 text-xs opacity-70 mt-2 pt-2 border-t border-primary-foreground/20">
-                            <Globe className="h-3 w-3" />
-                            <span>Detected: {getLanguageName(message.detected_language)}</span>
-                          </div>
-                        )}
-                        {message.translated_text && message.translated_text !== message.original_text && (
-                          <div className="text-xs opacity-60 mt-1">
-                            ✓ Translated for staff
-                          </div>
-                        )}
+                        {/* Guest's own message: show what they typed (original) */}
+                        <div className="space-y-2">
+                          <p className="whitespace-pre-wrap font-medium">
+                            {message.original_text || message.message}
+                          </p>
+                          
+                          {message.detected_language && message.detected_language !== 'en' && (
+                            <div className="flex items-center gap-1 text-xs opacity-70 pt-2 border-t border-primary-foreground/20">
+                              <Globe className="h-3 w-3" />
+                              <span>Language: {getLanguageName(message.detected_language)}</span>
+                            </div>
+                          )}
+                          
+                          {message.translated_text && message.original_text && message.translated_text !== message.original_text && (
+                            <div className="text-xs opacity-70 pt-1">
+                              ✓ Staff will see this translated to English
+                            </div>
+                          )}
+                        </div>
                       </>
                     ) : (
                       <>
-                        {/* Staff message: show translated text (main) + original (smaller) */}
-                        <p className="whitespace-pre-wrap">
-                          {message.translated_text || message.message}
-                        </p>
-                        {message.translated_text && message.original_text && message.translated_text !== message.original_text && (
-                          <div className="mt-2 pt-2 border-t border-muted-foreground/20 space-y-1">
-                            <div className="flex items-center gap-1 text-xs opacity-70">
-                              <Globe className="h-3 w-3" />
-                              <span>Original (English):</span>
+                        {/* Staff message: show what guest will see (translated) + original */}
+                        <div className="space-y-2">
+                          {/* Primary: What guest sees (translated version) */}
+                          <p className="whitespace-pre-wrap font-medium">
+                            {message.translated_text || message.message}
+                          </p>
+                          
+                          {/* Secondary: Original staff text if translation occurred */}
+                          {message.translated_text && message.original_text && message.translated_text !== message.original_text && (
+                            <div className="pt-2 border-t border-muted-foreground/20 space-y-1">
+                              <div className="flex items-center gap-1 text-xs opacity-70">
+                                <Globe className="h-3 w-3" />
+                                <span>Original (Staff):</span>
+                              </div>
+                              <p className="text-xs opacity-70 whitespace-pre-wrap">
+                                {message.original_text}
+                              </p>
                             </div>
-                            <p className="text-xs opacity-70 whitespace-pre-wrap">
-                              {message.original_text}
-                            </p>
-                          </div>
-                        )}
+                          )}
+                        </div>
                       </>
                     )}
                     <div className="flex items-center gap-2 justify-end">

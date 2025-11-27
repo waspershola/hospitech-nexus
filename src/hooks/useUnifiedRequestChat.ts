@@ -258,9 +258,69 @@ export function useUnifiedRequestChat(
 
           if (aiResponse.data?.success) {
             const aiData = aiResponse.data.data;
-            messageData.original_text = message.trim();
+            
+            // PHASE-1: Handle language selection intent
+            if (aiData.language_selection && aiData.selected_language) {
+              // Guest is selecting their preferred language
+              console.log('[LANGUAGE-SELECTION] Detected:', aiData.selected_language);
+              
+              // Store language preference
+              try {
+                const { data: existingRequest } = await supabase
+                  .from('requests')
+                  .select('metadata')
+                  .eq('id', requestId)
+                  .single();
+                
+                const currentMetadata = (existingRequest?.metadata as Record<string, any>) || {};
+                
+                await supabase
+                  .from('requests')
+                  .update({
+                    metadata: {
+                      ...currentMetadata,
+                      ai_language_enabled: true,
+                      guest_language_code: aiData.selected_language,
+                    }
+                  })
+                  .eq('id', requestId);
+                
+                console.log('[LANGUAGE-SELECTION] Preference stored:', aiData.selected_language);
+              } catch (err) {
+                console.error('[LANGUAGE-SELECTION] Failed to store preference:', err);
+              }
+              
+              // PHASE-6: Send acknowledgment message
+              try {
+                await supabase.from('guest_communications').insert({
+                  tenant_id: requestData.tenant_id,
+                  guest_id: requestData.guest_id,
+                  type: 'qr_request',
+                  message: aiData.acknowledgment_message || `Thank you! I will communicate with you in your language and translate everything for our staff.`,
+                  direction: 'outbound',
+                  sent_by: null,
+                  ai_auto_response: true,
+                  metadata: {
+                    request_id: requestId,
+                    qr_token: qrToken,
+                    ai_generated: true,
+                    language_acknowledgment: true,
+                    selected_language: aiData.selected_language,
+                  },
+                });
+                console.log('[LANGUAGE-SELECTION] Acknowledgment sent');
+              } catch (ackErr) {
+                console.error('[LANGUAGE-SELECTION] Failed to send acknowledgment:', ackErr);
+              }
+              
+              // Don't insert the language selection message itself - just the acknowledgment
+              return;
+            }
+            
+            // PHASE-2: Always populate original_text and translated_text correctly
+            messageData.original_text = message.trim(); // ALWAYS set
             messageData.cleaned_text = aiData.cleaned_text || message.trim();
-            messageData.translated_text = aiData.translated_to_english || aiData.cleaned_text;
+            messageData.translated_text = aiData.translated_to_english || aiData.cleaned_text || message.trim(); // ALWAYS set
             messageData.detected_language = aiData.detected_language;
             messageData.target_language = staffLang;
             messageData.intent = aiData.intent;
@@ -269,7 +329,7 @@ export function useUnifiedRequestChat(
             // Ensure message field always has a value
             messageData.message = aiData.translated_to_english || aiData.cleaned_text || message.trim();
             
-            console.log('[UNIFIED-CHAT-AI-V2] Guest message AI processed:', {
+            console.log('[UNIFIED-CHAT-AI-V3] Guest message AI processed:', {
               original: message.trim(),
               cleaned: aiData.cleaned_text,
               translated: aiData.translated_to_english,
@@ -399,27 +459,32 @@ export function useUnifiedRequestChat(
 
           if (aiResponse.data?.success) {
             const aiData = aiResponse.data.data;
-            messageData.original_text = message.trim();
+            // PHASE-2: Always populate original_text and translated_text correctly
+            messageData.original_text = message.trim(); // ALWAYS set
             messageData.cleaned_text = aiData.enhanced_text || message.trim();
-            messageData.translated_text = aiData.translated_text || message.trim();
+            messageData.translated_text = aiData.translated_text || message.trim(); // ALWAYS set
             messageData.target_language = guestLang;
             // Ensure message field always has a value
             messageData.message = aiData.translated_text || aiData.enhanced_text || message.trim();
             
-            console.log('[UNIFIED-CHAT-AI-V2] Staff reply AI processed:', {
+            console.log('[UNIFIED-CHAT-AI-V3] Staff reply AI processed:', {
               original: message.trim(),
               enhanced: aiData.enhanced_text,
               translated: aiData.translated_text,
               guest_language: guestLang,
             });
           } else {
-            console.error('[UNIFIED-CHAT-AI-V2] AI staff reply failed:', aiResponse);
-            // Fallback: use original message
+            console.error('[UNIFIED-CHAT-AI-V3] AI staff reply failed:', aiResponse);
+            // PHASE-2: Even on AI failure, always set both fields
+            messageData.original_text = message.trim();
+            messageData.translated_text = message.trim();
             messageData.message = message.trim();
           }
         } catch (aiError) {
-          console.error('[UNIFIED-CHAT-AI-V2] AI enhancement failed:', aiError);
-          // Fallback: use original message so it displays
+          console.error('[UNIFIED-CHAT-AI-V3] AI enhancement failed:', aiError);
+          // PHASE-2: Even on error, always set both fields so UI displays correctly
+          messageData.original_text = message.trim();
+          messageData.translated_text = message.trim();
           messageData.message = message.trim();
         }
         
