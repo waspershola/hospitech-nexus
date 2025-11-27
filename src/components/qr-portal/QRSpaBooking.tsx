@@ -8,6 +8,7 @@ import { usePlatformFee } from '@/hooks/usePlatformFee';
 import { calculateQRPlatformFee } from '@/lib/finance/platformFee';
 import { useQRPayment } from '@/components/qr-portal/useQRPayment';
 import { QRPaymentOptions } from '@/components/qr-portal/QRPaymentOptions';
+import { useGuestSessionContext } from '@/components/qr-portal/QRPortalWrapper'; // GUEST-SESSION-SECURITY
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -35,6 +36,7 @@ export function QRSpaBooking() {
   const navigate = useNavigate();
   const { qrData } = useQRToken(token);
   const { guestInfo, saveGuestInfo } = useGuestInfo(token);
+  const { guestSessionToken } = useGuestSessionContext(); // GUEST-SESSION-SECURITY
   const [selectedService, setSelectedService] = useState<SpaService | null>(null);
   const [preferredDateTime, setPreferredDateTime] = useState('');
   const [specialRequests, setSpecialRequests] = useState('');
@@ -92,6 +94,7 @@ export function QRSpaBooking() {
           qr_token: token,
           guest_name: guestName.trim() || 'Guest',
           guest_contact: guestPhone.trim(),
+          guest_session_token: guestSessionToken, // GUEST-SESSION-SECURITY: Include session token
           service_category: 'spa',
           note: `Spa Booking: ${selectedService.service_name} (${selectedService.duration})${preferredDateTime ? ` | Preferred: ${preferredDateTime}` : ''}${specialRequests ? ` | Requests: ${specialRequests}` : ''}`,
           priority: 'normal',

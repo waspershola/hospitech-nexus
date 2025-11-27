@@ -9,6 +9,7 @@ interface CreateRequestData {
   priority?: 'low' | 'normal' | 'high' | 'urgent';
   guest_name?: string;
   guest_contact?: string;
+  guest_session_token?: string; // GUEST-SESSION-SECURITY: Per-device session token
 }
 
 interface ServiceRequest {
@@ -53,6 +54,7 @@ export function useQRRequest(): UseQRRequestReturn {
         body: {
           action: 'create_request',
           ...data,
+          guest_session_token: data.guest_session_token, // GUEST-SESSION-SECURITY: Pass session token explicitly
         },
       });
 

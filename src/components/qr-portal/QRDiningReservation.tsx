@@ -6,6 +6,7 @@ import { useQRToken } from '@/hooks/useQRToken';
 import { useGuestInfo } from '@/hooks/useGuestInfo';
 import { usePlatformFee } from '@/hooks/usePlatformFee';
 import { calculateQRPlatformFee } from '@/lib/finance/platformFee';
+import { useGuestSessionContext } from '@/components/qr-portal/QRPortalWrapper'; // GUEST-SESSION-SECURITY
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -20,6 +21,7 @@ export function QRDiningReservation() {
   const { qrData } = useQRToken(token);
   const { guestInfo, saveGuestInfo } = useGuestInfo(token);
   const { data: platformFeeConfig } = usePlatformFee(qrData?.tenant_id);
+  const { guestSessionToken } = useGuestSessionContext(); // GUEST-SESSION-SECURITY
   const [guestName, setGuestName] = useState(guestInfo?.name || '');
   const [guestContact, setGuestContact] = useState(guestInfo?.phone || '');
   const [guestEmail, setGuestEmail] = useState('');
@@ -96,6 +98,7 @@ export function QRDiningReservation() {
           qr_token: token,
           guest_name: guestName.trim(),
           guest_contact: guestContact.trim(),
+          guest_session_token: guestSessionToken, // GUEST-SESSION-SECURITY: Include session token
           service_category: 'dining_reservation',
           note: `Dining Reservation: ${guestName} - ${numberOfGuests} guests on ${reservationDate} at ${reservationTime}${specialRequests ? ` | Requests: ${specialRequests}` : ''}`,
           priority: 'normal',

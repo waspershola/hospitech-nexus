@@ -8,6 +8,7 @@ import { usePlatformFee } from '@/hooks/usePlatformFee';
 import { calculateQRPlatformFee } from '@/lib/finance/platformFee';
 import { useQRPayment } from '@/components/qr-portal/useQRPayment';
 import { QRPaymentOptions } from '@/components/qr-portal/QRPaymentOptions';
+import { useGuestSessionContext } from '@/components/qr-portal/QRPortalWrapper'; // GUEST-SESSION-SECURITY
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -60,6 +61,7 @@ export function QRMenuBrowser() {
   const queryClient = useQueryClient();
   const { qrData } = useQRToken(token);
   const { guestInfo, saveGuestInfo } = useGuestInfo(token);
+  const { guestSessionToken } = useGuestSessionContext(); // GUEST-SESSION-SECURITY
   const [cart, setCart] = useState<CartItem[]>([]);
   const [specialInstructions, setSpecialInstructions] = useState('');
   const [isCartOpen, setIsCartOpen] = useState(false);
@@ -126,6 +128,7 @@ export function QRMenuBrowser() {
           qr_token: token,
           guest_name: guestName.trim() || 'Guest',
           guest_contact: guestPhone.trim(),
+          guest_session_token: guestSessionToken, // GUEST-SESSION-SECURITY: Include session token
           service_category: 'digital_menu',
           note: `Menu order: ${cart.length} items - Total: ₦${subtotal.toFixed(2)}`,
           priority: 'normal',
