@@ -20,6 +20,7 @@ import {
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { useDebounce } from '@/hooks/useDebounce';
+import { groupRequestsByDate } from '@/utils/dateGrouping';
 
 export default function GuestRequestsManagement() {
   const [selectedRequest, setSelectedRequest] = useState<any>(null);
@@ -83,16 +84,10 @@ export default function GuestRequestsManagement() {
     }
     
     return true;
-  }).sort((a, b) => {
-    // Sort by overdue first, then by oldest
-    const aOverdue = calculateOverdue(a);
-    const bOverdue = calculateOverdue(b);
-    
-    if (aOverdue.isOverdue && !bOverdue.isOverdue) return -1;
-    if (!aOverdue.isOverdue && bOverdue.isOverdue) return 1;
-    
-    return new Date(a.created_at).getTime() - new Date(b.created_at).getTime();
   });
+
+  // Group requests by date category (Overdue → Today → Yesterday → Older)
+  const groupedRequests = groupRequestsByDate(filteredRequests, calculateOverdue);
 
   const handleUpdateOrderStatus = async (status: string) => {
     if (!orderData) return;
@@ -246,7 +241,8 @@ export default function GuestRequestsManagement() {
       </div>
 
       <RequestsTable
-        requests={filteredRequests}
+        requests={groupedRequests}
+        grouped={true}
         isLoading={isLoading}
         onViewChat={setSelectedRequest}
         onUpdateStatus={updateRequestStatus}
