@@ -36,7 +36,8 @@ export default function StaffChatDialog({
     requestId: request?.id || '',
     userType: 'staff' as const,
     userId: user?.id,
-  }), [tenantId, request?.id, user?.id]);
+    qrToken: request?.qr_token || '',
+  }), [tenantId, request?.id, user?.id, request?.qr_token]);
   
   const { messages, isLoading, isSending, sendMessage } = useUnifiedRequestChat(chatOptions);
 
