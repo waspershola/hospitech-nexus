@@ -219,7 +219,7 @@ export function QRChatInterface() {
                       {message.sender_name}
                     </p>
                     
-                    {/* PHASE-3: ALWAYS show both original and translated text */}
+                    {/* PHASE-4: ALWAYS show both original and translated text for ALL messages */}
                     {message.direction === 'inbound' ? (
                       <>
                         {/* Guest's own message: show what they typed (original) */}
@@ -235,35 +235,36 @@ export function QRChatInterface() {
                             </div>
                           )}
                           
-                          {/* ALWAYS show translation notice if we have both fields */}
-                          {message.translated_text && message.original_text && (
-                            <div className="text-xs opacity-70 pt-1">
-                              ✓ Staff will see this {message.translated_text !== message.original_text ? 'translated to English' : 'in original language'}
-                            </div>
-                          )}
+                          {/* ALWAYS show translation notice - even if languages match */}
+                          <div className="text-xs opacity-70 pt-1">
+                            ✓ Staff will see this {message.translated_text !== message.original_text ? 'translated to English' : 'in original language'}
+                          </div>
                         </div>
                       </>
                     ) : (
                       <>
-                        {/* Staff message: ALWAYS show both original and translated */}
-                        <div className="space-y-2">
-                          {/* Primary: What guest sees (translated version) */}
-                          <p className="whitespace-pre-wrap font-medium">
-                            {message.translated_text || message.message}
-                          </p>
-                          
-                          {/* ALWAYS show original staff text if we have both fields */}
-                          {message.translated_text && message.original_text && (
-                            <div className="pt-2 border-t border-muted-foreground/20 space-y-1">
-                              <div className="flex items-center gap-1 text-xs opacity-70">
-                                <Globe className="h-3 w-3" />
-                                <span>Original (Staff):</span>
-                              </div>
-                              <p className="text-xs opacity-70 whitespace-pre-wrap">
-                                {message.original_text}
-                              </p>
+                        {/* Staff message: ALWAYS show BOTH original and translated versions */}
+                        <div className="space-y-3">
+                          {/* PRIMARY: Translated version (what guest sees) */}
+                          <div className="space-y-1">
+                            <div className="flex items-center gap-1 text-xs opacity-70">
+                              <Globe className="h-3 w-3" />
+                              <span>Translated:</span>
                             </div>
-                          )}
+                            <p className="whitespace-pre-wrap font-medium">
+                              {message.translated_text || message.message}
+                            </p>
+                          </div>
+                          
+                          {/* SECONDARY: Original staff text - ALWAYS display */}
+                          <div className="pt-2 border-t border-muted-foreground/20 space-y-1">
+                            <div className="text-xs opacity-70">
+                              📄 Original (Staff):
+                            </div>
+                            <p className="text-xs opacity-70 whitespace-pre-wrap">
+                              {message.original_text || message.message}
+                            </p>
+                          </div>
                         </div>
                       </>
                     )}

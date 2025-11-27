@@ -430,7 +430,7 @@ export function useUnifiedRequestChat(
       } else {
       // Process staff replies through AI
         try {
-          // Fetch tenant's preferred staff language and guest's detected language
+          // Fetch tenant's preferred staff language
           const { data: tenant } = await supabase
             .from('tenants')
             .select('preferred_staff_language')
@@ -439,17 +439,30 @@ export function useUnifiedRequestChat(
           
           const staffLang = tenant?.preferred_staff_language || 'en';
           
-          // Get guest language from previous messages
-          const { data: guestMessages } = await supabase
-            .from('guest_communications')
-            .select('detected_language')
-            .eq('metadata->>request_id', requestId)
-            .eq('direction', 'inbound')
-            .not('detected_language', 'is', null)
-            .order('created_at', { ascending: false })
-            .limit(1);
+          // PHASE-1: Get guest language - PRIORITY ORDER:
+          // 1. Check request.metadata.guest_language_code (set during language selection)
+          // 2. Check previous guest messages for detected_language
+          // 3. Fallback to 'en'
+          const { data: requestMeta } = await supabase
+            .from('requests')
+            .select('metadata')
+            .eq('id', requestId)
+            .single();
           
-          const guestLang = guestMessages?.[0]?.detected_language || 'en';
+          let guestLang = (requestMeta?.metadata as any)?.guest_language_code;
+          
+          if (!guestLang) {
+            const { data: guestMessages } = await supabase
+              .from('guest_communications')
+              .select('detected_language')
+              .eq('metadata->>request_id', requestId)
+              .eq('direction', 'inbound')
+              .not('detected_language', 'is', null)
+              .order('created_at', { ascending: false })
+              .limit(1);
+            
+            guestLang = guestMessages?.[0]?.detected_language || 'en';
+          }
           
           const aiResponse = await supabase.functions.invoke('ai-message', {
             body: {
@@ -463,7 +476,7 @@ export function useUnifiedRequestChat(
           if (aiResponse.data?.success) {
             const aiData = aiResponse.data.data;
             // PHASE-2: Always populate original_text and translated_text correctly
-            messageData.original_text = message.trim(); // ALWAYS set
+            messageData.original_text = aiData.original_text || message.trim(); // ALWAYS set - use AI-enhanced version
             messageData.cleaned_text = aiData.enhanced_text || message.trim();
             messageData.translated_text = aiData.translated_text || message.trim(); // ALWAYS set
             messageData.target_language = guestLang;
@@ -471,7 +484,7 @@ export function useUnifiedRequestChat(
             messageData.message = aiData.translated_text || aiData.enhanced_text || message.trim();
             
             console.log('[UNIFIED-CHAT-AI-V3] Staff reply AI processed:', {
-              original: message.trim(),
+              original: aiData.original_text || message.trim(),
               enhanced: aiData.enhanced_text,
               translated: aiData.translated_text,
               guest_language: guestLang,
