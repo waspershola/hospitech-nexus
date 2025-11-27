@@ -61,44 +61,13 @@ export function AISuggestionsPanel({
       // Phase 4: Detect guest language from recent messages
       const guestLanguage = (lastGuestMessage as any).detected_language || 'en';
 
-      setIsLoading(true);
-      try {
-        // Generate 3 different reply suggestions
-        const suggestionsPromises = [
-          'Thank you for reaching out. I will assist you right away.',
-          'I understand your request. Let me check on that for you immediately.',
-          'Thank you for your patience. I am addressing this now.',
-        ].map(async (template) => {
-          try {
-            const response = await processStaffReply(
-              tenantId,
-              template,
-              guestLanguage
-            );
-            
-            if (response.success && response.data) {
-              const data = response.data as ProcessStaffReplyResult;
-              return data.literal_translation || data.original_text;
-            }
-            return template;
-          } catch {
-            return template;
-          }
-        });
-
-        const results = await Promise.all(suggestionsPromises);
-        setSuggestions(results.filter(Boolean).slice(0, 3));
-      } catch (error) {
-        console.error('[AISuggestionsPanel] Failed to generate suggestions:', error);
-        // Fallback to basic templates
-        setSuggestions([
-          'Thank you for reaching out. I will assist you right away.',
-          'I understand your request. Let me check on that for you.',
-          'Thank you for your patience. I am addressing this now.',
-        ]);
-      } finally {
-        setIsLoading(false);
-      }
+      // Staff suggestions should always be in staff language (English)
+      // Translation happens when staff SENDS the message, not when viewing suggestions
+      setSuggestions([
+        'Thank you for reaching out. I will assist you right away.',
+        'I understand your request. Let me check on that for you immediately.',
+        'Thank you for your patience. I am addressing this now.',
+      ]);
     };
 
     generateSuggestions();
