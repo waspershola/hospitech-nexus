@@ -255,7 +255,7 @@ const App = () => (
                     <Route path="housekeeping" element={<QRHousekeepingService />} />
                     <Route path="dining" element={<QRDiningReservation />} />
                     <Route path="room-service" element={<QRRoomService />} />
-                    <Route path="order-status/:orderId" element={<QROrderStatus />} />
+                    <Route path="order/:orderId" element={<QROrderStatus />} />
                     <Route path="request-status/:requestId" element={<QRRequestStatus />} />
                     <Route path="payment-history" element={<QRPaymentHistory />} />
                     <Route path="redirect" element={<QRRedirect />} />
