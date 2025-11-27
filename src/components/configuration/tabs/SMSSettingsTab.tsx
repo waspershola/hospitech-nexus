@@ -422,7 +422,13 @@ function BundleCard({ item, onPurchase, isPurchasing }: any) {
   };
 
   // Parse pricing from platform_addons JSONB
-  const pricing = typeof item.pricing === 'string' ? JSON.parse(item.pricing) : item.pricing;
+  const pricing = (() => {
+    try {
+      return typeof item.pricing === 'string' ? JSON.parse(item.pricing) : item.pricing;
+    } catch {
+      return null;
+    }
+  })();
   const amount = pricing?.amount || 0;
   const currency = pricing?.currency || 'NGN';
 

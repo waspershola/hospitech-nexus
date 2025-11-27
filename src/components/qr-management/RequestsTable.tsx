@@ -195,7 +195,14 @@ export default function RequestsTable({
                   {request.note && (
                     <div className="text-sm text-muted-foreground line-clamp-1">
                       {request.type === 'housekeeping'
-                        ? `${JSON.parse(request.note).length} services selected`
+                        ? (() => {
+                            try {
+                              const parsed = JSON.parse(request.note);
+                              return `${parsed.length} services selected`;
+                            } catch {
+                              return request.note;
+                            }
+                          })()
                         : request.note}
                     </div>
                   )}
