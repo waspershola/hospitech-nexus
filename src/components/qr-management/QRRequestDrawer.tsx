@@ -112,7 +112,8 @@ export function QRRequestDrawer({
     requestId: displayRequest?.id || '',
     userType: 'staff' as const,
     userId: user?.id,
-  }), [tenantId, displayRequest?.id, user?.id]);
+    qrToken: displayRequest?.qr_token || '',
+  }), [tenantId, displayRequest?.id, user?.id, displayRequest?.qr_token]);
   
   const { messages, sendMessage, isSending } = useUnifiedRequestChat(chatOptions);
   const [customMessage, setCustomMessage] = useState('');
