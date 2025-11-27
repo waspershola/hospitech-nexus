@@ -782,7 +782,11 @@ export function QRRequestDrawer({
 
   // Memoize recent messages to prevent AISuggestionsPanel infinite loop
   const recentMessagesStable = useMemo(
-    () => messages.slice(-5),
+    () => messages.slice(-5).map(m => ({
+      message: m.message || '',
+      direction: m.direction,
+      detected_language: m.detected_language
+    })),
     [messages.map(m => m.id).join(',')] // Only update when message IDs change
   );
 
