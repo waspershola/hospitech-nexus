@@ -34,24 +34,25 @@ export function QRChatInterface() {
     return names[code?.toLowerCase()] || code?.toUpperCase();
   };
   
+  // PHASE-2: Only call chat hook when qrData is validated and tenant_id is available
+  const canLoadChat = !isValidating && !!qrData?.tenant_id && !!requestId;
+  
   // REALTIME-FIX-V2: Memoize chat options to prevent subscription recreation
   // PHASE-1: Use qrData.tenant_id from validated session instead of AuthContext
-  const chatOptions = useMemo(() => ({
-    tenantId: qrData?.tenant_id || '',
-    requestId: requestId || '',
-    userType: 'guest' as const,
-    guestName: 'Guest',
-    qrToken: token || '',
-  }), [qrData?.tenant_id, requestId, token]);
+  const chatOptions = useMemo(() => {
+    if (!canLoadChat) {
+      return { tenantId: '', requestId: '', userType: 'guest' as const, guestName: 'Guest', qrToken: '' };
+    }
+    return {
+      tenantId: qrData?.tenant_id || '',
+      requestId: requestId || '',
+      userType: 'guest' as const,
+      guestName: 'Guest',
+      qrToken: token || '',
+    };
+  }, [canLoadChat, qrData?.tenant_id, requestId, token]);
   
   const { messages, isLoading, isSending, sendMessage } = useUnifiedRequestChat(chatOptions);
-  
-  // PHASE-3: Enable global guest notifications for real-time updates
-  useGuestNotifications({
-    tenantId: qrData?.tenant_id || '',
-    qrToken: token || '',
-    enabled: !!qrData && !!token,
-  });
   
   // Check if this request has a linked order
   const { data: orderDetails } = useOrderDetails(requestId);
@@ -226,26 +227,38 @@ export function QRChatInterface() {
                       {message.sender_name}
                     </p>
                     
-                    {/* PHASE-4: Guest sees original + language detection for own messages */}
+                    {/* PHASE-5: Enhanced translation UI - show both original and translated text */}
                     {message.direction === 'inbound' ? (
                       <>
-                        <p className="whitespace-pre-wrap">{message.message}</p>
+                        {/* Guest's own message: show original + translation status */}
+                        <p className="whitespace-pre-wrap">{message.original_text || message.message}</p>
                         {message.detected_language && message.detected_language !== 'en' && (
-                          <div className="flex items-center gap-1 text-xs opacity-70 mt-1">
+                          <div className="flex items-center gap-1 text-xs opacity-70 mt-2 pt-2 border-t border-primary-foreground/20">
                             <Globe className="h-3 w-3" />
                             <span>Detected: {getLanguageName(message.detected_language)}</span>
+                          </div>
+                        )}
+                        {message.translated_text && message.translated_text !== message.original_text && (
+                          <div className="text-xs opacity-60 mt-1">
+                            ✓ Translated for staff
                           </div>
                         )}
                       </>
                     ) : (
                       <>
+                        {/* Staff message: show translated text (main) + original (smaller) */}
                         <p className="whitespace-pre-wrap">
                           {message.translated_text || message.message}
                         </p>
                         {message.translated_text && message.original_text && message.translated_text !== message.original_text && (
-                          <div className="flex items-center gap-1 text-xs opacity-70 mt-1 pt-1 border-t border-white/20">
-                            <Globe className="h-3 w-3" />
-                            <span>Translated from English</span>
+                          <div className="mt-2 pt-2 border-t border-muted-foreground/20 space-y-1">
+                            <div className="flex items-center gap-1 text-xs opacity-70">
+                              <Globe className="h-3 w-3" />
+                              <span>Original (English):</span>
+                            </div>
+                            <p className="text-xs opacity-70 whitespace-pre-wrap">
+                              {message.original_text}
+                            </p>
                           </div>
                         )}
                       </>

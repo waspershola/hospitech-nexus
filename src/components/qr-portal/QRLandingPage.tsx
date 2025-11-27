@@ -4,6 +4,7 @@ import { useQRToken } from '@/hooks/useQRToken';
 import { useQRTheme } from '@/hooks/useQRTheme';
 import { useMyRequests } from '@/hooks/useMyRequests';
 import { useGuestInfo } from '@/hooks/useGuestInfo';
+import { useGuestNotifications } from '@/hooks/useGuestNotifications';
 import { GuestInfoModal } from '@/components/qr-portal/GuestInfoModal';
 import { UtensilsCrossed, Wifi, Wrench, Bell, MessageCircle, Phone, Clock, Sparkles, Crown, Utensils, Shirt as ShirtIcon, Headphones, Receipt, LucideIcon, CheckCircle, AlertCircle } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
@@ -86,6 +87,13 @@ export function QRLandingPage() {
 
   // Apply QR theme dynamically
   useQRTheme(qrData?.branding, 'qr-portal-root');
+
+  // PHASE-1: Global guest notifications for all pages
+  useGuestNotifications({
+    tenantId: qrData?.tenant_id || '',
+    qrToken: token || '',
+    enabled: !!qrData && !!token,
+  });
 
   // PHASE-1C: Show guest info modal on first visit
   useEffect(() => {
