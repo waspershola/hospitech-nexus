@@ -43,7 +43,17 @@ export function useRingtone() {
   }, [volume]);
 
   const playRingtone = async (soundPath: string = '/sounds/notification-default.mp3', options: RingtoneOptions = {}) => {
-    if (isMuted || !audioRef.current) return;
+    console.log('[RINGTONE-DEBUG] playRingtone called', {
+      isMuted,
+      hasAudioRef: !!audioRef.current,
+      soundPath,
+      volume: options.volume ?? volume,
+    });
+    
+    if (isMuted || !audioRef.current) {
+      console.log('[RINGTONE-DEBUG] Blocked - isMuted or no audioRef', { isMuted, hasAudioRef: !!audioRef.current });
+      return;
+    }
 
     try {
       // Update source if changed
