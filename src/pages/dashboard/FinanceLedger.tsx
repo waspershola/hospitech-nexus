@@ -14,17 +14,22 @@ export default function FinanceLedger() {
   });
   const [selectedEntryId, setSelectedEntryId] = useState<string | null>(null);
 
-  const { data: entries, isLoading } = useLedgerEntries(filters);
+  const { data: result, isLoading } = useLedgerEntries(filters);
+  const entries = result?.data || [];
+  const totalCount = result?.count || 0;
 
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-display text-foreground">Accounting Ledger</h1>
-          <p className="text-muted-foreground">Complete financial transaction history</p>
+          <p className="text-muted-foreground">
+            Complete financial transaction history
+            {totalCount > 0 && ` • ${totalCount.toLocaleString()} entries`}
+          </p>
         </div>
         <div className="flex items-center gap-3">
-          <LedgerExportButtons entries={entries || []} onPrint={() => window.print()} />
+          <LedgerExportButtons entries={entries} onPrint={() => window.print()} />
           <BookOpen className="h-8 w-8 text-primary" />
         </div>
       </div>
@@ -32,7 +37,7 @@ export default function FinanceLedger() {
       <LedgerFilters filters={filters} onFiltersChange={setFilters} />
 
       <LedgerTable
-        entries={entries || []}
+        entries={entries}
         isLoading={isLoading}
         onEntryClick={setSelectedEntryId}
       />

@@ -3,17 +3,18 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import type { LedgerFilters, LedgerEntry } from '@/types/ledger';
 
-export function useLedgerEntries(filters: LedgerFilters) {
+export function useLedgerEntries(filters: LedgerFilters, options?: { limit?: number; offset?: number }) {
   const { tenantId } = useAuth();
 
   return useQuery({
-    queryKey: ['ledger-entries', tenantId, filters],
+    queryKey: ['ledger-entries', tenantId, filters, options?.limit, options?.offset],
     queryFn: async () => {
-      if (!tenantId) return [];
+      if (!tenantId) return { data: [], count: 0 };
 
+      // Build base query with count
       let query: any = supabase
         .from('ledger_entries')
-        .select('*')
+        .select('*', { count: 'exact' })
         .eq('tenant_id', tenantId)
         .order('created_at', { ascending: false });
 
@@ -90,11 +91,20 @@ export function useLedgerEntries(filters: LedgerFilters) {
         query = query.or(`ledger_reference.ilike.%${filters.search}%,guest_name.ilike.%${filters.search}%`);
       }
 
-      const { data, error } = await query;
+      // Apply pagination
+      if (options?.limit) {
+        query = query.limit(options.limit);
+      }
+      if (options?.offset) {
+        query = query.range(options.offset, options.offset + (options.limit || 50) - 1);
+      }
+
+      const { data, error, count } = await query;
 
       if (error) throw error;
-      return data;
+      return { data: data || [], count: count || 0 };
     },
     enabled: !!tenantId,
+    staleTime: 30000, // 30 seconds cache for performance
   });
 }
