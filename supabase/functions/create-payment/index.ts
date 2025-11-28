@@ -487,6 +487,45 @@ serve(async (req) => {
 
     console.log('Payment created:', payment.id);
 
+    // LEDGER-PHASE-2B-V1: Post payment to accounting ledger
+    try {
+      const { error: ledgerError } = await supabase.rpc('insert_ledger_entry', {
+        p_tenant_id: tenant_id,
+        p_transaction_type: 'debit',
+        p_amount: actualGuestCharge,
+        p_currency: 'NGN',
+        p_payment_method: method,
+        p_payment_provider_id: provider_id || null,
+        p_payment_location_id: location_id || null,
+        p_department: department || null,
+        p_folio_id: payment.stay_folio_id || null,
+        p_booking_id: booking_id || null,
+        p_guest_id: guest_id || null,
+        p_room_number: null,
+        p_staff_id_initiated: recorded_by || null,
+        p_staff_id_confirmed: recorded_by || null,
+        p_status: payment.status,
+        p_reconciliation_status: 'pending',
+        p_metadata: {
+          payment_id: payment.id,
+          transaction_ref: transaction_ref,
+          payment_type: payment.payment_type,
+          provider_fee: feeAmount,
+          net_amount: netAmount,
+          source: 'create-payment',
+          version: 'LEDGER-PHASE-2B-V1'
+        }
+      });
+
+      if (ledgerError) {
+        console.error('[ledger-integration] LEDGER-PHASE-2B-V1: Failed to post to ledger (non-blocking):', ledgerError);
+      } else {
+        console.log('[ledger-integration] LEDGER-PHASE-2B-V1: Payment posted to ledger successfully');
+      }
+    } catch (ledgerErr) {
+      console.error('[ledger-integration] LEDGER-PHASE-2B-V1: Ledger posting exception (non-blocking):', ledgerErr);
+    }
+
     // Phase 2: Check if booking is completed - route to post-checkout ledger
     if (booking_id) {
       const { data: booking, error: bookingError } = await supabase

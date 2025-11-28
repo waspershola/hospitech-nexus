@@ -643,6 +643,44 @@ serve(async (req) => {
         }
       }
 
+      // LEDGER-PHASE-2B-V1: Post QR service charge to accounting ledger (if billable)
+      if (paymentInfo.billable && paymentInfo.subtotal) {
+        try {
+          const { error: ledgerError } = await supabase.rpc('insert_ledger_entry', {
+            p_tenant_id: qr.tenant_id,
+            p_transaction_type: 'debit',
+            p_amount: paymentInfo.subtotal,
+            p_currency: 'NGN',
+            p_payment_method: 'qr_service',
+            p_category: requestData.type,
+            p_department: finalDepartment,
+            p_guest_id: null,
+            p_guest_name: requestData.guest_name || requestData.metadata?.guest_name || 'Guest',
+            p_room_number: roomNumber || qr.assigned_to,
+            p_staff_id_initiated: null,
+            p_staff_id_confirmed: null,
+            p_status: 'pending',
+            p_reconciliation_status: 'pending',
+            p_metadata: {
+              request_id: newRequest.id,
+              qr_token: requestData.qr_token,
+              service_type: requestData.type,
+              payment_choice: paymentChoice,
+              source: 'qr-request',
+              version: 'LEDGER-PHASE-2B-V1'
+            }
+          });
+
+          if (ledgerError) {
+            console.error('[ledger-integration] LEDGER-PHASE-2B-V1: Failed to post QR charge to ledger (non-blocking):', ledgerError);
+          } else {
+            console.log('[ledger-integration] LEDGER-PHASE-2B-V1: QR charge posted to ledger successfully');
+          }
+        } catch (ledgerErr) {
+          console.error('[ledger-integration] LEDGER-PHASE-2B-V1: Ledger posting exception (non-blocking):', ledgerErr);
+        }
+      }
+
       return new Response(
         JSON.stringify({
           success: true,
