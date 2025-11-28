@@ -777,6 +777,68 @@ export type Database = {
           },
         ]
       }
+      finance_provider_locations: {
+        Row: {
+          created_at: string
+          id: string
+          is_default: boolean
+          is_enabled: boolean
+          location_id: string
+          provider_id: string
+          tenant_id: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          is_default?: boolean
+          is_enabled?: boolean
+          location_id: string
+          provider_id: string
+          tenant_id: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          is_default?: boolean
+          is_enabled?: boolean
+          location_id?: string
+          provider_id?: string
+          tenant_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "finance_provider_locations_location_id_fkey"
+            columns: ["location_id"]
+            isOneToOne: false
+            referencedRelation: "finance_locations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "finance_provider_locations_provider_id_fkey"
+            columns: ["provider_id"]
+            isOneToOne: false
+            referencedRelation: "finance_providers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "finance_provider_locations_provider_id_fkey"
+            columns: ["provider_id"]
+            isOneToOne: false
+            referencedRelation: "v_finance_overview_summary"
+            referencedColumns: ["provider_id"]
+          },
+          {
+            foreignKeyName: "finance_provider_locations_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       finance_provider_rules: {
         Row: {
           auto_reconcile: boolean | null
@@ -2551,6 +2613,34 @@ export type Database = {
         }
         Relationships: [
           {
+            foreignKeyName: "fk_ledger_payment_location"
+            columns: ["payment_location_id"]
+            isOneToOne: false
+            referencedRelation: "finance_locations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fk_ledger_payment_method"
+            columns: ["payment_method_id"]
+            isOneToOne: false
+            referencedRelation: "payment_methods"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fk_ledger_payment_provider"
+            columns: ["payment_provider_id"]
+            isOneToOne: false
+            referencedRelation: "finance_providers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fk_ledger_payment_provider"
+            columns: ["payment_provider_id"]
+            isOneToOne: false
+            referencedRelation: "v_finance_overview_summary"
+            referencedColumns: ["provider_id"]
+          },
+          {
             foreignKeyName: "ledger_entries_booking_id_fkey"
             columns: ["booking_id"]
             isOneToOne: false
@@ -3285,6 +3375,9 @@ export type Database = {
           method: string | null
           method_provider: string | null
           organization_id: string | null
+          payment_location_id: string | null
+          payment_method_id: string | null
+          payment_provider_id: string | null
           payment_type: string | null
           provider_reference: string | null
           recorded_by: string | null
@@ -3309,6 +3402,9 @@ export type Database = {
           method?: string | null
           method_provider?: string | null
           organization_id?: string | null
+          payment_location_id?: string | null
+          payment_method_id?: string | null
+          payment_provider_id?: string | null
           payment_type?: string | null
           provider_reference?: string | null
           recorded_by?: string | null
@@ -3333,6 +3429,9 @@ export type Database = {
           method?: string | null
           method_provider?: string | null
           organization_id?: string | null
+          payment_location_id?: string | null
+          payment_method_id?: string | null
+          payment_provider_id?: string | null
           payment_type?: string | null
           provider_reference?: string | null
           recorded_by?: string | null
@@ -3363,6 +3462,34 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "organizations"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "payments_payment_location_id_fkey"
+            columns: ["payment_location_id"]
+            isOneToOne: false
+            referencedRelation: "finance_locations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "payments_payment_method_id_fkey"
+            columns: ["payment_method_id"]
+            isOneToOne: false
+            referencedRelation: "payment_methods"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "payments_payment_provider_id_fkey"
+            columns: ["payment_provider_id"]
+            isOneToOne: false
+            referencedRelation: "finance_providers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "payments_payment_provider_id_fkey"
+            columns: ["payment_provider_id"]
+            isOneToOne: false
+            referencedRelation: "v_finance_overview_summary"
+            referencedColumns: ["provider_id"]
           },
           {
             foreignKeyName: "payments_stay_folio_id_fkey"
