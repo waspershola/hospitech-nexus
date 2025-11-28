@@ -8618,6 +8618,8 @@ export type Database = {
         Returns: Json
       }
       restore_tenant: { Args: { _tenant_id: string }; Returns: Json }
+      show_limit: { Args: never; Returns: number }
+      show_trgm: { Args: { "": string }; Returns: string[] }
       soft_delete_tenant: {
         Args: { _deleted_by: string; _tenant_id: string }
         Returns: Json
