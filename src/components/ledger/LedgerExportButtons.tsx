@@ -12,9 +12,10 @@ import {
 
 interface LedgerExportButtonsProps {
   entries: LedgerEntry[];
+  onPrint?: () => void;
 }
 
-export function LedgerExportButtons({ entries }: LedgerExportButtonsProps) {
+export function LedgerExportButtons({ entries, onPrint }: LedgerExportButtonsProps) {
   const { exportToCSV, exportToExcel, isExporting } = useLedgerExport();
   const { generatePDF, isGenerating } = useLedgerPDF();
 
@@ -59,6 +60,12 @@ export function LedgerExportButtons({ entries }: LedgerExportButtonsProps) {
           <FileText className="h-4 w-4 mr-2" />
           Export as PDF
         </DropdownMenuItem>
+        {onPrint && (
+          <DropdownMenuItem onClick={onPrint}>
+            <FileText className="h-4 w-4 mr-2" />
+            Print Ledger
+          </DropdownMenuItem>
+        )}
       </DropdownMenuContent>
     </DropdownMenu>
   );

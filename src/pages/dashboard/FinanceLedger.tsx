@@ -24,7 +24,7 @@ export default function FinanceLedger() {
           <p className="text-muted-foreground">Complete financial transaction history</p>
         </div>
         <div className="flex items-center gap-3">
-          <LedgerExportButtons entries={entries || []} />
+          <LedgerExportButtons entries={entries || []} onPrint={() => window.print()} />
           <BookOpen className="h-8 w-8 text-primary" />
         </div>
       </div>

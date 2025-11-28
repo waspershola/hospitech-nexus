@@ -818,6 +818,50 @@ serve(async (req) => {
 
     console.log('Payment processing complete:', payment.id);
 
+    // ============= LEDGER INTEGRATION - RECORD ALL PAYMENTS =============
+    // Record payment to accounting ledger
+    try {
+      console.log('[LEDGER-INTEGRATION-V1] Recording payment to ledger:', payment.id);
+      
+      const { data: ledgerEntryId, error: ledgerError } = await supabase
+        .rpc('insert_ledger_entry', {
+          p_tenant_id: tenant_id,
+          p_transaction_type: 'credit',
+          p_amount: amount,
+          p_description: `Payment received - ${method || 'N/A'}`,
+          p_reference_type: 'payment',
+          p_reference_id: payment.id,
+          p_payment_method: method,
+          p_provider_id: provider_id,
+          p_location_id: location_id,
+          p_department: department,
+          p_category: 'payment_received',
+          p_folio_id: booking_id ? undefined : undefined, // Will be linked via folio_post_payment
+          p_booking_id: booking_id,
+          p_guest_id: guest_id,
+          p_staff_id: recorded_by,
+          p_metadata: {
+            payment_id: payment.id,
+            transaction_ref,
+            payment_type: payment.payment_type,
+            expected_amount,
+            overpayment_action: payment.overpayment_action,
+            wallet_id,
+            version: 'LEDGER-INTEGRATION-V1'
+          }
+        });
+
+      if (ledgerError) {
+        console.error('[LEDGER-INTEGRATION-V1] Failed to record ledger entry:', ledgerError);
+        // Don't fail payment if ledger recording fails - log for manual reconciliation
+      } else {
+        console.log('[LEDGER-INTEGRATION-V1] Ledger entry created:', ledgerEntryId);
+      }
+    } catch (ledgerException) {
+      console.error('[LEDGER-INTEGRATION-V1] Ledger recording exception:', ledgerException);
+      // Continue - payment is still valid
+    }
+
     // Send payment notifications
     try {
       if (guest_id) {
