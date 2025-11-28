@@ -54,10 +54,18 @@ export function useLedgerStats(filters: LedgerFilters) {
 
       // Apply same filters as main ledger query
       if (filters.dateFrom) {
-        query = query.gte('created_at', filters.dateFrom);
+        // If datetime-local format (has time), use as-is; otherwise append start of day
+        const fromDate = filters.dateFrom.includes('T') 
+          ? filters.dateFrom 
+          : filters.dateFrom + 'T00:00:00';
+        query = query.gte('created_at', fromDate);
       }
       if (filters.dateTo) {
-        query = query.lte('created_at', filters.dateTo + 'T23:59:59');
+        // If datetime-local format (has time), use as-is; otherwise append end of day
+        const toDate = filters.dateTo.includes('T') 
+          ? filters.dateTo 
+          : filters.dateTo + 'T23:59:59';
+        query = query.lte('created_at', toDate);
       }
       if (filters.transactionType?.length) {
         query = query.in('transaction_type', filters.transactionType as any);
