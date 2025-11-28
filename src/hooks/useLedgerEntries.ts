@@ -39,20 +39,14 @@ export function useLedgerEntries(filters: LedgerFilters, options?: { limit?: num
         query = query.in('payment_method', filters.paymentMethod);
       }
 
-      // Provider filter (FK-based, primary)
+      // Provider filter (FK-based only)
       if (filters.paymentProviderId) {
         query = query.eq('payment_provider_id', filters.paymentProviderId);
-      } else if (filters.providerId) {
-        // Legacy fallback
-        query = query.eq('payment_provider_id', filters.providerId);
       }
 
-      // Location filter (FK-based, primary)
+      // Location filter (FK-based only)
       if (filters.paymentLocationId) {
         query = query.eq('payment_location_id', filters.paymentLocationId);
-      } else if (filters.locationId) {
-        // Legacy fallback
-        query = query.eq('payment_location_id', filters.locationId);
       }
 
       // Department filter
@@ -130,16 +124,7 @@ export function useLedgerEntries(filters: LedgerFilters, options?: { limit?: num
 
       const { data, error, count } = await query;
 
-      if (error) {
-        console.error('[LEDGER-ENTRIES-V2] Query error:', error);
-        throw error;
-      }
-
-      console.log('[LEDGER-ENTRIES-V2] Query result:', {
-        dataLength: data?.length || 0,
-        count,
-        hasData: !!data,
-      });
+      if (error) throw error;
 
       return { data: data || [], count: count ?? 0 };
     },
