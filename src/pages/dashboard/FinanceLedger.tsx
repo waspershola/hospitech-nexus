@@ -19,6 +19,19 @@ export default function FinanceLedger() {
   const entries = result?.data || [];
   const totalCount = result?.count || 0;
 
+  console.log('[FINANCE-LEDGER-DEBUG]', {
+    result,
+    resultType: typeof result,
+    resultData: result?.data,
+    resultDataType: typeof result?.data,
+    resultDataIsArray: Array.isArray(result?.data),
+    resultDataLength: result?.data?.length,
+    entries,
+    entriesLength: entries.length,
+    totalCount,
+    isLoading
+  });
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
