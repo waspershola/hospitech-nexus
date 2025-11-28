@@ -721,6 +721,48 @@ export function QRRequestDrawer({
         }
       }
 
+      // Record QR payment to ledger with correct department/provider/location
+      try {
+        console.log('[QR-LEDGER-V1] Recording QR payment to ledger');
+        const correctDepartment = selectedRequest.assigned_department || selectedRequest.type || 'restaurant';
+        
+        const { data: ledgerEntryId, error: ledgerError } = await supabase.rpc('insert_ledger_entry', {
+          p_tenant_id: selectedRequest.tenant_id,
+          p_transaction_type: 'credit',
+          p_amount: amount,
+          p_description: `QR Payment - ${selectedRequest.type || 'Service Request'}`,
+          p_reference_type: 'qr_payment',
+          p_reference_id: selectedRequest.id,
+          p_payment_method: selectedProvider?.type || 'cash',
+          p_payment_method_id: null, // Method ID is optional
+          p_payment_provider_id: selectedProviderId,
+          p_payment_location_id: selectedLocationId,
+          p_payment_provider: selectedProvider?.name,
+          p_payment_location: selectedLocation?.name,
+          p_department: correctDepartment,
+          p_category: 'qr_service_payment',
+          p_source_type: 'qr_payment',
+          p_qr_request_id: selectedRequest.id,
+          p_guest_id: selectedRequest.guest_id || null,
+          p_room_number: selectedRequest.room_number || null,
+          p_staff_id: user?.id,
+          p_metadata: {
+            request_type: selectedRequest.type,
+            qr_token: selectedRequest.qr_token,
+            payment_collected_at: new Date().toISOString(),
+            version: 'QR-LEDGER-V1'
+          }
+        });
+
+        if (ledgerError) {
+          console.error('[QR-LEDGER-V1] Failed to record ledger entry:', ledgerError);
+        } else {
+          console.log('[QR-LEDGER-V1] Ledger entry created:', ledgerEntryId);
+        }
+      } catch (ledgerException) {
+        console.error('[QR-LEDGER-V1] Ledger recording exception:', ledgerException);
+      }
+
       // Record platform fee in ledger (non-blocking)
       try {
         await supabase.functions.invoke('record-platform-fee', {

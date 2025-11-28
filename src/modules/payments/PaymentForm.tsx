@@ -48,6 +48,7 @@ const paymentSchema = z.object({
   method: z.string().optional(),
   provider_id: z.string().min(1, 'Payment provider is required'),
   location_id: z.string().optional(),
+  shift: z.enum(['morning', 'evening', 'night']).optional(),
   wallet_id: z.string().optional(),
   department: z.string().optional(),
   notes: z.string().optional(),
@@ -352,6 +353,7 @@ export function PaymentForm({
         method: selectedProvider.type,
         provider_id: data.provider_id,
         location_id: data.location_id,
+        shift: data.shift,
         department: data.department,
         wallet_id: data.wallet_id,
         overpayment_action: paymentType === 'overpayment' ? overpaymentAction : undefined,
@@ -782,6 +784,23 @@ export function PaymentForm({
           )}
         </div>
       )}
+
+      <div className="space-y-2">
+        <Label htmlFor="shift">Shift (Optional)</Label>
+        <Select onValueChange={(value) => setValue('shift', value as 'morning' | 'evening' | 'night')}>
+          <SelectTrigger>
+            <SelectValue placeholder="Select shift" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="morning">Morning Shift</SelectItem>
+            <SelectItem value="evening">Evening Shift</SelectItem>
+            <SelectItem value="night">Night Shift</SelectItem>
+          </SelectContent>
+        </Select>
+        <p className="text-xs text-muted-foreground">
+          Track payment by work shift for better reporting
+        </p>
+      </div>
 
       {/* Only show overpayment destination if overpayment detected */}
       {wallets.length > 0 && getPaymentType() === 'overpayment' && (

@@ -28,6 +28,7 @@ const paymentSchema = z.object({
   provider_id: z.string().uuid('Invalid provider ID format').optional().nullable(),
   location_id: z.string().uuid('Invalid location ID format').optional().nullable(),
   department: z.string().max(100, 'Department name too long').optional().nullable(),
+  shift: z.enum(['morning', 'evening', 'night']).optional().nullable(),
   wallet_id: z.string().uuid('Invalid wallet ID format').optional().nullable(),
   recorded_by: z.string().uuid('Invalid user ID format').optional().nullable(),
   overpayment_action: z.enum(['wallet', 'refund']).optional().nullable(),
@@ -142,6 +143,7 @@ serve(async (req) => {
       method,
       provider_id,
       location_id,
+      shift,
       department,
       wallet_id,
       recorded_by,
@@ -903,7 +905,7 @@ serve(async (req) => {
     // ============= LEDGER INTEGRATION - RECORD ALL PAYMENTS =============
     // Record payment to accounting ledger
     try {
-      console.log('[LEDGER-INTEGRATION-V1] Recording payment to ledger:', payment.id);
+      console.log('[LEDGER-INTEGRATION-V2] Recording payment to ledger with shift:', payment.id);
       
       const { data: ledgerEntryId, error: ledgerError } = await supabase
         .rpc('insert_ledger_entry', {
@@ -917,6 +919,7 @@ serve(async (req) => {
           p_provider_id: provider_id,
           p_location_id: location_id,
           p_department: department,
+          p_shift: shift,
           p_category: 'payment_received',
           p_folio_id: booking_id ? undefined : undefined, // Will be linked via folio_post_payment
           p_booking_id: booking_id,
@@ -929,7 +932,8 @@ serve(async (req) => {
             expected_amount,
             overpayment_action: payment.overpayment_action,
             wallet_id,
-            version: 'LEDGER-INTEGRATION-V1'
+            shift,
+            version: 'LEDGER-INTEGRATION-V2'
           }
         });
 

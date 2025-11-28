@@ -11,10 +11,13 @@ export function useLedgerEntries(filters: LedgerFilters, options?: { limit?: num
     queryFn: async () => {
       if (!tenantId) return { data: [], count: 0 };
 
-      // Build base query with count - use raw columns only (no joins due to missing FK constraints)
+      // Build base query with count and staff join for name resolution
       let query: any = supabase
         .from('ledger_entries')
-        .select('*', { count: 'exact' })
+        .select(`
+          *,
+          staff_initiated:staff!staff_id_initiated(id, full_name)
+        `, { count: 'exact' })
         .eq('tenant_id', tenantId)
         .order('created_at', { ascending: false });
 

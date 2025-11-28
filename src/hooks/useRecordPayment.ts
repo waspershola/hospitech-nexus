@@ -14,6 +14,7 @@ interface RecordPaymentParams {
   method: string;
   provider_id?: string;
   location_id?: string;
+  shift?: 'morning' | 'evening' | 'night';
   department?: string;
   wallet_id?: string;
   overpayment_action?: 'wallet' | 'refund';

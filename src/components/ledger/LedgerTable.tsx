@@ -91,7 +91,7 @@ export function LedgerTable({ entries, isLoading, onEntryClick }: LedgerTablePro
               <TableCell>{entry.payment_method || '-'}</TableCell>
               <TableCell>{entry.payment_provider || '-'}</TableCell>
               <TableCell>{entry.payment_location || '-'}</TableCell>
-              <TableCell>{entry.staff_id_initiated ? entry.staff_id_initiated.substring(0, 8) + '...' : '-'}</TableCell>
+              <TableCell>{(entry as any).staff_initiated?.full_name || '-'}</TableCell>
               <TableCell className="text-right font-medium">
                 {formatAmount(entry.amount, entry.currency)}
               </TableCell>
