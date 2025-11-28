@@ -10,14 +10,6 @@ interface LedgerTableProps {
 }
 
 export function LedgerTable({ entries, isLoading, onEntryClick }: LedgerTableProps) {
-  console.log('[LEDGER-TABLE-DEBUG]', { 
-    isLoading, 
-    entries,
-    entriesType: typeof entries,
-    entriesIsArray: Array.isArray(entries),
-    entriesLength: entries?.length 
-  });
-
   const getTransactionTypeBadge = (type: string) => {
     const variants: Record<string, any> = {
       debit: 'destructive',
@@ -44,7 +36,7 @@ export function LedgerTable({ entries, isLoading, onEntryClick }: LedgerTablePro
   if (!entries || !Array.isArray(entries) || entries.length === 0) {
     return (
       <div className="text-center py-8 text-muted-foreground">
-        No ledger entries found for the selected filters. (Debug: entries={JSON.stringify(entries)})
+        No ledger entries found for the selected filters.
       </div>
     );
   }
