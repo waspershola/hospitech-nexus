@@ -11,10 +11,17 @@ export function useLedgerEntries(filters: LedgerFilters, options?: { limit?: num
     queryFn: async () => {
       if (!tenantId) return { data: [], count: 0 };
 
-      // Build base query with count
+      // Build base query with count and joined tables for resolved labels
       let query: any = supabase
         .from('ledger_entries')
-        .select('*', { count: 'exact' })
+        .select(`
+          *,
+          payment_method_ref:payment_methods(id, method_name),
+          payment_provider_ref:finance_providers(id, name),
+          payment_location_ref:finance_locations(id, name),
+          staff_initiated:staff!ledger_entries_staff_id_initiated_fkey(id, full_name),
+          staff_confirmed:staff!ledger_entries_staff_id_confirmed_fkey(id, full_name)
+        `, { count: 'exact' })
         .eq('tenant_id', tenantId)
         .order('created_at', { ascending: false });
 
