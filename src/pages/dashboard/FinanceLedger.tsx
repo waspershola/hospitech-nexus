@@ -4,6 +4,7 @@ import { LedgerFilters } from '@/components/ledger/LedgerFilters';
 import { LedgerTable } from '@/components/ledger/LedgerTable';
 import { LedgerEntryDrawer } from '@/components/ledger/LedgerEntryDrawer';
 import { LedgerExportButtons } from '@/components/ledger/LedgerExportButtons';
+import { LedgerKPICards } from '@/components/ledger/LedgerKPICards';
 import { useLedgerEntries } from '@/hooks/useLedgerEntries';
 import type { LedgerFilters as LedgerFiltersType } from '@/types/ledger';
 
@@ -33,6 +34,8 @@ export default function FinanceLedger() {
           <BookOpen className="h-8 w-8 text-primary" />
         </div>
       </div>
+
+      <LedgerKPICards filters={filters} />
 
       <LedgerFilters filters={filters} onFiltersChange={setFilters} />
 
