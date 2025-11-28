@@ -3,6 +3,7 @@ import { BookOpen } from 'lucide-react';
 import { LedgerFilters } from '@/components/ledger/LedgerFilters';
 import { LedgerTable } from '@/components/ledger/LedgerTable';
 import { LedgerEntryDrawer } from '@/components/ledger/LedgerEntryDrawer';
+import { LedgerExportButtons } from '@/components/ledger/LedgerExportButtons';
 import { useLedgerEntries } from '@/hooks/useLedgerEntries';
 import type { LedgerFilters as LedgerFiltersType } from '@/types/ledger';
 
@@ -22,7 +23,10 @@ export default function FinanceLedger() {
           <h1 className="text-3xl font-display text-foreground">Accounting Ledger</h1>
           <p className="text-muted-foreground">Complete financial transaction history</p>
         </div>
-        <BookOpen className="h-8 w-8 text-primary" />
+        <div className="flex items-center gap-3">
+          <LedgerExportButtons entries={entries || []} />
+          <BookOpen className="h-8 w-8 text-primary" />
+        </div>
       </div>
 
       <LedgerFilters filters={filters} onFiltersChange={setFilters} />
