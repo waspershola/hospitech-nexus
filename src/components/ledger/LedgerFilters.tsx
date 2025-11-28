@@ -92,14 +92,14 @@ export function LedgerFilters({ filters, onFiltersChange }: LedgerFiltersProps) 
         <div className="space-y-2">
           <Label>Shift</Label>
           <Select
-            value={filters.shift || ''}
-            onValueChange={(value) => onFiltersChange({ ...filters, shift: value || undefined })}
+            value={filters.shift || 'all'}
+            onValueChange={(value) => onFiltersChange({ ...filters, shift: value === 'all' ? undefined : value })}
           >
             <SelectTrigger>
               <SelectValue placeholder="All Shifts" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="">All Shifts</SelectItem>
+              <SelectItem value="all">All Shifts</SelectItem>
               {shifts.map((shift) => (
                 <SelectItem key={shift} value={shift}>
                   {shift.charAt(0).toUpperCase() + shift.slice(1)}
