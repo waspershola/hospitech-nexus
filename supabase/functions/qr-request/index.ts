@@ -643,7 +643,7 @@ serve(async (req) => {
         }
       }
 
-      // LEDGER-PHASE-2B-V2: Post QR service charge to accounting ledger (if billable)
+      // LEDGER-PHASE-2B-V3: Post QR service charge to accounting ledger (if billable)
       if (paymentInfo.billable && paymentInfo.subtotal) {
         try {
           const { error: ledgerError } = await supabase.rpc('insert_ledger_entry', {
@@ -653,12 +653,11 @@ serve(async (req) => {
             p_description: `QR service charge - ${requestData.type}`,
             p_reference_type: 'qr_request',
             p_reference_id: newRequest.id,
-            p_transaction_category: 'qr_service_charge',
+            p_category: 'qr_service_charge',
             p_payment_method: 'qr_service',
             p_department: finalDepartment,
             p_guest_id: null,
             p_room_id: resolvedRoomId || null,
-            p_qr_request_id: newRequest.id,
             p_metadata: {
               request_id: newRequest.id,
               qr_token: requestData.qr_token,

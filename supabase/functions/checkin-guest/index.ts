@@ -133,7 +133,7 @@ serve(async (req) => {
 
     console.log('[checkin] Folio created successfully:', folio.id)
 
-    // LEDGER-PHASE-2B-V2: Post folio creation to accounting ledger with correct parameters
+    // LEDGER-PHASE-2B-V3: Post folio creation to accounting ledger with correct parameters
     try {
       const { error: ledgerError } = await supabaseServiceClient.rpc('insert_ledger_entry', {
         p_tenant_id: booking.tenant_id,
@@ -142,7 +142,7 @@ serve(async (req) => {
         p_description: `Folio created - ${booking.booking_reference}`,
         p_reference_type: 'folio',
         p_reference_id: folio.id,
-        p_transaction_category: 'room_charge',
+        p_category: 'room_charge',
         p_department: 'rooms',
         p_folio_id: folio.id,
         p_booking_id: booking.id,

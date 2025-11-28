@@ -2349,6 +2349,7 @@ export type Database = {
           created_at: string
           currency: string
           department: string | null
+          description: string | null
           folio_id: string | null
           group_booking_id: string | null
           guest_id: string | null
@@ -2382,6 +2383,7 @@ export type Database = {
           created_at?: string
           currency?: string
           department?: string | null
+          description?: string | null
           folio_id?: string | null
           group_booking_id?: string | null
           guest_id?: string | null
@@ -2415,6 +2417,7 @@ export type Database = {
           created_at?: string
           currency?: string
           department?: string | null
+          description?: string | null
           folio_id?: string | null
           group_booking_id?: string | null
           guest_id?: string | null
