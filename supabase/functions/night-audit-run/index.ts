@@ -76,6 +76,33 @@ serve(async (req) => {
         }
       }
 
+      // Create ledger batch for this audit period
+      const { data: ledgerBatch, error: batchError } = await supabase
+        .from('ledger_batches')
+        .insert({
+          tenant_id,
+          batch_type: 'night_audit',
+          batch_date: audit_date,
+          status: 'closed',
+          metadata: {
+            night_audit_run_id: auditRun.id,
+            total_revenue: totalRevenue,
+            total_folios: folioCount || 0,
+            revenue_by_folio_type: revenueByType,
+            cutoff_time: `${audit_date}T23:59:59Z`,
+            created_at: new Date().toISOString(),
+            version: 'LEDGER-NIGHT-AUDIT-V1'
+          }
+        })
+        .select()
+        .single();
+
+      if (batchError) {
+        console.error('[night-audit-run] LEDGER-NIGHT-AUDIT-V1: Failed to create ledger batch', batchError);
+      } else {
+        console.log('[night-audit-run] LEDGER-NIGHT-AUDIT-V1: Created ledger batch', { batch_id: ledgerBatch.id });
+      }
+
       // Mark complete
       await supabase
         .from('night_audit_runs')
