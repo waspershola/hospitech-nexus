@@ -2354,6 +2354,7 @@ export type Database = {
           guest_id: string | null
           guest_name: string | null
           id: string
+          ledger_reference: string | null
           metadata: Json | null
           payment_id: string | null
           payment_location: string | null
@@ -2386,6 +2387,7 @@ export type Database = {
           guest_id?: string | null
           guest_name?: string | null
           id?: string
+          ledger_reference?: string | null
           metadata?: Json | null
           payment_id?: string | null
           payment_location?: string | null
@@ -2418,6 +2420,7 @@ export type Database = {
           guest_id?: string | null
           guest_name?: string | null
           id?: string
+          ledger_reference?: string | null
           metadata?: Json | null
           payment_id?: string | null
           payment_location?: string | null
