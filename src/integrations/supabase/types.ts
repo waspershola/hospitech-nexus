@@ -292,6 +292,98 @@ export type Database = {
           },
         ]
       }
+      cash_drawer_sessions: {
+        Row: {
+          approved_at: string | null
+          approved_by: string | null
+          closed_at: string | null
+          counted_cash: number | null
+          created_at: string
+          expected_cash: number
+          id: string
+          location_id: string | null
+          metadata: Json | null
+          notes: string | null
+          opened_at: string
+          opening_float: number
+          shift_code: string
+          staff_id: string
+          status: string
+          tenant_id: string
+          updated_at: string
+          variance: number | null
+        }
+        Insert: {
+          approved_at?: string | null
+          approved_by?: string | null
+          closed_at?: string | null
+          counted_cash?: number | null
+          created_at?: string
+          expected_cash?: number
+          id?: string
+          location_id?: string | null
+          metadata?: Json | null
+          notes?: string | null
+          opened_at?: string
+          opening_float?: number
+          shift_code: string
+          staff_id: string
+          status?: string
+          tenant_id: string
+          updated_at?: string
+          variance?: number | null
+        }
+        Update: {
+          approved_at?: string | null
+          approved_by?: string | null
+          closed_at?: string | null
+          counted_cash?: number | null
+          created_at?: string
+          expected_cash?: number
+          id?: string
+          location_id?: string | null
+          metadata?: Json | null
+          notes?: string | null
+          opened_at?: string
+          opening_float?: number
+          shift_code?: string
+          staff_id?: string
+          status?: string
+          tenant_id?: string
+          updated_at?: string
+          variance?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cash_drawer_sessions_approved_by_fkey"
+            columns: ["approved_by"]
+            isOneToOne: false
+            referencedRelation: "staff"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "cash_drawer_sessions_location_id_fkey"
+            columns: ["location_id"]
+            isOneToOne: false
+            referencedRelation: "finance_locations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "cash_drawer_sessions_staff_id_fkey"
+            columns: ["staff_id"]
+            isOneToOne: false
+            referencedRelation: "staff"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "cash_drawer_sessions_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       department_requests: {
         Row: {
           approved_at: string | null
@@ -8363,6 +8455,16 @@ export type Database = {
       booking_room_integrity_diagnostics: {
         Args: { p_tenant_id: string }
         Returns: Json
+      }
+      calculate_expected_cash_from_ledger: {
+        Args: {
+          p_closed_at: string
+          p_opened_at: string
+          p_shift_code: string
+          p_staff_id: string
+          p_tenant_id: string
+        }
+        Returns: number
       }
       calculate_folio_stats_by_type: {
         Args: { p_audit_date: string; p_tenant_id: string }

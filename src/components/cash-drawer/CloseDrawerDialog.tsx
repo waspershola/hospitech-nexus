@@ -17,7 +17,7 @@ interface CloseDrawerDialogProps {
 export function CloseDrawerDialog({ open, onOpenChange, drawer }: CloseDrawerDialogProps) {
   const [closingBalance, setClosingBalance] = useState('');
   const [notes, setNotes] = useState('');
-  const { closeDrawer, isClosing } = useCashDrawer();
+  const { closeDrawer, isClosing, calculateExpectedCash, isCalculating } = useCashDrawer();
 
   const openingBalance = drawer?.metadata?.opening_balance || 0;
   const expectedBalance = openingBalance; // TODO: Add cash transactions
