@@ -23,7 +23,11 @@ export function LedgerEntryDrawer({ entryId, open, onOpenChange }: LedgerEntryDr
 
       const { data, error } = await supabase
         .from('ledger_entries')
-        .select('*')
+        .select(`
+          *,
+          staff_initiated:staff!staff_id_initiated(id, full_name),
+          staff_confirmed:staff!staff_id_confirmed(id, full_name)
+        `)
         .eq('id', entryId)
         .eq('tenant_id', tenantId)
         .single();
@@ -77,8 +81,8 @@ export function LedgerEntryDrawer({ entryId, open, onOpenChange }: LedgerEntryDr
                 <div>
                   <span className="text-muted-foreground">Status:</span>
                   <div className="mt-1">
-                    <Badge variant={entry.status === 'completed' ? 'default' : 'secondary'}>
-                      {entry.status}
+                    <Badge variant={entry.status === 'completed' ? 'default' : entry.status === 'pending' ? 'outline' : 'secondary'}>
+                      {entry.status === 'pending' ? 'Pending Reconciliation' : entry.status}
                     </Badge>
                   </div>
                 </div>
@@ -180,21 +184,21 @@ export function LedgerEntryDrawer({ entryId, open, onOpenChange }: LedgerEntryDr
             <Separator />
 
             {/* Staff Details */}
-            {(entry.staff_id_initiated || entry.staff_id_confirmed) && (
+            {((entry as any).staff_initiated || (entry as any).staff_confirmed) && (
               <>
                 <div className="space-y-3">
                   <h3 className="font-medium">Staff Details</h3>
                   <div className="grid grid-cols-2 gap-4 text-sm">
-                    {entry.staff_id_initiated && (
+                    {(entry as any).staff_initiated && (
                       <div>
                         <span className="text-muted-foreground">Initiated By:</span>
-                        <p className="font-mono text-xs">{entry.staff_id_initiated}</p>
+                        <p className="font-medium">{(entry as any).staff_initiated.full_name || 'Unknown'}</p>
                       </div>
                     )}
-                    {entry.staff_id_confirmed && (
+                    {(entry as any).staff_confirmed && (
                       <div>
                         <span className="text-muted-foreground">Confirmed By:</span>
-                        <p className="font-mono text-xs">{entry.staff_id_confirmed}</p>
+                        <p className="font-medium">{(entry as any).staff_confirmed.full_name || 'Unknown'}</p>
                       </div>
                     )}
                   </div>
