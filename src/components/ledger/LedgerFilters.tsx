@@ -34,8 +34,8 @@ export function LedgerFilters({ filters, onFiltersChange }: LedgerFiltersProps) 
 
   const handleReset = () => {
     onFiltersChange({
-      dateFrom: new Date(new Date().setDate(new Date().getDate() - 30)).toISOString().split('T')[0],
-      dateTo: new Date().toISOString().split('T')[0],
+      dateFrom: new Date(new Date().setDate(new Date().getDate() - 30)).toISOString().slice(0, 16),
+      dateTo: new Date().toISOString().slice(0, 16),
     });
   };
 
@@ -72,20 +72,20 @@ export function LedgerFilters({ filters, onFiltersChange }: LedgerFiltersProps) 
       {/* Basic Filters */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         <div className="space-y-2">
-          <Label htmlFor="dateFrom">From Date</Label>
+          <Label htmlFor="dateFrom">From Date & Time</Label>
           <Input
             id="dateFrom"
-            type="date"
+            type="datetime-local"
             value={filters.dateFrom || ''}
             onChange={(e) => onFiltersChange({ ...filters, dateFrom: e.target.value })}
           />
         </div>
 
         <div className="space-y-2">
-          <Label htmlFor="dateTo">To Date</Label>
+          <Label htmlFor="dateTo">To Date & Time</Label>
           <Input
             id="dateTo"
-            type="date"
+            type="datetime-local"
             value={filters.dateTo || ''}
             onChange={(e) => onFiltersChange({ ...filters, dateTo: e.target.value })}
           />
