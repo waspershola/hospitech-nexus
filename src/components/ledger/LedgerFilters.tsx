@@ -155,7 +155,7 @@ export function LedgerFilters({ filters, onFiltersChange }: LedgerFiltersProps) 
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">All Methods</SelectItem>
-                  {paymentMethods.map((method) => (
+                  {(paymentMethods || []).map((method) => (
                     <SelectItem key={method.id} value={method.id}>
                       {method.method_name}
                     </SelectItem>
@@ -177,7 +177,7 @@ export function LedgerFilters({ filters, onFiltersChange }: LedgerFiltersProps) 
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">All Providers</SelectItem>
-                  {providers.map((provider) => (
+                  {(providers || []).map((provider) => (
                     <SelectItem key={provider.id} value={provider.id}>
                       {provider.name}
                     </SelectItem>
@@ -199,7 +199,7 @@ export function LedgerFilters({ filters, onFiltersChange }: LedgerFiltersProps) 
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">All Locations</SelectItem>
-                  {locations.map((location) => (
+                  {(locations || []).map((location) => (
                     <SelectItem key={location.id} value={location.id}>
                       {location.name}
                     </SelectItem>
@@ -224,7 +224,7 @@ export function LedgerFilters({ filters, onFiltersChange }: LedgerFiltersProps) 
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">All Staff</SelectItem>
-                  {staff.map((member) => (
+                  {(staff || []).map((member) => (
                     <SelectItem key={member.id} value={member.id}>
                       {member.full_name}
                     </SelectItem>
