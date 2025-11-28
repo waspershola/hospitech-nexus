@@ -25,7 +25,6 @@ export function LedgerEntryDrawer({ entryId, open, onOpenChange }: LedgerEntryDr
         .from('ledger_entries')
         .select(`
           *,
-          payment_method_ref:payment_methods(id, method_name),
           payment_provider_ref:finance_providers(id, name, type),
           payment_location_ref:finance_locations(id, name, department),
           staff_initiated:staff!ledger_entries_staff_id_initiated_fkey(id, full_name, department),
@@ -149,9 +148,7 @@ export function LedgerEntryDrawer({ entryId, open, onOpenChange }: LedgerEntryDr
               <div className="grid grid-cols-2 gap-4 text-sm">
                 <div>
                   <span className="text-muted-foreground">Method:</span>
-                  <p className="font-medium">
-                    {(entry as any).payment_method_ref?.method_name || entry.payment_method || '-'}
-                  </p>
+                  <p className="font-medium">{entry.payment_method || '-'}</p>
                 </div>
                 {((entry as any).payment_provider_ref || (entry as any).payment_provider_id) && (
                   <div>

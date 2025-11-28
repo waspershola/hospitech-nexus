@@ -88,7 +88,7 @@ export function LedgerTable({ entries, isLoading, onEntryClick }: LedgerTablePro
                 </div>
               </TableCell>
               <TableCell>{entry.department || '-'}</TableCell>
-              <TableCell>{(entry as any).payment_method_ref?.method_name || entry.payment_method || '-'}</TableCell>
+              <TableCell>{entry.payment_method || '-'}</TableCell>
               <TableCell>{(entry as any).payment_provider_ref?.name || '-'}</TableCell>
               <TableCell>{(entry as any).payment_location_ref?.name || '-'}</TableCell>
               <TableCell>{(entry as any).staff_initiated?.full_name || '-'}</TableCell>
