@@ -16,7 +16,6 @@ export function useLedgerEntries(filters: LedgerFilters, options?: { limit?: num
         .from('ledger_entries')
         .select(`
           *,
-          payment_method_ref:payment_methods(id, method_name),
           payment_provider_ref:finance_providers(id, name),
           payment_location_ref:finance_locations(id, name),
           staff_initiated:staff!ledger_entries_staff_id_initiated_fkey(id, full_name),
