@@ -144,6 +144,7 @@ serve(async (req) => {
         p_reference_id: folio.id,
         p_category: 'room_charge',
         p_department: 'rooms',
+        p_source_type: 'folio',
         p_folio_id: folio.id,
         p_booking_id: booking.id,
         p_guest_id: booking.guest_id,
@@ -153,7 +154,7 @@ serve(async (req) => {
           folio_id: folio.id,
           booking_reference: booking.booking_reference,
           source: 'checkin-guest',
-          version: 'LEDGER-PHASE-2B-V2'
+          version: 'LEDGER-PHASE-2C-V1'
         }
       });
 
