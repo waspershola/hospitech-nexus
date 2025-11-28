@@ -133,6 +133,39 @@ serve(async (req) => {
 
     console.log('[checkin] Folio created successfully:', folio.id)
 
+    // LEDGER-PHASE-2B-V1: Post folio creation to accounting ledger
+    try {
+      const { error: ledgerError } = await supabaseServiceClient.rpc('insert_ledger_entry', {
+        p_tenant_id: booking.tenant_id,
+        p_transaction_type: 'debit',
+        p_amount: booking.total_amount || 0,
+        p_currency: 'NGN',
+        p_category: 'room_charge',
+        p_department: 'rooms',
+        p_folio_id: folio.id,
+        p_booking_id: booking.id,
+        p_guest_id: booking.guest_id,
+        p_room_number: null,
+        p_staff_id_initiated: null,
+        p_staff_id_confirmed: null,
+        p_status: 'pending',
+        p_reconciliation_status: 'pending',
+        p_metadata: {
+          folio_number: folio.folio_number,
+          booking_reference: booking.booking_reference,
+          source: 'checkin-guest'
+        }
+      });
+
+      if (ledgerError) {
+        console.error('[ledger-integration] LEDGER-PHASE-2B-V1: Failed to post folio to ledger (non-blocking):', ledgerError);
+      } else {
+        console.log('[ledger-integration] LEDGER-PHASE-2B-V1: Folio creation posted to ledger successfully');
+      }
+    } catch (ledgerErr) {
+      console.error('[ledger-integration] LEDGER-PHASE-2B-V1: Ledger posting exception (non-blocking):', ledgerErr);
+    }
+
     // GROUP-BILLING-FIX-V1-PHASE-3: Post charges ONCE at check-in and link to master folio
     const groupId = booking.metadata?.group_id;
     
