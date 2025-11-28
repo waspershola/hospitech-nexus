@@ -52,7 +52,10 @@ export function LedgerTable({ entries, isLoading, onEntryClick }: LedgerTablePro
             <TableHead>Guest</TableHead>
             <TableHead>Room</TableHead>
             <TableHead>Department</TableHead>
-            <TableHead>Payment Method</TableHead>
+            <TableHead>Method</TableHead>
+            <TableHead>Provider</TableHead>
+            <TableHead>Location</TableHead>
+            <TableHead>Staff</TableHead>
             <TableHead className="text-right">Amount</TableHead>
             <TableHead>Status</TableHead>
           </TableRow>
@@ -76,9 +79,19 @@ export function LedgerTable({ entries, isLoading, onEntryClick }: LedgerTablePro
                 </Badge>
               </TableCell>
               <TableCell>{entry.guest_name || '-'}</TableCell>
-              <TableCell>{entry.room_number || '-'}</TableCell>
+              <TableCell>
+                <div className="text-xs">
+                  <div>{entry.room_number || '-'}</div>
+                  {(entry as any).room_category && (
+                    <div className="text-muted-foreground">{(entry as any).room_category}</div>
+                  )}
+                </div>
+              </TableCell>
               <TableCell>{entry.department || '-'}</TableCell>
-              <TableCell>{entry.payment_method || '-'}</TableCell>
+              <TableCell>{(entry as any).payment_method_ref?.method_name || entry.payment_method || '-'}</TableCell>
+              <TableCell>{(entry as any).payment_provider_ref?.name || '-'}</TableCell>
+              <TableCell>{(entry as any).payment_location_ref?.name || '-'}</TableCell>
+              <TableCell>{(entry as any).staff_initiated?.full_name || '-'}</TableCell>
               <TableCell className="text-right font-medium">
                 {formatAmount(entry.amount, entry.currency)}
               </TableCell>

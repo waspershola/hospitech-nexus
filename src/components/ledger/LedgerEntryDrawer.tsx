@@ -23,7 +23,14 @@ export function LedgerEntryDrawer({ entryId, open, onOpenChange }: LedgerEntryDr
 
       const { data, error } = await supabase
         .from('ledger_entries')
-        .select('*')
+        .select(`
+          *,
+          payment_method_ref:payment_methods(id, method_name),
+          payment_provider_ref:finance_providers(id, name, type),
+          payment_location_ref:finance_locations(id, name, department),
+          staff_initiated:staff!ledger_entries_staff_id_initiated_fkey(id, full_name, department),
+          staff_confirmed:staff!ledger_entries_staff_id_confirmed_fkey(id, full_name, department)
+        `)
         .eq('id', entryId)
         .eq('tenant_id', tenantId)
         .single();
@@ -137,25 +144,99 @@ export function LedgerEntryDrawer({ entryId, open, onOpenChange }: LedgerEntryDr
             )}
 
             {/* Payment Details */}
-            {entry.payment_method && (
+            <div className="space-y-3">
+              <h3 className="font-medium">Payment Details</h3>
+              <div className="grid grid-cols-2 gap-4 text-sm">
+                <div>
+                  <span className="text-muted-foreground">Method:</span>
+                  <p className="font-medium">
+                    {(entry as any).payment_method_ref?.method_name || entry.payment_method || '-'}
+                  </p>
+                </div>
+                {((entry as any).payment_provider_ref || (entry as any).payment_provider_id) && (
+                  <div>
+                    <span className="text-muted-foreground">Provider:</span>
+                    <p className="font-medium">{(entry as any).payment_provider_ref?.name || '-'}</p>
+                    {(entry as any).payment_provider_ref?.type && (
+                      <p className="text-xs text-muted-foreground capitalize">{(entry as any).payment_provider_ref.type}</p>
+                    )}
+                  </div>
+                )}
+                {((entry as any).payment_location_ref || (entry as any).payment_location_id) && (
+                  <div>
+                    <span className="text-muted-foreground">Location:</span>
+                    <p className="font-medium">{(entry as any).payment_location_ref?.name || '-'}</p>
+                  </div>
+                )}
+                {entry.department && (
+                  <div>
+                    <span className="text-muted-foreground">Department:</span>
+                    <p className="font-medium">{entry.department}</p>
+                  </div>
+                )}
+                {entry.shift && (
+                  <div>
+                    <span className="text-muted-foreground">Shift:</span>
+                    <p className="font-medium capitalize">{entry.shift}</p>
+                  </div>
+                )}
+                {(entry as any).wallet_type && (
+                  <div>
+                    <span className="text-muted-foreground">Wallet Type:</span>
+                    <p className="font-medium capitalize">{(entry as any).wallet_type}</p>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            <Separator />
+
+            {/* Staff Details */}
+            {((entry as any).staff_initiated || (entry as any).staff_confirmed) && (
               <>
                 <div className="space-y-3">
-                  <h3 className="font-medium">Payment Details</h3>
+                  <h3 className="font-medium">Staff Details</h3>
                   <div className="grid grid-cols-2 gap-4 text-sm">
-                    <div>
-                      <span className="text-muted-foreground">Method:</span>
-                      <p className="font-medium">{entry.payment_method}</p>
-                    </div>
-                    {entry.department && (
+                    {(entry as any).staff_initiated && (
                       <div>
-                        <span className="text-muted-foreground">Department:</span>
-                        <p className="font-medium">{entry.department}</p>
+                        <span className="text-muted-foreground">Initiated By:</span>
+                        <p className="font-medium">{(entry as any).staff_initiated.full_name}</p>
+                        {(entry as any).staff_initiated.department && (
+                          <p className="text-xs text-muted-foreground">{(entry as any).staff_initiated.department}</p>
+                        )}
                       </div>
                     )}
-                    {entry.shift && (
+                    {(entry as any).staff_confirmed && (
                       <div>
-                        <span className="text-muted-foreground">Shift:</span>
-                        <p className="font-medium">{entry.shift}</p>
+                        <span className="text-muted-foreground">Confirmed By:</span>
+                        <p className="font-medium">{(entry as any).staff_confirmed.full_name}</p>
+                        {(entry as any).staff_confirmed.department && (
+                          <p className="text-xs text-muted-foreground">{(entry as any).staff_confirmed.department}</p>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                </div>
+                <Separator />
+              </>
+            )}
+
+            {/* Source Details */}
+            {((entry as any).source_type || (entry as any).source_id) && (
+              <>
+                <div className="space-y-3">
+                  <h3 className="font-medium">Source Details</h3>
+                  <div className="grid grid-cols-2 gap-4 text-sm">
+                    {(entry as any).source_type && (
+                      <div>
+                        <span className="text-muted-foreground">Source Type:</span>
+                        <p className="font-medium capitalize">{(entry as any).source_type.replace('_', ' ')}</p>
+                      </div>
+                    )}
+                    {(entry as any).source_id && (
+                      <div>
+                        <span className="text-muted-foreground">Source ID:</span>
+                        <p className="font-mono text-xs">{(entry as any).source_id.slice(0, 8)}</p>
                       </div>
                     )}
                   </div>
@@ -173,6 +254,42 @@ export function LedgerEntryDrawer({ entryId, open, onOpenChange }: LedgerEntryDr
                 </Badge>
               </div>
             </div>
+
+            {/* POS & Provider Metadata */}
+            {entry.metadata && Object.keys(entry.metadata).length > 0 && (
+              <>
+                <Separator />
+                <div className="space-y-3">
+                  <h3 className="font-medium">Transaction Metadata</h3>
+                  <div className="grid grid-cols-2 gap-4 text-sm">
+                    {(entry.metadata as any).stan && (
+                      <div>
+                        <span className="text-muted-foreground">STAN:</span>
+                        <p className="font-mono text-xs">{(entry.metadata as any).stan}</p>
+                      </div>
+                    )}
+                    {(entry.metadata as any).rrn && (
+                      <div>
+                        <span className="text-muted-foreground">RRN:</span>
+                        <p className="font-mono text-xs">{(entry.metadata as any).rrn}</p>
+                      </div>
+                    )}
+                    {(entry.metadata as any).terminal_id && (
+                      <div>
+                        <span className="text-muted-foreground">Terminal ID:</span>
+                        <p className="font-mono text-xs">{(entry.metadata as any).terminal_id}</p>
+                      </div>
+                    )}
+                    {(entry.metadata as any).approval_code && (
+                      <div>
+                        <span className="text-muted-foreground">Approval Code:</span>
+                        <p className="font-mono text-xs">{(entry.metadata as any).approval_code}</p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </>
+            )}
           </div>
         )}
       </SheetContent>
