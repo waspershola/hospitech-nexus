@@ -35,10 +35,21 @@ export function useLedgerStats(filters: LedgerFilters) {
         };
       }
 
-      // Build base query
+      // FINANCE-CONFIG-V1: Use JOIN-based queries with payment_methods table for KPIs
+      // Build base query with payment method JOIN for proper method_type grouping
       let query = supabase
         .from('ledger_entries')
-        .select('amount, transaction_type, payment_method, department, status')
+        .select(`
+          amount, 
+          transaction_type, 
+          department, 
+          status,
+          payment_method_id,
+          payment_methods:payment_method_id (
+            method_type,
+            method_name
+          )
+        `)
         .eq('tenant_id', tenantId);
 
       // Apply same filters as main ledger query
@@ -51,8 +62,8 @@ export function useLedgerStats(filters: LedgerFilters) {
       if (filters.transactionType?.length) {
         query = query.in('transaction_type', filters.transactionType as any);
       }
-      if (filters.paymentMethod?.length) {
-        query = query.in('payment_method', filters.paymentMethod as any);
+      if (filters.paymentMethodId?.length) {
+        query = query.in('payment_method_id', filters.paymentMethodId as string[]);
       }
       if (filters.department?.length) {
         query = query.in('department', filters.department);
@@ -70,7 +81,7 @@ export function useLedgerStats(filters: LedgerFilters) {
 
       const entries = data || [];
 
-      // Calculate stats
+      // Calculate stats using method_type from joined payment_methods table
       const totalRevenue = entries
         .filter((e) => e.transaction_type === 'credit' && e.status === 'completed')
         .reduce((sum, e) => sum + (e.amount || 0), 0);
@@ -79,20 +90,33 @@ export function useLedgerStats(filters: LedgerFilters) {
         .filter((e) => e.transaction_type === 'refund')
         .reduce((sum, e) => sum + (e.amount || 0), 0);
 
+      // FINANCE-CONFIG-V1: Group by method_type from payment_methods table (not hardcoded strings)
       const totalCash = entries
-        .filter((e) => e.payment_method === 'cash' && e.status === 'completed')
+        .filter((e) => 
+          e.payment_methods?.method_type === 'cash' && 
+          e.status === 'completed'
+        )
         .reduce((sum, e) => sum + (e.amount || 0), 0);
 
       const totalCard = entries
-        .filter((e) => e.payment_method === 'card' && e.status === 'completed')
+        .filter((e) => 
+          e.payment_methods?.method_type === 'card' && 
+          e.status === 'completed'
+        )
         .reduce((sum, e) => sum + (e.amount || 0), 0);
 
       const totalPOS = entries
-        .filter((e) => e.payment_method === 'pos' && e.status === 'completed')
+        .filter((e) => 
+          e.payment_methods?.method_type === 'pos' && 
+          e.status === 'completed'
+        )
         .reduce((sum, e) => sum + (e.amount || 0), 0);
 
       const totalTransfer = entries
-        .filter((e) => e.payment_method === 'transfer' && e.status === 'completed')
+        .filter((e) => 
+          e.payment_methods?.method_type === 'transfer' && 
+          e.status === 'completed'
+        )
         .reduce((sum, e) => sum + (e.amount || 0), 0);
 
       // Group by department
@@ -107,12 +131,12 @@ export function useLedgerStats(filters: LedgerFilters) {
         .map(([department, total]) => ({ department, total }))
         .sort((a, b) => b.total - a.total);
 
-      // Group by payment method
+      // Group by payment method using method_name from payment_methods table
       const methodMap = new Map<string, number>();
       entries
-        .filter((e) => e.status === 'completed' && e.payment_method)
+        .filter((e) => e.status === 'completed' && e.payment_methods?.method_name)
         .forEach((e) => {
-          const method = e.payment_method || 'other';
+          const method = e.payment_methods?.method_name || 'other';
           methodMap.set(method, (methodMap.get(method) || 0) + (e.amount || 0));
         });
       const byPaymentMethod = Array.from(methodMap.entries())
