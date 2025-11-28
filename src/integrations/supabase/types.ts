@@ -4840,6 +4840,202 @@ export type Database = {
         }
         Relationships: []
       }
+      pos_column_mappings: {
+        Row: {
+          created_at: string | null
+          created_by: string | null
+          id: string
+          is_active: boolean | null
+          mapping_config: Json
+          provider_name: string
+          tenant_id: string
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          created_by?: string | null
+          id?: string
+          is_active?: boolean | null
+          mapping_config: Json
+          provider_name: string
+          tenant_id: string
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          created_by?: string | null
+          id?: string
+          is_active?: boolean | null
+          mapping_config?: Json
+          provider_name?: string
+          tenant_id?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pos_column_mappings_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "staff"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pos_column_mappings_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      pos_settlement_imports: {
+        Row: {
+          created_at: string | null
+          file_name: string
+          file_size: number | null
+          id: string
+          matched_records: number | null
+          metadata: Json | null
+          provider_name: string | null
+          settlement_date: string
+          status: string | null
+          tenant_id: string
+          total_records: number | null
+          unmatched_records: number | null
+          uploaded_at: string | null
+          uploaded_by: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          file_name: string
+          file_size?: number | null
+          id?: string
+          matched_records?: number | null
+          metadata?: Json | null
+          provider_name?: string | null
+          settlement_date: string
+          status?: string | null
+          tenant_id: string
+          total_records?: number | null
+          unmatched_records?: number | null
+          uploaded_at?: string | null
+          uploaded_by?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          file_name?: string
+          file_size?: number | null
+          id?: string
+          matched_records?: number | null
+          metadata?: Json | null
+          provider_name?: string | null
+          settlement_date?: string
+          status?: string | null
+          tenant_id?: string
+          total_records?: number | null
+          unmatched_records?: number | null
+          uploaded_at?: string | null
+          uploaded_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pos_settlement_imports_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pos_settlement_imports_uploaded_by_fkey"
+            columns: ["uploaded_by"]
+            isOneToOne: false
+            referencedRelation: "staff"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      pos_settlement_records: {
+        Row: {
+          amount: number
+          approval_code: string | null
+          card_last4: string | null
+          card_type: string | null
+          created_at: string | null
+          id: string
+          import_id: string
+          ledger_entry_id: string | null
+          match_confidence: string | null
+          matched_at: string | null
+          merchant_name: string | null
+          raw_data: Json | null
+          rrn: string | null
+          stan: string | null
+          tenant_id: string
+          terminal_id: string | null
+          transaction_date: string | null
+        }
+        Insert: {
+          amount: number
+          approval_code?: string | null
+          card_last4?: string | null
+          card_type?: string | null
+          created_at?: string | null
+          id?: string
+          import_id: string
+          ledger_entry_id?: string | null
+          match_confidence?: string | null
+          matched_at?: string | null
+          merchant_name?: string | null
+          raw_data?: Json | null
+          rrn?: string | null
+          stan?: string | null
+          tenant_id: string
+          terminal_id?: string | null
+          transaction_date?: string | null
+        }
+        Update: {
+          amount?: number
+          approval_code?: string | null
+          card_last4?: string | null
+          card_type?: string | null
+          created_at?: string | null
+          id?: string
+          import_id?: string
+          ledger_entry_id?: string | null
+          match_confidence?: string | null
+          matched_at?: string | null
+          merchant_name?: string | null
+          raw_data?: Json | null
+          rrn?: string | null
+          stan?: string | null
+          tenant_id?: string
+          terminal_id?: string | null
+          transaction_date?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pos_settlement_records_import_id_fkey"
+            columns: ["import_id"]
+            isOneToOne: false
+            referencedRelation: "pos_settlement_imports"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pos_settlement_records_ledger_entry_id_fkey"
+            columns: ["ledger_entry_id"]
+            isOneToOne: false
+            referencedRelation: "ledger_entries"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pos_settlement_records_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       post_checkout_ledger: {
         Row: {
           amount: number
