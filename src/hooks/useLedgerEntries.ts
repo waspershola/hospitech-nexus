@@ -63,7 +63,7 @@ export function useLedgerEntries(filters: LedgerFilters, options?: { limit?: num
 
       // Staff filter
       if (filters.staffId) {
-        query = query.eq('recorded_by', filters.staffId);
+        query = query.or(`staff_id_initiated.eq.${filters.staffId},staff_id_confirmed.eq.${filters.staffId}`);
       }
 
       // Shift filter
