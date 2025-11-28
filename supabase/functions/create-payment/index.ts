@@ -487,7 +487,7 @@ serve(async (req) => {
 
     console.log('Payment created:', payment.id);
 
-    // LEDGER-PHASE-2B-V2: Post payment to accounting ledger with correct parameters
+    // LEDGER-PHASE-2B-V3: Post payment to accounting ledger with correct parameters
     try {
       const { error: ledgerError } = await supabase.rpc('insert_ledger_entry', {
         p_tenant_id: tenant_id,
@@ -496,11 +496,9 @@ serve(async (req) => {
         p_description: `Payment received - ${method}`,
         p_reference_type: 'payment',
         p_reference_id: payment.id,
-        p_transaction_category: 'guest_payment',
+        p_category: 'guest_payment',
         p_payment_method: method,
-        p_payment_provider: providerName,
         p_provider_id: provider_id || null,
-        p_payment_location: locationName,
         p_location_id: location_id || null,
         p_department: department || null,
         p_folio_id: payment.stay_folio_id || null,
