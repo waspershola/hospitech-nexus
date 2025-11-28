@@ -487,25 +487,27 @@ serve(async (req) => {
 
     console.log('Payment created:', payment.id);
 
-    // LEDGER-PHASE-2B-V1: Post payment to accounting ledger
+    // LEDGER-PHASE-2B-V2: Post payment to accounting ledger with correct parameters
     try {
       const { error: ledgerError } = await supabase.rpc('insert_ledger_entry', {
         p_tenant_id: tenant_id,
-        p_transaction_type: 'debit',
+        p_transaction_type: 'credit',
         p_amount: actualGuestCharge,
-        p_currency: 'NGN',
+        p_description: `Payment received - ${method}`,
+        p_reference_type: 'payment',
+        p_reference_id: payment.id,
+        p_transaction_category: 'guest_payment',
         p_payment_method: method,
-        p_payment_provider_id: provider_id || null,
-        p_payment_location_id: location_id || null,
+        p_payment_provider: providerName,
+        p_provider_id: provider_id || null,
+        p_payment_location: locationName,
+        p_location_id: location_id || null,
         p_department: department || null,
         p_folio_id: payment.stay_folio_id || null,
         p_booking_id: booking_id || null,
         p_guest_id: guest_id || null,
-        p_room_number: null,
-        p_staff_id_initiated: recorded_by || null,
-        p_staff_id_confirmed: recorded_by || null,
-        p_status: payment.status,
-        p_reconciliation_status: 'pending',
+        p_organization_id: organization_id || null,
+        p_staff_id: recorded_by || null,
         p_metadata: {
           payment_id: payment.id,
           transaction_ref: transaction_ref,
@@ -513,7 +515,7 @@ serve(async (req) => {
           provider_fee: feeAmount,
           net_amount: netAmount,
           source: 'create-payment',
-          version: 'LEDGER-PHASE-2B-V1'
+          version: 'LEDGER-PHASE-2B-V2'
         }
       });
 

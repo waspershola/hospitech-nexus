@@ -643,31 +643,31 @@ serve(async (req) => {
         }
       }
 
-      // LEDGER-PHASE-2B-V1: Post QR service charge to accounting ledger (if billable)
+      // LEDGER-PHASE-2B-V2: Post QR service charge to accounting ledger (if billable)
       if (paymentInfo.billable && paymentInfo.subtotal) {
         try {
           const { error: ledgerError } = await supabase.rpc('insert_ledger_entry', {
             p_tenant_id: qr.tenant_id,
             p_transaction_type: 'debit',
             p_amount: paymentInfo.subtotal,
-            p_currency: 'NGN',
+            p_description: `QR service charge - ${requestData.type}`,
+            p_reference_type: 'qr_request',
+            p_reference_id: newRequest.id,
+            p_transaction_category: 'qr_service_charge',
             p_payment_method: 'qr_service',
-            p_category: requestData.type,
             p_department: finalDepartment,
             p_guest_id: null,
-            p_guest_name: requestData.guest_name || requestData.metadata?.guest_name || 'Guest',
-            p_room_number: roomNumber || qr.assigned_to,
-            p_staff_id_initiated: null,
-            p_staff_id_confirmed: null,
-            p_status: 'pending',
-            p_reconciliation_status: 'pending',
+            p_room_id: resolvedRoomId || null,
+            p_qr_request_id: newRequest.id,
             p_metadata: {
               request_id: newRequest.id,
               qr_token: requestData.qr_token,
               service_type: requestData.type,
+              guest_name: requestData.guest_name || requestData.metadata?.guest_name || 'Guest',
+              room_number: roomNumber || qr.assigned_to,
               payment_choice: paymentChoice,
               source: 'qr-request',
-              version: 'LEDGER-PHASE-2B-V1'
+              version: 'LEDGER-PHASE-2B-V2'
             }
           });
 
