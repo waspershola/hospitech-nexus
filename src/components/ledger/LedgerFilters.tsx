@@ -13,6 +13,10 @@ import {
 import { Checkbox } from '@/components/ui/checkbox';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import type { LedgerFilters as LedgerFiltersType } from '@/types/ledger';
+import { usePaymentMethods } from '@/hooks/usePaymentMethods';
+import { useFinanceProviders } from '@/hooks/useFinanceProviders';
+import { useFinanceLocations } from '@/hooks/useFinanceLocations';
+import { useStaffManagement } from '@/hooks/useStaffManagement';
 
 interface LedgerFiltersProps {
   filters: LedgerFiltersType;
@@ -22,6 +26,12 @@ interface LedgerFiltersProps {
 export function LedgerFilters({ filters, onFiltersChange }: LedgerFiltersProps) {
   const [showAdvanced, setShowAdvanced] = useState(false);
 
+  // Fetch dynamic data from tenant configuration
+  const { paymentMethods, isLoading: loadingMethods } = usePaymentMethods();
+  const { providers, isLoading: loadingProviders } = useFinanceProviders();
+  const { locations, isLoading: loadingLocations } = useFinanceLocations();
+  const { staff, isLoading: loadingStaff } = useStaffManagement();
+
   const handleReset = () => {
     onFiltersChange({
       dateFrom: new Date(new Date().setDate(new Date().getDate() - 30)).toISOString().split('T')[0],
@@ -29,12 +39,14 @@ export function LedgerFilters({ filters, onFiltersChange }: LedgerFiltersProps) 
     });
   };
 
+  // Static arrays for non-configurable filters
   const transactionTypes = ['credit', 'debit', 'refund', 'reversal', 'wallet_topup', 'wallet_deduction', 'pos', 'transfer', 'cash'];
-  const paymentMethods = ['cash', 'card', 'pos', 'transfer', 'mobile_money'];
   const departments = ['frontdesk', 'restaurant', 'bar', 'housekeeping', 'spa', 'laundry', 'maintenance'];
   const statuses = ['completed', 'pending', 'refunded', 'failed'];
   const reconciliationStatuses = ['reconciled', 'pending', 'disputed'];
   const shifts = ['morning', 'afternoon', 'evening', 'night'];
+  const sourceTypes = ['folio', 'qr_request', 'group_booking', 'org_booking', 'wallet', 'pos', 'cash_drawer'];
+  const walletTypes = ['guest', 'department', 'organization'];
 
   const toggleArrayFilter = (key: keyof LedgerFiltersType, value: string) => {
     const current = (filters[key] as string[]) || [];
@@ -128,6 +140,111 @@ export function LedgerFilters({ filters, onFiltersChange }: LedgerFiltersProps) 
           </Button>
         </CollapsibleTrigger>
         <CollapsibleContent className="space-y-4 pt-4">
+          {/* Dynamic Dropdowns Row 1 */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            {/* Payment Method */}
+            <div className="space-y-2">
+              <Label>Payment Method</Label>
+              <Select
+                value={filters.paymentMethodId || 'all'}
+                onValueChange={(value) => onFiltersChange({ ...filters, paymentMethodId: value === 'all' ? undefined : value })}
+                disabled={loadingMethods}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="All Methods" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Methods</SelectItem>
+                  {paymentMethods.map((method) => (
+                    <SelectItem key={method.id} value={method.id}>
+                      {method.method_name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Payment Provider */}
+            <div className="space-y-2">
+              <Label>Payment Provider</Label>
+              <Select
+                value={filters.paymentProviderId || 'all'}
+                onValueChange={(value) => onFiltersChange({ ...filters, paymentProviderId: value === 'all' ? undefined : value })}
+                disabled={loadingProviders}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="All Providers" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Providers</SelectItem>
+                  {providers.map((provider) => (
+                    <SelectItem key={provider.id} value={provider.id}>
+                      {provider.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Payment Location */}
+            <div className="space-y-2">
+              <Label>Payment Location</Label>
+              <Select
+                value={filters.paymentLocationId || 'all'}
+                onValueChange={(value) => onFiltersChange({ ...filters, paymentLocationId: value === 'all' ? undefined : value })}
+                disabled={loadingLocations}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="All Locations" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Locations</SelectItem>
+                  {locations.map((location) => (
+                    <SelectItem key={location.id} value={location.id}>
+                      {location.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+
+          {/* Dynamic Dropdowns Row 2 */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {/* Staff Member */}
+            <div className="space-y-2">
+              <Label>Staff Member</Label>
+              <Select
+                value={filters.staffId || 'all'}
+                onValueChange={(value) => onFiltersChange({ ...filters, staffId: value === 'all' ? undefined : value })}
+                disabled={loadingStaff}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="All Staff" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Staff</SelectItem>
+                  {staff.map((member) => (
+                    <SelectItem key={member.id} value={member.id}>
+                      {member.full_name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Room Category */}
+            <div className="space-y-2">
+              <Label htmlFor="roomCategory">Room Category</Label>
+              <Input
+                id="roomCategory"
+                placeholder="e.g. Deluxe, Suite..."
+                value={filters.roomCategory || ''}
+                onChange={(e) => onFiltersChange({ ...filters, roomCategory: e.target.value })}
+              />
+            </div>
+          </div>
+
           {/* Transaction Types */}
           <div className="space-y-2">
             <Label>Transaction Type</Label>
@@ -147,19 +264,38 @@ export function LedgerFilters({ filters, onFiltersChange }: LedgerFiltersProps) 
             </div>
           </div>
 
-          {/* Payment Methods */}
+          {/* Source Types */}
           <div className="space-y-2">
-            <Label>Payment Method</Label>
-            <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
-              {paymentMethods.map((method) => (
-                <div key={method} className="flex items-center space-x-2">
+            <Label>Source Type</Label>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+              {sourceTypes.map((type) => (
+                <div key={type} className="flex items-center space-x-2">
                   <Checkbox
-                    id={`method-${method}`}
-                    checked={(filters.paymentMethod || []).includes(method)}
-                    onCheckedChange={() => toggleArrayFilter('paymentMethod', method)}
+                    id={`source-${type}`}
+                    checked={(filters.sourceType || []).includes(type)}
+                    onCheckedChange={() => toggleArrayFilter('sourceType', type)}
                   />
-                  <Label htmlFor={`method-${method}`} className="cursor-pointer text-sm font-normal">
-                    {method.replace(/_/g, ' ').replace(/\b\w/g, (l) => l.toUpperCase())}
+                  <Label htmlFor={`source-${type}`} className="cursor-pointer text-sm font-normal">
+                    {type.replace(/_/g, ' ').replace(/\b\w/g, (l) => l.toUpperCase())}
+                  </Label>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Wallet Types */}
+          <div className="space-y-2">
+            <Label>Wallet Type</Label>
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+              {walletTypes.map((type) => (
+                <div key={type} className="flex items-center space-x-2">
+                  <Checkbox
+                    id={`wallet-${type}`}
+                    checked={(filters.walletType || []).includes(type)}
+                    onCheckedChange={() => toggleArrayFilter('walletType', type)}
+                  />
+                  <Label htmlFor={`wallet-${type}`} className="cursor-pointer text-sm font-normal">
+                    {type.charAt(0).toUpperCase() + type.slice(1)}
                   </Label>
                 </div>
               ))}
