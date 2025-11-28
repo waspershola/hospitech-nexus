@@ -487,7 +487,26 @@ serve(async (req) => {
 
     console.log('Payment created:', payment.id);
 
-    // LEDGER-PHASE-2C-V1: Post payment to accounting ledger with dimension IDs
+    // FINANCE-CONFIG-V1: Lookup payment method ID from payment_methods table
+    let paymentMethodId = null;
+    if (method) {
+      const { data: methodRow } = await supabase
+        .from('payment_methods')
+        .select('id')
+        .eq('tenant_id', tenant_id)
+        .eq('method_type', method.toLowerCase())
+        .maybeSingle();
+      
+      paymentMethodId = methodRow?.id || null;
+      
+      if (!paymentMethodId) {
+        console.warn(`[FINANCE-CONFIG-V1] Payment method not found for type: ${method}`);
+      } else {
+        console.log(`[FINANCE-CONFIG-V1] Resolved payment method ID:`, paymentMethodId);
+      }
+    }
+
+    // FINANCE-CONFIG-V1: Post payment to accounting ledger with FK IDs
     try {
       const { error: ledgerError } = await supabase.rpc('insert_ledger_entry', {
         p_tenant_id: tenant_id,
@@ -498,13 +517,13 @@ serve(async (req) => {
         p_reference_id: payment.id,
         p_category: 'guest_payment',
         p_payment_method: method,
-        p_payment_method_id: null, // TODO: Lookup from payment_methods table
+        p_payment_method_id: paymentMethodId,
+        p_payment_provider: providerName,
         p_payment_provider_id: provider_id || null,
+        p_payment_location: locationName,
         p_payment_location_id: location_id || null,
         p_source_type: 'payment',
-        p_provider_id: provider_id || null,
-        p_location_id: location_id || null,
-        p_department: department || null,
+        p_department: department || locationDepartment || null,
         p_folio_id: payment.stay_folio_id || null,
         p_booking_id: booking_id || null,
         p_guest_id: guest_id || null,
@@ -517,17 +536,20 @@ serve(async (req) => {
           provider_fee: feeAmount,
           net_amount: netAmount,
           source: 'create-payment',
-          version: 'LEDGER-PHASE-2C-V1'
+          version: 'FINANCE-CONFIG-V1'
         }
       });
 
       if (ledgerError) {
-        console.error('[ledger-integration] LEDGER-PHASE-2B-V1: Failed to post to ledger (non-blocking):', ledgerError);
+        console.error('[ledger-integration] FINANCE-CONFIG-V1: Failed to post to ledger:', ledgerError);
+        console.error('[ledger-integration] CRITICAL: Payment created but ledger entry failed - manual reconciliation required');
+        // Don't throw - payment is already created, but log for reconciliation
       } else {
-        console.log('[ledger-integration] LEDGER-PHASE-2B-V1: Payment posted to ledger successfully');
+        console.log('[ledger-integration] FINANCE-CONFIG-V1: Payment posted to ledger successfully');
       }
     } catch (ledgerErr) {
-      console.error('[ledger-integration] LEDGER-PHASE-2B-V1: Ledger posting exception (non-blocking):', ledgerErr);
+      console.error('[ledger-integration] FINANCE-CONFIG-V1: Ledger posting exception:', ledgerErr);
+      console.error('[ledger-integration] CRITICAL: Payment created but ledger entry failed - manual reconciliation required');
     }
 
     // Phase 2: Check if booking is completed - route to post-checkout ledger
