@@ -92,6 +92,36 @@ export function useCashDrawer() {
     },
   });
 
+  const calculateExpectedCash = useMutation({
+    mutationFn: async ({
+      staffId,
+      shiftCode,
+      openedAt,
+      closedAt,
+    }: {
+      staffId: string;
+      shiftCode: string;
+      openedAt: string;
+      closedAt: string;
+    }) => {
+      if (!tenantId) throw new Error('Not authenticated');
+
+      const { data, error } = await supabase.rpc('calculate_expected_cash_from_ledger', {
+        p_tenant_id: tenantId,
+        p_staff_id: staffId,
+        p_shift_code: shiftCode,
+        p_opened_at: openedAt,
+        p_closed_at: closedAt,
+      });
+
+      if (error) throw error;
+      return data as number;
+    },
+    onError: (error: Error) => {
+      toast.error(`Failed to calculate expected cash: ${error.message}`);
+    },
+  });
+
   const closeDrawer = useMutation({
     mutationFn: async ({
       drawerId,
@@ -113,7 +143,7 @@ export function useCashDrawer() {
       if (drawer.error) throw drawer.error;
 
       const openingBalance = (drawer.data.metadata as any)?.opening_balance || 0;
-      const expectedBalance = openingBalance; // TODO: Add cash transactions
+      const expectedBalance = (drawer.data.metadata as any)?.expected_cash || openingBalance;
       const variance = closingBalance - expectedBalance;
 
       const { data, error } = await supabase
@@ -155,5 +185,7 @@ export function useCashDrawer() {
     closeDrawer: closeDrawer.mutate,
     isOpening: openDrawer.isPending,
     isClosing: closeDrawer.isPending,
+    calculateExpectedCash: calculateExpectedCash.mutate,
+    isCalculating: calculateExpectedCash.isPending,
   };
 }
