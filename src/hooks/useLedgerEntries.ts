@@ -31,34 +31,28 @@ export function useLedgerEntries(filters: LedgerFilters, options?: { limit?: num
         query = query.in('transaction_type', filters.transactionType);
       }
 
-      // Payment method filter (legacy text-based)
-      if (filters.paymentMethod?.length) {
+      // Payment method filter (FK-based, primary)
+      if (filters.paymentMethodId) {
+        query = query.eq('payment_method_id', filters.paymentMethodId);
+      } else if (filters.paymentMethod?.length) {
+        // Fallback to text-based for legacy entries
         query = query.in('payment_method', filters.paymentMethod);
       }
 
-      // Payment method filter (FK-based)
-      if (filters.paymentMethodId) {
-        query = query.eq('payment_method_id', filters.paymentMethodId);
-      }
-
-      // Provider filter (legacy)
-      if (filters.providerId) {
+      // Provider filter (FK-based, primary)
+      if (filters.paymentProviderId) {
+        query = query.eq('payment_provider_id', filters.paymentProviderId);
+      } else if (filters.providerId) {
+        // Legacy fallback
         query = query.eq('payment_provider_id', filters.providerId);
       }
 
-      // Provider filter (FK-based)
-      if (filters.paymentProviderId) {
-        query = query.eq('payment_provider_id', filters.paymentProviderId);
-      }
-
-      // Location filter (legacy)
-      if (filters.locationId) {
-        query = query.eq('payment_location_id', filters.locationId);
-      }
-
-      // Location filter (FK-based)
+      // Location filter (FK-based, primary)
       if (filters.paymentLocationId) {
         query = query.eq('payment_location_id', filters.paymentLocationId);
+      } else if (filters.locationId) {
+        // Legacy fallback
+        query = query.eq('payment_location_id', filters.locationId);
       }
 
       // Department filter
@@ -106,7 +100,7 @@ export function useLedgerEntries(filters: LedgerFilters, options?: { limit?: num
         query = query.ilike('room_category', `%${filters.roomCategory}%`);
       }
 
-      // Source type filter
+      // Source type filter (now using proper column)
       if (filters.sourceType?.length) {
         query = query.in('source_type', filters.sourceType);
       }
