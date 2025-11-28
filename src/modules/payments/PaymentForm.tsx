@@ -7,6 +7,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useFinanceProviders } from '@/hooks/useFinanceProviders';
 import { useFinanceLocations } from '@/hooks/useFinanceLocations';
+import { useProvidersByLocation } from '@/hooks/useProvidersByLocation';
 import { useWallets } from '@/hooks/useWallets';
 import { useRecordPayment } from '@/hooks/useRecordPayment';
 import { useFinancials } from '@/hooks/useFinancials';
@@ -104,7 +105,7 @@ export function PaymentForm({
   
   const { tenantId } = useAuth();
   const queryClient = useQueryClient();
-  const { providers = [], isLoading: providersLoading } = useFinanceProviders();
+  const { providers: allProviders = [], isLoading: providersLoading } = useFinanceProviders();
   const { locations = [] } = useFinanceLocations();
   const { wallets = [] } = useWallets();
   const { data: financials } = useFinancials();
@@ -113,7 +114,6 @@ export function PaymentForm({
   const { preferences } = usePaymentPreferences();
   const { getDefaultLocation } = useDashboardDefaults();
 
-  const activeProviders = providers.filter(p => p.status === 'active');
   const activeLocations = locations.filter(l => l.status === 'active');
 
   const {
@@ -136,6 +136,14 @@ export function PaymentForm({
   const selectedProviderId = watch('provider_id');
   const amount = watch('amount');
   const expectedAmountField = watch('expected_amount');
+  
+  // FINANCE-CONFIG-V1: Fetch providers for selected location via junction table
+  const { data: locationProviders = [], isLoading: locationProvidersLoading } = useProvidersByLocation(selectedLocationId);
+  
+  // Use location-filtered providers if location is selected, otherwise show all active providers
+  const activeProviders = selectedLocationId && locationProviders.length > 0
+    ? locationProviders
+    : allProviders.filter(p => p.status === 'active');
   
   // Check if selected provider is credit_deferred
   const selectedProvider = activeProviders.find(p => p.id === selectedProviderId);
@@ -208,20 +216,27 @@ export function PaymentForm({
     fetchGuestPhone();
   }, [guestId, tenantId]);
 
-  // Auto-select provider based on location
+  // FINANCE-CONFIG-V1: Auto-select default provider for location
   useEffect(() => {
-    if (selectedLocationId) {
+    if (selectedLocationId && locationProviders.length > 0) {
+      // Find default provider for this location (via junction table)
+      const defaultProvider = locationProviders.find(p => p.is_default);
+      if (defaultProvider) {
+        setValue('provider_id', defaultProvider.id);
+        setValue('method', defaultProvider.type);
+      } else if (locationProviders.length === 1) {
+        // If only one provider, auto-select it
+        setValue('provider_id', locationProviders[0].id);
+        setValue('method', locationProviders[0].type);
+      }
+      
+      // Set department from location
       const location = locations.find(l => l.id === selectedLocationId);
-      if (location?.provider_id) {
-        setValue('provider_id', location.provider_id);
-        const provider = activeProviders.find(p => p.id === location.provider_id);
-        if (provider) {
-          setValue('method', provider.type);
-        }
-        setValue('department', location.department || '');
+      if (location?.department) {
+        setValue('department', location.department);
       }
     }
-  }, [selectedLocationId, locations, activeProviders, setValue]);
+  }, [selectedLocationId, locationProviders, locations, setValue]);
 
   // Auto-apply wallet credit if enabled in preferences
   useEffect(() => {

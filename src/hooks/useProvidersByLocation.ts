@@ -8,6 +8,8 @@ export interface ProviderByLocation {
   type: string;
   is_default: boolean;
   fee_percent: number;
+  fee_bearer: string | null;
+  status: string | null;
 }
 
 /**
@@ -33,7 +35,9 @@ export function useProvidersByLocation(locationId: string | null | undefined) {
             id,
             name,
             type,
-            fee_percent
+            fee_percent,
+            fee_bearer,
+            status
           )
         `)
         .eq('tenant_id', tenantId)
@@ -55,6 +59,8 @@ export function useProvidersByLocation(locationId: string | null | undefined) {
           type: row.finance_providers.type,
           is_default: row.is_default,
           fee_percent: row.finance_providers.fee_percent || 0,
+          fee_bearer: row.finance_providers.fee_bearer,
+          status: row.finance_providers.status,
         }));
     },
     enabled: !!tenantId && !!locationId,
