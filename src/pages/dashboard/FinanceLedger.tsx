@@ -10,8 +10,8 @@ import type { LedgerFilters as LedgerFiltersType } from '@/types/ledger';
 
 export default function FinanceLedger() {
   const [filters, setFilters] = useState<LedgerFiltersType>({
-    dateFrom: new Date(new Date().setDate(new Date().getDate() - 30)).toISOString().split('T')[0],
-    dateTo: new Date().toISOString().split('T')[0],
+    dateFrom: new Date(new Date().setDate(new Date().getDate() - 30)).toISOString().slice(0, 16),
+    dateTo: new Date().toISOString().slice(0, 16),
   });
   const [selectedEntryId, setSelectedEntryId] = useState<string | null>(null);
 

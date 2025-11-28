@@ -237,37 +237,34 @@ export function LedgerEntryDrawer({ entryId, open, onOpenChange }: LedgerEntryDr
               </div>
             </div>
 
-            {/* POS & Provider Metadata */}
+            {/* Transaction Metadata - Show all fields */}
             {entry.metadata && Object.keys(entry.metadata).length > 0 && (
               <>
                 <Separator />
                 <div className="space-y-3">
                   <h3 className="font-medium">Transaction Metadata</h3>
-                  <div className="grid grid-cols-2 gap-4 text-sm">
-                    {(entry.metadata as any).stan && (
-                      <div>
-                        <span className="text-muted-foreground">STAN:</span>
-                        <p className="font-mono text-xs">{(entry.metadata as any).stan}</p>
-                      </div>
-                    )}
-                    {(entry.metadata as any).rrn && (
-                      <div>
-                        <span className="text-muted-foreground">RRN:</span>
-                        <p className="font-mono text-xs">{(entry.metadata as any).rrn}</p>
-                      </div>
-                    )}
-                    {(entry.metadata as any).terminal_id && (
-                      <div>
-                        <span className="text-muted-foreground">Terminal ID:</span>
-                        <p className="font-mono text-xs">{(entry.metadata as any).terminal_id}</p>
-                      </div>
-                    )}
-                    {(entry.metadata as any).approval_code && (
-                      <div>
-                        <span className="text-muted-foreground">Approval Code:</span>
-                        <p className="font-mono text-xs">{(entry.metadata as any).approval_code}</p>
-                      </div>
-                    )}
+                  <div className="space-y-2">
+                    {Object.entries(entry.metadata as Record<string, any>).map(([key, value]) => {
+                      // Skip null/undefined values
+                      if (value === null || value === undefined) return null;
+                      
+                      // Format the key to be more readable
+                      const formattedKey = key
+                        .replace(/_/g, ' ')
+                        .replace(/\b\w/g, (l) => l.toUpperCase());
+                      
+                      // Format the value based on its type
+                      const formattedValue = typeof value === 'object' 
+                        ? JSON.stringify(value, null, 2)
+                        : String(value);
+                      
+                      return (
+                        <div key={key} className="flex justify-between gap-4 text-sm">
+                          <span className="text-muted-foreground font-medium">{formattedKey}:</span>
+                          <span className="font-mono text-xs text-right break-all">{formattedValue}</span>
+                        </div>
+                      );
+                    })}
                   </div>
                 </div>
               </>
