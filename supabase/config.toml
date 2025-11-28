@@ -194,3 +194,9 @@ verify_jwt = true
 
 [functions.ai-message]
 verify_jwt = false
+
+[functions.upload-pos-settlement]
+verify_jwt = true
+
+[functions.match-pos-settlement]
+verify_jwt = true
