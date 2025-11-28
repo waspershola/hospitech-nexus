@@ -136,8 +136,18 @@ export function useLedgerEntries(filters: LedgerFilters, options?: { limit?: num
 
       const { data, error, count } = await query;
 
-      if (error) throw error;
-      return { data: data || [], count: count || 0 };
+      if (error) {
+        console.error('[LEDGER-ENTRIES-V2] Query error:', error);
+        throw error;
+      }
+
+      console.log('[LEDGER-ENTRIES-V2] Query result:', {
+        dataLength: data?.length || 0,
+        count,
+        hasData: !!data,
+      });
+
+      return { data: data || [], count: count ?? 0 };
     },
     enabled: !!tenantId,
     staleTime: 30000, // 30 seconds cache for performance
