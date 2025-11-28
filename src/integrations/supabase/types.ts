@@ -2451,14 +2451,18 @@ export type Database = {
           metadata: Json | null
           payment_id: string | null
           payment_location: string | null
+          payment_location_id: string | null
           payment_method: string | null
+          payment_method_id: string | null
           payment_provider: string | null
+          payment_provider_id: string | null
           qr_request_id: string | null
           reconciliation_status: Database["public"]["Enums"]["ledger_reconciliation_status"]
           room_category: string | null
           room_number: string | null
           service_charge_amount: number | null
           shift: Database["public"]["Enums"]["ledger_shift"] | null
+          source_type: string | null
           staff_id_confirmed: string | null
           staff_id_initiated: string | null
           status: Database["public"]["Enums"]["ledger_status"]
@@ -2485,14 +2489,18 @@ export type Database = {
           metadata?: Json | null
           payment_id?: string | null
           payment_location?: string | null
+          payment_location_id?: string | null
           payment_method?: string | null
+          payment_method_id?: string | null
           payment_provider?: string | null
+          payment_provider_id?: string | null
           qr_request_id?: string | null
           reconciliation_status?: Database["public"]["Enums"]["ledger_reconciliation_status"]
           room_category?: string | null
           room_number?: string | null
           service_charge_amount?: number | null
           shift?: Database["public"]["Enums"]["ledger_shift"] | null
+          source_type?: string | null
           staff_id_confirmed?: string | null
           staff_id_initiated?: string | null
           status?: Database["public"]["Enums"]["ledger_status"]
@@ -2519,14 +2527,18 @@ export type Database = {
           metadata?: Json | null
           payment_id?: string | null
           payment_location?: string | null
+          payment_location_id?: string | null
           payment_method?: string | null
+          payment_method_id?: string | null
           payment_provider?: string | null
+          payment_provider_id?: string | null
           qr_request_id?: string | null
           reconciliation_status?: Database["public"]["Enums"]["ledger_reconciliation_status"]
           room_category?: string | null
           room_number?: string | null
           service_charge_amount?: number | null
           shift?: Database["public"]["Enums"]["ledger_shift"] | null
+          source_type?: string | null
           staff_id_confirmed?: string | null
           staff_id_initiated?: string | null
           status?: Database["public"]["Enums"]["ledger_status"]
@@ -2600,6 +2612,34 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "v_today_payments"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ledger_entries_payment_location_id_fkey"
+            columns: ["payment_location_id"]
+            isOneToOne: false
+            referencedRelation: "finance_locations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ledger_entries_payment_method_id_fkey"
+            columns: ["payment_method_id"]
+            isOneToOne: false
+            referencedRelation: "payment_methods"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ledger_entries_payment_provider_id_fkey"
+            columns: ["payment_provider_id"]
+            isOneToOne: false
+            referencedRelation: "finance_providers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ledger_entries_payment_provider_id_fkey"
+            columns: ["payment_provider_id"]
+            isOneToOne: false
+            referencedRelation: "v_finance_overview_summary"
+            referencedColumns: ["provider_id"]
           },
           {
             foreignKeyName: "ledger_entries_qr_request_id_fkey"
@@ -8659,31 +8699,62 @@ export type Database = {
         Args: { p_tenant_id: string }
         Returns: undefined
       }
-      insert_ledger_entry: {
-        Args: {
-          p_amount: number
-          p_batch_id?: string
-          p_booking_id?: string
-          p_category?: string
-          p_department?: string
-          p_description: string
-          p_folio_id?: string
-          p_guest_id?: string
-          p_location_id?: string
-          p_metadata?: Json
-          p_organization_id?: string
-          p_payment_method?: string
-          p_provider_id?: string
-          p_reference_id: string
-          p_reference_type: string
-          p_room_id?: string
-          p_shift_id?: string
-          p_staff_id?: string
-          p_tenant_id: string
-          p_transaction_type: Database["public"]["Enums"]["ledger_transaction_type"]
-        }
-        Returns: string
-      }
+      insert_ledger_entry:
+        | {
+            Args: {
+              p_amount: number
+              p_booking_id?: string
+              p_category?: string
+              p_department?: string
+              p_description: string
+              p_folio_id?: string
+              p_guest_id?: string
+              p_metadata?: Json
+              p_organization_id?: string
+              p_payment_id?: string
+              p_payment_location?: string
+              p_payment_location_id?: string
+              p_payment_method?: string
+              p_payment_method_id?: string
+              p_payment_provider?: string
+              p_payment_provider_id?: string
+              p_qr_request_id?: string
+              p_reference_id?: string
+              p_reference_type?: string
+              p_shift?: string
+              p_source_type?: string
+              p_staff_id?: string
+              p_tenant_id: string
+              p_transaction_type: Database["public"]["Enums"]["ledger_transaction_type"]
+              p_wallet_transaction_id?: string
+            }
+            Returns: string
+          }
+        | {
+            Args: {
+              p_amount: number
+              p_batch_id?: string
+              p_booking_id?: string
+              p_category?: string
+              p_department?: string
+              p_description: string
+              p_folio_id?: string
+              p_guest_id?: string
+              p_location_id?: string
+              p_metadata?: Json
+              p_organization_id?: string
+              p_payment_method?: string
+              p_provider_id?: string
+              p_reference_id: string
+              p_reference_type: string
+              p_room_id?: string
+              p_shift_id?: string
+              p_staff_id?: string
+              p_tenant_id: string
+              p_transaction_type: Database["public"]["Enums"]["ledger_transaction_type"]
+            }
+            Returns: string
+          }
       is_platform_admin: { Args: { _user_id: string }; Returns: boolean }
       is_system_locked_user: { Args: { _user_id: string }; Returns: boolean }
       log_request_activity: {
