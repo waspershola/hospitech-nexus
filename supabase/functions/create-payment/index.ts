@@ -216,7 +216,21 @@ serve(async (req) => {
     console.log('Recording payment:', { transaction_ref, amount, method });
 
     // LEDGER-PHASE-2B-V1: Insert ledger entry for all payments
-    console.log('[ledger-integration] Logging payment to accounting ledger');
+    console.log('[ledger-integration] STAFF-LOOKUP-V1: Logging payment to accounting ledger');
+    
+    // STAFF-LOOKUP-V1: Lookup staff.id from user_id before ledger posting
+    let staffId = null;
+    if (recorded_by) {
+      const { data: staffRow } = await supabase
+        .from('staff')
+        .select('id')
+        .eq('tenant_id', tenant_id)
+        .eq('user_id', recorded_by)
+        .maybeSingle();
+      
+      staffId = staffRow?.id || null;
+      console.log('[ledger-integration] STAFF-LOOKUP-V1: Resolved staff_id:', staffId, 'from user_id:', recorded_by);
+    }
     
     // Check for idempotency
     const { data: existing } = await supabase
@@ -528,7 +542,7 @@ serve(async (req) => {
         p_booking_id: booking_id || null,
         p_guest_id: guest_id || null,
         p_organization_id: organization_id || null,
-        p_staff_id: recorded_by || null,
+        p_staff_id: staffId || null, // STAFF-LOOKUP-V1: Use resolved staff.id instead of user_id
         p_metadata: {
           payment_id: payment.id,
           transaction_ref: transaction_ref,
