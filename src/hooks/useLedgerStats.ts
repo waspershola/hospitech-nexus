@@ -45,7 +45,7 @@ export function useLedgerStats(filters: LedgerFilters) {
           department, 
           status,
           payment_method_id,
-          payment_methods:payment_method_id (
+          payment_methods!payment_method_id (
             method_type,
             method_name
           )
@@ -62,8 +62,8 @@ export function useLedgerStats(filters: LedgerFilters) {
       if (filters.transactionType?.length) {
         query = query.in('transaction_type', filters.transactionType as any);
       }
-      if (filters.paymentMethodId?.length) {
-        query = query.in('payment_method_id', filters.paymentMethodId as string[]);
+      if (filters.paymentMethodId) {
+        query = query.eq('payment_method_id', filters.paymentMethodId);
       }
       if (filters.department?.length) {
         query = query.in('department', filters.department);
