@@ -215,6 +215,9 @@ serve(async (req) => {
     // Tax breakdown is stored if available in metadata
     console.log('Recording payment:', { transaction_ref, amount, method });
 
+    // LEDGER-PHASE-2B-V1: Insert ledger entry for all payments
+    console.log('[ledger-integration] Logging payment to accounting ledger');
+    
     // Check for idempotency
     const { data: existing } = await supabase
       .from('payments')
