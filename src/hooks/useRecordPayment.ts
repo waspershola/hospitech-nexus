@@ -99,6 +99,8 @@ export function useRecordPayment() {
         queryClient.invalidateQueries({ queryKey: ['wallet-transactions', tenantId] }),
         queryClient.invalidateQueries({ queryKey: ['finance-analytics', tenantId] }),
         queryClient.invalidateQueries({ queryKey: ['reconciliation-records', tenantId] }),
+        // FINANCE-CONFIG-V1: Invalidate ledger entries for real-time UI update
+        queryClient.invalidateQueries({ queryKey: ['ledger-entries', tenantId] }),
         // Specific booking folio invalidation
         ...(bookingId ? [queryClient.invalidateQueries({ queryKey: ['booking-folio', bookingId, tenantId] })] : []),
         // Specific folio invalidation
