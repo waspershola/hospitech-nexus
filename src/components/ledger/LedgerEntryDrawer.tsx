@@ -23,13 +23,7 @@ export function LedgerEntryDrawer({ entryId, open, onOpenChange }: LedgerEntryDr
 
       const { data, error } = await supabase
         .from('ledger_entries')
-        .select(`
-          *,
-          payment_provider_ref:finance_providers(id, name, type),
-          payment_location_ref:finance_locations(id, name, department),
-          staff_initiated:staff!ledger_entries_staff_id_initiated_fkey(id, full_name, department),
-          staff_confirmed:staff!ledger_entries_staff_id_confirmed_fkey(id, full_name, department)
-        `)
+        .select('*')
         .eq('id', entryId)
         .eq('tenant_id', tenantId)
         .single();
@@ -150,19 +144,16 @@ export function LedgerEntryDrawer({ entryId, open, onOpenChange }: LedgerEntryDr
                   <span className="text-muted-foreground">Method:</span>
                   <p className="font-medium">{entry.payment_method || '-'}</p>
                 </div>
-                {((entry as any).payment_provider_ref || (entry as any).payment_provider_id) && (
+                {entry.payment_provider && (
                   <div>
                     <span className="text-muted-foreground">Provider:</span>
-                    <p className="font-medium">{(entry as any).payment_provider_ref?.name || '-'}</p>
-                    {(entry as any).payment_provider_ref?.type && (
-                      <p className="text-xs text-muted-foreground capitalize">{(entry as any).payment_provider_ref.type}</p>
-                    )}
+                    <p className="font-medium">{entry.payment_provider}</p>
                   </div>
                 )}
-                {((entry as any).payment_location_ref || (entry as any).payment_location_id) && (
+                {entry.payment_location && (
                   <div>
                     <span className="text-muted-foreground">Location:</span>
-                    <p className="font-medium">{(entry as any).payment_location_ref?.name || '-'}</p>
+                    <p className="font-medium">{entry.payment_location}</p>
                   </div>
                 )}
                 {entry.department && (
@@ -189,27 +180,21 @@ export function LedgerEntryDrawer({ entryId, open, onOpenChange }: LedgerEntryDr
             <Separator />
 
             {/* Staff Details */}
-            {((entry as any).staff_initiated || (entry as any).staff_confirmed) && (
+            {(entry.staff_id_initiated || entry.staff_id_confirmed) && (
               <>
                 <div className="space-y-3">
                   <h3 className="font-medium">Staff Details</h3>
                   <div className="grid grid-cols-2 gap-4 text-sm">
-                    {(entry as any).staff_initiated && (
+                    {entry.staff_id_initiated && (
                       <div>
                         <span className="text-muted-foreground">Initiated By:</span>
-                        <p className="font-medium">{(entry as any).staff_initiated.full_name}</p>
-                        {(entry as any).staff_initiated.department && (
-                          <p className="text-xs text-muted-foreground">{(entry as any).staff_initiated.department}</p>
-                        )}
+                        <p className="font-mono text-xs">{entry.staff_id_initiated}</p>
                       </div>
                     )}
-                    {(entry as any).staff_confirmed && (
+                    {entry.staff_id_confirmed && (
                       <div>
                         <span className="text-muted-foreground">Confirmed By:</span>
-                        <p className="font-medium">{(entry as any).staff_confirmed.full_name}</p>
-                        {(entry as any).staff_confirmed.department && (
-                          <p className="text-xs text-muted-foreground">{(entry as any).staff_confirmed.department}</p>
-                        )}
+                        <p className="font-mono text-xs">{entry.staff_id_confirmed}</p>
                       </div>
                     )}
                   </div>
