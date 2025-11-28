@@ -31,19 +31,34 @@ export function useLedgerEntries(filters: LedgerFilters, options?: { limit?: num
         query = query.in('transaction_type', filters.transactionType);
       }
 
-      // Payment method filter
+      // Payment method filter (legacy text-based)
       if (filters.paymentMethod?.length) {
         query = query.in('payment_method', filters.paymentMethod);
       }
 
-      // Provider filter
+      // Payment method filter (FK-based)
+      if (filters.paymentMethodId) {
+        query = query.eq('payment_method_id', filters.paymentMethodId);
+      }
+
+      // Provider filter (legacy)
       if (filters.providerId) {
         query = query.eq('payment_provider_id', filters.providerId);
       }
 
-      // Location filter
+      // Provider filter (FK-based)
+      if (filters.paymentProviderId) {
+        query = query.eq('payment_provider_id', filters.paymentProviderId);
+      }
+
+      // Location filter (legacy)
       if (filters.locationId) {
         query = query.eq('payment_location_id', filters.locationId);
+      }
+
+      // Location filter (FK-based)
+      if (filters.paymentLocationId) {
+        query = query.eq('payment_location_id', filters.paymentLocationId);
       }
 
       // Department filter
@@ -84,6 +99,26 @@ export function useLedgerEntries(filters: LedgerFilters, options?: { limit?: num
       // Room filter
       if (filters.roomId) {
         query = query.eq('room_number', filters.roomId);
+      }
+
+      // Room category filter
+      if (filters.roomCategory) {
+        query = query.ilike('room_category', `%${filters.roomCategory}%`);
+      }
+
+      // Source type filter
+      if (filters.sourceType?.length) {
+        query = query.in('source_type', filters.sourceType);
+      }
+
+      // Wallet type filter
+      if (filters.walletType?.length) {
+        query = query.in('wallet_type', filters.walletType);
+      }
+
+      // Organization filter
+      if (filters.organizationId) {
+        query = query.eq('organization_id', filters.organizationId);
       }
 
       // Search filter (ledger reference or guest name)
