@@ -8898,19 +8898,31 @@ export type Database = {
         Args: { p_source_folio_id: string; p_target_folio_id: string }
         Returns: Json
       }
-      folio_post_charge: {
-        Args: {
-          p_amount: number
-          p_billing_reference_code?: string
-          p_department?: string
-          p_description: string
-          p_folio_id: string
-          p_reference_id?: string
-          p_reference_type?: string
-          p_request_id?: string
-        }
-        Returns: Json
-      }
+      folio_post_charge:
+        | {
+            Args: {
+              p_amount: number
+              p_billing_reference_code?: string
+              p_department?: string
+              p_description: string
+              p_folio_id: string
+              p_reference_id?: string
+              p_reference_type?: string
+              p_request_id?: string
+            }
+            Returns: Json
+          }
+        | {
+            Args: {
+              p_amount: number
+              p_department?: string
+              p_description: string
+              p_folio_id: string
+              p_reference_id?: string
+              p_reference_type: string
+            }
+            Returns: Json
+          }
       folio_post_payment: {
         Args: { p_amount: number; p_folio_id: string; p_payment_id: string }
         Returns: Json
