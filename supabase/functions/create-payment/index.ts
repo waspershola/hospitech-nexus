@@ -522,8 +522,11 @@ serve(async (req) => {
       }
     }
 
-    // LEDGER-REPAIR-V3: Fetch room_id from booking before ledger call
+    // LEDGER-PHASE-2-V1: Fetch room_id and QR request details before ledger call
     let roomId = null;
+    let qrRequestId = null;
+    let qrRequestData: any = null;
+    
     if (booking_id) {
       const { data: bookingData } = await supabase
         .from('bookings')
@@ -533,7 +536,72 @@ serve(async (req) => {
       roomId = bookingData?.room_id || null;
     }
 
-    // LEDGER-REPAIR-V3: Post payment to accounting ledger with room_id
+    // LEDGER-PHASE-2-V1: Check if this is a QR payment
+    if (metadata?.request_id) {
+      qrRequestId = metadata.request_id;
+      
+      // Fetch QR request details for DEBIT entry
+      const { data: requestData } = await supabase
+        .from('requests')
+        .select('id, type, metadata, room_id')
+        .eq('id', qrRequestId)
+        .single();
+      
+      qrRequestData = requestData;
+      if (requestData?.room_id) {
+        roomId = requestData.room_id; // Use QR request room if available
+      }
+    }
+
+    // LEDGER-PHASE-2-V1: If QR payment, create DEBIT (revenue) first, then CREDIT (payment)
+    if (qrRequestId && qrRequestData) {
+      try {
+        console.log('[ledger-phase-2] LEDGER-PHASE-2-V1: Creating DEBIT for QR service revenue');
+        
+        const { error: debitError } = await supabase.rpc('insert_ledger_entry', {
+          p_tenant_id: tenant_id,
+          p_transaction_type: 'debit',
+          p_amount: actualGuestCharge,
+          p_description: `QR service charge - ${qrRequestData.type}`,
+          p_reference_type: 'qr_request',
+          p_reference_id: qrRequestId,
+          p_category: 'qr_service_charge',
+          p_payment_method: null, // Revenue side has no payment method
+          p_source_type: 'qr_request',
+          p_department: qrRequestData.metadata?.department || department || locationDepartment || 'GUEST SERVICES',
+          p_folio_id: payment.stay_folio_id || null,
+          p_booking_id: booking_id || null,
+          p_guest_id: guest_id || null,
+          p_room_id: roomId,
+          p_payment_method_id: null,
+          p_payment_provider_id: null,
+          p_payment_location_id: null,
+          p_organization_id: organization_id || null,
+          p_shift: shift || null,
+          p_staff_id: staffId || null,
+          p_qr_request_id: qrRequestId,
+          p_metadata: {
+            request_id: qrRequestId,
+            service_type: qrRequestData.type,
+            guest_name: qrRequestData.metadata?.guest_name || 'Guest',
+            payment_id: payment.id,
+            source: 'create-payment-qr-debit',
+            version: 'LEDGER-PHASE-2-V1'
+          }
+        });
+
+        if (debitError) {
+          console.error('[ledger-phase-2] LEDGER-PHASE-2-V1: Failed to create QR DEBIT (critical):', debitError);
+          // Don't throw - let CREDIT still be created for audit trail
+        } else {
+          console.log('[ledger-phase-2] LEDGER-PHASE-2-V1: QR DEBIT created successfully');
+        }
+      } catch (debitErr) {
+        console.error('[ledger-phase-2] LEDGER-PHASE-2-V1: QR DEBIT exception:', debitErr);
+      }
+    }
+
+    // LEDGER-PHASE-2-V1: Create CREDIT entry (payment) - always happens
     try {
       const { error: ledgerError } = await supabase.rpc('insert_ledger_entry', {
         p_tenant_id: tenant_id,
@@ -556,14 +624,16 @@ serve(async (req) => {
         p_organization_id: organization_id || null,
         p_shift: shift || null,
         p_staff_id: staffId || null,
+        p_qr_request_id: qrRequestId, // Link CREDIT to same QR request
         p_metadata: {
           payment_id: payment.id,
           transaction_ref: transaction_ref,
           payment_type: payment.payment_type,
           provider_fee: feeAmount,
           net_amount: netAmount,
+          request_id: qrRequestId, // Keep for backward compatibility
           source: 'create-payment',
-          version: 'LEDGER-REPAIR-V3'
+          version: 'LEDGER-PHASE-2-V1'
         }
       });
 
