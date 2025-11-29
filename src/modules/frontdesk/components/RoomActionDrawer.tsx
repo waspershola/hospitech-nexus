@@ -36,6 +36,7 @@ import { PaymentHistory } from '@/modules/payments/PaymentHistory';
 import { BookingAmendmentDrawer } from '@/modules/bookings/components/BookingAmendmentDrawer';
 import { CancelBookingModal } from '@/modules/bookings/components/CancelBookingModal';
 import { BookingConfirmationDocument } from '@/modules/bookings/components/BookingConfirmationDocument';
+import { ForceCheckoutModal } from './ForceCheckoutModal';
 import { BookingPaymentManager } from '@/modules/bookings/components/BookingPaymentManager';
 import { ManagerApprovalModal } from '@/modules/payments/ManagerApprovalModal';
 import { toast } from '@/hooks/use-toast';
@@ -81,6 +82,7 @@ export function RoomActionDrawer({ roomId, contextDate, open, onClose, onOpenAss
   const [showManagerApproval, setShowManagerApproval] = useState(false);
   const [pendingCheckoutData, setPendingCheckoutData] = useState<{ balance: number } | null>(null);
   const [showEarlyCheckInApproval, setShowEarlyCheckInApproval] = useState(false);
+  const [forceCheckoutModalOpen, setForceCheckoutModalOpen] = useState(false);
 
   const { data: room, isLoading, isError } = useQuery({
     queryKey: ['room-detail', roomId, contextDate ? format(contextDate, 'yyyy-MM-dd') : 'today'],
@@ -429,24 +431,21 @@ export function RoomActionDrawer({ roomId, contextDate, open, onClose, onOpenAss
 
   const handleForceCheckout = async () => {
     if (!room || !activeBooking || !folio) return;
-    
-    const confirmed = confirm(
-      `⚠️ MANAGER OVERRIDE REQUIRED\n\n` +
-      `This will check out the guest with an outstanding balance of ₦${folio.balance.toLocaleString()}.\n\n` +
-      `A receivable will be created for tracking.\n\n` +
-      `Continue with force checkout?`
-    );
-    
-    if (!confirmed) return;
-    
-    onClose();
+    setForceCheckoutModalOpen(true);
+  };
+
+  const handleConfirmForceCheckout = (reason: string, createReceivable: boolean) => {
+    if (!activeBooking) return;
     
     forceCheckout({
       bookingId: activeBooking.id,
-      reason: 'Manager override - guest checkout with outstanding balance',
-      createReceivable: true,
+      reason,
+      createReceivable,
     }, {
       onSuccess: () => {
+        setForceCheckoutModalOpen(false);
+        onClose();
+        
         // Print receipt if user toggled it on
         const defaultSettings = receiptSettings?.[0];
         if (printReceipt && defaultSettings) {
@@ -456,6 +455,9 @@ export function RoomActionDrawer({ roomId, contextDate, open, onClose, onOpenAss
             settingsId: defaultSettings.id,
           }, defaultSettings);
         }
+      },
+      onError: () => {
+        // Keep modal open on error so user can see the error toast
       }
     });
   };
@@ -1479,6 +1481,19 @@ export function RoomActionDrawer({ roomId, contextDate, open, onClose, onOpenAss
           actionReference={activeBooking.id}
           onApprove={handleEarlyCheckInApproved}
           onReject={() => setShowEarlyCheckInApproval(false)}
+        />
+      )}
+      
+      {/* PHASE-2-FIX: Force Checkout Modal */}
+      {activeBooking && folio && (
+        <ForceCheckoutModal
+          open={forceCheckoutModalOpen}
+          onClose={() => setForceCheckoutModalOpen(false)}
+          onConfirm={handleConfirmForceCheckout}
+          balance={folio.balance}
+          guestName={activeBooking.guest?.name}
+          roomNumber={room?.number}
+          isLoading={isForcingCheckout}
         />
       )}
     </>

@@ -90,10 +90,10 @@ serve(async (req) => {
     // Use authenticated user's ID as manager_id (ignore any provided manager_id)
     const actualManagerId = user.id;
 
-    // Get booking details
+    // PHASE-2-FIX: Get booking details with folio (source of truth for balance)
     const { data: booking } = await supabase
       .from('bookings')
-      .select('*, guest:guests(*)')
+      .select('*, guest:guests(*), room:rooms(*)')
       .eq('id', booking_id)
       .single();
 
@@ -104,31 +104,27 @@ serve(async (req) => {
       );
     }
 
-    // Calculate outstanding balance
-    const { data: charges } = await supabase
-      .from('booking_charges')
-      .select('amount')
-      .eq('booking_id', booking_id);
-
-    const { data: payments } = await supabase
-      .from('payments')
-      .select('amount')
+    // PHASE-2-FIX: Get folio balance (source of truth)
+    const { data: folio } = await supabase
+      .from('stay_folios')
+      .select('id, total_charges, total_payments, balance, status')
       .eq('booking_id', booking_id)
-      .eq('status', 'success');
+      .eq('tenant_id', tenant_id)
+      .eq('status', 'open')
+      .maybeSingle();
 
-    const totalCharges = charges?.reduce((sum, c) => sum + Number(c.amount), 0) || 0;
-    const totalPaid = payments?.reduce((sum, p) => sum + Number(p.amount), 0) || 0;
-    const balanceDue = totalCharges - totalPaid;
+    const balanceDue = folio?.balance || 0;
+    
+    console.log('[PHASE-2-FIX] Force checkout:', {
+      booking_id,
+      folio_id: folio?.id,
+      balance: balanceDue,
+      create_receivable,
+      reason
+    });
 
-    if (balanceDue <= 0) {
-      return new Response(
-        JSON.stringify({ success: false, error: 'No outstanding balance to force checkout' }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
-
-    // Create receivable if requested
-    if (create_receivable) {
+    // PHASE-2-FIX: Create receivable only if there's an outstanding balance
+    if (create_receivable && balanceDue > 0) {
       const { error: receivableError } = await supabase.from('receivables').insert([{
         tenant_id,
         guest_id: booking.guest_id,
@@ -141,32 +137,75 @@ serve(async (req) => {
         metadata: {
           reason: reason || 'Manager override checkout',
           forced_checkout: true,
-          booking_reference: booking.id,
+          booking_reference: booking.booking_reference,
+          folio_id: folio?.id,
           approved_at: new Date().toISOString(),
+          version: 'PHASE-2-FIX'
         },
       }]);
 
-      if (receivableError) throw receivableError;
+      if (receivableError) {
+        console.error('[PHASE-2-FIX] Failed to create receivable:', receivableError);
+        throw receivableError;
+      }
+      console.log('[PHASE-2-FIX] Receivable created for balance:', balanceDue);
     }
 
-    // Update booking status to checked out
+    // PHASE-2-FIX: Close the folio if it exists
+    if (folio) {
+      const { error: folioCloseError } = await supabase
+        .from('stay_folios')
+        .update({ 
+          status: 'closed',
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', folio.id);
+
+      if (folioCloseError) {
+        console.error('[PHASE-2-FIX] Failed to close folio:', folioCloseError);
+        throw folioCloseError;
+      }
+      console.log('[PHASE-2-FIX] Folio closed:', folio.id);
+    }
+
+    // PHASE-2-FIX: Update booking status to completed (not checked_out - use proper status)
     const { error: bookingError } = await supabase
       .from('bookings')
       .update({ 
-        status: 'checked_out',
+        status: 'completed',
         metadata: { 
           ...(booking.metadata || {}), 
           forced_checkout: true,
           forced_checkout_by: actualManagerId,
           forced_checkout_at: new Date().toISOString(),
           forced_checkout_reason: reason,
+          checked_out_by: actualManagerId,
+          version: 'PHASE-2-FIX'
         }
       })
       .eq('id', booking_id);
 
-    if (bookingError) throw bookingError;
+    if (bookingError) {
+      console.error('[PHASE-2-FIX] Failed to update booking:', bookingError);
+      throw bookingError;
+    }
 
-    // Create audit log
+    // PHASE-2-FIX: Update room status to cleaning (ready for housekeeping)
+    if (booking.room_id) {
+      const { error: roomError } = await supabase
+        .from('rooms')
+        .update({ status: 'cleaning' })
+        .eq('id', booking.room_id);
+
+      if (roomError) {
+        console.error('[PHASE-2-FIX] Failed to update room status:', roomError);
+        // Non-blocking - don't throw
+      } else {
+        console.log('[PHASE-2-FIX] Room status updated to cleaning');
+      }
+    }
+
+    // PHASE-2-FIX: Create audit log with enhanced details
     await supabase.from('finance_audit_events').insert([{
       tenant_id,
       event_type: 'checkout_override',
@@ -174,21 +213,32 @@ serve(async (req) => {
       target_id: booking_id,
       payload: {
         booking_id,
+        booking_reference: booking.booking_reference,
         guest_id: booking.guest_id,
+        guest_name: booking.guest?.name,
         organization_id: booking.organization_id,
+        room_id: booking.room_id,
+        room_number: booking.room?.number,
+        folio_id: folio?.id,
         balance_due: balanceDue,
         reason: reason || 'No reason provided',
         manager_role: authenticatedUserRole.role,
-        receivable_created: create_receivable,
+        receivable_created: create_receivable && balanceDue > 0,
+        version: 'PHASE-2-FIX'
       },
     }]);
 
     return new Response(
       JSON.stringify({
         success: true,
-        message: 'Checkout approved with outstanding balance',
+        message: balanceDue > 0 
+          ? 'Force checkout completed with outstanding balance' 
+          : 'Force checkout completed',
         balance_due: balanceDue,
-        receivable_created: create_receivable,
+        receivable_created: create_receivable && balanceDue > 0,
+        folio_closed: !!folio,
+        room_updated: !!booking.room_id,
+        version: 'PHASE-2-FIX'
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
