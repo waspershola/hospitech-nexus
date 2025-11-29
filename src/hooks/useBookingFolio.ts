@@ -224,23 +224,36 @@ export function useBookingFolio(bookingId: string | null) {
       const isCheckedIn = booking.status === 'checked_in' || booking.status === 'completed';
 
       if (isCheckedIn) {
-        // POST-CHECK-IN: ONLY read from REAL folio data (NO FALLBACK)
-        const { data: folio, error: folioError } = await supabase
+        // PHASE-4: POST-CHECK-IN - Handle multiple folios (select primary room folio)
+        const { data: folios, error: folioError } = await supabase
           .from('stay_folios')
-          .select('id, total_charges, total_payments, balance')
+          .select('id, total_charges, total_payments, balance, folio_type, status, created_at')
           .eq('booking_id', bookingId)
           .eq('tenant_id', tenantId)
-          .maybeSingle();
+          .order('created_at', { ascending: false });
 
         if (folioError) throw folioError;
 
         // CRITICAL: No fallback. Checked-in bookings MUST have folios.
-        if (!folio) {
+        if (!folios || folios.length === 0) {
           throw new Error(
             `FOLIO MISSING: Booking ${bookingId} is checked-in but has no stay_folio. ` +
             `This indicates a critical data integrity issue. Check checkin-guest edge function deployment.`
           );
         }
+
+        // PHASE-4: Select primary folio when multiple exist
+        // Priority: open 'room' folio > most recent open folio > most recent folio
+        let folio = folios.find(f => f.status === 'open' && f.folio_type === 'room') ||
+                    folios.find(f => f.status === 'open') ||
+                    folios[0];
+
+        console.log('[PHASE-4-MULTIPLE-FOLIOS] Found', folios.length, 'folio(s), selected:', {
+          folio_id: folio.id,
+          folio_type: folio.folio_type,
+          status: folio.status,
+          total_folios: folios.length
+        });
         // Fetch payments from the canonical ledger (folio_transactions)
         const { data: transactions, error: txError } = await supabase
           .from('folio_transactions')

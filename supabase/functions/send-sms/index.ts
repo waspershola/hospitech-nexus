@@ -171,7 +171,15 @@ serve(async (req) => {
 
     // Format phone number to international format
     const formattedPhone = formatPhoneNumber(to);
-    console.log(`SMS send request for tenant ${tenant_id} to ${to} (formatted: ${formattedPhone})`);
+    console.log(`[PHASE-5-SMS-DEBUG] SMS request received:`, {
+      tenant_id,
+      original_phone: to,
+      formatted_phone: formattedPhone,
+      message_length: message.length,
+      event_key: event_key || 'none',
+      booking_id: booking_id || 'none',
+      guest_id: guest_id || 'none'
+    });
 
     // PHASE 2: Fetch platform provider via tenant assignment
     const { data: assignment, error: assignmentError } = await supabase
@@ -193,7 +201,11 @@ serve(async (req) => {
       .single();
 
     if (assignmentError || !assignment) {
-      console.error('Provider assignment error:', assignmentError);
+      console.error('[PHASE-5-SMS-DEBUG] Provider assignment not found:', {
+        error: assignmentError?.message,
+        tenant_id,
+        fallback_to_legacy: 'checking...'
+      });
       
       // Fallback to legacy tenant_sms_settings for backwards compatibility
       const { data: legacySettings } = await supabase
@@ -203,7 +215,12 @@ serve(async (req) => {
         .maybeSingle();
 
       if (legacySettings?.enabled) {
-        console.log('Using legacy SMS settings (not yet migrated)');
+        console.log('[PHASE-5-SMS-DEBUG] Using legacy SMS settings:', {
+          provider: legacySettings.provider,
+          sender_id: legacySettings.sender_id,
+          has_api_key: !!legacySettings.api_key_encrypted,
+          has_api_secret: !!legacySettings.api_secret_encrypted
+        });
         // Use legacy flow (original code path)
         const apiKey = legacySettings.api_key_encrypted;
         const apiSecret = legacySettings.api_secret_encrypted;
@@ -281,7 +298,16 @@ serve(async (req) => {
 
     const provider = assignment.provider as any;
 
+    console.log('[PHASE-5-SMS-DEBUG] Platform provider assigned:', {
+      provider_id: provider?.id,
+      provider_type: provider?.provider_type,
+      is_active: provider?.is_active,
+      sender_id: assignment.sender_id,
+      has_api_key: !!provider?.api_key_encrypted
+    });
+
     if (!provider?.is_active) {
+      console.error('[PHASE-5-SMS-DEBUG] Provider inactive:', provider?.id);
       return new Response(JSON.stringify({ error: 'SMS provider is inactive' }), {
         status: 403,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -306,8 +332,19 @@ serve(async (req) => {
     const availableCredits = creditPool.total_credits - creditPool.consumed_credits;
     const estimatedCost = Math.ceil(message.length / 160);
 
+    console.log('[PHASE-5-SMS-DEBUG] Credit availability:', {
+      total_credits: creditPool.total_credits,
+      consumed_credits: creditPool.consumed_credits,
+      available_credits: availableCredits,
+      estimated_cost: estimatedCost,
+      message_length: message.length
+    });
+
     if (availableCredits < estimatedCost) {
-      console.log(`Insufficient credits: ${availableCredits} available, ${estimatedCost} required`);
+      console.error('[PHASE-5-SMS-DEBUG] Insufficient credits:', {
+        available: availableCredits,
+        required: estimatedCost
+      });
       return new Response(JSON.stringify({
         error: 'INSUFFICIENT_SMS_CREDITS',
         available: availableCredits,
@@ -333,6 +370,12 @@ serve(async (req) => {
     let result: SMSResult;
     const senderId = assignment.sender_id || provider.default_sender_id || 'SMS';
     
+    console.log('[PHASE-5-SMS-DEBUG] Sending SMS via', provider.provider_type, {
+      sender_id: senderId,
+      to: formattedPhone,
+      message_preview: message.substring(0, 50) + '...'
+    });
+    
     if (provider.provider_type === 'twilio') {
       const twilioProvider = new TwilioProvider(apiKey, apiSecret);
       result = await twilioProvider.send(formattedPhone, senderId, message);
@@ -346,7 +389,12 @@ serve(async (req) => {
       });
     }
 
-    console.log('SMS send result:', result);
+    console.log('[PHASE-5-SMS-DEBUG] SMS send result:', {
+      success: result.success,
+      message_id: result.messageId,
+      segments: result.cost,
+      error: result.error || 'none'
+    });
 
     const segments = result.cost || estimatedCost;
 
@@ -361,9 +409,13 @@ serve(async (req) => {
         .eq('tenant_id', tenant_id);
 
       if (deductError) {
-        console.error('Credit deduction error:', deductError);
+        console.error('[PHASE-5-SMS-DEBUG] Credit deduction failed:', deductError);
       } else {
-        console.log(`Credits deducted: ${segments}, remaining: ${availableCredits - segments}`);
+        console.log('[PHASE-5-SMS-DEBUG] Credits deducted:', {
+          segments_used: segments,
+          remaining: availableCredits - segments,
+          new_consumed_total: creditPool.consumed_credits + segments
+        });
       }
 
       // Update platform usage tracking
