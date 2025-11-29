@@ -9,6 +9,7 @@ import { RoomLegend } from '@/modules/frontdesk/components/RoomLegend';
 import { RoomActionDrawer } from '@/modules/frontdesk/components/RoomActionDrawer';
 import { AssignRoomDrawer } from '@/modules/frontdesk/components/AssignRoomDrawer';
 import { OverstayAlertModal } from '@/modules/frontdesk/components/OverstayAlertModal';
+import { ForceCheckoutModal } from '@/modules/frontdesk/components/ForceCheckoutModal';
 import { CheckoutRemindersWidget } from '@/modules/frontdesk/components/CheckoutRemindersWidget';
 import { BookingFlow } from '@/modules/bookings/BookingFlow';
 import { MobileBottomNav } from '@/modules/frontdesk/components/MobileBottomNav';
@@ -18,6 +19,7 @@ import { BulkCheckInDrawer } from '@/modules/frontdesk/components/BulkCheckInDra
 import { QRRequestNotificationWidget } from '@/components/frontdesk/QRRequestNotificationWidget';
 import { useOverstayRooms } from '@/hooks/useOverstayRooms';
 import { useRoomActions } from '@/modules/frontdesk/hooks/useRoomActions';
+import { useForceCheckout } from '@/hooks/useForceCheckout';
 import { useRoomRealtime, useBookingRealtime, usePaymentRealtime } from '@/hooks/useRoomRealtime';
 import { useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
@@ -44,9 +46,12 @@ export default function FrontDesk() {
   const [assignDrawerOpen, setAssignDrawerOpen] = useState(false);
   const [assignRoomData, setAssignRoomData] = useState<{ roomId: string; roomNumber: string } | null>(null);
   const [bulkCheckInOpen, setBulkCheckInOpen] = useState(false);
+  const [forceCheckoutModalOpen, setForceCheckoutModalOpen] = useState(false);
+  const [forceCheckoutData, setForceCheckoutData] = useState<{ roomId: string; bookingId: string; balance: number; guestName: string; roomNumber: string } | null>(null);
   
   const { data: overstayRooms = [] } = useOverstayRooms();
   const { checkOut } = useRoomActions();
+  const { mutate: forceCheckout, isPending: isForcingCheckout } = useForceCheckout();
   
   // Enable real-time updates
   useRoomRealtime();
@@ -261,11 +266,60 @@ export default function FrontDesk() {
           setSelectedRoomId(roomId);
           setOverstayModalOpen(false);
         }}
-        onCheckOut={(roomId) => {
-          checkOut(roomId);
-          setOverstayModalOpen(false);
+        onCheckOut={async (roomId) => {
+          // Find the overstay room data to get balance
+          const overstayRoom = overstayRooms.find(r => r.id === roomId);
+          
+          if (overstayRoom && overstayRoom.balance > 0) {
+            // Has outstanding balance - trigger force checkout modal
+            const { data: booking } = await supabase
+              .from('bookings')
+              .select('id')
+              .eq('room_id', roomId)
+              .eq('status', 'checked_in')
+              .maybeSingle();
+            
+            if (booking) {
+              setForceCheckoutData({
+                roomId,
+                bookingId: booking.id,
+                balance: overstayRoom.balance,
+                guestName: overstayRoom.guest_name,
+                roomNumber: overstayRoom.number,
+              });
+              setForceCheckoutModalOpen(true);
+              setOverstayModalOpen(false);
+            }
+          } else {
+            // No balance - regular checkout
+            checkOut(roomId);
+            setOverstayModalOpen(false);
+          }
         }}
       />
+
+      {forceCheckoutModalOpen && forceCheckoutData && (
+        <ForceCheckoutModal
+          open={forceCheckoutModalOpen}
+          onClose={() => {
+            setForceCheckoutModalOpen(false);
+            setForceCheckoutData(null);
+          }}
+          onConfirm={(reason, createReceivable) => {
+            forceCheckout({
+              bookingId: forceCheckoutData.bookingId,
+              reason,
+              createReceivable,
+            });
+            setForceCheckoutModalOpen(false);
+            setForceCheckoutData(null);
+          }}
+          balance={forceCheckoutData.balance}
+          guestName={forceCheckoutData.guestName}
+          roomNumber={forceCheckoutData.roomNumber}
+          isLoading={isForcingCheckout}
+        />
+      )}
 
       <BookingFlow
         open={isBookingFlowOpen}

@@ -379,9 +379,65 @@ Common failure patterns:
 
 ---
 
+## Phase 6: Fix Overstay Checkout "No active session" Error
+
+**Status:** ✅ COMPLETE
+
+### Problem Identified
+
+The overstay alert was triggering "Checkout failed: No active session" error when attempting to check out guests with outstanding balances.
+
+**Root Cause:**
+The overstay alert was using the simple `checkOut` mutation from `useRoomActions` which doesn't handle force checkout scenarios where guests have outstanding balances. When guests with balances were checked out via the overstay alert, the system attempted to process a regular checkout that failed due to lack of proper authentication handling for manager override operations.
+
+### Fix Implementation
+
+**Updated Front Desk Page (`src/pages/dashboard/FrontDesk.tsx`):**
+
+1. **Import Force Checkout Components:**
+   - Added `ForceCheckoutModal` import
+   - Added `useForceCheckout` hook import
+
+2. **State Management:**
+   - Added `forceCheckoutModalOpen` state
+   - Added `forceCheckoutData` state to store checkout details
+
+3. **Enhanced Overstay Checkout Handler:**
+   ```typescript
+   onCheckOut={async (roomId) => {
+     // Find the overstay room data to get balance
+     const overstayRoom = overstayRooms.find(r => r.id === roomId);
+     
+     if (overstayRoom && overstayRoom.balance > 0) {
+       // Has outstanding balance - trigger force checkout modal
+       // Fetch booking ID and show ForceCheckoutModal
+     } else {
+       // No balance - regular checkout
+       checkOut(roomId);
+     }
+   }}
+   ```
+
+4. **Integrated Force Checkout Modal:**
+   - Shows manager approval modal for overstays with balance
+   - Collects reason and receivable creation preference
+   - Uses `useForceCheckout` hook with proper authentication
+
+### Testing Checklist
+
+- [ ] Overstay alert displays for rooms past checkout time with outstanding balance
+- [ ] Clicking "Check Out Now" on overstay with balance opens ForceCheckoutModal
+- [ ] Manager can enter reason and approve force checkout
+- [ ] Checkout completes successfully with receivable creation
+- [ ] Room status updates to "cleaning" after force checkout
+- [ ] Overstay alert disappears after successful checkout
+- [ ] Regular overstay checkout (balance = 0) works without modal
+
+---
+
 ## Status Summary
 
-**All Phases Complete:** ✅✅✅✅✅
+**All Phases Complete:** ✅✅✅✅✅✅
 
 - **Phase 1:** Fix Double Room Charge ✅
   - Fixed checkin-guest edge function initialization
@@ -409,6 +465,11 @@ Common failure patterns:
   - Enhanced error messages with context
   - All logs use PHASE-5-SMS-DEBUG prefix for filtering
 
+- **Phase 6:** Fix Overstay Checkout "No active session" Error ✅
+  - Integrated ForceCheckoutModal for overstays with outstanding balance
+  - Added proper authentication handling via useForceCheckout hook
+  - Overstay checkout now requires manager approval when balance > 0
+
 **Deployment Required:**
 - ✅ Migration 20251129180000_fix_double_room_charge.sql
 - ✅ Migration 20251129180500_phase3_group_size_sync.sql  
@@ -421,7 +482,7 @@ Common failure patterns:
 ---
 
 **Date:** 2025-11-29  
-**Version:** PHASE-1-DOUBLE-CHARGE-FIX, PHASE-2-FIX, PHASE-3-GROUP-SIZE-SYNC, PHASE-4-MULTIPLE-FOLIOS, PHASE-5-SMS-DEBUG
+**Version:** PHASE-1-DOUBLE-CHARGE-FIX, PHASE-2-FIX, PHASE-3-GROUP-SIZE-SYNC, PHASE-4-MULTIPLE-FOLIOS, PHASE-5-SMS-DEBUG, PHASE-6-OVERSTAY-AUTH-FIX
 
 ## Regression Protection
 
@@ -435,6 +496,6 @@ All existing flows should continue working:
 
 ---
 
-**Status:** All 5 Phases Complete ✅✅✅✅✅  
+**Status:** All 6 Phases Complete ✅✅✅✅✅✅  
 **Date:** 2025-11-29  
-**Version:** PHASE-1-DOUBLE-CHARGE-FIX, PHASE-2-FIX, PHASE-3-GROUP-SIZE-SYNC, PHASE-4-MULTIPLE-FOLIOS, PHASE-5-SMS-DEBUG
+**Version:** PHASE-1-DOUBLE-CHARGE-FIX, PHASE-2-FIX, PHASE-3-GROUP-SIZE-SYNC, PHASE-4-MULTIPLE-FOLIOS, PHASE-5-SMS-DEBUG, PHASE-6-OVERSTAY-AUTH-FIX
