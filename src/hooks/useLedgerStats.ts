@@ -98,33 +98,39 @@ export function useLedgerStats(filters: LedgerFilters) {
         .filter((e) => e.transaction_type === 'refund')
         .reduce((sum, e) => sum + (e.amount || 0), 0);
 
-      // FINANCE-CONFIG-V1: Group by method_type from payment_methods table (not hardcoded strings)
+      // FINANCE-CONFIG-V1: Group by method_type with fallback to payment_method TEXT field
+      // Helper to get method bucket (handles NULL payment_method_id gracefully)
+      const getMethodBucket = (entry: any): string | null => {
+        // Primary: Use FK-joined method_type if available
+        if (entry.payment_methods?.method_type) {
+          return entry.payment_methods.method_type;
+        }
+        
+        // Fallback: Map payment_method TEXT to bucket for legacy entries
+        if (entry.payment_method) {
+          const method = entry.payment_method.toLowerCase();
+          if (['cash'].includes(method)) return 'cash';
+          if (['pos', 'card'].includes(method)) return 'pos';
+          if (['transfer', 'bank_transfer'].includes(method)) return 'transfer';
+        }
+        
+        return null;
+      };
+      
       const totalCash = entries
-        .filter((e) => 
-          e.payment_methods?.method_type === 'cash' && 
-          e.status === 'completed'
-        )
+        .filter((e) => getMethodBucket(e) === 'cash' && e.status === 'completed')
         .reduce((sum, e) => sum + (e.amount || 0), 0);
 
       const totalCard = entries
-        .filter((e) => 
-          e.payment_methods?.method_type === 'card' && 
-          e.status === 'completed'
-        )
+        .filter((e) => getMethodBucket(e) === 'card' && e.status === 'completed')
         .reduce((sum, e) => sum + (e.amount || 0), 0);
 
       const totalPOS = entries
-        .filter((e) => 
-          e.payment_methods?.method_type === 'pos' && 
-          e.status === 'completed'
-        )
+        .filter((e) => getMethodBucket(e) === 'pos' && e.status === 'completed')
         .reduce((sum, e) => sum + (e.amount || 0), 0);
 
       const totalTransfer = entries
-        .filter((e) => 
-          e.payment_methods?.method_type === 'transfer' && 
-          e.status === 'completed'
-        )
+        .filter((e) => getMethodBucket(e) === 'transfer' && e.status === 'completed')
         .reduce((sum, e) => sum + (e.amount || 0), 0);
 
       // Group by department

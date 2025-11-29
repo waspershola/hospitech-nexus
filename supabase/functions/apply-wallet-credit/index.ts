@@ -194,38 +194,68 @@ serve(async (req) => {
         console.error('[WALLET-LEDGER-V1] Folio posting exception:', folioErr);
       }
 
-      // 🔥 CRITICAL FIX: Record wallet deduction in ledger
-      console.log('[WALLET-LEDGER-V1] Recording ledger entry for wallet deduction');
+      // 🔥 DOUBLE-ENTRY FIX: Create TWO ledger entries for wallet payment
+      console.log('[WALLET-DOUBLE-ENTRY-V2] Recording ledger entries for wallet payment');
+      
+      // Import shared ledger helper
+      const { insertLedgerEntry } = await import('../_shared/ledger.ts');
+      
       try {
-        const { error: ledgerError } = await supabase.rpc('insert_ledger_entry', {
-          p_tenant_id: tenant_id,
-          p_transaction_type: 'credit',
-          p_amount: maxApply,
-          p_description: `Wallet credit applied to booking ${booking_id}`,
-          p_reference_type: 'wallet_payment',
-          p_reference_id: paymentRecordId,
-          p_payment_method: 'wallet_credit',
-          p_category: 'wallet_deduction',
-          p_source_type: 'wallet',
-          p_booking_id: booking_id,
-          p_guest_id: guest_id,
-          p_staff_id: resolvedStaffId,
-          p_metadata: {
+        // Entry 1: DEBIT - Wallet balance decreasing (asset account debit)
+        await insertLedgerEntry(supabase, {
+          tenantId: tenant_id,
+          amount: maxApply,
+          transactionType: 'debit',
+          category: 'wallet_deduction',
+          description: `Wallet deduction for booking ${booking_id}`,
+          paymentMethod: 'wallet_credit',
+          sourceType: 'wallet',
+          referenceType: 'wallet_payment',
+          referenceId: paymentRecordId,
+          bookingId: booking_id,
+          guestId: guest_id,
+          staffId: resolvedStaffId,
+          metadata: {
             wallet_id: wallet.id,
-            wallet_debit: true,
-            auto_applied: !!amount_to_apply,
+            entry_type: 'debit',
+            wallet_balance_before: currentBalance,
+            wallet_balance_after: balanceAfter,
             source: 'apply-wallet-credit',
-            version: 'WALLET-LEDGER-V1'
+            version: 'WALLET-DOUBLE-ENTRY-V2'
           }
         });
-
-        if (ledgerError) {
-          console.error('[WALLET-LEDGER-V1] Ledger entry failed:', ledgerError);
-        } else {
-          console.log('[WALLET-LEDGER-V1] Ledger entry created successfully');
-        }
+        
+        console.log('[WALLET-DOUBLE-ENTRY-V2] ✅ DEBIT entry created (wallet balance down)');
+        
+        // Entry 2: CREDIT - Payment received against folio (revenue account credit)
+        await insertLedgerEntry(supabase, {
+          tenantId: tenant_id,
+          amount: maxApply,
+          transactionType: 'credit',
+          category: 'wallet_payment',
+          description: `Wallet payment applied to booking ${booking_id}`,
+          paymentMethod: 'wallet_credit',
+          sourceType: 'wallet',
+          referenceType: 'payment',
+          referenceId: paymentRecordId,
+          bookingId: booking_id,
+          guestId: guest_id,
+          staffId: resolvedStaffId,
+          metadata: {
+            wallet_id: wallet.id,
+            entry_type: 'credit',
+            payment_id: paymentRecordId,
+            source: 'apply-wallet-credit',
+            version: 'WALLET-DOUBLE-ENTRY-V2'
+          }
+        });
+        
+        console.log('[WALLET-DOUBLE-ENTRY-V2] ✅ CREDIT entry created (payment received)');
+        console.log('[WALLET-DOUBLE-ENTRY-V2] ✅ Double-entry complete for wallet payment');
+        
       } catch (ledgerErr) {
-        console.error('[WALLET-LEDGER-V1] Ledger posting exception:', ledgerErr);
+        console.error('[WALLET-DOUBLE-ENTRY-V2] ❌ Ledger posting failed:', ledgerErr);
+        // Non-blocking: wallet transaction is valid, ledger is supplementary
       }
     }
 
