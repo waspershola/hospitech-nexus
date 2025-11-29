@@ -82,6 +82,21 @@ serve(async (req) => {
       );
     }
 
+    // Resolve staff.id from user_id for ledger entry
+    console.log('[WALLET-LEDGER-V1] Resolving staff ID from user_id:', staff_id);
+    let resolvedStaffId = null;
+    if (staff_id) {
+      const { data: staffRow } = await supabase
+        .from('staff')
+        .select('id')
+        .eq('tenant_id', tenant_id)
+        .eq('user_id', staff_id)
+        .maybeSingle();
+      
+      resolvedStaffId = staffRow?.id || null;
+      console.log('[WALLET-LEDGER-V1] Resolved staff ID:', resolvedStaffId);
+    }
+
     // Get guest wallet
     const { data: wallet } = await supabase
       .from('wallets')
@@ -131,26 +146,87 @@ serve(async (req) => {
     if (walletTxnError) throw walletTxnError;
 
     // Create payment record linked to booking if booking_id provided
+    let paymentRecordId = null;
     if (booking_id) {
       const txnRef = `WALLET-${Date.now()}-${Math.random().toString(36).substring(7).toUpperCase()}`;
       
-      const { error: paymentError } = await supabase.from('payments').insert([{
-        tenant_id,
-        transaction_ref: txnRef,
-        guest_id,
-        booking_id,
-        amount: maxApply,
-        method: 'wallet_credit',
-        status: 'success',
-        wallet_id: wallet.id,
-        recorded_by: staff_id,
-        metadata: { 
-          source: 'wallet_balance_applied',
-          wallet_debit: true,
-        },
-      }]);
+      const { data: paymentRecord, error: paymentError } = await supabase
+        .from('payments')
+        .insert([{
+          tenant_id,
+          transaction_ref: txnRef,
+          guest_id,
+          booking_id,
+          amount: maxApply,
+          method: 'wallet_credit',
+          status: 'success',
+          wallet_id: wallet.id,
+          recorded_by: staff_id,
+          metadata: { 
+            source: 'wallet_balance_applied',
+            wallet_debit: true,
+          },
+        }])
+        .select('id')
+        .single();
 
       if (paymentError) throw paymentError;
+      paymentRecordId = paymentRecord?.id;
+      console.log('[WALLET-LEDGER-V1] Created payment record:', paymentRecordId);
+
+      // 🔥 CRITICAL FIX: Post wallet payment to folio
+      console.log('[WALLET-LEDGER-V1] Posting wallet payment to folio');
+      try {
+        const { data: folioResult, error: folioError } = await supabase.rpc('execute_payment_posting', {
+          p_tenant_id: tenant_id,
+          p_booking_id: booking_id,
+          p_payment_id: paymentRecordId,
+          p_amount: maxApply
+        });
+        
+        if (folioError) {
+          console.error('[WALLET-LEDGER-V1] Failed to post to folio:', folioError);
+          // Log but don't block - wallet transaction is valid
+        } else {
+          console.log('[WALLET-LEDGER-V1] Wallet payment posted to folio:', folioResult);
+        }
+      } catch (folioErr) {
+        console.error('[WALLET-LEDGER-V1] Folio posting exception:', folioErr);
+      }
+
+      // 🔥 CRITICAL FIX: Record wallet deduction in ledger
+      console.log('[WALLET-LEDGER-V1] Recording ledger entry for wallet deduction');
+      try {
+        const { error: ledgerError } = await supabase.rpc('insert_ledger_entry', {
+          p_tenant_id: tenant_id,
+          p_transaction_type: 'credit',
+          p_amount: maxApply,
+          p_description: `Wallet credit applied to booking ${booking_id}`,
+          p_reference_type: 'wallet_payment',
+          p_reference_id: paymentRecordId,
+          p_payment_method: 'wallet_credit',
+          p_category: 'wallet_deduction',
+          p_source_type: 'wallet',
+          p_booking_id: booking_id,
+          p_guest_id: guest_id,
+          p_staff_id: resolvedStaffId,
+          p_metadata: {
+            wallet_id: wallet.id,
+            wallet_debit: true,
+            auto_applied: !!amount_to_apply,
+            source: 'apply-wallet-credit',
+            version: 'WALLET-LEDGER-V1'
+          }
+        });
+
+        if (ledgerError) {
+          console.error('[WALLET-LEDGER-V1] Ledger entry failed:', ledgerError);
+        } else {
+          console.log('[WALLET-LEDGER-V1] Ledger entry created successfully');
+        }
+      } catch (ledgerErr) {
+        console.error('[WALLET-LEDGER-V1] Ledger posting exception:', ledgerErr);
+      }
     }
 
     return new Response(
