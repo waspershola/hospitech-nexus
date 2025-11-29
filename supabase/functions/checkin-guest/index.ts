@@ -103,6 +103,7 @@ serve(async (req) => {
 
     console.log('[checkin] CHECKIN-V4-MULTI-FOLIO: Folio number generated:', folioNumber);
 
+    // PHASE-1-FIX: Start folio with 0 charges - folio_post_charge will update correctly
     const { data: folio, error: folioError } = await supabaseServiceClient
       .from('stay_folios')
       .insert({
@@ -113,11 +114,12 @@ serve(async (req) => {
         folio_type: 'room',
         folio_number: folioNumber,
         is_primary: true,
-        total_charges: booking.total_amount || 0,
-        balance: booking.total_amount || 0,
+        total_charges: 0,  // Start at 0, folio_post_charge will update
+        balance: 0,        // Start at 0, folio_post_charge will update
         metadata: {
           created_on_checkin: true,
-          booking_reference: booking.booking_reference
+          booking_reference: booking.booking_reference,
+          version: 'PHASE-1-DOUBLE-CHARGE-FIX'
         }
       })
       .select()
@@ -171,30 +173,70 @@ serve(async (req) => {
       console.error('[ledger-integration] LEDGER-REPAIR-V3: Ledger posting exception (non-blocking):', ledgerErr);
     }
 
-    // GROUP-BILLING-FIX-V1-PHASE-3: Post charges ONCE at check-in and link to master folio
+    // PHASE-1-FIX: Check for existing charges before posting to prevent duplicates
+    const { data: existingCharge } = await supabaseServiceClient
+      .from('folio_transactions')
+      .select('id, amount')
+      .eq('folio_id', folio.id)
+      .eq('reference_type', 'booking')
+      .eq('reference_id', booking.id)
+      .eq('transaction_type', 'charge')
+      .maybeSingle();
+    
     const groupId = booking.metadata?.group_id;
     
-    // Post room charges via folio_post_charge RPC
-    console.log('[GROUP-BILLING-FIX-V1-PHASE-3] Posting room charges:', booking.total_amount);
-    try {
-      const { data: chargeResult, error: chargeError } = await supabaseServiceClient
-        .rpc('folio_post_charge', {
-          p_folio_id: folio.id,
-          p_amount: booking.total_amount || 0,
-          p_description: `Room charge - ${booking.booking_reference}`,
-          p_reference_type: 'booking',
-          p_reference_id: booking.id,
-          p_department: 'rooms'
-        });
-      
-      if (chargeError) {
-        console.error('[GROUP-BILLING-FIX-V1-PHASE-3] Charge posting failed:', chargeError);
-        // Non-blocking: folio already has total_charges set, transaction insert failed
-      } else {
-        console.log('[GROUP-BILLING-FIX-V1-PHASE-3] Charge posted:', chargeResult);
+    if (existingCharge) {
+      console.log('[PHASE-1-FIX] Room charge already exists for this folio:', existingCharge.id, '- skipping duplicate');
+    } else {
+      // Post room charges via folio_post_charge RPC
+      console.log('[PHASE-1-FIX] Posting room charges:', booking.total_amount);
+      try {
+        const { data: chargeResult, error: chargeError } = await supabaseServiceClient
+          .rpc('folio_post_charge', {
+            p_folio_id: folio.id,
+            p_amount: booking.total_amount || 0,
+            p_description: `Room charge - ${booking.booking_reference}`,
+            p_reference_type: 'booking',
+            p_reference_id: booking.id,
+            p_department: 'rooms'
+          });
+        
+        if (chargeError) {
+          console.error('[PHASE-1-FIX] Charge posting failed:', chargeError);
+          // CRITICAL: Rollback folio creation if charge posting fails
+          await supabaseServiceClient
+            .from('stay_folios')
+            .delete()
+            .eq('id', folio.id);
+          
+          return new Response(
+            JSON.stringify({ 
+              success: false, 
+              error: 'Failed to post room charges', 
+              details: chargeError.message 
+            }),
+            { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        } else {
+          console.log('[PHASE-1-FIX] ✅ Room charge posted successfully:', chargeResult);
+        }
+      } catch (chargeErr) {
+        console.error('[PHASE-1-FIX] Charge posting exception:', chargeErr);
+        // CRITICAL: Rollback folio creation
+        await supabaseServiceClient
+          .from('stay_folios')
+          .delete()
+          .eq('id', folio.id);
+        
+        return new Response(
+          JSON.stringify({ 
+            success: false, 
+            error: 'Failed to post room charges', 
+            details: chargeErr instanceof Error ? chargeErr.message : 'Unknown error'
+          }),
+          { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
       }
-    } catch (chargeErr) {
-      console.error('[GROUP-BILLING-FIX-V1-PHASE-3] Charge posting exception:', chargeErr);
     }
     
     if (groupId) {
