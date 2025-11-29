@@ -267,18 +267,31 @@ serve(async (req) => {
           } else {
             console.log('[GROUP-BILLING-FIX-V1-PHASE-3] ✅ Room folio linked to master folio');
             
-            // Sync master folio totals from all children
-            console.log('[GROUP-BILLING-FIX-V1-PHASE-3] Syncing master folio totals');
+            // PHASE-3: Sync master folio totals from all children (BLOCKING)
+            console.log('[PHASE-3-BLOCKING-SYNC] Syncing master folio totals and group_size');
             const { data: syncResult, error: syncError } = await supabaseServiceClient
               .rpc('sync_master_folio_totals', {
                 p_master_folio_id: masterFolioId
               });
             
             if (syncError) {
-              console.error('[GROUP-BILLING-FIX-V1-PHASE-3] Master folio sync failed (non-blocking):', syncError);
-            } else {
-              console.log('[GROUP-BILLING-FIX-V1-PHASE-3] ✅ Master folio synced:', syncResult);
+              console.error('[PHASE-3-BLOCKING-SYNC] ❌ Master folio sync FAILED:', syncError);
+              // CRITICAL: This is now a blocking error - folio sync is essential
+              throw new Error(`Master folio sync failed: ${syncError.message}`);
             }
+            
+            if (!syncResult?.success) {
+              console.error('[PHASE-3-BLOCKING-SYNC] ❌ Sync returned failure:', syncResult);
+              throw new Error(`Master folio sync failed: ${syncResult?.error || 'Unknown error'}`);
+            }
+            
+            console.log('[PHASE-3-BLOCKING-SYNC] ✅ Master folio synced:', {
+              total_charges: syncResult.total_charges,
+              total_payments: syncResult.total_payments,
+              balance: syncResult.balance,
+              child_count: syncResult.child_count,
+              group_size_updated: syncResult.group_size_updated
+            });
           }
         } else {
           console.warn('[GROUP-BILLING-FIX-V1-PHASE-3] Master folio not found for group:', groupId);
