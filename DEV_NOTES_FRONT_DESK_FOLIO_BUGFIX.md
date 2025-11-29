@@ -176,11 +176,69 @@ Added state management:
 
 ---
 
-## Next Steps (Remaining Phases)
+## Phase 3: Fix Group Booking Room Count & Folio Sync ✅
 
-**Phase 3:** Fix Group Booking Room Count & Folio Sync
-- Update `group_bookings.group_size` calculation
-- Make `sync_master_folio_totals` blocking
+### Root Cause
+1. **Inaccurate group_size**: `group_bookings.group_size` was hardcoded to `0` during master folio creation, never updated to reflect actual room count
+2. **Non-blocking sync**: `sync_master_folio_totals` failures were logged but didn't prevent check-in, allowing master folios to become out of sync with child folios
+
+### Fix Implementation
+
+#### 1. Database Migration (`supabase/migrations/20251129180500_phase3_group_size_sync.sql`)
+
+**Enhanced sync_master_folio_totals RPC:**
+- Now retrieves `group_id` from master folio metadata (lines 18-27)
+- Aggregates child folio totals (lines 30-42)
+- Updates master folio balances (lines 45-52)
+- **NEW:** Updates `group_bookings.group_size` to match actual child folio count (lines 54-61)
+- Returns enhanced result with `child_count` and `group_size_updated` (lines 63-72)
+- Version marker: `PHASE-3-GROUP-SIZE-SYNC`
+
+**Backfill for existing groups:**
+- Updates `group_size` for all existing `group_bookings` by counting linked child folios (lines 77-86)
+
+#### 2. Edge Function Changes (`supabase/functions/checkin-guest/index.ts`)
+
+**Made sync_master_folio_totals BLOCKING (lines 270-294):**
+```typescript
+// BEFORE: Non-blocking (errors logged but ignored)
+if (syncError) {
+  console.error('[...] Master folio sync failed (non-blocking):', syncError);
+}
+
+// AFTER: Blocking (errors throw and fail check-in)
+if (syncError) {
+  console.error('[PHASE-3-BLOCKING-SYNC] ❌ Master folio sync FAILED:', syncError);
+  throw new Error(`Master folio sync failed: ${syncError.message}`);
+}
+
+if (!syncResult?.success) {
+  throw new Error(`Master folio sync failed: ${syncResult?.error || 'Unknown error'}`);
+}
+```
+
+Enhanced logging shows:
+- `total_charges`, `total_payments`, `balance` from master folio
+- `child_count` - number of child folios linked
+- `group_size_updated` - new group_size value in group_bookings
+
+**Version Marker:** `PHASE-3-BLOCKING-SYNC` in logs
+
+### Testing Checklist
+
+- [ ] Verify migration runs successfully
+- [ ] Test new group booking: group_size starts at 0, increases as rooms check in
+- [ ] Test existing group booking: group_size backfilled correctly
+- [ ] Test check-in for group booking room: sync_master_folio_totals succeeds
+- [ ] Test check-in failure: if sync fails, check-in should fail (rollback)
+- [ ] Verify master folio shows correct aggregated totals from all child folios
+- [ ] Verify group_size matches actual number of checked-in rooms
+- [ ] Check logs for PHASE-3-BLOCKING-SYNC markers
+- [ ] Test Group Billing Center displays correct room count
+
+---
+
+## Next Steps (Remaining Phases)
 
 **Phase 4:** Fix "No folio data available" (Multiple Folios)
 - Update `useBookingFolio.ts` to handle multiple folios per booking
