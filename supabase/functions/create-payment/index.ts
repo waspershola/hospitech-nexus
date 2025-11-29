@@ -522,7 +522,18 @@ serve(async (req) => {
       }
     }
 
-    // LEDGER-CONSOLIDATION-V1: Post payment to accounting ledger using unified RPC
+    // LEDGER-REPAIR-V3: Fetch room_id from booking before ledger call
+    let roomId = null;
+    if (booking_id) {
+      const { data: bookingData } = await supabase
+        .from('bookings')
+        .select('room_id')
+        .eq('id', booking_id)
+        .single();
+      roomId = bookingData?.room_id || null;
+    }
+
+    // LEDGER-REPAIR-V3: Post payment to accounting ledger with room_id
     try {
       const { error: ledgerError } = await supabase.rpc('insert_ledger_entry', {
         p_tenant_id: tenant_id,
@@ -538,7 +549,7 @@ serve(async (req) => {
         p_folio_id: payment.stay_folio_id || null,
         p_booking_id: booking_id || null,
         p_guest_id: guest_id || null,
-        p_room_id: null,
+        p_room_id: roomId,
         p_payment_method_id: paymentMethodId,
         p_payment_provider_id: provider_id || null,
         p_payment_location_id: location_id || null,
@@ -552,7 +563,7 @@ serve(async (req) => {
           provider_fee: feeAmount,
           net_amount: netAmount,
           source: 'create-payment',
-          version: 'LEDGER-CONSOLIDATION-V1'
+          version: 'LEDGER-REPAIR-V3'
         }
       });
 
