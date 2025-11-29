@@ -36,7 +36,7 @@ export interface InsertLedgerEntryArgs {
   folioId?: string | null;
   bookingId?: string | null;
   guestId?: string | null;
-  roomId?: string | null;
+  roomId?: string | null;  // LEDGER-REPAIR-V1: Added for compatibility with canonical RPC
   organizationId?: string | null;
   groupBookingId?: string | null;
   
@@ -65,7 +65,7 @@ export async function insertLedgerEntry(
     sourceType: args.sourceType,
   });
   
-  // Call the canonical RPC with proper parameter mapping
+  // Call the canonical RPC with proper parameter mapping (LEDGER-REPAIR-V1)
   const { data: ledgerId, error } = await supabase.rpc('insert_ledger_entry', {
     p_tenant_id: args.tenantId,
     p_transaction_type: args.transactionType,
@@ -74,6 +74,9 @@ export async function insertLedgerEntry(
     p_reference_type: args.paymentId ? 'payment' : args.walletTransactionId ? 'wallet_transaction' : args.qrRequestId ? 'qr_request' : null,
     p_reference_id: args.paymentId || args.walletTransactionId || args.qrRequestId || null,
     p_payment_method: args.paymentMethod ?? null,
+    p_payment_method_id: args.paymentMethodId ?? null,
+    p_payment_provider_id: args.paymentProviderId ?? null,
+    p_payment_location_id: args.paymentLocationId ?? null,
     p_category: args.category,
     p_department: args.department ?? null,
     p_source_type: args.sourceType ?? null,
@@ -81,12 +84,12 @@ export async function insertLedgerEntry(
     p_booking_id: args.bookingId ?? null,
     p_guest_id: args.guestId ?? null,
     p_room_id: args.roomId ?? null,
-    p_payment_method_id: args.paymentMethodId ?? null,
-    p_payment_provider_id: args.paymentProviderId ?? null,
-    p_payment_location_id: args.paymentLocationId ?? null,
     p_organization_id: args.organizationId ?? null,
     p_shift: args.shift ?? null,
     p_staff_id: args.staffId ?? null,
+    p_payment_id: args.paymentId ?? null,
+    p_qr_request_id: args.qrRequestId ?? null,
+    p_wallet_transaction_id: args.walletTransactionId ?? null,
     p_metadata: args.metadata ?? {},
   });
   
