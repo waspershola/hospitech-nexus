@@ -45,7 +45,7 @@ export function LedgerFilters({ filters, onFiltersChange }: LedgerFiltersProps) 
   const statuses = ['completed', 'pending', 'refunded', 'failed'];
   const reconciliationStatuses = ['reconciled', 'pending', 'disputed'];
   const shifts = ['morning', 'afternoon', 'evening', 'night'];
-  const sourceTypes = ['folio', 'qr_request', 'group_booking', 'org_booking', 'wallet', 'pos', 'cash_drawer'];
+  const sourceTypes = ['folio', 'qr-request', 'checkin-guest', 'payment', 'group_booking', 'org_booking', 'wallet', 'pos', 'cash_drawer'];
   const walletTypes = ['guest', 'department', 'organization'];
 
   const toggleArrayFilter = (key: keyof LedgerFiltersType, value: string) => {
