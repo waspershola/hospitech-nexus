@@ -522,7 +522,7 @@ serve(async (req) => {
       }
     }
 
-    // FINANCE-CONFIG-V1: Post payment to accounting ledger with FK IDs
+    // LEDGER-CONSOLIDATION-V1: Post payment to accounting ledger using unified RPC
     try {
       const { error: ledgerError } = await supabase.rpc('insert_ledger_entry', {
         p_tenant_id: tenant_id,
@@ -531,20 +531,20 @@ serve(async (req) => {
         p_description: `Payment received - ${method}`,
         p_reference_type: 'payment',
         p_reference_id: payment.id,
-        p_category: 'guest_payment',
         p_payment_method: method,
-        p_payment_method_id: paymentMethodId,
-        p_payment_provider: providerName,
-        p_payment_provider_id: provider_id || null,
-        p_payment_location: locationName,
-        p_payment_location_id: location_id || null,
+        p_category: 'guest_payment',
+        p_department: department || locationDepartment || 'FRONT DESK',
         p_source_type: 'payment',
-        p_department: department || locationDepartment || null,
         p_folio_id: payment.stay_folio_id || null,
         p_booking_id: booking_id || null,
         p_guest_id: guest_id || null,
+        p_room_id: null,
+        p_payment_method_id: paymentMethodId,
+        p_payment_provider_id: provider_id || null,
+        p_payment_location_id: location_id || null,
         p_organization_id: organization_id || null,
-        p_staff_id: staffId || null, // STAFF-LOOKUP-V1: Use resolved staff.id instead of user_id
+        p_shift: shift || null,
+        p_staff_id: staffId || null,
         p_metadata: {
           payment_id: payment.id,
           transaction_ref: transaction_ref,
@@ -552,20 +552,18 @@ serve(async (req) => {
           provider_fee: feeAmount,
           net_amount: netAmount,
           source: 'create-payment',
-          version: 'FINANCE-CONFIG-V1'
+          version: 'LEDGER-CONSOLIDATION-V1'
         }
       });
 
       if (ledgerError) {
-        console.error('[ledger-integration] FINANCE-CONFIG-V1: Failed to post to ledger:', ledgerError);
-        console.error('[ledger-integration] CRITICAL: Payment created but ledger entry failed - manual reconciliation required');
-        // Don't throw - payment is already created, but log for reconciliation
+        console.error('[ledger-integration] LEDGER-CONSOLIDATION-V1: Failed to post to ledger:', ledgerError);
+        console.error('[ledger-integration] CRITICAL: Payment created but ledger entry failed');
       } else {
-        console.log('[ledger-integration] FINANCE-CONFIG-V1: Payment posted to ledger successfully');
+        console.log('[ledger-integration] LEDGER-CONSOLIDATION-V1: Payment posted to ledger successfully');
       }
     } catch (ledgerErr) {
-      console.error('[ledger-integration] FINANCE-CONFIG-V1: Ledger posting exception:', ledgerErr);
-      console.error('[ledger-integration] CRITICAL: Payment created but ledger entry failed - manual reconciliation required');
+      console.error('[ledger-integration] LEDGER-CONSOLIDATION-V1: Ledger posting exception:', ledgerErr);
     }
 
     // Phase 2: Check if booking is completed - route to post-checkout ledger
@@ -901,52 +899,6 @@ serve(async (req) => {
     }]);
 
     console.log('Payment processing complete:', payment.id);
-
-    // ============= LEDGER INTEGRATION - RECORD ALL PAYMENTS =============
-    // Record payment to accounting ledger
-    try {
-      console.log('[LEDGER-INTEGRATION-V2] Recording payment to ledger with shift:', payment.id);
-      
-      const { data: ledgerEntryId, error: ledgerError } = await supabase
-        .rpc('insert_ledger_entry', {
-          p_tenant_id: tenant_id,
-          p_transaction_type: 'credit',
-          p_amount: amount,
-          p_description: `Payment received - ${method || 'N/A'}`,
-          p_reference_type: 'payment',
-          p_reference_id: payment.id,
-          p_payment_method: method,
-          p_provider_id: provider_id,
-          p_location_id: location_id,
-          p_department: department,
-          p_shift: shift,
-          p_category: 'payment_received',
-          p_folio_id: booking_id ? undefined : undefined, // Will be linked via folio_post_payment
-          p_booking_id: booking_id,
-          p_guest_id: guest_id,
-          p_staff_id: recorded_by,
-          p_metadata: {
-            payment_id: payment.id,
-            transaction_ref,
-            payment_type: payment.payment_type,
-            expected_amount,
-            overpayment_action: payment.overpayment_action,
-            wallet_id,
-            shift,
-            version: 'LEDGER-INTEGRATION-V2'
-          }
-        });
-
-      if (ledgerError) {
-        console.error('[LEDGER-INTEGRATION-V1] Failed to record ledger entry:', ledgerError);
-        // Don't fail payment if ledger recording fails - log for manual reconciliation
-      } else {
-        console.log('[LEDGER-INTEGRATION-V1] Ledger entry created:', ledgerEntryId);
-      }
-    } catch (ledgerException) {
-      console.error('[LEDGER-INTEGRATION-V1] Ledger recording exception:', ledgerException);
-      // Continue - payment is still valid
-    }
 
     // Send payment notifications
     try {
