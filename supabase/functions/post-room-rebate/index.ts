@@ -54,7 +54,7 @@ serve(async (req) => {
     // 1. Fetch folio with tenant check
     const { data: folio, error: folioError } = await supabase
       .from('stay_folios')
-      .select('id, folio_type, status, booking_id, total_charges, balance, tenant_id')
+      .select('id, folio_type, status, booking_id, guest_id, room_id, total_charges, balance, tenant_id')
       .eq('id', folio_id)
       .single();
 
@@ -166,6 +166,54 @@ serve(async (req) => {
       .single();
 
     if (txError) throw txError;
+
+    // PHASE-4-LEDGER-V1: Create rebate ledger entry
+    try {
+      console.log('[post-room-rebate] PHASE-4-LEDGER-V1: Creating rebate ledger entry');
+      
+      const { error: ledgerError } = await supabase.rpc('insert_ledger_entry', {
+        p_tenant_id: folio.tenant_id,
+        p_transaction_type: 'credit',
+        p_amount: Math.abs(finalRebateAmount),
+        p_description: `Room Rebate: ${reason}`,
+        p_reference_type: 'folio_transaction',
+        p_reference_id: transaction.id,
+        p_category: 'rebate',
+        p_payment_method: 'rebate',
+        p_source_type: 'rebate',
+        p_department: 'front_desk',
+        p_folio_id: folio_id,
+        p_booking_id: folio.booking_id,
+        p_guest_id: folio.guest_id,
+        p_room_id: folio.room_id,
+        p_payment_method_id: null,
+        p_payment_provider_id: null,
+        p_payment_location_id: null,
+        p_organization_id: null,
+        p_shift: null,
+        p_staff_id: staff.id,
+        p_qr_request_id: null,
+        p_metadata: {
+          reason,
+          rebate_type,
+          raw_input_amount: amount,
+          nights: nights || [],
+          folio_transaction_id: transaction.id,
+          posted_by: user.email,
+          approval_token_used: true,
+          manager_pin_version: 'MANAGER-PIN-V1',
+          version: 'PHASE-4-LEDGER-V1'
+        }
+      });
+      
+      if (ledgerError) {
+        console.error('[post-room-rebate] PHASE-4-LEDGER-V1: Failed to create rebate ledger entry (non-blocking):', ledgerError);
+      } else {
+        console.log('[post-room-rebate] PHASE-4-LEDGER-V1: Rebate ledger entry created successfully');
+      }
+    } catch (ledgerErr: any) {
+      console.error('[post-room-rebate] PHASE-4-LEDGER-V1: Ledger exception (non-blocking):', ledgerErr);
+    }
 
     // 9. Update folio balance (rebate reduces balance)
     const newTotalCharges = folio.total_charges - Math.abs(finalRebateAmount);

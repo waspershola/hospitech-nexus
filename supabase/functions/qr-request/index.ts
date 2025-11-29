@@ -643,43 +643,12 @@ serve(async (req) => {
         }
       }
 
-      // LEDGER-PHASE-2C-V1: Post QR service charge to accounting ledger (if billable)
-      if (paymentInfo.billable && paymentInfo.subtotal) {
-        try {
-          const { error: ledgerError } = await supabase.rpc('insert_ledger_entry', {
-            p_tenant_id: qr.tenant_id,
-            p_transaction_type: 'debit',
-            p_amount: paymentInfo.subtotal,
-            p_description: `QR service charge - ${requestData.type}`,
-            p_reference_type: 'qr_request',
-            p_reference_id: newRequest.id,
-            p_category: 'qr_service_charge',
-            p_payment_method: 'qr_service',
-            p_source_type: 'qr_request',
-            p_department: finalDepartment,
-            p_guest_id: null,
-            p_room_id: resolvedRoomId || null,
-            p_metadata: {
-              request_id: newRequest.id,
-              qr_token: requestData.qr_token,
-              service_type: requestData.type,
-              guest_name: requestData.guest_name || requestData.metadata?.guest_name || 'Guest',
-              room_number: roomNumber || qr.assigned_to,
-              payment_choice: paymentChoice,
-              source: 'qr-request',
-              version: 'LEDGER-PHASE-2C-V1'
-            }
-          });
-
-          if (ledgerError) {
-            console.error('[ledger-integration] LEDGER-PHASE-2B-V1: Failed to post QR charge to ledger (non-blocking):', ledgerError);
-          } else {
-            console.log('[ledger-integration] LEDGER-PHASE-2B-V1: QR charge posted to ledger successfully');
-          }
-        } catch (ledgerErr) {
-          console.error('[ledger-integration] LEDGER-PHASE-2B-V1: Ledger posting exception (non-blocking):', ledgerErr);
-        }
-      }
+      // PHASE-5-REMOVED-V1: Early DEBIT removed per professional accounting standards
+      // QR service DEBIT entries are now created ONLY when:
+      // 1. Staff collects payment (DEBIT+CREDIT atomically in create-payment)
+      // 2. Charge is posted to folio (DEBIT via folio_post_charge)
+      // 3. Request is marked complimentary (CREDIT only, no DEBIT)
+      // This prevents abandoned/cancelled requests from appearing as fake revenue
 
       return new Response(
         JSON.stringify({

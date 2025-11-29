@@ -197,6 +197,54 @@ export function QRRequestActions({ request, onStatusUpdate, onClose }: QRRequest
         });
       }
       
+      // PHASE-3-LEDGER-V1: Create complimentary ledger entry
+      try {
+        console.log('[QRRequestActions] PHASE-3-LEDGER-V1: Creating complimentary ledger entry');
+        
+        const finalDepartment = request.metadata?.department || 'GUEST SERVICES';
+        
+        const { error: ledgerError } = await supabase.rpc('insert_ledger_entry', {
+          p_tenant_id: tenantId,
+          p_transaction_type: 'credit',
+          p_amount: amount,
+          p_description: `Complimentary - ${request.type}`,
+          p_reference_type: 'qr_request',
+          p_reference_id: request.id,
+          p_category: 'complimentary',
+          p_payment_method: 'complimentary',
+          p_source_type: 'complimentary',
+          p_department: finalDepartment,
+          p_folio_id: null,
+          p_booking_id: request.booking_id || null,
+          p_guest_id: request.guest_id || null,
+          p_room_id: request.room_id || null,
+          p_payment_method_id: null,
+          p_payment_provider_id: null,
+          p_payment_location_id: null,
+          p_organization_id: null,
+          p_shift: null,
+          p_staff_id: staffData.id,
+          p_qr_request_id: request.id,
+          p_metadata: {
+            reason: reason,
+            approved_by: user?.id,
+            approval_token: approvalToken,
+            guest_name: request.metadata?.guest_name || request.guest_name || 'Guest',
+            service_type: request.type,
+            staff_name: staffData.full_name,
+            version: 'PHASE-3-LEDGER-V1'
+          }
+        });
+        
+        if (ledgerError) {
+          console.error('[QRRequestActions] PHASE-3-LEDGER-V1: Failed to create complimentary ledger entry (non-blocking):', ledgerError);
+        } else {
+          console.log('[QRRequestActions] PHASE-3-LEDGER-V1: Complimentary ledger entry created successfully');
+        }
+      } catch (ledgerErr: any) {
+        console.error('[QRRequestActions] PHASE-3-LEDGER-V1: Ledger exception (non-blocking):', ledgerErr);
+      }
+      
       console.log('[QRRequestActions] PAYMENT-FIX-V2: Complimentary status updated, forcing refetch...');
       
       // Force immediate refetch
