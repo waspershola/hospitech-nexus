@@ -135,7 +135,7 @@ serve(async (req) => {
 
     // LEDGER-CONSOLIDATION-V1: Post folio creation to accounting ledger
     try {
-      const { error: ledgerError } = await supabase.rpc('insert_ledger_entry', {
+      const { error: ledgerError } = await supabaseServiceClient.rpc('insert_ledger_entry', {
         p_tenant_id: booking.tenant_id,
         p_transaction_type: 'debit',
         p_amount: booking.total_amount || 0,
