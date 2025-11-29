@@ -133,16 +133,13 @@ serve(async (req) => {
 
     console.log('[checkin] Folio created successfully:', folio.id)
 
-    // LEDGER-CONSOLIDATION-V1: Post folio creation to accounting ledger
+    // LEDGER-REPAIR-V3: Post room charge to accounting ledger with correct parameters
     try {
       const { error: ledgerError } = await supabaseServiceClient.rpc('insert_ledger_entry', {
         p_tenant_id: booking.tenant_id,
         p_transaction_type: 'debit',
         p_amount: booking.total_amount || 0,
         p_description: `Room charge - ${booking.booking_reference}`,
-        p_reference_type: 'folio',
-        p_reference_id: folio.id,
-        p_payment_method: null,
         p_category: 'room_charge',
         p_department: 'ROOMS',
         p_source_type: 'checkin-guest',
@@ -150,28 +147,28 @@ serve(async (req) => {
         p_booking_id: booking.id,
         p_guest_id: booking.guest_id,
         p_room_id: booking.room_id,
+        p_payment_method: null,
         p_payment_method_id: null,
         p_payment_provider_id: null,
         p_payment_location_id: null,
-        p_organization_id: null,
+        p_organization_id: booking.organization_id,
         p_shift: null,
         p_staff_id: null,
         p_metadata: {
           folio_number: folio.folio_number,
-          folio_id: folio.id,
           booking_reference: booking.booking_reference,
           source: 'checkin-guest',
-          version: 'LEDGER-CONSOLIDATION-V1'
+          version: 'LEDGER-REPAIR-V3'
         }
       });
 
       if (ledgerError) {
-        console.error('[ledger-integration] LEDGER-CONSOLIDATION-V1: Failed to post folio to ledger (non-blocking):', ledgerError);
+        console.error('[ledger-integration] LEDGER-REPAIR-V3: Failed to post room charge to ledger (non-blocking):', ledgerError);
       } else {
-        console.log('[ledger-integration] LEDGER-CONSOLIDATION-V1: Room charge posted to ledger successfully');
+        console.log('[ledger-integration] LEDGER-REPAIR-V3: Room charge posted to ledger successfully');
       }
     } catch (ledgerErr) {
-      console.error('[ledger-integration] LEDGER-CONSOLIDATION-V1: Ledger posting exception (non-blocking):', ledgerErr);
+      console.error('[ledger-integration] LEDGER-REPAIR-V3: Ledger posting exception (non-blocking):', ledgerErr);
     }
 
     // GROUP-BILLING-FIX-V1-PHASE-3: Post charges ONCE at check-in and link to master folio
