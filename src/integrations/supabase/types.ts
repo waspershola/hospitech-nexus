@@ -8923,6 +8923,19 @@ export type Database = {
             }
             Returns: Json
           }
+        | {
+            Args: {
+              p_amount: number
+              p_billing_reference_code?: string
+              p_category?: string
+              p_charge_type: string
+              p_department?: string
+              p_description: string
+              p_folio_id: string
+              p_request_id?: string
+            }
+            Returns: Json
+          }
       folio_post_payment: {
         Args: { p_amount: number; p_folio_id: string; p_payment_id: string }
         Returns: Json
