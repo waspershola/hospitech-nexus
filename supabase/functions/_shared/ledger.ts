@@ -1,6 +1,6 @@
 /**
  * LEDGER-SHARED-HELPER-V1: Unified ledger entry insertion helper
- * All edge functions must use this helper instead of calling RPC directly
+ * All edge functions must use this helper for consistent ledger recording
  */
 
 import { SupabaseClient } from 'https://esm.sh/@supabase/supabase-js@2.46.1';
@@ -18,18 +18,19 @@ export interface InsertLedgerEntryArgs {
   amount: number;
   transactionType: LedgerTransactionType;
   description: string;
-  category: string; // e.g. 'room_charge', 'guest_payment', 'qr_service', 'wallet_payment'
+  category: string;
   
-  // Optional financial context
-  paymentMethod?: string | null; // TEXT snapshot for historical stability
-  paymentMethodId?: string | null; // FK to payment_methods
-  paymentProviderId?: string | null; // FK to finance_providers
-  paymentLocationId?: string | null; // FK to finance_locations
+  // Optional financial fields
+  paymentMethod?: string | null;
+  paymentMethodId?: string | null;
+  paymentProviderId?: string | null;
+  paymentLocationId?: string | null;
   
-  // Optional source tracking
-  sourceType?: string | null; // 'folio', 'qr-request', 'wallet', 'payment', 'checkin-guest'
-  referenceType?: string | null; // 'payment', 'room_charge', 'qr_request', 'wallet_transaction'
-  referenceId?: string | null; // UUID or transaction ref
+  // Optional source tracking (matches actual ledger_entries table columns)
+  sourceType?: string | null;
+  paymentId?: string | null;
+  walletTransactionId?: string | null;
+  qrRequestId?: string | null;
   
   // Optional entity relationships
   folioId?: string | null;
@@ -37,11 +38,12 @@ export interface InsertLedgerEntryArgs {
   guestId?: string | null;
   roomId?: string | null;
   organizationId?: string | null;
+  groupBookingId?: string | null;
   
   // Optional operational context
   department?: string | null;
-  staffId?: string | null; // FK to staff.id (not user_id)
-  shift?: string | null; // 'morning', 'afternoon', 'evening', 'night'
+  staffId?: string | null;
+  shift?: string | null;
   
   // Optional metadata
   metadata?: Record<string, any> | null;
@@ -49,7 +51,7 @@ export interface InsertLedgerEntryArgs {
 
 /**
  * Insert a ledger entry using the canonical RPC function
- * Throws on error (no silent failures)
+ * Maps to actual ledger_entries table columns (no reference_type/reference_id)
  */
 export async function insertLedgerEntry(
   supabase: SupabaseClient,
@@ -63,14 +65,14 @@ export async function insertLedgerEntry(
     sourceType: args.sourceType,
   });
   
-  // Call the canonical RPC function
+  // Call the canonical RPC with proper parameter mapping
   const { data: ledgerId, error } = await supabase.rpc('insert_ledger_entry', {
     p_tenant_id: args.tenantId,
     p_transaction_type: args.transactionType,
     p_amount: args.amount,
     p_description: args.description,
-    p_reference_type: args.referenceType ?? null,
-    p_reference_id: args.referenceId ?? null,
+    p_reference_type: args.paymentId ? 'payment' : args.walletTransactionId ? 'wallet_transaction' : args.qrRequestId ? 'qr_request' : null,
+    p_reference_id: args.paymentId || args.walletTransactionId || args.qrRequestId || null,
     p_payment_method: args.paymentMethod ?? null,
     p_category: args.category,
     p_department: args.department ?? null,

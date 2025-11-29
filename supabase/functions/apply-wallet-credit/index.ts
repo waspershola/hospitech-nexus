@@ -194,24 +194,23 @@ serve(async (req) => {
         console.error('[WALLET-LEDGER-V1] Folio posting exception:', folioErr);
       }
 
-      // 🔥 DOUBLE-ENTRY FIX: Create TWO ledger entries for wallet payment
-      console.log('[WALLET-DOUBLE-ENTRY-V2] Recording ledger entries for wallet payment');
+      // 🔥 WALLET-DOUBLE-ENTRY-V2: Create TWO ledger entries for proper accounting
+      console.log('[WALLET-DOUBLE-ENTRY-V2] Recording double-entry ledger for wallet payment');
       
       // Import shared ledger helper
       const { insertLedgerEntry } = await import('../_shared/ledger.ts');
       
       try {
-        // Entry 1: DEBIT - Wallet balance decreasing (asset account debit)
+        // Entry 1: DEBIT - Wallet balance decreasing (guest asset account)
         await insertLedgerEntry(supabase, {
           tenantId: tenant_id,
           amount: maxApply,
-          transactionType: 'debit',
+          transactionType: 'wallet_deduction',
           category: 'wallet_deduction',
           description: `Wallet deduction for booking ${booking_id}`,
           paymentMethod: 'wallet_credit',
           sourceType: 'wallet',
-          referenceType: 'wallet_payment',
-          referenceId: paymentRecordId,
+          paymentId: paymentRecordId,
           bookingId: booking_id,
           guestId: guest_id,
           staffId: resolvedStaffId,
@@ -227,7 +226,7 @@ serve(async (req) => {
         
         console.log('[WALLET-DOUBLE-ENTRY-V2] ✅ DEBIT entry created (wallet balance down)');
         
-        // Entry 2: CREDIT - Payment received against folio (revenue account credit)
+        // Entry 2: CREDIT - Payment received against folio (revenue account)
         await insertLedgerEntry(supabase, {
           tenantId: tenant_id,
           amount: maxApply,
@@ -236,8 +235,7 @@ serve(async (req) => {
           description: `Wallet payment applied to booking ${booking_id}`,
           paymentMethod: 'wallet_credit',
           sourceType: 'wallet',
-          referenceType: 'payment',
-          referenceId: paymentRecordId,
+          paymentId: paymentRecordId,
           bookingId: booking_id,
           guestId: guest_id,
           staffId: resolvedStaffId,
