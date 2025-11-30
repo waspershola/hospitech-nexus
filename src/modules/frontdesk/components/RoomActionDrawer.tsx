@@ -567,14 +567,14 @@ export function RoomActionDrawer({ roomId, contextDate, open, onClose, onOpenAss
     }
 
     try {
-      const { data: hotelMeta } = await supabase
-        .from('hotel_configurations')
-        .select('value')
+      // PAYMENT-REMINDER-FIX-V1: Query hotel_meta instead of hotel_configurations
+      const { data: hotelMetaData } = await supabase
+        .from('hotel_meta')
+        .select('hotel_name')
         .eq('tenant_id', tenantId)
-        .eq('key', 'hotel_name')
         .maybeSingle();
 
-      const hotelName = hotelMeta?.value || 'Our Hotel';
+      const hotelName = hotelMetaData?.hotel_name || 'the hotel';
       const message = `Hi ${guest.name}, this is a gentle reminder about your outstanding balance of ₦${folio.balance.toLocaleString()} at ${hotelName}. Please contact the front desk to settle. Thank you!`;
 
       const { data, error } = await supabase.functions.invoke('send-sms', {

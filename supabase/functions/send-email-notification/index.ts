@@ -98,6 +98,11 @@ serve(async (req: Request) => {
       ...variables,
     };
 
+    // Escape special regex characters
+    function escapeRegExp(str: string): string {
+      return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    }
+
     // Replace placeholders in subject and body
     let subject = template.subject;
     let bodyHtml = template.body_html;
@@ -105,10 +110,11 @@ serve(async (req: Request) => {
 
     Object.entries(templateVars).forEach(([key, value]) => {
       const placeholder = `{{${key}}}`;
+      const escapedPlaceholder = escapeRegExp(placeholder);  // REGEX-FIX-V1: Escape braces
       const replacement = String(value || '');
-      subject = subject.replace(new RegExp(placeholder, 'g'), replacement);
-      bodyHtml = bodyHtml.replace(new RegExp(placeholder, 'g'), replacement);
-      bodyText = bodyText.replace(new RegExp(placeholder, 'g'), replacement);
+      subject = subject.replace(new RegExp(escapedPlaceholder, 'g'), replacement);
+      bodyHtml = bodyHtml.replace(new RegExp(escapedPlaceholder, 'g'), replacement);
+      bodyText = bodyText.replace(new RegExp(escapedPlaceholder, 'g'), replacement);
     });
 
     // Send email via Resend
