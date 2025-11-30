@@ -73,9 +73,27 @@ Deno.serve(async (req) => {
     
     console.log('PDF-V2.1-EMAIL: Hotel branding loaded', { hotelName });
 
-    // Compose professional folio email
+    // Compose folio email using the SAME luxury HTML template as print/download
+    if (!pdf_url) {
+      throw new Error('No folio URL provided for email');
+    }
+
+    console.log('PDF-V2.2-EMAIL: Fetching folio HTML from URL for email body...', { pdf_url });
+
+    let folioHtml: string | null = null;
+    try {
+      const folioResponse = await fetch(pdf_url);
+      if (!folioResponse.ok) {
+        throw new Error(`Failed to fetch folio HTML: ${folioResponse.status} ${folioResponse.statusText}`);
+      }
+      folioHtml = await folioResponse.text();
+    } catch (fetchError) {
+      console.error('PDF-V2.2-EMAIL: Error fetching folio HTML, falling back to simple template', fetchError);
+    }
+
     const subject = `Your Stay Folio - ${hotelName}`;
-    const htmlBody = `
+
+    const htmlBody = folioHtml || `
 <!DOCTYPE html>
 <html>
 <head>
@@ -105,7 +123,7 @@ Deno.serve(async (req) => {
         </p>
         
         <p style="margin: 0 0 30px; color: #374151; font-size: 16px; line-height: 1.6;">
-          Your stay folio is attached below. Please review the charges and payments for your records.
+          Your stay folio is available at the link below. Please review the charges and payments for your records.
         </p>
         
         <!-- CTA Button -->
