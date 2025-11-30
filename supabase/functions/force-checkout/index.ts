@@ -138,16 +138,16 @@ serve(async (req) => {
     // PHASE-2-FIX: Get booking details with folio (source of truth for balance)
     const { data: booking, error: bookingFetchError } = await supabase
       .from('bookings')
-      .select('*, guest:guests(*), room:rooms(*)')
+      .select('*, guest:guests(*), room:rooms!bookings_room_id_fkey(*)')
       .eq('id', booking_id)
       .single();
 
     if (bookingFetchError) {
-      console.error('[FORCE-CHECKOUT-PIN-V2] Booking fetch error:', bookingFetchError, 'booking_id:', booking_id);
+      console.error('[FORCE-CHECKOUT-PIN-V3] Booking fetch error:', bookingFetchError, 'booking_id:', booking_id);
     }
 
     if (!booking) {
-      console.error('[FORCE-CHECKOUT-PIN-V2] Booking not found for booking_id:', booking_id);
+      console.error('[FORCE-CHECKOUT-PIN-V3] Booking not found for booking_id:', booking_id);
       return new Response(
         JSON.stringify({ success: false, error: 'Booking not found' }),
         { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -165,7 +165,7 @@ serve(async (req) => {
 
     const balanceDue = folio?.balance || 0;
     
-    console.log('[PHASE-2-FIX] Force checkout:', {
+    console.log('[FORCE-CHECKOUT-PIN-V3] Force checkout:', {
       booking_id,
       folio_id: folio?.id,
       balance: balanceDue,
@@ -255,7 +255,7 @@ serve(async (req) => {
       }
     }
 
-    // FORCE-CHECKOUT-PIN-V2: Clear the approval token to prevent replay attacks
+    // FORCE-CHECKOUT-PIN-V3: Clear the approval token to prevent replay attacks
     await supabase.rpc('clear_approval_token', {
       p_token: approval_token
     });
@@ -281,7 +281,7 @@ serve(async (req) => {
         receivable_created: create_receivable && balanceDue > 0,
         approval_token_used: true,
         approved_by_staff_id: tokenValidation.staff_id,
-        version: 'FORCE-CHECKOUT-PIN-V2'
+        version: 'FORCE-CHECKOUT-PIN-V3'
       },
     }]);
 
