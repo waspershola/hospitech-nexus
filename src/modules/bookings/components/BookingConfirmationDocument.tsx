@@ -86,16 +86,103 @@ export function BookingConfirmationDocument({ bookingId }: BookingConfirmationDo
     },
   });
 
-  const handleDownloadPDF = () => {
-    toast.info('PDF download feature coming soon');
+  const handleDownloadPDF = async () => {
+    const printContent = document.getElementById('booking-confirmation-content');
+    if (!printContent) {
+      toast.error('Unable to generate PDF');
+      return;
+    }
+
+    try {
+      toast.loading('Generating PDF...');
+      const html2canvas = (await import('html2canvas')).default;
+      const jsPDF = (await import('jspdf')).jsPDF;
+
+      const canvas = await html2canvas(printContent, { scale: 2 });
+      const imgData = canvas.toDataURL('image/png');
+      const pdf = new jsPDF('p', 'mm', 'a4');
+      const pdfWidth = pdf.internal.pageSize.getWidth();
+      const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
+
+      pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight);
+      pdf.save(`Booking_Confirmation_${booking.id.slice(0, 8)}.pdf`);
+      toast.success('PDF downloaded successfully');
+    } catch (error) {
+      console.error('PDF generation error:', error);
+      toast.error('Failed to generate PDF');
+    }
   };
 
-  const handleEmailConfirmation = () => {
-    toast.info('Email confirmation feature coming soon');
+  const handleEmailConfirmation = async () => {
+    if (!booking.guest?.email) {
+      toast.error('Guest has no email address');
+      return;
+    }
+
+    try {
+      toast.loading('Sending email...');
+      
+      const { error } = await supabase.functions.invoke('send-email-notification', {
+        body: {
+          tenant_id: booking.tenant_id,
+          to: booking.guest.email,
+          event_key: 'booking_confirmed',
+          variables: {
+            guest_name: booking.guest.name,
+            room_type: booking.room?.category?.name || 'Room',
+            booking_reference: booking.id.slice(0, 8).toUpperCase(),
+            check_in_date: format(new Date(booking.check_in), 'PPP'),
+            check_out_date: format(new Date(booking.check_out), 'PPP'),
+            nights: nights.toString(),
+            rate_per_night: Number(booking.total_amount / nights).toLocaleString(),
+            total_amount: Number(booking.total_amount).toLocaleString(),
+            hotel_name: hotelMeta?.hotel_name || 'Hotel',
+            frontdesk_phone: hotelMeta?.contact_phone || '',
+            contact_email: hotelMeta?.contact_email || ''
+          },
+          booking_id: booking.id,
+          guest_id: booking.guest?.id
+        }
+      });
+
+      if (error) throw error;
+      toast.success('Confirmation email sent to guest');
+    } catch (error) {
+      console.error('Email sending error:', error);
+      toast.error('Failed to send email');
+    }
   };
 
   const handlePrint = () => {
-    window.print();
+    const printContent = document.getElementById('booking-confirmation-content');
+    if (!printContent) {
+      toast.error('Unable to print');
+      return;
+    }
+
+    const printWindow = window.open('', '_blank');
+    if (!printWindow) {
+      toast.error('Please allow popups to print');
+      return;
+    }
+
+    printWindow.document.write(`
+      <html>
+        <head>
+          <title>Booking Confirmation - ${booking.id.slice(0, 8)}</title>
+          <style>
+            body { font-family: Arial, sans-serif; padding: 20px; }
+            @media print { 
+              @page { margin: 10mm; } 
+              body { margin: 0; }
+            }
+          </style>
+        </head>
+        <body>${printContent.innerHTML}</body>
+      </html>
+    `);
+    printWindow.document.close();
+    printWindow.print();
   };
 
   if (bookingLoading) {
@@ -167,7 +254,7 @@ export function BookingConfirmationDocument({ bookingId }: BookingConfirmationDo
       </div>
 
       {/* Document */}
-      <Card className="p-8 print:shadow-none">
+      <Card id="booking-confirmation-content" className="p-8 print:shadow-none">
         {/* Header */}
         <div className="flex items-start justify-between mb-6">
           <div>

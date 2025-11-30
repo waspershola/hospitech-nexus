@@ -354,7 +354,7 @@ serve(async (req) => {
 
     console.log('[checkin] Booking status updated to checked_in')
 
-    // CHECKIN-NOTIFICATION-V1: Send check-in notifications if enabled
+    // CHECKIN-NOTIFICATION-V2: Send check-in notifications if enabled
     try {
       const { data: smsSettings } = await supabaseServiceClient
         .from('tenant_sms_settings')
@@ -374,13 +374,14 @@ serve(async (req) => {
         .eq('id', booking.room_id)
         .single();
 
-      const { data: tenantData } = await supabaseServiceClient
-        .from('tenants')
-        .select('name')
-        .eq('id', booking.tenant_id)
-        .single();
+      // Use hotel_meta.hotel_name instead of tenants.name
+      const { data: hotelMetaData } = await supabaseServiceClient
+        .from('hotel_meta')
+        .select('hotel_name')
+        .eq('tenant_id', booking.tenant_id)
+        .maybeSingle();
 
-      const hotelName = tenantData?.name || 'Our Hotel';
+      const hotelName = hotelMetaData?.hotel_name || 'Our Hotel';
       const category = Array.isArray(roomData?.category) ? roomData?.category[0] : roomData?.category;
       const roomCategory = category?.name || 'room';
 
@@ -401,10 +402,10 @@ serve(async (req) => {
             guest_id: booking.guest_id
           }
         });
-        console.log('[CHECKIN-NOTIFICATION-V1] Check-in SMS sent');
+        console.log('[CHECKIN-NOTIFICATION-V2] Check-in SMS sent');
       }
 
-      // Send Email if enabled
+      // Send Email with check_in_welcome event_key
       if (guest?.email) {
         const { data: emailProvider } = await supabaseServiceClient
           .from('platform_email_providers')
@@ -419,7 +420,7 @@ serve(async (req) => {
             body: {
               tenant_id: booking.tenant_id,
               to: guest.email,
-              event_key: 'check_in_reminder',
+              event_key: 'check_in_welcome',
               variables: {
                 guest_name: guest.name,
                 room_type: roomCategory,
@@ -432,11 +433,11 @@ serve(async (req) => {
               guest_id: booking.guest_id
             }
           });
-          console.log('[CHECKIN-NOTIFICATION-V1] Check-in email sent');
+          console.log('[CHECKIN-NOTIFICATION-V2] Check-in welcome email sent');
         }
       }
     } catch (notificationError) {
-      console.error('[CHECKIN-NOTIFICATION-V1] Notification failed (non-blocking):', notificationError);
+      console.error('[CHECKIN-NOTIFICATION-V2] Notification failed (non-blocking):', notificationError);
     }
 
     // Broadcast real-time update to all subscribers
