@@ -136,13 +136,18 @@ serve(async (req) => {
     const actualManagerId = user.id;
 
     // PHASE-2-FIX: Get booking details with folio (source of truth for balance)
-    const { data: booking } = await supabase
+    const { data: booking, error: bookingFetchError } = await supabase
       .from('bookings')
       .select('*, guest:guests(*), room:rooms(*)')
       .eq('id', booking_id)
       .single();
 
+    if (bookingFetchError) {
+      console.error('[FORCE-CHECKOUT-PIN-V2] Booking fetch error:', bookingFetchError, 'booking_id:', booking_id);
+    }
+
     if (!booking) {
+      console.error('[FORCE-CHECKOUT-PIN-V2] Booking not found for booking_id:', booking_id);
       return new Response(
         JSON.stringify({ success: false, error: 'Booking not found' }),
         { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
