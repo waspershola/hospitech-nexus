@@ -353,7 +353,7 @@ export function AssignRoomDrawer({ open, onClose, roomId, roomNumber }: AssignRo
                   </Button>
                 </PopoverTrigger>
                 <PopoverContent className="w-[400px] p-0 overflow-visible">
-                  <Command shouldFilter={false}>
+                  <Command shouldFilter={false} className="overflow-visible">
                     <CommandInput 
                       placeholder="Search guests..." 
                       value={guestSearchTerm}
