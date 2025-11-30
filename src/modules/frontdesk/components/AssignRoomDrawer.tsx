@@ -352,7 +352,7 @@ export function AssignRoomDrawer({ open, onClose, roomId, roomNumber }: AssignRo
                     <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                   </Button>
                 </PopoverTrigger>
-                <PopoverContent className="w-[400px] p-0">
+                <PopoverContent className="w-[400px] p-0 max-h-[300px]">
                   <Command shouldFilter={false}>
                     <CommandInput 
                       placeholder="Search guests..." 
@@ -360,7 +360,7 @@ export function AssignRoomDrawer({ open, onClose, roomId, roomNumber }: AssignRo
                       onValueChange={setGuestSearchTerm}
                     />
                     <CommandEmpty>No guests found.</CommandEmpty>
-                    <CommandList>
+                    <CommandList className="max-h-[240px] overflow-y-auto overscroll-contain">
                       <CommandGroup>
                          {guests.map((guest) => (
                           <CommandItem

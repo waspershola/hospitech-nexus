@@ -802,29 +802,6 @@ export function PaymentForm({
         </p>
       </div>
 
-      {/* Only show overpayment destination if overpayment detected */}
-      {wallets.length > 0 && getPaymentType() === 'overpayment' && (
-        <div className="space-y-2">
-          <Label htmlFor="wallet_id">Overpayment Destination (Optional)</Label>
-          <Select onValueChange={(value) => setValue('wallet_id', value)}>
-            <SelectTrigger>
-              <SelectValue placeholder="Auto (Guest Wallet)" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="auto">Auto (Guest Wallet)</SelectItem>
-              {wallets.map((wallet) => (
-                <SelectItem key={wallet.id} value={wallet.id}>
-                  {wallet.name || `${wallet.wallet_type} wallet`} - Balance: {wallet.currency} {Number(wallet.balance).toFixed(2)}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          <p className="text-xs text-muted-foreground">
-            Where to credit the excess payment amount
-          </p>
-        </div>
-      )}
-
       <div className="space-y-2">
         <Label htmlFor="notes">Notes (Optional)</Label>
         <Textarea
