@@ -118,19 +118,18 @@ export function useFolioPDF() {
     mutationFn: async (params: GenerateFolioPDFParams) => {
       console.log('[useFolioPDF] PDF-TEMPLATE-V4: Download workflow starting');
 
-      // Generate the HTML folio (V4 template)
+      // Reuse the same server-generated HTML that print uses
       const pdfData = await generatePDF.mutateAsync(params);
 
-      console.log('[useFolioPDF] PDF-TEMPLATE-V4: Using server-generated HTML for download:', {
+      console.log('[useFolioPDF] PDF-TEMPLATE-V4: Using server-generated HTML for download (same as print):', {
         html_url: pdfData.html_url,
         pdf_url: pdfData.pdf_url,
         version: pdfData.version,
         template_version: pdfData.metadata?.template_version,
       });
 
-      // Open the HTML in a new tab so staff can use the browser's
-      // "Print" → "Save as PDF" which preserves the V4 layout exactly.
-      const downloadUrl = pdfData.html_url || pdfData.pdf_url;
+      // Prefer the URL that print uses so layout is identical
+      const downloadUrl = pdfData.pdf_url || pdfData.html_url;
       if (downloadUrl) {
         window.open(downloadUrl, '_blank');
       } else {
@@ -161,12 +160,13 @@ export function useFolioPDF() {
         includeQR: params.includeQR,
       });
 
+      // Always prefer the same URL used by print/download so template stays in sync
       const pdfUrlForEmail = pdfData.pdf_url || pdfData.html_url;
       if (!pdfUrlForEmail) {
         throw new Error('No folio URL available for email');
       }
 
-      console.log('[useFolioPDF] BILLING-CENTER-V2-EMAIL: Sending email with folio URL', {
+      console.log('[useFolioPDF] BILLING-CENTER-V2-EMAIL: Sending email with folio URL (print/download template)', {
         pdfUrlForEmail,
         version: pdfData.version,
         template_version: pdfData.metadata?.template_version,
