@@ -98,17 +98,34 @@ export function BookingConfirmationDocument({ bookingId }: BookingConfirmationDo
       const html2canvas = (await import('html2canvas')).default;
       const jsPDF = (await import('jspdf')).jsPDF;
 
-      const canvas = await html2canvas(printContent, { scale: 2 });
+      const canvas = await html2canvas(printContent, { 
+        scale: 2,
+        useCORS: true,
+        logging: false
+      });
+      
       const imgData = canvas.toDataURL('image/png');
       const pdf = new jsPDF('p', 'mm', 'a4');
       const pdfWidth = pdf.internal.pageSize.getWidth();
-      const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
+      const pdfHeight = pdf.internal.pageSize.getHeight();
+      
+      // Calculate scaling to fit content on one page
+      const imgWidth = pdfWidth - 20; // 10mm margin on each side
+      const imgHeight = (canvas.height * imgWidth) / canvas.width;
+      
+      // If content is taller than page, scale it down
+      const finalHeight = Math.min(imgHeight, pdfHeight - 20);
+      const finalWidth = imgHeight > (pdfHeight - 20) 
+        ? (canvas.width * finalHeight) / canvas.height 
+        : imgWidth;
 
-      pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight);
+      pdf.addImage(imgData, 'PNG', 10, 10, finalWidth, finalHeight);
       pdf.save(`Booking_Confirmation_${booking.id.slice(0, 8)}.pdf`);
+      toast.dismiss();
       toast.success('PDF downloaded successfully');
     } catch (error) {
       console.error('PDF generation error:', error);
+      toast.dismiss();
       toast.error('Failed to generate PDF');
     }
   };
@@ -171,18 +188,37 @@ export function BookingConfirmationDocument({ bookingId }: BookingConfirmationDo
         <head>
           <title>Booking Confirmation - ${booking.id.slice(0, 8)}</title>
           <style>
-            body { font-family: Arial, sans-serif; padding: 20px; }
-            @media print { 
-              @page { margin: 10mm; } 
-              body { margin: 0; }
+            * { margin: 0; padding: 0; box-sizing: border-box; }
+            body { 
+              font-family: Arial, sans-serif; 
+              padding: 15mm;
+              max-width: 190mm;
+              margin: 0 auto;
             }
+            @media print { 
+              @page { 
+                size: A4;
+                margin: 10mm;
+              }
+              body { 
+                margin: 0;
+                transform: scale(0.95);
+                transform-origin: top center;
+              }
+            }
+            img { max-width: 100%; height: auto; }
+            .grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 1rem; }
+            .separator { border-top: 1px solid #e5e7eb; margin: 1.5rem 0; }
           </style>
         </head>
         <body>${printContent.innerHTML}</body>
       </html>
     `);
     printWindow.document.close();
-    printWindow.print();
+    
+    setTimeout(() => {
+      printWindow.print();
+    }, 250);
   };
 
   if (bookingLoading) {
