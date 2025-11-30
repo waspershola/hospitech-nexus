@@ -13,14 +13,16 @@ import { Textarea } from '@/components/ui/textarea';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Switch } from '@/components/ui/switch';
 import { AlertTriangle, Loader2 } from 'lucide-react';
+import { ManagerApprovalModal } from '@/modules/payments/ManagerApprovalModal';
 
 interface ForceCheckoutModalProps {
   open: boolean;
   onClose: () => void;
-  onConfirm: (reason: string, createReceivable: boolean) => void;
+  onConfirm: (reason: string, createReceivable: boolean, approvalToken: string) => void;
   balance: number;
   guestName?: string;
   roomNumber?: string;
+  bookingId: string;
   isLoading?: boolean;
 }
 
@@ -31,27 +33,51 @@ export function ForceCheckoutModal({
   balance,
   guestName,
   roomNumber,
+  bookingId,
   isLoading = false,
 }: ForceCheckoutModalProps) {
   const [reason, setReason] = useState('Manager override - guest checkout with outstanding balance');
   const [createReceivable, setCreateReceivable] = useState(true);
+  const [showPinModal, setShowPinModal] = useState(false);
+  const [pendingCheckoutData, setPendingCheckoutData] = useState<{
+    reason: string;
+    createReceivable: boolean;
+  } | null>(null);
 
   const handleConfirm = () => {
     if (!reason.trim()) {
       return;
     }
-    onConfirm(reason, createReceivable);
+    // Store data and open PIN modal for approval
+    setPendingCheckoutData({ reason, createReceivable });
+    setShowPinModal(true);
+  };
+
+  const handlePinApproved = (approvalReason: string, approvalToken: string) => {
+    if (!pendingCheckoutData) return;
+    
+    // Close PIN modal
+    setShowPinModal(false);
+    
+    // Proceed with force checkout using the approval token
+    onConfirm(pendingCheckoutData.reason, pendingCheckoutData.createReceivable, approvalToken);
+    
+    // Reset pending data
+    setPendingCheckoutData(null);
   };
 
   const handleClose = () => {
     if (isLoading) return;
     setReason('Manager override - guest checkout with outstanding balance');
     setCreateReceivable(true);
+    setPendingCheckoutData(null);
+    setShowPinModal(false);
     onClose();
   };
 
   return (
-    <Dialog open={open} onOpenChange={handleClose}>
+    <>
+      <Dialog open={open} onOpenChange={handleClose}>
       <DialogContent className="sm:max-w-[500px]">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2 text-destructive">
@@ -148,5 +174,19 @@ export function ForceCheckoutModal({
         </DialogFooter>
       </DialogContent>
     </Dialog>
+
+    {/* Manager PIN Approval Modal */}
+    <ManagerApprovalModal
+      open={showPinModal}
+      amount={balance}
+      type="checkout_with_debt"
+      actionReference={bookingId}
+      onApprove={handlePinApproved}
+      onReject={() => {
+        setShowPinModal(false);
+        setPendingCheckoutData(null);
+      }}
+    />
+    </>
   );
 }

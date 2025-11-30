@@ -305,11 +305,12 @@ export default function FrontDesk() {
             setForceCheckoutModalOpen(false);
             setForceCheckoutData(null);
           }}
-          onConfirm={(reason, createReceivable) => {
+          onConfirm={(reason, createReceivable, approvalToken) => {
             forceCheckout({
               bookingId: forceCheckoutData.bookingId,
               reason,
               createReceivable,
+              approvalToken,
             });
             setForceCheckoutModalOpen(false);
             setForceCheckoutData(null);
@@ -317,6 +318,7 @@ export default function FrontDesk() {
           balance={forceCheckoutData.balance}
           guestName={forceCheckoutData.guestName}
           roomNumber={forceCheckoutData.roomNumber}
+          bookingId={forceCheckoutData.bookingId}
           isLoading={isForcingCheckout}
         />
       )}

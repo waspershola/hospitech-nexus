@@ -69,7 +69,7 @@ serve(async (req) => {
 
     console.log('[force-checkout] User authorized:', user.id, 'Role:', authenticatedUserRole.role);
 
-    const { booking_id, tenant_id, manager_id, reason, create_receivable } = await req.json();
+    const { booking_id, tenant_id, manager_id, reason, create_receivable, approval_token } = await req.json();
 
     if (!booking_id || !tenant_id) {
       return new Response(
@@ -77,6 +77,34 @@ serve(async (req) => {
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
+
+    // FORCE-CHECKOUT-PIN-V1: Validate Manager PIN approval token
+    if (!approval_token) {
+      console.error('[FORCE-CHECKOUT-PIN-V1] Missing approval token');
+      return new Response(
+        JSON.stringify({ success: false, error: 'Manager approval required. Missing approval token.' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // Validate the approval token
+    const { data: tokenValidation, error: tokenError } = await supabase.rpc('validate_approval_token', {
+      p_token: approval_token,
+      p_tenant_id: tenant_id
+    });
+
+    if (tokenError || !tokenValidation) {
+      console.error('[FORCE-CHECKOUT-PIN-V1] Token validation failed:', tokenError);
+      return new Response(
+        JSON.stringify({ 
+          success: false, 
+          error: 'Invalid or expired approval token. Please verify your Manager PIN and try again.' 
+        }),
+        { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    console.log('[FORCE-CHECKOUT-PIN-V1] Approval token validated for staff:', tokenValidation.staff_id);
 
     // SECURITY: Verify tenant_id matches authenticated user's tenant
     if (tenant_id !== authenticatedUserRole.tenant_id) {
@@ -205,6 +233,11 @@ serve(async (req) => {
       }
     }
 
+    // FORCE-CHECKOUT-PIN-V1: Clear the approval token to prevent replay attacks
+    await supabase.rpc('clear_approval_token', {
+      p_token: approval_token
+    });
+
     // PHASE-2-FIX: Create audit log with enhanced details
     await supabase.from('finance_audit_events').insert([{
       tenant_id,
@@ -224,7 +257,9 @@ serve(async (req) => {
         reason: reason || 'No reason provided',
         manager_role: authenticatedUserRole.role,
         receivable_created: create_receivable && balanceDue > 0,
-        version: 'PHASE-2-FIX'
+        approval_token_used: true,
+        approved_by_staff_id: tokenValidation.staff_id,
+        version: 'FORCE-CHECKOUT-PIN-V1'
       },
     }]);
 
@@ -238,7 +273,7 @@ serve(async (req) => {
         receivable_created: create_receivable && balanceDue > 0,
         folio_closed: !!folio,
         room_updated: !!booking.room_id,
-        version: 'PHASE-2-FIX'
+        version: 'FORCE-CHECKOUT-PIN-V1'
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );

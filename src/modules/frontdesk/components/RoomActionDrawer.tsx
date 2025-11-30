@@ -434,13 +434,14 @@ export function RoomActionDrawer({ roomId, contextDate, open, onClose, onOpenAss
     setForceCheckoutModalOpen(true);
   };
 
-  const handleConfirmForceCheckout = (reason: string, createReceivable: boolean) => {
+  const handleConfirmForceCheckout = (reason: string, createReceivable: boolean, approvalToken: string) => {
     if (!activeBooking) return;
     
     forceCheckout({
       bookingId: activeBooking.id,
       reason,
       createReceivable,
+      approvalToken,
     }, {
       onSuccess: () => {
         setForceCheckoutModalOpen(false);
@@ -1514,7 +1515,7 @@ export function RoomActionDrawer({ roomId, contextDate, open, onClose, onOpenAss
         />
       )}
       
-      {/* PHASE-2-FIX: Force Checkout Modal */}
+      {/* FORCE-CHECKOUT-PIN-V1: Force Checkout Modal with Manager PIN */}
       {activeBooking && folio && (
         <ForceCheckoutModal
           open={forceCheckoutModalOpen}
@@ -1523,6 +1524,7 @@ export function RoomActionDrawer({ roomId, contextDate, open, onClose, onOpenAss
           balance={folio.balance}
           guestName={activeBooking.guest?.name}
           roomNumber={room?.number}
+          bookingId={activeBooking.id}
           isLoading={isForcingCheckout}
         />
       )}
