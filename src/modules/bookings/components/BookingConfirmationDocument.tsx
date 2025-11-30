@@ -191,11 +191,11 @@ export function BookingConfirmationDocument({ bookingId }: BookingConfirmationDo
             * { margin: 0; padding: 0; box-sizing: border-box; }
             body { 
               font-family: Arial, sans-serif; 
-              padding: 12mm;
+              padding: 10mm;
               max-width: 190mm;
               margin: 0 auto;
-              font-size: 11pt;
-              line-height: 1.4;
+              font-size: 10pt;
+              line-height: 1.35;
             }
             @media print { 
               @page { 
@@ -205,18 +205,18 @@ export function BookingConfirmationDocument({ bookingId }: BookingConfirmationDo
               body { 
                 margin: 0;
                 padding: 8mm;
-                transform: scale(0.88);
+                transform: scale(0.82);
                 transform-origin: top center;
               }
             }
-            h1 { font-size: 18pt; margin-bottom: 4px; }
-            h2 { font-size: 13pt; margin-bottom: 8px; margin-top: 12px; }
-            p { margin-bottom: 4px; font-size: 10pt; }
+            h1 { font-size: 16pt; margin-bottom: 3px; }
+            h2 { font-size: 12pt; margin-bottom: 6px; margin-top: 10px; }
+            p { margin-bottom: 3px; font-size: 9pt; }
             img { max-width: 100%; height: auto; }
-            .grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; margin-bottom: 12px; }
-            .separator { border-top: 1px solid #e5e7eb; margin: 12px 0; }
-            .text-sm { font-size: 9pt; }
-            .text-xs { font-size: 8pt; }
+            .grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; margin-bottom: 10px; }
+            .separator { border-top: 1px solid #e5e7eb; margin: 10px 0; }
+            .text-sm { font-size: 8pt; }
+            .text-xs { font-size: 7pt; }
           </style>
         </head>
         <body>${printContent.innerHTML}</body>
@@ -302,8 +302,8 @@ export function BookingConfirmationDocument({ bookingId }: BookingConfirmationDo
         {/* Header */}
         <div className="flex items-start justify-between mb-6">
           <div>
-            {branding?.logo_url && (
-              <img src={branding.logo_url} alt="Logo" className="h-16 mb-4" />
+          {branding?.logo_url && (
+              <img src={branding.logo_url} alt="Logo" className="h-10 mb-3" />
             )}
             <h1 className="text-2xl font-bold">{hotelMeta?.hotel_name || 'Hotel'}</h1>
             {hotelMeta?.tagline && (
@@ -324,16 +324,16 @@ export function BookingConfirmationDocument({ bookingId }: BookingConfirmationDo
             </div>
             <p className="text-sm text-muted-foreground">Booking Reference</p>
             <p className="text-xl font-mono font-bold">{booking.id.slice(0, 8).toUpperCase()}</p>
-            <div className="mt-4">
-              <QRCodeSVG value={booking.id} size={80} />
+            <div className="mt-3">
+              <QRCodeSVG value={booking.id} size={60} />
             </div>
           </div>
         </div>
 
-        <Separator className="my-6" />
+        <Separator className="my-3" />
 
         {/* Guest Information */}
-        <div className="mb-6">
+        <div className="mb-3">
           <h2 className="text-lg font-semibold mb-3">Guest Information</h2>
           <div className="grid grid-cols-2 gap-4">
             <div>
@@ -361,10 +361,10 @@ export function BookingConfirmationDocument({ bookingId }: BookingConfirmationDo
           </div>
         </div>
 
-        <Separator className="my-6" />
+        <Separator className="my-3" />
 
         {/* Booking Details */}
-        <div className="mb-6">
+        <div className="mb-3">
           <h2 className="text-lg font-semibold mb-3">Booking Details</h2>
           <div className="grid grid-cols-2 gap-4">
             <div>
@@ -395,18 +395,18 @@ export function BookingConfirmationDocument({ bookingId }: BookingConfirmationDo
         {/* Special Requests */}
         {metadata?.special_requests && (
           <>
-            <Separator className="my-6" />
-            <div className="mb-6">
+            <Separator className="my-3" />
+            <div className="mb-3">
               <h2 className="text-lg font-semibold mb-3">Special Requests</h2>
               <p className="text-sm">{metadata.special_requests}</p>
             </div>
           </>
         )}
 
-        <Separator className="my-6" />
+        <Separator className="my-3" />
 
         {/* Pricing Breakdown */}
-        <div className="mb-6">
+        <div className="mb-3">
           <h2 className="text-lg font-semibold mb-3">Pricing Summary</h2>
           <div className="space-y-2">
             <div className="flex justify-between">
@@ -455,10 +455,10 @@ export function BookingConfirmationDocument({ bookingId }: BookingConfirmationDo
           </div>
         </div>
 
-        <Separator className="my-6" />
+        <Separator className="my-3" />
 
         {/* Policies */}
-        <div className="mb-6">
+        <div className="mb-3">
           <h2 className="text-lg font-semibold mb-3">Hotel Policies</h2>
           <div className="space-y-2 text-sm text-muted-foreground">
             <p>• Check-in time: 2:00 PM | Check-out time: 12:00 PM</p>
