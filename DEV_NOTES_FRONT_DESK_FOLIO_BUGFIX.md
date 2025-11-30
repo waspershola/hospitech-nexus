@@ -392,46 +392,58 @@ The overstay alert was using the simple `checkOut` mutation from `useRoomActions
 
 ### Fix Implementation
 
-**Updated Front Desk Page (`src/pages/dashboard/FrontDesk.tsx`):**
+**1. Updated Front Desk Page (`src/pages/dashboard/FrontDesk.tsx`):**
 
-1. **Import Force Checkout Components:**
-   - Added `ForceCheckoutModal` import
-   - Added `useForceCheckout` hook import
+- **Import Force Checkout Components:**
+  - Added `ForceCheckoutModal` import
+  - Added `useForceCheckout` hook import
 
-2. **State Management:**
-   - Added `forceCheckoutModalOpen` state
-   - Added `forceCheckoutData` state to store checkout details
+- **State Management:**
+  - Added `forceCheckoutModalOpen` state
+  - Added `forceCheckoutData` state to store checkout details
 
-3. **Enhanced Overstay Checkout Handler:**
-   ```typescript
-   onCheckOut={async (roomId) => {
-     // Find the overstay room data to get balance
-     const overstayRoom = overstayRooms.find(r => r.id === roomId);
-     
-     if (overstayRoom && overstayRoom.balance > 0) {
-       // Has outstanding balance - trigger force checkout modal
-       // Fetch booking ID and show ForceCheckoutModal
-     } else {
-       // No balance - regular checkout
-       checkOut(roomId);
-     }
-   }}
-   ```
+- **Enhanced Overstay Checkout Handler:**
+  ```typescript
+  onCheckOut={async (roomId) => {
+    // Find the overstay room data to get balance
+    const overstayRoom = overstayRooms.find(r => r.id === roomId);
+    
+    if (overstayRoom && overstayRoom.balance > 0) {
+      // Has outstanding balance - trigger force checkout modal
+      // Fetch booking ID and show ForceCheckoutModal
+    } else {
+      // No balance - regular checkout
+      checkOut(roomId);
+    }
+  }}
+  ```
 
-4. **Integrated Force Checkout Modal:**
-   - Shows manager approval modal for overstays with balance
-   - Collects reason and receivable creation preference
-   - Uses `useForceCheckout` hook with proper authentication
+- **Integrated Force Checkout Modal:**
+  - Shows manager approval modal for overstays with balance
+  - Collects reason and receivable creation preference
+  - Uses `useForceCheckout` hook with proper authentication
+
+**2. Updated Room Action Drawer (`src/modules/frontdesk/components/RoomActionDrawer.tsx`):**
+
+- **Enhanced Overstay Quick Actions (lines 825-839):**
+  - Added balance check in overstay case: `const hasOverstayBalance = folio && folio.balance > 0`
+  - Conditionally shows "Force Checkout" button when balance > 0 and user has MANAGE_FINANCE permission
+  - Shows regular "Check-Out" button when balance = 0
+  - Uses `handleForceCheckout` for outstanding balances, `handleExpressCheckout` for zero balances
+  
+- **Version Marker:** `PHASE-6-OVERSTAY-FIX` in code comments
 
 ### Testing Checklist
 
-- [ ] Overstay alert displays for rooms past checkout time with outstanding balance
-- [ ] Clicking "Check Out Now" on overstay with balance opens ForceCheckoutModal
-- [ ] Manager can enter reason and approve force checkout
-- [ ] Checkout completes successfully with receivable creation
-- [ ] Room status updates to "cleaning" after force checkout
-- [ ] Overstay alert disappears after successful checkout
-- [ ] Regular overstay checkout (balance = 0) works without modal
+- [ ] Verify "Force Checkout" button shows in overstay alert modal for rooms with balance > 0
+- [ ] Verify "Force Checkout" button shows in room drawer quick actions for overstay status with balance > 0
+- [ ] Verify regular "Check-Out" button shows for overstay with balance = 0
+- [ ] Verify ForceCheckoutModal opens when clicking "Check Out Now" or "Force Checkout"
+- [ ] Verify manager PIN is required for force checkout (if manager approval is configured)
+- [ ] Verify receivable is created when "Create Receivable" is checked
+- [ ] Verify room status updates to 'cleaning' after force checkout
+- [ ] Verify folio closes after force checkout
+- [ ] Verify no more "No active session" errors for overstays
 
 ---
 
