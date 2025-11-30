@@ -59,9 +59,30 @@ export function RoomGrid({ searchQuery, statusFilter, categoryFilter, floorFilte
       const now = new Date();
       const today = format(now, 'yyyy-MM-dd');
       
-      // ROOM-STATUS-OVERLAP-V1: Process rooms with date-parameterized overlap logic
-      let filteredData = (data || []).map(room => {
-        if (!room.bookings || room.bookings.length === 0) return room;
+  // ROOM-STATUS-OVERLAP-V1: Process rooms with date-parameterized overlap logic
+  let filteredData = (data || []).map(room => {
+    // ORPHAN-STATUS-FIX-V1: Handle rooms without bookings
+    if (!room.bookings || room.bookings.length === 0) {
+      // Preserve manual statuses (maintenance, cleaning, out_of_order)
+      const manualStatuses = ['maintenance', 'cleaning', 'out_of_order'];
+      const computedStatus = manualStatuses.includes(room.status) ? room.status : 'available';
+      
+      // Warn about potential data integrity issues
+      if (!manualStatuses.includes(room.status) && room.status !== 'available') {
+        console.warn('[ROOMGRID-ORPHAN-STATUS]', {
+          roomNumber: room.number,
+          dbStatus: room.status,
+          computedStatus: 'available',
+          reason: 'No active bookings found'
+        });
+      }
+      
+      return { 
+        ...room, 
+        bookings: [],
+        status: computedStatus
+      };
+    }
         
         // For Room Status view, viewDate is always "today"
         const viewDate = today;
