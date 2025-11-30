@@ -73,27 +73,32 @@ Deno.serve(async (req) => {
     
     console.log('PDF-V2.1-EMAIL: Hotel branding loaded', { hotelName });
 
-    // Compose folio email using the SAME luxury HTML template as print/download
+    // Fetch folio HTML to attach as file
     if (!pdf_url) {
       throw new Error('No folio URL provided for email');
     }
 
-    console.log('PDF-V2.2-EMAIL: Fetching folio HTML from URL for email body...', { pdf_url });
+    console.log('PDF-V2.3-EMAIL: Fetching folio HTML for attachment...', { pdf_url });
 
-    let folioHtml: string | null = null;
+    let folioHtmlContent: string;
     try {
       const folioResponse = await fetch(pdf_url);
       if (!folioResponse.ok) {
         throw new Error(`Failed to fetch folio HTML: ${folioResponse.status} ${folioResponse.statusText}`);
       }
-      folioHtml = await folioResponse.text();
+      folioHtmlContent = await folioResponse.text();
     } catch (fetchError) {
-      console.error('PDF-V2.2-EMAIL: Error fetching folio HTML, falling back to simple template', fetchError);
+      console.error('PDF-V2.3-EMAIL: Error fetching folio HTML', fetchError);
+      throw new Error('Failed to fetch folio for email attachment');
     }
+
+    // Convert HTML to base64 for Resend attachment
+    const base64FolioHtml = btoa(unescape(encodeURIComponent(folioHtmlContent)));
 
     const subject = `Your Stay Folio - ${hotelName}`;
 
-    const htmlBody = folioHtml || `
+    // Professional thank-you email body (folio is attached)
+    const htmlBody = `
 <!DOCTYPE html>
 <html>
 <head>
@@ -123,21 +128,15 @@ Deno.serve(async (req) => {
         </p>
         
         <p style="margin: 0 0 30px; color: #374151; font-size: 16px; line-height: 1.6;">
-          Your stay folio is available at the link below. Please review the charges and payments for your records.
+          Your stay folio is attached to this email. Please review the charges and payments for your records.
         </p>
         
-        <!-- CTA Button -->
-        <table width="100%" cellpadding="0" cellspacing="0" style="margin: 30px 0;">
-          <tr>
-            <td style="text-align: center;">
-              <a href="${pdf_url}" 
-                 target="_blank"
-                 style="display: inline-block; padding: 16px 40px; background-color: ${primaryColor}; color: #ffffff; text-decoration: none; border-radius: 8px; font-size: 16px; font-weight: 600; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);">
-                View Your Folio
-              </a>
-            </td>
-          </tr>
-        </table>
+        <!-- Note about attachment -->
+        <div style="text-align: center; margin: 0 0 30px; padding: 16px; background-color: #f3f4f6; border-radius: 8px;">
+          <p style="margin: 0; color: #6b7280; font-size: 14px;">
+            📎 Your folio is attached as an HTML file. Simply open the attachment to view your complete stay details.
+          </p>
+        </div>
         
         <p style="margin: 30px 0 0; color: #374151; font-size: 16px; line-height: 1.6;">
           If you have any questions about your folio, please don't hesitate to contact us${hotelMeta?.contact_phone ? ` at ${hotelMeta.contact_phone}` : ''}.
@@ -185,6 +184,12 @@ Deno.serve(async (req) => {
         to: [guest_email],
         subject: subject,
         html: htmlBody,
+        attachments: [
+          {
+            filename: `Guest_Folio_${folio_id}.html`,
+            content: base64FolioHtml,
+          }
+        ],
       }),
     });
 
