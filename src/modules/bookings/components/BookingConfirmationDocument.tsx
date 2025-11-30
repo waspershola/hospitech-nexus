@@ -191,24 +191,32 @@ export function BookingConfirmationDocument({ bookingId }: BookingConfirmationDo
             * { margin: 0; padding: 0; box-sizing: border-box; }
             body { 
               font-family: Arial, sans-serif; 
-              padding: 15mm;
+              padding: 12mm;
               max-width: 190mm;
               margin: 0 auto;
+              font-size: 11pt;
+              line-height: 1.4;
             }
             @media print { 
               @page { 
                 size: A4;
-                margin: 10mm;
+                margin: 8mm;
               }
               body { 
                 margin: 0;
-                transform: scale(0.95);
+                padding: 8mm;
+                transform: scale(0.88);
                 transform-origin: top center;
               }
             }
+            h1 { font-size: 18pt; margin-bottom: 4px; }
+            h2 { font-size: 13pt; margin-bottom: 8px; margin-top: 12px; }
+            p { margin-bottom: 4px; font-size: 10pt; }
             img { max-width: 100%; height: auto; }
-            .grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 1rem; }
-            .separator { border-top: 1px solid #e5e7eb; margin: 1.5rem 0; }
+            .grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; margin-bottom: 12px; }
+            .separator { border-top: 1px solid #e5e7eb; margin: 12px 0; }
+            .text-sm { font-size: 9pt; }
+            .text-xs { font-size: 8pt; }
           </style>
         </head>
         <body>${printContent.innerHTML}</body>
