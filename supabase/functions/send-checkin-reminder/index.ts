@@ -65,10 +65,10 @@ serve(async (req) => {
         id,
         check_in,
         guest:guests!guest_id(id, name, phone),
-        room:rooms!room_id(number)
+        room:rooms!room_id(id, category:room_categories!room_category_id(name))
       `)
       .eq('tenant_id', tenant_id)
-      .eq('status', 'confirmed')
+      .in('status', ['reserved', 'confirmed'])
       .gte('check_in', windowStart.toISOString())
       .lte('check_in', windowEnd.toISOString());
 
@@ -113,13 +113,14 @@ serve(async (req) => {
       }
 
       const guestName = guest.name;
-      const roomNumber = room?.number || 'N/A';
+      const category = Array.isArray(room?.category) ? room?.category[0] : room?.category;
+      const roomCategory = category?.name || 'your room';
       const checkInDate = new Date(booking.check_in).toLocaleDateString('en-US', {
         month: 'short',
         day: 'numeric',
       });
 
-      const message = `Hi ${guestName}, reminder: Your check-in at ${hotelName} is tomorrow (${checkInDate}). Room ${roomNumber} will be ready. See you soon!`;
+      const message = `Hi ${guestName}, reminder: Your check-in at ${hotelName} is tomorrow (${checkInDate}). Your ${roomCategory} will be ready. See you soon!`;
 
       try {
         const { data: smsResult, error: smsError } = await supabase.functions.invoke('send-sms', {
