@@ -116,26 +116,26 @@ export function useFolioPDF() {
 
   const downloadFolio = useMutation({
     mutationFn: async (params: GenerateFolioPDFParams) => {
-      console.log('[useFolioPDF] PDF-TEMPLATE-V4: Download workflow starting');
+      console.log('[useFolioPDF] PDF-TEMPLATE-V5: Download workflow starting');
 
-      // Reuse the same server-generated HTML that print uses
+      // Generate the PDF (same as print)
       const pdfData = await generatePDF.mutateAsync(params);
-
-      console.log('[useFolioPDF] PDF-TEMPLATE-V4: Using server-generated HTML for download (same as print):', {
-        html_url: pdfData.html_url,
+      
+      console.log('[useFolioPDF] PDF-TEMPLATE-V5: Using blob approach (same as print):', {
         pdf_url: pdfData.pdf_url,
         version: pdfData.version,
-        template_version: pdfData.metadata?.template_version,
+        template_version: pdfData.metadata?.template_version
       });
-
-      // Prefer the URL that print uses so layout is identical
-      const downloadUrl = pdfData.pdf_url || pdfData.html_url;
-      if (downloadUrl) {
-        window.open(downloadUrl, '_blank');
-      } else {
-        throw new Error('No folio URL available for download');
-      }
-
+      
+      // Use SAME approach as printFolio - fetch HTML, create blob, open blob URL
+      const response = await fetch(pdfData.pdf_url);
+      const htmlContent = await response.text();
+      const blob = new Blob([htmlContent], { type: 'text/html' });
+      const blobUrl = URL.createObjectURL(blob);
+      
+      // Open blob URL in new window for proper rendering
+      window.open(blobUrl, '_blank');
+      
       return pdfData;
     },
     onSuccess: () => {
