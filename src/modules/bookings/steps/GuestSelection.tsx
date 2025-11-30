@@ -177,7 +177,7 @@ export function GuestSelection({ bookingData, onChange, onNext }: GuestSelection
         )}
       </div>
 
-      <div className="space-y-2 max-h-[400px] overflow-y-auto">
+      <div className="space-y-2 h-[320px] overflow-y-auto overscroll-contain pr-1">
         {isLoading ? (
           <p className="text-center text-muted-foreground py-8">Loading guests...</p>
         ) : guests && guests.length > 0 ? (

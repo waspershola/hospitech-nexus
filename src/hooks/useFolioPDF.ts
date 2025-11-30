@@ -2,8 +2,6 @@ import { useMutation } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
-import { convertHtmlToPdfAndDownload, convertHtmlToPdfBlob } from '@/lib/pdf/convertHtmlToPdf';
-
 interface GenerateFolioPDFParams {
   folioId: string;
   format?: 'A4' | 'letter';
@@ -118,29 +116,35 @@ export function useFolioPDF() {
 
   const downloadFolio = useMutation({
     mutationFn: async (params: GenerateFolioPDFParams) => {
-      console.log('[useFolioPDF] PDF-TEMPLATE-V3: Download workflow starting');
-      
-      // Generate the HTML folio
+      console.log('[useFolioPDF] PDF-TEMPLATE-V4: Download workflow starting');
+
+      // Generate the HTML folio (V4 template)
       const pdfData = await generatePDF.mutateAsync(params);
-      
-      console.log('[useFolioPDF] PDF-TEMPLATE-V3: Converting HTML to PDF:', {
-        html_url: pdfData.pdf_url,
+
+      console.log('[useFolioPDF] PDF-TEMPLATE-V4: Using server-generated HTML for download:', {
+        html_url: pdfData.html_url,
+        pdf_url: pdfData.pdf_url,
         version: pdfData.version,
-        template_version: pdfData.metadata?.template_version
+        template_version: pdfData.metadata?.template_version,
       });
-      
-      // Convert HTML to real PDF client-side
-      const filename = `Guest_Folio_${params.folioId}_v${pdfData.version}.pdf`;
-      await convertHtmlToPdfAndDownload(pdfData.pdf_url, filename);
-      
+
+      // Open the HTML in a new tab so staff can use the browser's
+      // "Print" → "Save as PDF" which preserves the V4 layout exactly.
+      const downloadUrl = pdfData.html_url || pdfData.pdf_url;
+      if (downloadUrl) {
+        window.open(downloadUrl, '_blank');
+      } else {
+        throw new Error('No folio URL available for download');
+      }
+
       return pdfData;
     },
     onSuccess: () => {
-      toast.success('Folio PDF downloaded successfully');
+      toast.success('Folio opened in a new tab. Use Print → Save as PDF to download.');
     },
     onError: (error: Error) => {
-      console.error('[useFolioPDF] PDF-TEMPLATE-V3: Download failed', error);
-      toast.error(`Failed to download folio PDF: ${error.message}`);
+      console.error('[useFolioPDF] PDF-TEMPLATE-V4: Download failed', error);
+      toast.error(`Failed to open folio for download: ${error.message}`);
     },
   });
 
@@ -150,41 +154,25 @@ export function useFolioPDF() {
 
       console.log('[useFolioPDF] BILLING-CENTER-V2-EMAIL: Starting email workflow');
 
-      // First generate the HTML snapshot via edge function
+      // Generate the latest V4 HTML snapshot
       const pdfData = await generatePDF.mutateAsync({
         folioId: params.folioId,
         format: params.format,
         includeQR: params.includeQR,
       });
 
-      console.log('[useFolioPDF] BILLING-CENTER-V2-EMAIL: HTML snapshot generated, converting to PDF blob for email');
-
-      // Convert HTML snapshot to real PDF blob client-side for email attachment/link
-      const pdfBlob = await convertHtmlToPdfBlob(pdfData.pdf_url);
-
-      const storagePath = `${tenantId}/folios/${params.folioId}_email_${Date.now()}.pdf`;
-      console.log('[useFolioPDF] BILLING-CENTER-V2-EMAIL: Uploading PDF blob to storage', { storagePath });
-
-      const { data: uploadData, error: uploadError } = await supabase.storage
-        .from('receipts')
-        .upload(storagePath, pdfBlob, {
-          contentType: 'application/pdf',
-          upsert: true,
-        });
-
-      if (uploadError) {
-        console.error('[useFolioPDF] BILLING-CENTER-V2-EMAIL: Storage upload error', uploadError);
-        throw new Error(uploadError.message || 'Failed to upload folio PDF for email');
+      const pdfUrlForEmail = pdfData.pdf_url || pdfData.html_url;
+      if (!pdfUrlForEmail) {
+        throw new Error('No folio URL available for email');
       }
 
-      const { data: urlData } = supabase.storage.from('receipts').getPublicUrl(storagePath);
-      const pdfUrlForEmail = urlData.publicUrl;
-
-      console.log('[useFolioPDF] BILLING-CENTER-V2-EMAIL: PDF uploaded, sending email', {
+      console.log('[useFolioPDF] BILLING-CENTER-V2-EMAIL: Sending email with folio URL', {
         pdfUrlForEmail,
+        version: pdfData.version,
+        template_version: pdfData.metadata?.template_version,
       });
 
-      // Send email using dedicated folio email function with real PDF URL
+      // Send email using dedicated folio email function with server-generated URL
       const { data, error } = await supabase.functions.invoke('send-folio-email', {
         body: {
           tenant_id: tenantId,
