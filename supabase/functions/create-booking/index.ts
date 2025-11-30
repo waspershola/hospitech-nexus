@@ -284,12 +284,23 @@ serve(async (req) => {
             .maybeSingle();
 
           if (emailProvider) {
+            // Fetch hotel contact details for email template
+            const { data: hotelMeta } = await supabase
+              .from('hotel_meta')
+              .select('contact_phone, contact_email')
+              .eq('tenant_id', tenant_id)
+              .maybeSingle();
+
             const checkInFormatted = new Date(check_in).toLocaleDateString('en-US', {
               weekday: 'long', month: 'long', day: 'numeric', year: 'numeric'
             });
             const checkOutFormatted = new Date(check_out).toLocaleDateString('en-US', {
               weekday: 'long', month: 'long', day: 'numeric', year: 'numeric'
             });
+
+            // EMAIL-VARS-V1: Pass enhanced variables for rich template
+            const nights = Math.ceil((new Date(check_out).getTime() - new Date(check_in).getTime()) / (1000 * 60 * 60 * 24));
+            const ratePerNight = nights > 0 ? Math.round(total_amount / nights) : total_amount;
 
             await supabase.functions.invoke('send-email-notification', {
               body: {
@@ -302,7 +313,12 @@ serve(async (req) => {
                   check_in_date: checkInFormatted,
                   check_out_date: checkOutFormatted,
                   booking_reference: booking_reference,
-                  total_amount: total_amount
+                  total_amount: total_amount.toLocaleString(),
+                  nights: nights.toString(),
+                  rate_per_night: ratePerNight.toLocaleString(),
+                  hotel_name: hotelName,
+                  frontdesk_phone: hotelMeta?.contact_phone || 'Contact Front Desk',
+                  contact_email: hotelMeta?.contact_email || 'info@hotel.com',
                 },
                 booking_id: newBooking.id,
                 guest_id: guest_id
