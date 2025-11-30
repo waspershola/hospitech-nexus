@@ -354,6 +354,91 @@ serve(async (req) => {
 
     console.log('[checkin] Booking status updated to checked_in')
 
+    // CHECKIN-NOTIFICATION-V1: Send check-in notifications if enabled
+    try {
+      const { data: smsSettings } = await supabaseServiceClient
+        .from('tenant_sms_settings')
+        .select('enabled, auto_send_checkin_reminder')
+        .eq('tenant_id', booking.tenant_id)
+        .maybeSingle();
+
+      const { data: guest } = await supabaseServiceClient
+        .from('guests')
+        .select('name, phone, email')
+        .eq('id', booking.guest_id)
+        .single();
+
+      const { data: roomData } = await supabaseServiceClient
+        .from('rooms')
+        .select('category:room_categories!room_category_id(name)')
+        .eq('id', booking.room_id)
+        .single();
+
+      const { data: tenantData } = await supabaseServiceClient
+        .from('tenants')
+        .select('name')
+        .eq('id', booking.tenant_id)
+        .single();
+
+      const hotelName = tenantData?.name || 'Our Hotel';
+      const category = Array.isArray(roomData?.category) ? roomData?.category[0] : roomData?.category;
+      const roomCategory = category?.name || 'room';
+
+      // Send SMS if enabled
+      if (smsSettings?.enabled && guest?.phone) {
+        const checkOutDate = new Date(booking.check_out).toLocaleDateString('en-US', {
+          month: 'short', day: 'numeric'
+        });
+        const message = `Hi ${guest.name}, welcome to ${hotelName}! You're checked into ${roomCategory}. Checkout: ${checkOutDate}. Enjoy your stay!`;
+
+        await supabaseServiceClient.functions.invoke('send-sms', {
+          body: {
+            tenant_id: booking.tenant_id,
+            to: guest.phone,
+            message,
+            event_key: 'checkin_notification',
+            booking_id: booking.id,
+            guest_id: booking.guest_id
+          }
+        });
+        console.log('[CHECKIN-NOTIFICATION-V1] Check-in SMS sent');
+      }
+
+      // Send Email if enabled
+      if (guest?.email) {
+        const { data: emailProvider } = await supabaseServiceClient
+          .from('platform_email_providers')
+          .select('enabled')
+          .eq('enabled', true)
+          .or(`tenant_id.eq.${booking.tenant_id},tenant_id.is.null`)
+          .limit(1)
+          .maybeSingle();
+
+        if (emailProvider) {
+          await supabaseServiceClient.functions.invoke('send-email-notification', {
+            body: {
+              tenant_id: booking.tenant_id,
+              to: guest.email,
+              event_key: 'check_in_reminder',
+              variables: {
+                guest_name: guest.name,
+                room_type: roomCategory,
+                hotel_name: hotelName,
+                check_out_date: new Date(booking.check_out).toLocaleDateString('en-US', {
+                  weekday: 'long', month: 'long', day: 'numeric'
+                })
+              },
+              booking_id: booking.id,
+              guest_id: booking.guest_id
+            }
+          });
+          console.log('[CHECKIN-NOTIFICATION-V1] Check-in email sent');
+        }
+      }
+    } catch (notificationError) {
+      console.error('[CHECKIN-NOTIFICATION-V1] Notification failed (non-blocking):', notificationError);
+    }
+
     // Broadcast real-time update to all subscribers
     await supabaseServiceClient
       .channel(`folio-${folio.id}`)

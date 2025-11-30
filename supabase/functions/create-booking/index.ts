@@ -230,7 +230,7 @@ serve(async (req) => {
         // Fetch guest and room details for notification
         const { data: guestData } = await supabase
           .from('guests')
-          .select('name, phone')
+          .select('name, phone, email')
           .eq('id', guest_id)
           .single();
 
@@ -246,10 +246,12 @@ serve(async (req) => {
           .eq('id', tenant_id)
           .single();
 
+        const hotelName = tenantData?.name || 'Hotel';
+        const category = Array.isArray(roomData?.category) ? roomData?.category[0] : roomData?.category;
+        const roomCategory = category?.name || 'room';
+
+        // Send SMS if phone available
         if (guestData?.phone) {
-          const hotelName = tenantData?.name || 'Hotel';
-          const category = Array.isArray(roomData?.category) ? roomData?.category[0] : roomData?.category;
-          const roomCategory = category?.name || 'room';
           const checkInDate = new Date(check_in).toLocaleDateString('en-US', {
             month: 'short',
             day: 'numeric',
@@ -269,6 +271,45 @@ serve(async (req) => {
           });
 
           console.log('[NOTIFICATION-FIX-V1] Booking confirmation SMS sent');
+        }
+
+        // NOTIFICATION-EMAIL-V1: Send booking confirmation email if enabled
+        if (guestData?.email) {
+          const { data: emailProvider } = await supabase
+            .from('platform_email_providers')
+            .select('enabled')
+            .eq('enabled', true)
+            .or(`tenant_id.eq.${tenant_id},tenant_id.is.null`)
+            .limit(1)
+            .maybeSingle();
+
+          if (emailProvider) {
+            const checkInFormatted = new Date(check_in).toLocaleDateString('en-US', {
+              weekday: 'long', month: 'long', day: 'numeric', year: 'numeric'
+            });
+            const checkOutFormatted = new Date(check_out).toLocaleDateString('en-US', {
+              weekday: 'long', month: 'long', day: 'numeric', year: 'numeric'
+            });
+
+            await supabase.functions.invoke('send-email-notification', {
+              body: {
+                tenant_id,
+                to: guestData.email,
+                event_key: 'booking_confirmed',
+                variables: {
+                  guest_name: guestData.name,
+                  room_type: roomCategory,
+                  check_in_date: checkInFormatted,
+                  check_out_date: checkOutFormatted,
+                  booking_reference: booking_reference,
+                  total_amount: total_amount
+                },
+                booking_id: newBooking.id,
+                guest_id: guest_id
+              }
+            });
+            console.log('[NOTIFICATION-EMAIL-V1] Booking confirmation email sent');
+          }
         }
       }
     } catch (notificationError) {
