@@ -824,10 +824,16 @@ export function RoomActionDrawer({ roomId, contextDate, open, onClose, onOpenAss
         return actions;
       case 'overstay':
         if (!activeBooking) return [];
+        // PHASE-6-OVERSTAY-FIX: Check for outstanding balance and use force checkout
+        const hasOverstayBalance = folio && folio.balance > 0;
+        const checkoutAction = hasOverstayBalance && canForceCheckout 
+          ? { label: 'Force Checkout', action: handleForceCheckout, variant: 'destructive' as const, icon: AlertTriangle, tooltip: 'Manager override - checkout with outstanding balance' }
+          : { label: 'Check-Out', action: handleExpressCheckout, variant: 'destructive' as const, icon: LogOut, tooltip: 'Complete checkout' };
+        
         return [
           { label: 'Extend Stay', action: () => setExtendModalOpen(true), variant: 'default' as const, icon: Calendar, tooltip: 'Extend guest stay' },
           { label: 'Apply Overstay Charge', action: handleRoomService, variant: 'outline' as const, icon: CreditCard, tooltip: 'Apply overstay fees' },
-          { label: 'Check-Out', action: handleExpressCheckout, variant: 'destructive' as const, icon: LogOut, tooltip: 'Force checkout' },
+          checkoutAction,
           { label: 'Transfer Room', action: () => setTransferRoomOpen(true), variant: 'outline' as const, icon: MoveRight, tooltip: 'Transfer to different room' },
         ];
       case 'cleaning':
