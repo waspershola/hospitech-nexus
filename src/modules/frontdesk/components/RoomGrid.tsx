@@ -67,19 +67,26 @@ export function RoomGrid({ searchQuery, statusFilter, categoryFilter, floorFilte
         const viewDate = today;
         
         // Find ALL bookings that overlap with viewDate using the overlap rule:
+        // OVERSTAY-FIX-V1: Use bookingOverlapsDate utility to handle overstays correctly
         // checkInDate <= viewDate AND checkOutDate >= viewDate
         // This naturally excludes future reservations (check_in > today) while including:
         // - Checked-in guests (multi-day stays)
         // - Arrivals today (check_in = today)
         // - Departures today (check_out = today)
+        // - Overstays (checked_in past checkout date)
         const overlappingBookings = room.bookings.filter((b: any) => {
           if (['completed', 'cancelled'].includes(b.status)) return false;
           
           const checkInDate = format(new Date(b.check_in), 'yyyy-MM-dd');
           const checkOutDate = format(new Date(b.check_out), 'yyyy-MM-dd');
           
-          // Booking overlaps viewDate if it spans the date (inclusive on both ends)
-          return checkInDate <= viewDate && checkOutDate >= viewDate;
+          // Standard overlap: booking spans the date
+          const standardOverlap = checkInDate <= viewDate && checkOutDate >= viewDate;
+          
+          // OVERSTAY-FIX-V1: Include checked_in guests even if checkout date passed
+          const isOverstayStillCheckedIn = b.status === 'checked_in' && checkInDate <= viewDate;
+          
+          return standardOverlap || isOverstayStillCheckedIn;
         });
         
         // Priority-based selection from overlapping bookings:
