@@ -27,36 +27,30 @@ serve(async (req: Request) => {
       throw new Error('Missing required parameters: tenant_id and hours_before');
     }
 
-    // Get checkout policy settings
-    const { data: checkoutPolicy } = await supabase
-      .from('hotel_configurations')
-      .select('key, value')
+    // Check tenant SMS settings for checkout reminders
+    const { data: smsSettings } = await supabase
+      .from('tenant_sms_settings')
+      .select('enabled, auto_send_checkout_reminder')
       .eq('tenant_id', tenant_id)
-      .in('key', [
-        'enable_checkout_reminders',
-        'reminder_24h',
-        'reminder_2h',
-        'send_email',
-        'send_sms',
-        'check_out_time'
-      ]);
+      .maybeSingle();
 
-    const configMap = new Map(checkoutPolicy?.map(c => [c.key, c.value]) || []);
-    
-    const enableReminders = configMap.get('enable_checkout_reminders') !== false;
-    const sendEmail = configMap.get('send_email') !== false;
-    const checkReminder = hours_before === 24 
-      ? configMap.get('reminder_24h') !== false
-      : configMap.get('reminder_2h') !== false;
-
-    if (!enableReminders || !checkReminder || !sendEmail) {
+    if (!smsSettings?.enabled || !smsSettings?.auto_send_checkout_reminder) {
+      console.log('[send-checkout-reminder] Checkout reminders disabled for tenant');
       return new Response(
-        JSON.stringify({ message: 'Reminders disabled or not configured', sent: 0 }),
+        JSON.stringify({ message: 'Checkout reminders disabled', sent: 0 }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
-    const checkoutTime = configMap.get('check_out_time') || '12:00';
+    // Get checkout time from hotel configurations
+    const { data: checkoutConfig } = await supabase
+      .from('hotel_configurations')
+      .select('value')
+      .eq('tenant_id', tenant_id)
+      .eq('key', 'check_out_time')
+      .maybeSingle();
+
+    const checkoutTime = checkoutConfig?.value || '12:00';
 
     // Calculate target checkout datetime
     const now = new Date();
@@ -82,14 +76,14 @@ serve(async (req: Request) => {
     const fromEmail = emailSettings?.from_email || 'noreply@hotel.com';
     const fromName = emailSettings?.from_name || hotelName;
 
-    // Get bookings checking out on target date with phone numbers
+    // Get bookings checking out on target date
     const { data: bookings, error: bookingsError } = await supabase
       .from('bookings')
       .select(`
         id,
         check_out,
         total_amount,
-        room:rooms!bookings_room_id_fkey(number),
+        room:rooms!bookings_room_id_fkey(id, category:room_categories!room_category_id(name)),
         guest:guests!bookings_guest_id_fkey(id, name, email, phone)
       `)
       .eq('tenant_id', tenant_id)
@@ -138,55 +132,43 @@ serve(async (req: Request) => {
           day: 'numeric'
         });
 
-        // Send email - simplified (Resend removed to fix build errors)
-        // Email functionality should be handled separately
-        
-        // Send SMS if enabled
-        const sendSms = configMap.get('send_sms') === true;
-        if (sendSms && guest.phone) {
+        // Send SMS if guest has phone
+        if (guest.phone) {
           try {
-            const { data: smsSettings } = await supabase
-              .from('tenant_sms_settings')
-              .select('enabled, auto_send_checkout_reminder')
-              .eq('tenant_id', tenant_id)
-              .maybeSingle();
+            const category = Array.isArray(room?.category) ? room?.category[0] : room?.category;
+            const roomCategory = category?.name || 'your room';
+            const smsMessage = balance > 0
+              ? `Hi ${guest.name}, checkout from ${hotelName} is ${hours_before === 24 ? 'tomorrow' : 'in 2 hours'} at ${checkoutTime}. Outstanding balance: ₦${balance.toLocaleString()}. Safe travels!`
+              : `Hi ${guest.name}, checkout from ${hotelName} is ${hours_before === 24 ? 'tomorrow' : 'in 2 hours'} at ${checkoutTime}. Safe travels!`;
 
-            if (smsSettings?.enabled && smsSettings.auto_send_checkout_reminder) {
-              const smsMessage = balance > 0
-                ? `Hi ${guest.name}, checkout from ${hotelName} Room ${room?.number} is ${hours_before === 24 ? 'tomorrow' : 'in 2 hours'} at ${checkoutTime}. Outstanding balance: ₦${balance.toLocaleString()}. Safe travels!`
-                : `Hi ${guest.name}, checkout from ${hotelName} Room ${room?.number} is ${hours_before === 24 ? 'tomorrow' : 'in 2 hours'} at ${checkoutTime}. Safe travels!`;
+            const smsResult = await supabase.functions.invoke('send-sms', {
+              body: {
+                tenant_id: tenant_id,
+                to: guest.phone,
+                message: smsMessage,
+                event_key: 'checkout_reminder',
+                booking_id: booking.id,
+                guest_id: guest.id,
+              },
+            });
 
-              const smsResult = await supabase.functions.invoke('send-sms', {
-                headers: {
-                  Authorization: `Bearer ${Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')}`,
-                },
-                body: {
-                  tenant_id: tenant_id,
-                  to: guest.phone,
-                  message: smsMessage,
-                  event_key: 'checkout_reminder',
-                  booking_id: booking.id,
-                  guest_id: guest.id,
-                },
+            if (smsResult.error) {
+              console.error('SMS send error:', smsResult.error);
+              errors.push(`SMS failed for ${guest.phone}: ${smsResult.error.message}`);
+            } else {
+              sentCount++;
+              console.log(`Sent SMS reminder to ${guest.phone}`);
+              
+              // Log usage for analytics
+              await supabase.from('tenant_sms_usage_logs').insert({
+                tenant_id: tenant_id,
+                event_key: 'checkout_reminder',
+                recipient: guest.phone,
+                message_preview: smsMessage.substring(0, 100),
+                status: 'sent',
+                booking_id: booking.id,
+                guest_id: guest.id,
               });
-
-              if (smsResult.error) {
-                console.error('SMS send error:', smsResult.error);
-              } else {
-                sentCount++;
-                console.log(`Sent SMS reminder to ${guest.phone}`);
-                
-                // Log usage for analytics
-                await supabase.from('tenant_sms_usage_logs').insert({
-                  tenant_id: tenant_id,
-                  event_key: 'checkout_reminder',
-                  recipient: guest.phone,
-                  message_preview: smsMessage.substring(0, 100),
-                  status: 'sent',
-                  booking_id: booking.id,
-                  guest_id: guest.id,
-                });
-              }
             }
           } catch (smsError: any) {
             console.error('SMS send error:', smsError);

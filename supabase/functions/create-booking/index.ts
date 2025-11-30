@@ -218,6 +218,63 @@ serve(async (req) => {
       console.error('[CREATE-BOOKING-V3.1-UUID-CAST] Platform fee failed (non-blocking):', feeError);
     }
 
+    // NOTIFICATION-FIX-V1: Send booking confirmation if enabled
+    try {
+      const { data: smsSettings } = await supabase
+        .from('tenant_sms_settings')
+        .select('enabled, auto_send_booking_confirmation')
+        .eq('tenant_id', tenant_id)
+        .maybeSingle();
+
+      if (smsSettings?.enabled && smsSettings?.auto_send_booking_confirmation) {
+        // Fetch guest and room details for notification
+        const { data: guestData } = await supabase
+          .from('guests')
+          .select('name, phone')
+          .eq('id', guest_id)
+          .single();
+
+        const { data: roomData } = await supabase
+          .from('rooms')
+          .select('category:room_categories!room_category_id(name)')
+          .eq('id', room_id)
+          .single();
+
+        const { data: tenantData } = await supabase
+          .from('tenants')
+          .select('name')
+          .eq('id', tenant_id)
+          .single();
+
+        if (guestData?.phone) {
+          const hotelName = tenantData?.name || 'Hotel';
+          const category = Array.isArray(roomData?.category) ? roomData?.category[0] : roomData?.category;
+          const roomCategory = category?.name || 'room';
+          const checkInDate = new Date(check_in).toLocaleDateString('en-US', {
+            month: 'short',
+            day: 'numeric',
+          });
+
+          const message = `Hi ${guestData.name}, your booking at ${hotelName} is confirmed! ${roomCategory}, Check-in: ${checkInDate}. Ref: ${booking_reference}`;
+
+          await supabase.functions.invoke('send-sms', {
+            body: {
+              tenant_id,
+              to: guestData.phone,
+              message,
+              event_key: 'booking_confirmed',
+              booking_id: newBooking.id,
+              guest_id: guest_id,
+            },
+          });
+
+          console.log('[NOTIFICATION-FIX-V1] Booking confirmation SMS sent');
+        }
+      }
+    } catch (notificationError) {
+      console.error('[NOTIFICATION-FIX-V1] Notification failed (non-blocking):', notificationError);
+    }
+
     let masterFolioResult = null;
     let groupId = null;
     
