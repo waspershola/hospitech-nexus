@@ -220,15 +220,20 @@ export function RoomActionDrawer({ roomId, contextDate, open, onClose, onOpenAss
       }
     }
     
-    // Filter bookings that overlap with filterDate using IDENTICAL rule as RoomGrid
+    // OVERSTAY-FIX-V1: Filter bookings that overlap with filterDate using IDENTICAL rule as RoomGrid
     const overlappingBookings = bookingsArray.filter((b: any) => {
       if (['completed', 'cancelled'].includes(b.status)) return false;
       
       const checkInDate = format(new Date(b.check_in), 'yyyy-MM-dd');
       const checkOutDate = format(new Date(b.check_out), 'yyyy-MM-dd');
       
-      // ROOM-STATUS-OVERLAP-V1: Same overlap rule as RoomGrid
-      return checkInDate <= filterDateStr && checkOutDate >= filterDateStr;
+      // Standard overlap: booking spans the date
+      const standardOverlap = checkInDate <= filterDateStr && checkOutDate >= filterDateStr;
+      
+      // OVERSTAY-FIX-V1: Include checked_in guests even if checkout date passed
+      const isOverstayStillCheckedIn = b.status === 'checked_in' && checkInDate <= filterDateStr;
+      
+      return standardOverlap || isOverstayStillCheckedIn;
     });
     
     if (!overlappingBookings.length) return null;
@@ -274,9 +279,14 @@ export function RoomActionDrawer({ roomId, contextDate, open, onClose, onOpenAss
       )
     : null;
   
-  // Use lifecycle display status for UI
+  // OVERSTAY-FIX-V1: Use lifecycle display status for UI (NO FALLBACK to database status)
   const computedStatus = (() => {
     if (!room) return 'available';
+    
+    // Manual statuses always respected (maintenance, cleaning, etc.)
+    if (['maintenance', 'out_of_order', 'cleaning'].includes(room.status)) {
+      return room.status;
+    }
     
     // If viewing a specific date (not today), use different status logic
     if (contextDate) {
@@ -297,13 +307,11 @@ export function RoomActionDrawer({ roomId, contextDate, open, onClose, onOpenAss
       return lifecycle.displayStatus;
     }
     
-    // Fallback to legacy logic
-    return getRoomStatusNow(
-      room,
-      activeBooking as any,
-      operationsHours?.checkInTime,
-      operationsHours?.checkOutTime
-    );
+    // OVERSTAY-FIX-V1: When no overlapping booking and no lifecycle,
+    // room should show as available (consistent with Grid)
+    // DO NOT fall back to database status for occupied/reserved/overstay
+    // This prevents showing stale statuses when no active booking exists
+    return 'available';
   })();
   
   // Fetch folio balance for active booking
