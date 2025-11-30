@@ -7,6 +7,7 @@ interface ForceCheckoutParams {
   bookingId: string;
   reason: string;
   createReceivable?: boolean;
+  approvalToken: string;
 }
 
 export function useForceCheckout() {
@@ -14,7 +15,7 @@ export function useForceCheckout() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async ({ bookingId, reason, createReceivable = true }: ForceCheckoutParams) => {
+    mutationFn: async ({ bookingId, reason, createReceivable = true, approvalToken }: ForceCheckoutParams) => {
       if (!tenantId || !user) throw new Error('Not authenticated');
 
       const { data, error } = await supabase.functions.invoke('force-checkout', {
@@ -24,6 +25,7 @@ export function useForceCheckout() {
           manager_id: user.id,
           reason,
           create_receivable: createReceivable,
+          approval_token: approvalToken,
         },
       });
 
