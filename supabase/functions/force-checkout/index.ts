@@ -78,23 +78,40 @@ serve(async (req) => {
       );
     }
 
-    // FORCE-CHECKOUT-PIN-V1: Validate Manager PIN approval token
+    // FORCE-CHECKOUT-PIN-V2: Validate Manager PIN approval token
     if (!approval_token) {
-      console.error('[FORCE-CHECKOUT-PIN-V1] Missing approval token');
+      console.error('[FORCE-CHECKOUT-PIN-V2] Missing approval token');
       return new Response(
         JSON.stringify({ success: false, error: 'Manager approval required. Missing approval token.' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
-    // Validate the approval token
+    // Fetch staff record to get staff.id for approval validation
+    const { data: staffRecord, error: staffError } = await supabase
+      .from('staff')
+      .select('id')
+      .eq('user_id', user.id)
+      .single();
+
+    if (staffError || !staffRecord) {
+      console.error('[FORCE-CHECKOUT-PIN-V2] Staff record not found:', staffError);
+      return new Response(
+        JSON.stringify({ success: false, error: 'Staff record not found for user' }),
+        { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // Validate the approval token with all required parameters
     const { data: tokenValidation, error: tokenError } = await supabase.rpc('validate_approval_token', {
       p_token: approval_token,
+      p_action_type: 'checkout_with_debt',
+      p_approver_id: staffRecord.id,
       p_tenant_id: tenant_id
     });
 
     if (tokenError || !tokenValidation) {
-      console.error('[FORCE-CHECKOUT-PIN-V1] Token validation failed:', tokenError);
+      console.error('[FORCE-CHECKOUT-PIN-V2] Token validation failed:', tokenError);
       return new Response(
         JSON.stringify({ 
           success: false, 
@@ -104,7 +121,7 @@ serve(async (req) => {
       );
     }
 
-    console.log('[FORCE-CHECKOUT-PIN-V1] Approval token validated for staff:', tokenValidation.staff_id);
+    console.log('[FORCE-CHECKOUT-PIN-V2] Approval token validated for staff:', tokenValidation.staff_id);
 
     // SECURITY: Verify tenant_id matches authenticated user's tenant
     if (tenant_id !== authenticatedUserRole.tenant_id) {
@@ -233,7 +250,7 @@ serve(async (req) => {
       }
     }
 
-    // FORCE-CHECKOUT-PIN-V1: Clear the approval token to prevent replay attacks
+    // FORCE-CHECKOUT-PIN-V2: Clear the approval token to prevent replay attacks
     await supabase.rpc('clear_approval_token', {
       p_token: approval_token
     });
@@ -259,7 +276,7 @@ serve(async (req) => {
         receivable_created: create_receivable && balanceDue > 0,
         approval_token_used: true,
         approved_by_staff_id: tokenValidation.staff_id,
-        version: 'FORCE-CHECKOUT-PIN-V1'
+        version: 'FORCE-CHECKOUT-PIN-V2'
       },
     }]);
 
@@ -273,7 +290,7 @@ serve(async (req) => {
         receivable_created: create_receivable && balanceDue > 0,
         folio_closed: !!folio,
         room_updated: !!booking.room_id,
-        version: 'FORCE-CHECKOUT-PIN-V1'
+        version: 'FORCE-CHECKOUT-PIN-V2'
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
