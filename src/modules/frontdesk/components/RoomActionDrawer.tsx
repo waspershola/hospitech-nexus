@@ -638,26 +638,50 @@ export function RoomActionDrawer({ roomId, contextDate, open, onClose, onOpenAss
         });
       }
 
-      // Checkout action
+      // Checkout action - PHASE-6-OVERSTAY-FIX-V2
       if (canCheckout && activeBooking) {
-        actions.push({ 
-          label: lifecycle.state === 'overstay' ? 'Force Checkout' : 'Check-Out', 
-          action: handleExpressCheckout, 
-          variant: lifecycle.state === 'overstay' ? 'destructive' as const : 'default' as const, 
-          icon: LogOut, 
-          tooltip: lifecycle.state === 'overstay' ? 'Checkout overstaying guest' : 'Complete guest checkout' 
-        });
-        
-        // Add Force Checkout option if there's debt
         const hasOutstandingBalance = folio && folio.balance > 0;
-        if (hasOutstandingBalance && canForceCheckout && lifecycle.state !== 'overstay') {
+        
+        if (lifecycle.state === 'overstay') {
+          // Overstay WITH balance → Force Checkout (manager approval required)
+          if (hasOutstandingBalance && canForceCheckout) {
+            actions.push({ 
+              label: 'Force Checkout', 
+              action: handleForceCheckout, 
+              variant: 'destructive' as const, 
+              icon: AlertTriangle, 
+              tooltip: 'Manager override - checkout with outstanding balance' 
+            });
+          } else {
+            // Overstay WITHOUT balance → Regular checkout
+            actions.push({ 
+              label: 'Check-Out', 
+              action: handleExpressCheckout, 
+              variant: 'destructive' as const, 
+              icon: LogOut, 
+              tooltip: 'Complete checkout' 
+            });
+          }
+        } else {
+          // Non-overstay → Regular checkout
           actions.push({ 
-            label: 'Force Checkout', 
-            action: handleForceCheckout, 
-            variant: 'destructive' as const, 
-            icon: AlertTriangle, 
-            tooltip: 'Manager override - checkout with debt' 
+            label: 'Check-Out', 
+            action: handleExpressCheckout, 
+            variant: 'default' as const, 
+            icon: LogOut, 
+            tooltip: 'Complete guest checkout' 
           });
+          
+          // Add Force Checkout option for non-overstay with debt
+          if (hasOutstandingBalance && canForceCheckout) {
+            actions.push({ 
+              label: 'Force Checkout', 
+              action: handleForceCheckout, 
+              variant: 'destructive' as const, 
+              icon: AlertTriangle, 
+              tooltip: 'Manager override - checkout with debt' 
+            });
+          }
         }
       }
 
