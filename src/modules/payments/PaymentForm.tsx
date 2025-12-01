@@ -104,7 +104,7 @@ export function PaymentForm({
   const [sendSMS, setSendSMS] = useState(false);
   const [guestPhone, setGuestPhone] = useState<string | null>(null);
   
-  const { tenantId } = useAuth();
+  const { tenantId, role } = useAuth();
   const queryClient = useQueryClient();
   const { providers: allProviders = [], isLoading: providersLoading } = useFinanceProviders();
   const { locations = [] } = useFinanceLocations();
@@ -113,7 +113,11 @@ export function PaymentForm({
   const { mutate: recordPayment, isPending } = useRecordPayment();
   const { mutate: applyWalletCredit, isPending: applyingWallet } = useApplyWalletCredit();
   const { preferences } = usePaymentPreferences();
-  const { getDefaultLocation } = useDashboardDefaults();
+  const { getDefaultLocation, isLocationChangeAllowed, requiresManagerOverride } = useDashboardDefaults();
+  
+  // PAYMENT-ENFORCEMENT-V1: Track if location is locked based on role
+  const canChangeLocation = isLocationChangeAllowed(role || '');
+  const defaultLocationId = getDefaultLocation(dashboardContext);
 
   const activeLocations = locations.filter(l => l.status === 'active');
 
@@ -764,9 +768,18 @@ export function PaymentForm({
 
       {activeLocations.length > 0 && (
         <div className="space-y-2">
-          <Label htmlFor="location_id">Payment Location</Label>
-          <Select onValueChange={(value) => setValue('location_id', value)}>
-            <SelectTrigger>
+          <Label htmlFor="location_id">
+            Payment Location
+            {!canChangeLocation && defaultLocationId && (
+              <span className="ml-2 text-xs text-muted-foreground">(Locked to department default)</span>
+            )}
+          </Label>
+          <Select 
+            value={selectedLocationId || ''}
+            onValueChange={(value) => setValue('location_id', value)}
+            disabled={!canChangeLocation && !!defaultLocationId}
+          >
+            <SelectTrigger className={!canChangeLocation && defaultLocationId ? 'opacity-75' : ''}>
               <SelectValue placeholder="Select location" />
             </SelectTrigger>
             <SelectContent>
@@ -777,7 +790,12 @@ export function PaymentForm({
               ))}
             </SelectContent>
           </Select>
-          {selectedLocationId && (
+          {!canChangeLocation && defaultLocationId && (
+            <p className="text-xs text-muted-foreground">
+              📌 Location locked to department default. Manager override required to change.
+            </p>
+          )}
+          {selectedLocationId && canChangeLocation && (
             <p className="text-xs text-muted-foreground">
               Provider auto-selected from location
             </p>

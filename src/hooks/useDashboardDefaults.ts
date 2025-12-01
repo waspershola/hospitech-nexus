@@ -70,11 +70,43 @@ export function useDashboardDefaults() {
     return dashboardDefault?.default_location_id || null;
   };
 
+  /**
+   * PAYMENT-ENFORCEMENT-V1: Check if user role allows location override
+   * Owner/Manager can always change, FrontDesk/Staff must use defaults
+   */
+  const isLocationChangeAllowed = (userRole: string): boolean => {
+    const managerRoles = ['owner', 'manager'];
+    return managerRoles.includes(userRole.toLowerCase());
+  };
+
+  /**
+   * PAYMENT-ENFORCEMENT-V1: Check if changing from default requires manager override
+   */
+  const requiresManagerOverride = (
+    currentLocationId: string | undefined,
+    newLocationId: string,
+    dashboardContext: string
+  ): boolean => {
+    const defaultLocationId = getDefaultLocation(dashboardContext);
+    
+    // If no default configured, allow any selection
+    if (!defaultLocationId) return false;
+    
+    // If trying to change from default to something else, requires override
+    if (currentLocationId === defaultLocationId && newLocationId !== defaultLocationId) {
+      return true;
+    }
+    
+    return false;
+  };
+
   return {
     defaults: query.data ?? [],
     isLoading: query.isLoading,
     getDefaultLocation,
     setDefault: upsertMutation.mutate,
     isUpdating: upsertMutation.isPending,
+    isLocationChangeAllowed,
+    requiresManagerOverride,
   };
 }
