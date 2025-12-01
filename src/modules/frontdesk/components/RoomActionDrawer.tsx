@@ -145,8 +145,12 @@ export function RoomActionDrawer({ roomId, contextDate, open, onClose, onOpenAss
           const checkInDate = format(new Date(b.check_in), 'yyyy-MM-dd');
           const checkOutDate = format(new Date(b.check_out), 'yyyy-MM-dd');
           
-          // BYDATE-FIX-V2: Standard overlap using exclusive checkout (matches grid behavior)
-          const standardOverlap = checkInDate <= filterDateStr && checkOutDate > filterDateStr;
+          // ROOM-STATUS-DRAWER-FIX-V1: Conditional overlap logic based on view context
+          // - Room Status (today): INCLUSIVE (>=) to match RoomGrid behavior for checkout-today rooms
+          // - By Date (future): EXCLUSIVE (>) to show availability for planning
+          const standardOverlap = isViewingFutureDate
+            ? (checkInDate <= filterDateStr && checkOutDate > filterDateStr)
+            : (checkInDate <= filterDateStr && checkOutDate >= filterDateStr);
           
           // BYDATE-FIX-V1: Only show overstays when viewing TODAY, not future dates
           // For future dates, overstays should NOT appear - room is available for planning
@@ -251,8 +255,12 @@ export function RoomActionDrawer({ roomId, contextDate, open, onClose, onOpenAss
       const checkInDate = format(new Date(b.check_in), 'yyyy-MM-dd');
       const checkOutDate = format(new Date(b.check_out), 'yyyy-MM-dd');
       
-      // BYDATE-FIX-V2: Standard overlap using exclusive checkout (matches grid behavior)
-      const standardOverlap = checkInDate <= filterDateStr && checkOutDate > filterDateStr;
+      // ROOM-STATUS-DRAWER-FIX-V1: Conditional overlap logic based on view context
+      // - Room Status (today): INCLUSIVE (>=) to match RoomGrid for checkout-today and no-show rooms
+      // - By Date (future): EXCLUSIVE (>) to show availability for planning
+      const standardOverlap = isViewingFutureDate
+        ? (checkInDate <= filterDateStr && checkOutDate > filterDateStr)
+        : (checkInDate <= filterDateStr && checkOutDate >= filterDateStr);
       
       // BYDATE-FIX-V1: Only show overstays when viewing TODAY, not future dates
       // For future dates, overstays should NOT appear - room is available for planning
