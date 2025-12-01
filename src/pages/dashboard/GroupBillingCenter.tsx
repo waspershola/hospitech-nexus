@@ -125,7 +125,7 @@ export default function GroupBillingCenter() {
     );
   }
 
-  const { master_folio, child_folios, aggregated_balances, expected_totals } = data;
+  const { master_folio, child_folios, aggregated_balances, expected_totals = { room_count: 0, expected_total: 0 } } = data;
 
   return (
     <div className="container mx-auto py-8 space-y-6">

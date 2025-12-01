@@ -2,7 +2,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { formatCurrency } from "@/lib/finance/tax";
 import { formatFolioMoney, getBalanceColor, getCreditLabel, isCredit } from "@/lib/folio/formatters";
-import { Building2, Users, TrendingUp, TrendingDown, DollarSign } from "lucide-react";
+import { Building2, Users, TrendingUp, TrendingDown, DollarSign, Clock } from "lucide-react";
 import type { AggregatedBalances, ExpectedTotals } from "@/hooks/useGroupMasterFolio";
 
 interface GroupFolioSummaryCardProps {
