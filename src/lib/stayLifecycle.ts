@@ -236,6 +236,28 @@ export function calculateStayLifecycleState(
     };
   }
 
+  // NO-SHOW or LATE ARRIVAL: Arrival was in the past but checkout hasn't passed
+  // Guest was supposed to arrive but hasn't checked in yet - still show as reserved
+  if (arrivalDate < today && departureDate >= today && booking.status === 'reserved') {
+    // On checkout day - this is effectively a no-show
+    if (departureDate === today) {
+      return {
+        state: 'expected-arrival-today',
+        displayStatus: 'reserved',
+        allowedActions: ['check-in', 'cancel-booking', 'amend-booking'],
+        statusMessage: 'No-show - expected arrival yesterday',
+      };
+    }
+    
+    // Multi-day stay, arrival passed but checkout is still in future
+    return {
+      state: 'expected-arrival-today',
+      displayStatus: 'reserved',
+      allowedActions: ['check-in', 'cancel-booking', 'amend-booking'],
+      statusMessage: `Late arrival - expected ${arrivalDate}`,
+    };
+  }
+
   // Default fallback
   return {
     state: 'vacant',
