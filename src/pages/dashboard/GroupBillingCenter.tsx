@@ -153,7 +153,7 @@ export default function GroupBillingCenter() {
         />
       </div>
 
-      {/* Summary Card */}
+      {/* Summary Card with expected vs posted charges */}
       <GroupFolioSummaryCard
         masterFolio={master_folio}
         aggregatedBalances={aggregated_balances}
