@@ -145,8 +145,8 @@ export function RoomActionDrawer({ roomId, contextDate, open, onClose, onOpenAss
           const checkInDate = format(new Date(b.check_in), 'yyyy-MM-dd');
           const checkOutDate = format(new Date(b.check_out), 'yyyy-MM-dd');
           
-          // Standard overlap: booking spans the date
-          const standardOverlap = checkInDate <= filterDateStr && checkOutDate >= filterDateStr;
+          // BYDATE-FIX-V2: Standard overlap using exclusive checkout (matches grid behavior)
+          const standardOverlap = checkInDate <= filterDateStr && checkOutDate > filterDateStr;
           
           // BYDATE-FIX-V1: Only show overstays when viewing TODAY, not future dates
           // For future dates, overstays should NOT appear - room is available for planning
@@ -251,8 +251,8 @@ export function RoomActionDrawer({ roomId, contextDate, open, onClose, onOpenAss
       const checkInDate = format(new Date(b.check_in), 'yyyy-MM-dd');
       const checkOutDate = format(new Date(b.check_out), 'yyyy-MM-dd');
       
-      // Standard overlap: booking spans the date
-      const standardOverlap = checkInDate <= filterDateStr && checkOutDate >= filterDateStr;
+      // BYDATE-FIX-V2: Standard overlap using exclusive checkout (matches grid behavior)
+      const standardOverlap = checkInDate <= filterDateStr && checkOutDate > filterDateStr;
       
       // BYDATE-FIX-V1: Only show overstays when viewing TODAY, not future dates
       // For future dates, overstays should NOT appear - room is available for planning
