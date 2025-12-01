@@ -86,16 +86,19 @@ export function BookingFlow({ open, onClose, preselectedRoomId }: BookingFlowPro
   };
 
   const canProceed = () => {
-    // Validate check-in date is not in the past
+    // Validate check-in date is not in the past and minimum 1 night stay
     const validateDates = () => {
-      if (!bookingData.checkIn) return true; // Let step validation handle this
+      if (!bookingData.checkIn || !bookingData.checkOut) return true; // Let step validation handle this
       
       const today = new Date();
       today.setHours(0, 0, 0, 0);
       const checkInDate = new Date(bookingData.checkIn);
       checkInDate.setHours(0, 0, 0, 0);
+      const checkOutDate = new Date(bookingData.checkOut);
+      checkOutDate.setHours(0, 0, 0, 0);
       
-      return checkInDate >= today;
+      // MIN-NIGHT-V1: Check-in must be today or future AND checkout must be after check-in
+      return checkInDate >= today && checkOutDate > checkInDate;
     };
 
     if (isGroupMode) {
