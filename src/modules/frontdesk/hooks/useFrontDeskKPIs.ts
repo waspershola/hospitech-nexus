@@ -2,6 +2,7 @@ import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { format, addDays } from 'date-fns';
+import { useTodayArrivals } from '@/hooks/useTodayArrivals';
 
 export interface FrontDeskKPIs {
   available: number;
@@ -17,6 +18,9 @@ export interface FrontDeskKPIs {
 
 export function useFrontDeskKPIs() {
   const { tenantId } = useAuth();
+  
+  // ARRIVALS-SHARED-V1: Use shared hook for consistent arrivals data
+  const { data: todayArrivals = [] } = useTodayArrivals();
 
   const query = useQuery({
     queryKey: ['frontdesk-kpis', tenantId],
@@ -31,8 +35,6 @@ export function useFrontDeskKPIs() {
       // TIMEZONE-FIX-V1: Use date-fns format for local timezone
       const todayISO = format(new Date(), 'yyyy-MM-dd');
       const tomorrowISO = format(addDays(new Date(), 1), 'yyyy-MM-dd');
-      
-      console.log('KPI-DATE-DEBUG', { todayISO, tomorrowISO, localNow: new Date().toString() });
 
       try {
         // Get room counts by status
@@ -48,18 +50,9 @@ export function useFrontDeskKPIs() {
 
         console.log('✅ Rooms fetched:', rooms?.length || 0);
 
-        // Get today's arrivals (bookings checking in today)
-        // KPI-ARRIVALS-FIX-V1: Use date range for timestamptz column
-        const { data: arrivals, error: arrivalsError } = await supabase
-          .from('bookings')
-          .select('id')
-          .eq('tenant_id', tenantId)
-          .in('status', ['reserved', 'confirmed'])
-          .gte('check_in', todayISO)
-          .lt('check_in', tomorrowISO);
-
-        if (arrivalsError) console.error('❌ Error fetching arrivals:', arrivalsError);
-        console.log('✅ Arrivals today:', arrivals?.length || 0);
+        // ARRIVALS-SHARED-V1: Use pre-fetched arrivals count from shared hook
+        const arrivalsCount = todayArrivals.length;
+        console.log('✅ Arrivals today (from shared hook):', arrivalsCount);
 
         // Get today's departures (bookings checking out today)
         const { data: departures, error: departuresError } = await supabase
@@ -121,7 +114,7 @@ export function useFrontDeskKPIs() {
         const kpis = {
           available,
           occupied,
-          arrivals: arrivals?.length || 0,
+          arrivals: arrivalsCount,
           departures: departures?.length || 0,
           inHouse: inHouse?.length || 0,
           pendingPayments: pendingPayments?.length || 0,

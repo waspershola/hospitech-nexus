@@ -13,6 +13,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { AlertCircle, CheckCircle2, Users, Loader2, DollarSign } from 'lucide-react';
 import { format, addDays } from 'date-fns';
+import { useTodayArrivals } from '@/hooks/useTodayArrivals';
 
 interface BulkCheckInDrawerProps {
   open: boolean;
@@ -49,49 +50,24 @@ export function BulkCheckInDrawer({ open, onClose }: BulkCheckInDrawerProps) {
   const [step, setStep] = useState<'selection' | 'payment'>('selection');
   const [paymentAmounts, setPaymentAmounts] = useState<Record<string, string>>({});
 
-  // BULK-CHECKIN-FIX-V1: Fetch today's arrivals with fresh date calculation
-  const { data: arrivals = [], isLoading, refetch } = useQuery({
-    queryKey: ['arrivals-list', tenantId],
-    queryFn: async () => {
-      if (!tenantId) return [];
+  // ARRIVALS-SHARED-V1: Use shared hook for consistent arrivals data
+  const {
+    data: todayArrivals = [],
+    isLoading,
+    refetch
+  } = useTodayArrivals();
 
-      // Calculate fresh date at query time
-      // TIMEZONE-FIX-V1: Use date-fns format for local timezone
-      const todayISO = format(new Date(), 'yyyy-MM-dd');
-      const tomorrowISO = format(addDays(new Date(), 1), 'yyyy-MM-dd');
+  // Map to ArrivalBooking type for component compatibility
+  const arrivals = todayArrivals as unknown as ArrivalBooking[];
 
-      console.log('BULK-CHECKIN-DATE-DEBUG', { todayISO, tomorrowISO, localNow: new Date().toString() });
-
-      const { data, error } = await supabase
-        .from('bookings')
-        .select(`
-          id,
-          check_in,
-          check_out,
-          total_amount,
-          guest_id,
-          room_id,
-          status,
-          guest:guests(id, name, email, phone),
-          room:rooms(
-            id, 
-            number,
-            category:room_categories(name)
-          )
-        `)
-        .eq('tenant_id', tenantId)
-        // BULK-CHECKIN-FIX-V2: Use date range for timestamptz column
-        .gte('check_in', todayISO)
-        .lt('check_in', tomorrowISO)
-        .in('status', ['reserved', 'confirmed'])
-        .order('check_in', { ascending: true });
-
-      if (error) throw error;
-      return (data || []) as ArrivalBooking[];
-    },
-    enabled: !!tenantId && open,
-    staleTime: 0,
-  });
+  // CACHE-RESET-V1: Force refresh when drawer opens
+  useEffect(() => {
+    if (open && tenantId) {
+      // Clear stale cache first to ensure fresh data
+      queryClient.resetQueries({ queryKey: ['today-arrivals', tenantId] });
+      refetch();
+    }
+  }, [open, tenantId, refetch, queryClient]);
 
   // Bulk check-in mutation - FOLIO-FIX-V2: Always use checkin-guest edge function
   const bulkCheckInMutation = useMutation({
@@ -137,7 +113,7 @@ export function BulkCheckInDrawer({ open, onClose }: BulkCheckInDrawerProps) {
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['rooms-grid'] });
       queryClient.invalidateQueries({ queryKey: ['frontdesk-kpis'] });
-      queryClient.invalidateQueries({ queryKey: ['arrivals-list'] });
+      queryClient.invalidateQueries({ queryKey: ['today-arrivals'] });
 
       if (data.failed === 0) {
         toast.success(`Successfully checked in ${data.successful} guest${data.successful > 1 ? 's' : ''}`);
@@ -160,13 +136,6 @@ export function BulkCheckInDrawer({ open, onClose }: BulkCheckInDrawerProps) {
       });
     },
   });
-
-  // BULK-CHECKIN-FIX-V1: Refetch when drawer opens to ensure fresh data
-  useEffect(() => {
-    if (open && tenantId) {
-      refetch();
-    }
-  }, [open, tenantId, refetch]);
 
   // Record payments mutation
   const recordPaymentsMutation = useMutation({
@@ -486,55 +455,24 @@ export function BulkCheckInDrawer({ open, onClose }: BulkCheckInDrawerProps) {
                       <div className="flex items-start justify-between gap-2">
                         <div>
                           <p className="font-medium">{arrival.guest.name}</p>
-                          <p className="text-sm text-muted-foreground">
-                            Room {arrival.room.number}
-                          </p>
+                          <p className="text-xs text-muted-foreground">Room {arrival.room.number}</p>
                         </div>
-                        <Badge variant="outline">
-                          Total: ₦{arrival.total_amount.toLocaleString()}
-                        </Badge>
+                        <Badge>₦{arrival.total_amount.toLocaleString()}</Badge>
                       </div>
 
-                      <div className="space-y-2">
-                        <Label htmlFor={`payment-${bookingId}`}>
-                          Payment Amount
-                        </Label>
-                        <div className="flex gap-2">
-                          <div className="relative flex-1">
-                            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">
-                              ₦
-                            </span>
-                            <Input
-                              id={`payment-${bookingId}`}
-                              type="number"
-                              min="0"
-                              max={arrival.total_amount}
-                              step="0.01"
-                              value={paymentAmounts[bookingId] || ''}
-                              onChange={(e) => setPaymentAmounts(prev => ({
-                                ...prev,
-                                [bookingId]: e.target.value
-                              }))}
-                              className="pl-8"
-                              placeholder="0.00"
-                            />
-                          </div>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => setPaymentAmounts(prev => ({
-                              ...prev,
-                              [bookingId]: arrival.total_amount.toString()
-                            }))}
-                          >
-                            Full
-                          </Button>
-                        </div>
-                        {paymentAmounts[bookingId] && parseFloat(paymentAmounts[bookingId]) < arrival.total_amount && (
-                          <p className="text-xs text-amber-600">
-                            Partial payment: Balance of ₦{(arrival.total_amount - parseFloat(paymentAmounts[bookingId])).toLocaleString()} will be due
-                          </p>
-                        )}
+                      <div>
+                        <Label htmlFor={`payment-${bookingId}`}>Amount Collected</Label>
+                        <Input
+                          id={`payment-${bookingId}`}
+                          type="number"
+                          step="0.01"
+                          value={paymentAmounts[bookingId] || ''}
+                          onChange={(e) => setPaymentAmounts(prev => ({
+                            ...prev,
+                            [bookingId]: e.target.value
+                          }))}
+                          placeholder="0.00"
+                        />
                       </div>
                     </div>
                   );
@@ -542,30 +480,9 @@ export function BulkCheckInDrawer({ open, onClose }: BulkCheckInDrawerProps) {
               </div>
             </ScrollArea>
 
-            <Separator />
-
-            <div className="p-4 bg-primary/5 rounded-lg">
-              <div className="flex justify-between items-center">
-                <span className="font-medium">Total Collecting:</span>
-                <span className="text-lg font-bold">
-                  ₦{Object.values(paymentAmounts)
-                    .reduce((sum, val) => sum + (parseFloat(val) || 0), 0)
-                    .toLocaleString()}
-                </span>
-              </div>
-            </div>
-
-            {/* Payment Actions */}
             <div className="flex gap-3 pt-4 border-t">
               <Button
                 variant="outline"
-                onClick={() => setStep('selection')}
-                disabled={recordPaymentsMutation.isPending}
-              >
-                Back
-              </Button>
-              <Button
-                variant="secondary"
                 onClick={handleSkipPayment}
                 className="flex-1"
                 disabled={recordPaymentsMutation.isPending}
