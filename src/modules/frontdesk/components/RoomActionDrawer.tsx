@@ -134,6 +134,10 @@ export function RoomActionDrawer({ roomId, contextDate, open, onClose, onOpenAss
       if (data && data.bookings) {
         const allBookings = Array.isArray(data.bookings) ? data.bookings : [];
         
+        // BYDATE-FIX-V1: Calculate if viewing today vs future date
+        const today = format(new Date(), 'yyyy-MM-dd');
+        const isViewingFutureDate = filterDateStr > today;
+        
         // Apply the same overlap rule as RoomGrid: checkInDate <= filterDate AND checkOutDate >= filterDate
         const overlappingBookings = allBookings.filter((b: any) => {
           if (['completed', 'cancelled'].includes(b.status)) return false;
@@ -141,8 +145,16 @@ export function RoomActionDrawer({ roomId, contextDate, open, onClose, onOpenAss
           const checkInDate = format(new Date(b.check_in), 'yyyy-MM-dd');
           const checkOutDate = format(new Date(b.check_out), 'yyyy-MM-dd');
           
-          // Booking overlaps filterDate if it spans the date (inclusive on both ends)
-          return checkInDate <= filterDateStr && checkOutDate >= filterDateStr;
+          // Standard overlap: booking spans the date
+          const standardOverlap = checkInDate <= filterDateStr && checkOutDate >= filterDateStr;
+          
+          // BYDATE-FIX-V1: Only show overstays when viewing TODAY, not future dates
+          // For future dates, overstays should NOT appear - room is available for planning
+          const isOverstayStillCheckedIn = !isViewingFutureDate && 
+            b.status === 'checked_in' && 
+            checkInDate <= filterDateStr;
+          
+          return standardOverlap || isOverstayStillCheckedIn;
         });
         
         // Use same priority selection as RoomGrid
@@ -228,6 +240,10 @@ export function RoomActionDrawer({ roomId, contextDate, open, onClose, onOpenAss
       }
     }
     
+    // BYDATE-FIX-V1: Calculate if viewing today vs future date
+    const today = format(new Date(), 'yyyy-MM-dd');
+    const isViewingFutureDate = filterDateStr > today;
+    
     // OVERSTAY-FIX-V1: Filter bookings that overlap with filterDate using IDENTICAL rule as RoomGrid
     const overlappingBookings = bookingsArray.filter((b: any) => {
       if (['completed', 'cancelled'].includes(b.status)) return false;
@@ -238,8 +254,11 @@ export function RoomActionDrawer({ roomId, contextDate, open, onClose, onOpenAss
       // Standard overlap: booking spans the date
       const standardOverlap = checkInDate <= filterDateStr && checkOutDate >= filterDateStr;
       
-      // OVERSTAY-FIX-V1: Include checked_in guests even if checkout date passed
-      const isOverstayStillCheckedIn = b.status === 'checked_in' && checkInDate <= filterDateStr;
+      // BYDATE-FIX-V1: Only show overstays when viewing TODAY, not future dates
+      // For future dates, overstays should NOT appear - room is available for planning
+      const isOverstayStillCheckedIn = !isViewingFutureDate && 
+        b.status === 'checked_in' && 
+        checkInDate <= filterDateStr;
       
       return standardOverlap || isOverstayStillCheckedIn;
     });
