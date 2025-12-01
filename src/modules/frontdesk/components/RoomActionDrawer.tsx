@@ -82,6 +82,8 @@ export function RoomActionDrawer({ roomId, contextDate, open, onClose, onOpenAss
     guestId: string;
     balance: number;
   } | null>(null);
+  const [incomingHistoryOpen, setIncomingHistoryOpen] = useState(false);
+  const [incomingHistoryBookingId, setIncomingHistoryBookingId] = useState<string | null>(null);
   const [cancelModalOpen, setCancelModalOpen] = useState(false);
   const [showConfirmationDoc, setShowConfirmationDoc] = useState(false);
   const [realtimeDebounceTimer, setRealtimeDebounceTimer] = useState<NodeJS.Timeout | null>(null);
@@ -1190,9 +1192,24 @@ export function RoomActionDrawer({ roomId, contextDate, open, onClose, onOpenAss
                               setIncomingPaymentOpen(true);
                             }}
                             onViewHistory={(bookingId) => {
-                              setPaymentHistoryOpen(true);
+                              setIncomingHistoryBookingId(bookingId);
+                              setIncomingHistoryOpen(true);
                             }}
                           />
+                          
+                          {/* Payment history for incoming reservation */}
+                          {incomingHistoryOpen && incomingHistoryBookingId && (
+                            <div className="mt-4">
+                              <PaymentHistory 
+                                bookingId={incomingHistoryBookingId}
+                                onClose={() => {
+                                  setIncomingHistoryOpen(false);
+                                  setIncomingHistoryBookingId(null);
+                                }}
+                              />
+                            </div>
+                          )}
+                          
                           <Separator />
                         </>
                       )}
