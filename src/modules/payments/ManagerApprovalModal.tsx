@@ -233,6 +233,9 @@ export function ManagerApprovalModal({
               maxLength={6}
               className="text-center text-2xl tracking-widest"
               disabled={isValidating}
+              autoComplete="new-password"
+              data-lpignore="true"
+              data-form-type="other"
             />
             <p className="text-xs text-muted-foreground">
               Enter your 6-digit manager PIN to approve this transaction
@@ -248,6 +251,7 @@ export function ManagerApprovalModal({
               placeholder="Explain why you're approving this transaction..."
               rows={3}
               disabled={isValidating}
+              autoComplete="off"
             />
             <p className="text-xs text-muted-foreground">
               Minimum 10 characters. This will be logged for audit purposes.

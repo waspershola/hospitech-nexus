@@ -1630,7 +1630,7 @@ export function RoomActionDrawer({ roomId, contextDate, open, onClose, onOpenAss
       {/* SAME-DAY-TURNOVER-V2: Payment Dialog for Incoming Reservation */}
       {incomingPaymentData && (
         <Dialog open={incomingPaymentOpen} onOpenChange={setIncomingPaymentOpen}>
-          <DialogContent className="max-w-md">
+          <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>Collect Payment - Incoming Reservation</DialogTitle>
             </DialogHeader>

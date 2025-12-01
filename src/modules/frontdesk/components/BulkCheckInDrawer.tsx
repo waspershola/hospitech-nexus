@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
@@ -49,15 +49,16 @@ export function BulkCheckInDrawer({ open, onClose }: BulkCheckInDrawerProps) {
   const [step, setStep] = useState<'selection' | 'payment'>('selection');
   const [paymentAmounts, setPaymentAmounts] = useState<Record<string, string>>({});
 
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  const todayISO = today.toISOString().split('T')[0]; // Just date part: "2025-11-05"
-
-  // Fetch today's arrivals
-  const { data: arrivals = [], isLoading } = useQuery({
-    queryKey: ['arrivals-list', tenantId, todayISO],
+  // BULK-CHECKIN-FIX-V1: Fetch today's arrivals with fresh date calculation
+  const { data: arrivals = [], isLoading, refetch } = useQuery({
+    queryKey: ['arrivals-list', tenantId],
     queryFn: async () => {
       if (!tenantId) return [];
+
+      // Calculate fresh date at query time
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const todayISO = today.toISOString().split('T')[0];
 
       const { data, error } = await supabase
         .from('bookings')
@@ -85,6 +86,7 @@ export function BulkCheckInDrawer({ open, onClose }: BulkCheckInDrawerProps) {
       return (data || []) as ArrivalBooking[];
     },
     enabled: !!tenantId && open,
+    staleTime: 0,
   });
 
   // Bulk check-in mutation - FOLIO-FIX-V2: Always use checkin-guest edge function
@@ -154,6 +156,13 @@ export function BulkCheckInDrawer({ open, onClose }: BulkCheckInDrawerProps) {
       });
     },
   });
+
+  // BULK-CHECKIN-FIX-V1: Refetch when drawer opens to ensure fresh data
+  useEffect(() => {
+    if (open && tenantId) {
+      refetch();
+    }
+  }, [open, tenantId, refetch]);
 
   // Record payments mutation
   const recordPaymentsMutation = useMutation({
