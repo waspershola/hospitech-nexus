@@ -59,6 +59,11 @@ export function BulkCheckInDrawer({ open, onClose }: BulkCheckInDrawerProps) {
       const today = new Date();
       today.setHours(0, 0, 0, 0);
       const todayISO = today.toISOString().split('T')[0];
+      const tomorrow = new Date(today);
+      tomorrow.setDate(tomorrow.getDate() + 1);
+      const tomorrowISO = tomorrow.toISOString().split('T')[0];
+
+      console.log('BULK-CHECKIN-DATE-DEBUG', { todayISO, tomorrowISO, now: new Date().toISOString() });
 
       const { data, error } = await supabase
         .from('bookings')
@@ -78,7 +83,9 @@ export function BulkCheckInDrawer({ open, onClose }: BulkCheckInDrawerProps) {
           )
         `)
         .eq('tenant_id', tenantId)
-        .eq('check_in', todayISO)
+        // BULK-CHECKIN-FIX-V2: Use date range for timestamptz column
+        .gte('check_in', todayISO)
+        .lt('check_in', tomorrowISO)
         .in('status', ['reserved', 'confirmed'])
         .order('check_in', { ascending: true });
 

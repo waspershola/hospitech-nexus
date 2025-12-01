@@ -273,7 +273,8 @@ export function RoomActionDrawer({ roomId, contextDate, open, onClose, onOpenAss
     const checkOutDate = format(new Date(activeBooking.check_out), 'yyyy-MM-dd');
     const today = format(new Date(), 'yyyy-MM-dd');
     
-    if (checkOutDate !== today) return null;
+    // OVERSTAY-INCOMING-V1: Include overstays (checkout <= today) but exclude future departures
+    if (checkOutDate > today) return null;
     
     // Find reserved booking with check-in today (different from active)
     const incoming = bookingsArray.find((b: any) => {
@@ -1184,7 +1185,7 @@ export function RoomActionDrawer({ roomId, contextDate, open, onClose, onOpenAss
                     )}
 
                       {/* SAME-DAY-TURNOVER-V2: Upcoming reservation with payment status */}
-                      {lifecycle?.state === 'departing-today' && incomingReservation && (
+                      {(lifecycle?.state === 'departing-today' || lifecycle?.state === 'overstay') && incomingReservation && (
                         <>
                           <IncomingReservationCard
                             incomingReservation={incomingReservation}
