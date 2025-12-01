@@ -153,7 +153,17 @@ export function RoomGrid({ searchQuery, statusFilter, categoryFilter, floorFilte
         const currentStatus = lifecycle.displayStatus;
         
         // Debug helper: uncomment for lifecycle diagnostics
-        // console.log('ROOMGRID-DEBUG', { roomId: room.id, roomNumber: room.number, today, viewDate: today, lifecycleStatus: currentStatus, lifecycleState: lifecycle.state, overlappingCount: overlappingBookings.length, selectedBookingId: activeBooking?.id });
+        console.log('ROOMGRID-DEBUG', { 
+          roomId: room.id, 
+          roomNumber: room.number, 
+          today, 
+          viewDate: today, 
+          lifecycleStatus: currentStatus, 
+          lifecycleState: lifecycle.state, 
+          overlappingCount: overlappingBookings.length, 
+          selectedBookingId: activeBooking?.id,
+          nextArrival: nextArrival ? { id: nextArrival.id, guest: nextArrival.guest?.name, checkIn: nextArrival.check_in } : null
+        });
         
         return { 
           ...room, 
