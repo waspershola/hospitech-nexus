@@ -129,6 +129,19 @@ export function RoomGrid({ searchQuery, statusFilter, categoryFilter, floorFilte
           activeBooking = overlappingBookings[0] ?? null;
         }
         
+        // SAME-DAY-TURNOVER-V1: Detect incoming reservation for departing guests
+        let nextArrival = null;
+        if (activeBooking?.status === 'checked_in') {
+          const checkOutDate = format(new Date(activeBooking.check_out), 'yyyy-MM-dd');
+          if (checkOutDate === viewDate) {
+            // Room is departing today - find incoming reservation
+            nextArrival = overlappingBookings.find((b: any) => {
+              const checkInDate = format(new Date(b.check_in), 'yyyy-MM-dd');
+              return b.status === 'reserved' && checkInDate === viewDate && b.id !== activeBooking.id;
+            });
+          }
+        }
+        
         // Calculate lifecycle state using the active booking
         const lifecycle = calculateStayLifecycleState(
           now,
@@ -145,6 +158,7 @@ export function RoomGrid({ searchQuery, statusFilter, categoryFilter, floorFilte
         return { 
           ...room, 
           bookings: activeBooking ? [activeBooking] : [],
+          nextArrival, // SAME-DAY-TURNOVER-V1: Pass incoming reservation to RoomTile
           status: currentStatus 
         };
       });

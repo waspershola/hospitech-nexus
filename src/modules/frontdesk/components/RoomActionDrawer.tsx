@@ -154,10 +154,8 @@ export function RoomActionDrawer({ roomId, contextDate, open, onClose, onOpenAss
           activeBooking = overlappingBookings[0] ?? null;
         }
         
-        // Sort by check_in date (earliest first) to prioritize today's arrivals
-        const sortedBookings = activeBooking ? [activeBooking] : [];
-        
-        return { ...data, bookings: sortedBookings };
+        // SAME-DAY-TURNOVER-V1: Keep all overlapping bookings for turnover detection
+        return { ...data, bookings: overlappingBookings };
       }
       
       return data;
@@ -256,6 +254,23 @@ export function RoomActionDrawer({ roomId, contextDate, open, onClose, onOpenAss
     }
     
     return activeBooking;
+  })();
+
+  // SAME-DAY-TURNOVER-V1: Detect incoming reservation for departing rooms
+  const incomingReservation = (() => {
+    if (!activeBooking || activeBooking.status !== 'checked_in') return null;
+    
+    const checkOutDate = format(new Date(activeBooking.check_out), 'yyyy-MM-dd');
+    const today = format(new Date(), 'yyyy-MM-dd');
+    
+    if (checkOutDate !== today) return null;
+    
+    // Find reserved booking with check-in today (different from active)
+    return bookingsArray.find((b: any) => {
+      if (b.id === activeBooking.id || b.status !== 'reserved') return false;
+      const checkInDate = format(new Date(b.check_in), 'yyyy-MM-dd');
+      return checkInDate === today;
+    }) || null;
   })();
   
   // Reset selected booking when room changes
@@ -853,6 +868,17 @@ export function RoomActionDrawer({ roomId, contextDate, open, onClose, onOpenAss
             tooltip: 'Manager override - checkout with debt' 
           });
         }
+
+        // SAME-DAY-TURNOVER-V1: Add "Book for Today" if no incoming reservation
+        if (!incomingReservation && room && onOpenAssignDrawer) {
+          actions.push({
+            label: 'Book for Today',
+            action: () => onOpenAssignDrawer(room.id, room.number),
+            variant: 'outline' as const,
+            icon: UserPlus,
+            tooltip: 'Book this room for a new guest today after checkout'
+          });
+        }
         
         return actions;
       case 'overstay':
@@ -1125,6 +1151,31 @@ export function RoomActionDrawer({ roomId, contextDate, open, onClose, onOpenAss
                         <Separator />
                       </>
                     )}
+
+                      {/* SAME-DAY-TURNOVER-V1: Upcoming reservation alert */}
+                      {lifecycle?.state === 'departing-today' && incomingReservation && (
+                        <>
+                          <Alert className="border-primary/50 bg-primary/5">
+                            <Clock className="h-4 w-4 text-primary" />
+                            <AlertDescription className="text-sm">
+                              <div className="font-medium text-primary mb-1">
+                                Upcoming Arrival Today
+                              </div>
+                              <div className="space-y-0.5 text-muted-foreground">
+                                <p><strong>Guest:</strong> {incomingReservation.guest?.name}</p>
+                                <p><strong>Check-in:</strong> {operationsHours?.checkInTime || '14:00'}</p>
+                                {incomingReservation.organization && (
+                                  <p><strong>Org:</strong> {incomingReservation.organization.name}</p>
+                                )}
+                              </div>
+                              <p className="mt-2 text-xs font-medium text-primary">
+                                ⏰ Room must be ready by {operationsHours?.checkInTime || '14:00'}
+                              </p>
+                            </AlertDescription>
+                          </Alert>
+                          <Separator />
+                        </>
+                      )}
 
                       {/* GROUP-UX-V1: Group booking section */}
                       {groupInfo && (
