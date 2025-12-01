@@ -266,11 +266,30 @@ export function RoomActionDrawer({ roomId, contextDate, open, onClose, onOpenAss
     if (checkOutDate !== today) return null;
     
     // Find reserved booking with check-in today (different from active)
-    return bookingsArray.find((b: any) => {
+    const incoming = bookingsArray.find((b: any) => {
       if (b.id === activeBooking.id || b.status !== 'reserved') return false;
       const checkInDate = format(new Date(b.check_in), 'yyyy-MM-dd');
       return checkInDate === today;
     }) || null;
+    
+    console.log('SAME-DAY-TURNOVER-DEBUG', {
+      roomNumber: room?.number,
+      activeBookingId: activeBooking?.id,
+      activeCheckOut: checkOutDate,
+      today,
+      isCheckOutToday: checkOutDate === today,
+      bookingsCount: bookingsArray.length,
+      bookings: bookingsArray.map((b: any) => ({
+        id: b.id,
+        status: b.status,
+        checkIn: format(new Date(b.check_in), 'yyyy-MM-dd'),
+        checkOut: format(new Date(b.check_out), 'yyyy-MM-dd'),
+        guest: b.guest?.name
+      })),
+      incomingFound: !!incoming
+    });
+    
+    return incoming;
   })();
   
   // Reset selected booking when room changes

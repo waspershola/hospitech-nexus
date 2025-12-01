@@ -200,13 +200,13 @@ export function RoomTile({ room, onClick, isSelectionMode, isSelected, onSelecti
         )}
 
         {/* SAME-DAY-TURNOVER-V1: Show next arrival for departing rooms */}
-        {currentStatus === 'departing-today' && nextArrival?.guest && (
+        {currentStatus === 'departing-today' && room.nextArrival?.guest && (
           <div className="pt-1 border-t border-dashed border-border/50">
             <div className="flex items-center gap-1">
               <span className="text-[9px] text-primary">↓</span>
               <span className="text-[9px] text-muted-foreground">Next:</span>
               <span className="text-[9px] font-medium text-primary truncate">
-                {extractSurname(nextArrival.guest?.name || 'Guest')}
+                {extractSurname(room.nextArrival.guest?.name || 'Guest')}
               </span>
             </div>
           </div>
