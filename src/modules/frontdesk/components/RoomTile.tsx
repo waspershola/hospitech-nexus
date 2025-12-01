@@ -64,6 +64,9 @@ export function RoomTile({ room, onClick, isSelectionMode, isSelected, onSelecti
   const bookingsArray = Array.isArray(room.bookings) ? room.bookings : room.bookings ? [room.bookings] : [];
   const activeBooking = bookingsArray[0] ?? null;
   
+  // SAME-DAY-TURNOVER-V1: Extract incoming reservation from RoomGrid
+  const nextArrival = room.nextArrival;
+  
   // Prefer canonical status from RoomGrid, fallback to getRoomStatusNow for legacy callers
   const currentStatus = room.status ?? getRoomStatusNow(
     room,
@@ -192,6 +195,19 @@ export function RoomTile({ room, onClick, isSelectionMode, isSelected, onSelecti
               <p className="text-[10px] font-medium text-foreground truncate">
                 {extractSurname(guest?.name || 'Guest')}
               </p>
+            </div>
+          </div>
+        )}
+
+        {/* SAME-DAY-TURNOVER-V1: Show next arrival for departing rooms */}
+        {currentStatus === 'departing-today' && nextArrival?.guest && (
+          <div className="pt-1 border-t border-dashed border-border/50">
+            <div className="flex items-center gap-1">
+              <span className="text-[9px] text-primary">↓</span>
+              <span className="text-[9px] text-muted-foreground">Next:</span>
+              <span className="text-[9px] font-medium text-primary truncate">
+                {extractSurname(nextArrival.guest?.name || 'Guest')}
+              </span>
             </div>
           </div>
         )}
