@@ -62,6 +62,7 @@ All colors MUST be HSL.
     --status-dirty: 25 95% 53%;
     --status-overstay: 276 68% 36%;
     --status-oos: 0 0% 26%;
+    --status-noshow: 45 93% 47%;
 
     /* Semantic Colors */
     --success: 134 61% 41%;

@@ -33,6 +33,7 @@ const statusColors = {
   cleaning: 'bg-[hsl(var(--status-dirty))] text-white',
   maintenance: 'bg-[hsl(var(--status-oos))] text-white',
   overstay: 'bg-[hsl(var(--status-overstay))] text-white',
+  'no-show': 'bg-[hsl(var(--status-noshow))] text-black',
   'departing-today': 'bg-orange-600 text-white', // DEPARTING-TODAY-BADGE-V1
   checking_in: 'bg-blue-600 text-white',
   checking_out: 'bg-purple-600 text-white',
@@ -46,6 +47,7 @@ const statusBorderColors = {
   cleaning: 'border-[hsl(var(--status-dirty)/0.3)] hover:border-[hsl(var(--status-dirty))]',
   maintenance: 'border-[hsl(var(--status-oos)/0.3)] hover:border-[hsl(var(--status-oos))]',
   overstay: 'border-[hsl(var(--status-overstay)/0.3)] hover:border-[hsl(var(--status-overstay))]',
+  'no-show': 'border-[hsl(var(--status-noshow)/0.3)] hover:border-[hsl(var(--status-noshow))]',
   'departing-today': 'border-orange-600/30 hover:border-orange-600', // DEPARTING-TODAY-BADGE-V1
   checking_in: 'border-blue-600/30 hover:border-blue-600',
   checking_out: 'border-purple-600/30 hover:border-purple-600',
@@ -109,6 +111,7 @@ export function RoomTile({ room, onClick, isSelectionMode, isSelected, onSelecti
     cleaning: 'border-l-[hsl(var(--status-dirty))]',
     maintenance: 'border-l-[hsl(var(--status-oos))]',
     overstay: 'border-l-[hsl(var(--status-overstay))]',
+    'no-show': 'border-l-[hsl(var(--status-noshow))]',
     'departing-today': 'border-l-orange-600',
     checking_in: 'border-l-blue-600',
     checking_out: 'border-l-purple-600',
@@ -168,7 +171,7 @@ export function RoomTile({ room, onClick, isSelectionMode, isSelected, onSelecti
           </Badge>
         </div>
 
-        {(currentStatus === 'occupied' || currentStatus === 'overstay') && guest && (
+        {(currentStatus === 'occupied' || currentStatus === 'overstay' || currentStatus === 'no-show') && guest && (
           <div className="pt-1.5 border-t border-border">
             {organization && (
               <div className="mb-1">

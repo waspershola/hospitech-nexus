@@ -18,6 +18,7 @@ export type DisplayStatus =
   | 'occupied'
   | 'departing-today'
   | 'overstay'
+  | 'no-show'
   | 'cleaning'
   | 'maintenance'
   | 'out_of_order';
@@ -237,13 +238,13 @@ export function calculateStayLifecycleState(
   }
 
   // NO-SHOW or LATE ARRIVAL: Arrival was in the past but checkout hasn't passed
-  // Guest was supposed to arrive but hasn't checked in yet - still show as reserved
+  // Guest was supposed to arrive but hasn't checked in yet - show as no-show
   if (arrivalDate < today && departureDate >= today && booking.status === 'reserved') {
     // On checkout day - this is effectively a no-show
     if (departureDate === today) {
       return {
         state: 'expected-arrival-today',
-        displayStatus: 'reserved',
+        displayStatus: 'no-show',
         allowedActions: ['check-in', 'cancel-booking', 'amend-booking'],
         statusMessage: 'No-show - expected arrival yesterday',
       };
@@ -252,7 +253,7 @@ export function calculateStayLifecycleState(
     // Multi-day stay, arrival passed but checkout is still in future
     return {
       state: 'expected-arrival-today',
-      displayStatus: 'reserved',
+      displayStatus: 'no-show',
       allowedActions: ['check-in', 'cancel-booking', 'amend-booking'],
       statusMessage: `Late arrival - expected ${arrivalDate}`,
     };
