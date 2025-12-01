@@ -46,6 +46,11 @@ export interface AggregatedBalances {
   }>;
 }
 
+export interface ExpectedTotals {
+  room_count: number;
+  expected_total: number;
+}
+
 export interface GroupMasterFolioData {
   master_folio: {
     id: string;
@@ -62,6 +67,7 @@ export interface GroupMasterFolioData {
   } | null;
   child_folios: GroupChildFolio[];
   aggregated_balances: AggregatedBalances;
+  expected_totals: ExpectedTotals;
 }
 
 /**
@@ -118,6 +124,10 @@ export function useGroupMasterFolio(groupBookingId: string | null) {
             total_payments: 0,
             outstanding_balance: 0,
             children_breakdown: [],
+          },
+          expected_totals: {
+            room_count: 0,
+            expected_total: 0,
           },
         };
       }

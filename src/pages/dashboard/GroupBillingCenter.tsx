@@ -125,7 +125,7 @@ export default function GroupBillingCenter() {
     );
   }
 
-  const { master_folio, child_folios, aggregated_balances } = data;
+  const { master_folio, child_folios, aggregated_balances, expected_totals } = data;
 
   return (
     <div className="container mx-auto py-8 space-y-6">
@@ -158,6 +158,7 @@ export default function GroupBillingCenter() {
         masterFolio={master_folio}
         aggregatedBalances={aggregated_balances}
         childFoliosCount={child_folios.length}
+        expectedTotals={expected_totals}
       />
 
       {/* Child Folios Grid */}
