@@ -3,6 +3,7 @@ import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useAvailability } from '@/hooks/useAvailability';
+import { useRoomAvailability } from '@/hooks/useRoomAvailability';
 import { useFinancials } from '@/hooks/useFinancials';
 import { calculateBookingTotal } from '@/lib/finance/tax';
 import { Card } from '@/components/ui/card';
@@ -51,6 +52,22 @@ export function RoomSelection({ bookingData, onChange, onNext }: RoomSelectionPr
     checkIn,
     checkOut
   );
+
+  // BOOKING-AVAIL-V1: Check availability for ALL rooms for selected date range
+  const roomIds = rooms?.map(r => r.id) || [];
+  const { availabilityMap } = useRoomAvailability(
+    roomIds.length > 0 ? roomIds : null,
+    checkIn,
+    checkOut
+  );
+
+  // Helper to check if a specific room is available for selected dates
+  const isRoomAvailableForDates = (roomId: string): boolean => {
+    // If no availability data yet, fall back to optimistic
+    if (availabilityMap.size === 0) return true;
+    const status = availabilityMap.get(roomId);
+    return status?.isAvailable !== false;
+  };
 
   useEffect(() => {
     if (checkIn && checkOut) {
@@ -158,9 +175,10 @@ export function RoomSelection({ bookingData, onChange, onNext }: RoomSelectionPr
             key={room.id}
             className={`p-4 cursor-pointer transition-all hover:shadow-md ${
               bookingData.roomId === room.id ? 'border-primary bg-primary/5' : ''
-            } ${room.status !== 'available' ? 'opacity-50' : ''}`}
+            } ${!isRoomAvailableForDates(room.id) ? 'opacity-50' : ''}`}
             onClick={() => {
-              if (room.status === 'available') {
+              // BOOKING-AVAIL-V1: Use dynamic availability for selected dates
+              if (isRoomAvailableForDates(room.id)) {
                 onChange({ ...bookingData, roomId: room.id });
               }
             }}
@@ -169,8 +187,8 @@ export function RoomSelection({ bookingData, onChange, onNext }: RoomSelectionPr
               <div>
                 <div className="flex items-center gap-2">
                   <p className="font-medium">Room {room.number}</p>
-                  <Badge variant={room.status === 'available' ? 'default' : 'secondary'}>
-                    {room.status}
+                  <Badge variant={isRoomAvailableForDates(room.id) ? 'default' : 'secondary'}>
+                    {isRoomAvailableForDates(room.id) ? 'available' : room.status}
                   </Badge>
                 </div>
                 <p className="text-sm text-muted-foreground">
