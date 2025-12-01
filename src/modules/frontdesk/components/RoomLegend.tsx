@@ -5,6 +5,7 @@ export function RoomLegend() {
     { label: 'Available', color: 'hsl(var(--status-available))' },
     { label: 'Occupied', color: 'hsl(var(--status-occupied))' },
     { label: 'Reserved', color: 'hsl(var(--status-reserved))' },
+    { label: 'No-Show', color: 'hsl(var(--status-noshow))' },
     { label: 'Cleaning', color: 'hsl(var(--status-dirty))' },
     { label: 'Overstay', color: 'hsl(var(--status-overstay))' },
     { label: 'Maintenance', color: 'hsl(var(--status-oos))' },

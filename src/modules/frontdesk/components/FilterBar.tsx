@@ -49,6 +49,7 @@ export function FilterBar({
               <SelectItem value="available">Available</SelectItem>
               <SelectItem value="occupied">Occupied</SelectItem>
               <SelectItem value="reserved">Reserved</SelectItem>
+              <SelectItem value="no-show">No-Show</SelectItem>
               <SelectItem value="cleaning">Cleaning</SelectItem>
               <SelectItem value="maintenance">Maintenance</SelectItem>
               <SelectItem value="overstay">Overstay</SelectItem>
