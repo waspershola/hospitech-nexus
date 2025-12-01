@@ -828,14 +828,7 @@ export function RoomActionDrawer({ roomId, contextDate, open, onClose, onOpenAss
 
       // If no actions from lifecycle, show room management actions
       if (actions.length === 0) {
-        if (lifecycle.state === 'vacant' || lifecycle.displayStatus === 'available') {
-          return [
-            { label: 'Assign Room', action: () => room && onOpenAssignDrawer?.(room.id, room.number), variant: 'default' as const, icon: UserPlus, tooltip: 'Full booking with guest details' },
-            { label: 'Walk-in Check-In', action: handleQuickCheckIn, variant: 'outline' as const, icon: LogIn, tooltip: 'Express walk-in check-in' },
-            { label: 'Set Out of Service', action: handleMarkMaintenance, variant: 'outline' as const, icon: Wrench, tooltip: 'Mark as out of service' },
-          ];
-        }
-        
+        // CLEANING-FIX-V1: Check cleaning/maintenance FIRST (they have state='vacant' but need different actions)
         if (lifecycle.displayStatus === 'cleaning') {
           return [
             { label: 'Mark Clean', action: handleMarkClean, variant: 'default' as const, icon: Sparkles, tooltip: 'Mark as clean and ready' },
@@ -845,6 +838,15 @@ export function RoomActionDrawer({ roomId, contextDate, open, onClose, onOpenAss
         if (lifecycle.displayStatus === 'maintenance') {
           return [
             { label: 'Mark as Available', action: handleMarkClean, variant: 'default' as const, icon: Sparkles, tooltip: 'Complete maintenance' },
+          ];
+        }
+        
+        // Now check for truly vacant/available rooms
+        if (lifecycle.state === 'vacant' || lifecycle.displayStatus === 'available') {
+          return [
+            { label: 'Assign Room', action: () => room && onOpenAssignDrawer?.(room.id, room.number), variant: 'default' as const, icon: UserPlus, tooltip: 'Full booking with guest details' },
+            { label: 'Walk-in Check-In', action: handleQuickCheckIn, variant: 'outline' as const, icon: LogIn, tooltip: 'Express walk-in check-in' },
+            { label: 'Set Out of Service', action: handleMarkMaintenance, variant: 'outline' as const, icon: Wrench, tooltip: 'Mark as out of service' },
           ];
         }
       }
