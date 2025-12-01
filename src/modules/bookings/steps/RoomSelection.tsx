@@ -100,7 +100,15 @@ export function RoomSelection({ bookingData, onChange, onNext }: RoomSelectionPr
             id="checkIn"
             type="date"
             value={checkIn.toISOString().split('T')[0]}
-            onChange={(e) => setCheckIn(new Date(e.target.value))}
+            onChange={(e) => {
+              const newCheckIn = new Date(e.target.value);
+              setCheckIn(newCheckIn);
+              // MIN-NIGHT-V1: Auto-correct checkout if it would become same-day or before
+              const minCheckOut = new Date(newCheckIn.getTime() + 86400000);
+              if (checkOut <= newCheckIn) {
+                setCheckOut(minCheckOut);
+              }
+            }}
             min={new Date().toISOString().split('T')[0]}
           />
         </div>
@@ -111,10 +119,17 @@ export function RoomSelection({ bookingData, onChange, onNext }: RoomSelectionPr
             type="date"
             value={checkOut.toISOString().split('T')[0]}
             onChange={(e) => setCheckOut(new Date(e.target.value))}
-            min={checkIn.toISOString().split('T')[0]}
+            min={new Date(checkIn.getTime() + 86400000).toISOString().split('T')[0]}
           />
         </div>
       </div>
+
+      {nights < 1 && checkIn && checkOut && (
+        <div className="flex items-center gap-2 p-3 bg-destructive/10 text-destructive rounded-lg">
+          <AlertCircle className="w-4 h-4" />
+          <p className="text-sm">Minimum stay is 1 night. Check-out must be after check-in.</p>
+        </div>
+      )}
 
       {bookingData.roomId && (
         <Card className="p-4 bg-primary/5 border-primary">
