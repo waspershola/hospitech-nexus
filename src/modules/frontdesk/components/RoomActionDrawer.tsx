@@ -728,6 +728,17 @@ export function RoomActionDrawer({ roomId, contextDate, open, onClose, onOpenAss
         }
       }
 
+      // SAME-DAY-TURNOVER-V1: Add "Book for Today" if departing today with no incoming reservation
+      if (lifecycle.state === 'departing-today' && !incomingReservation && room && onOpenAssignDrawer) {
+        actions.push({
+          label: 'Book for Today',
+          action: () => onOpenAssignDrawer(room.id, room.number),
+          variant: 'outline' as const,
+          icon: UserPlus,
+          tooltip: 'Book this room for a new guest today after checkout'
+        });
+      }
+
       // Extend stay
       if (canExtendStay && activeBooking) {
         actions.push({ 
@@ -885,17 +896,6 @@ export function RoomActionDrawer({ roomId, contextDate, open, onClose, onOpenAss
             variant: 'destructive' as const, 
             icon: AlertTriangle, 
             tooltip: 'Manager override - checkout with debt' 
-          });
-        }
-
-        // SAME-DAY-TURNOVER-V1: Add "Book for Today" if no incoming reservation
-        if (!incomingReservation && room && onOpenAssignDrawer) {
-          actions.push({
-            label: 'Book for Today',
-            action: () => onOpenAssignDrawer(room.id, room.number),
-            variant: 'outline' as const,
-            icon: UserPlus,
-            tooltip: 'Book this room for a new guest today after checkout'
           });
         }
         
