@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { format } from 'date-fns';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
@@ -33,6 +34,7 @@ import { ChargeToOrgModal } from './ChargeToOrgModal';
 import { RoomAuditTrail } from './RoomAuditTrail';
 import { QuickPaymentForm } from './QuickPaymentForm';
 import { PaymentHistory } from '@/modules/payments/PaymentHistory';
+import { IncomingReservationCard } from './IncomingReservationCard';
 import { BookingAmendmentDrawer } from '@/modules/bookings/components/BookingAmendmentDrawer';
 import { CancelBookingModal } from '@/modules/bookings/components/CancelBookingModal';
 import { BookingConfirmationDocument } from '@/modules/bookings/components/BookingConfirmationDocument';
@@ -74,6 +76,12 @@ export function RoomActionDrawer({ roomId, contextDate, open, onClose, onOpenAss
   const [quickPaymentOpen, setQuickPaymentOpen] = useState(false);
   const [paymentHistoryOpen, setPaymentHistoryOpen] = useState(false);
   const [amendmentDrawerOpen, setAmendmentDrawerOpen] = useState(false);
+  const [incomingPaymentOpen, setIncomingPaymentOpen] = useState(false);
+  const [incomingPaymentData, setIncomingPaymentData] = useState<{
+    bookingId: string;
+    guestId: string;
+    balance: number;
+  } | null>(null);
   const [cancelModalOpen, setCancelModalOpen] = useState(false);
   const [showConfirmationDoc, setShowConfirmationDoc] = useState(false);
   const [realtimeDebounceTimer, setRealtimeDebounceTimer] = useState<NodeJS.Timeout | null>(null);
@@ -1171,27 +1179,20 @@ export function RoomActionDrawer({ roomId, contextDate, open, onClose, onOpenAss
                       </>
                     )}
 
-                      {/* SAME-DAY-TURNOVER-V1: Upcoming reservation alert */}
+                      {/* SAME-DAY-TURNOVER-V2: Upcoming reservation with payment status */}
                       {lifecycle?.state === 'departing-today' && incomingReservation && (
                         <>
-                          <Alert className="border-primary/50 bg-primary/5">
-                            <Clock className="h-4 w-4 text-primary" />
-                            <AlertDescription className="text-sm">
-                              <div className="font-medium text-primary mb-1">
-                                Upcoming Arrival Today
-                              </div>
-                              <div className="space-y-0.5 text-muted-foreground">
-                                <p><strong>Guest:</strong> {incomingReservation.guest?.name}</p>
-                                <p><strong>Check-in:</strong> {operationsHours?.checkInTime || '14:00'}</p>
-                                {incomingReservation.organization && (
-                                  <p><strong>Org:</strong> {incomingReservation.organization.name}</p>
-                                )}
-                              </div>
-                              <p className="mt-2 text-xs font-medium text-primary">
-                                ⏰ Room must be ready by {operationsHours?.checkInTime || '14:00'}
-                              </p>
-                            </AlertDescription>
-                          </Alert>
+                          <IncomingReservationCard
+                            incomingReservation={incomingReservation}
+                            checkInTime={operationsHours?.checkInTime || '14:00'}
+                            onCollectPayment={(bookingId, guestId, balance) => {
+                              setIncomingPaymentData({ bookingId, guestId, balance });
+                              setIncomingPaymentOpen(true);
+                            }}
+                            onViewHistory={(bookingId) => {
+                              setPaymentHistoryOpen(true);
+                            }}
+                          />
                           <Separator />
                         </>
                       )}
@@ -1605,6 +1606,30 @@ export function RoomActionDrawer({ roomId, contextDate, open, onClose, onOpenAss
           bookingId={activeBooking.id}
           isLoading={isForcingCheckout}
         />
+      )}
+      
+      {/* SAME-DAY-TURNOVER-V2: Payment Dialog for Incoming Reservation */}
+      {incomingPaymentData && (
+        <Dialog open={incomingPaymentOpen} onOpenChange={setIncomingPaymentOpen}>
+          <DialogContent className="max-w-md">
+            <DialogHeader>
+              <DialogTitle>Collect Payment - Incoming Reservation</DialogTitle>
+            </DialogHeader>
+            <QuickPaymentForm
+              bookingId={incomingPaymentData.bookingId}
+              guestId={incomingPaymentData.guestId}
+              expectedAmount={incomingPaymentData.balance}
+              onSuccess={() => {
+                setIncomingPaymentOpen(false);
+                setIncomingPaymentData(null);
+              }}
+              onCancel={() => {
+                setIncomingPaymentOpen(false);
+                setIncomingPaymentData(null);
+              }}
+            />
+          </DialogContent>
+        </Dialog>
       )}
     </>
   );
