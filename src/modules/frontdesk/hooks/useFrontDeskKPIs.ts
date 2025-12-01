@@ -19,8 +19,8 @@ export interface FrontDeskKPIs {
 export function useFrontDeskKPIs() {
   const { tenantId } = useAuth();
   
-  // ARRIVALS-SHARED-V1: Use shared hook for consistent arrivals data
-  const { data: todayArrivals = [] } = useTodayArrivals();
+  // ARRIVALS-FIX-V2: Use shared hook for consistent arrivals data
+  const { data: todayArrivals = [], isLoading: arrivalsLoading } = useTodayArrivals();
 
   const query = useQuery({
     queryKey: ['frontdesk-kpis', tenantId],
@@ -49,10 +49,6 @@ export function useFrontDeskKPIs() {
         }
 
         console.log('✅ Rooms fetched:', rooms?.length || 0);
-
-        // ARRIVALS-SHARED-V1: Use pre-fetched arrivals count from shared hook
-        const arrivalsCount = todayArrivals.length;
-        console.log('✅ Arrivals today (from shared hook):', arrivalsCount);
 
         // Get today's departures (bookings checking out today)
         const { data: departures, error: departuresError } = await supabase
@@ -111,19 +107,19 @@ export function useFrontDeskKPIs() {
         const occupied = rooms?.filter(r => r.status === 'occupied' || r.status === 'overstay').length || 0;
         const outOfService = rooms?.filter(r => r.status === 'maintenance').length || 0;
 
+        // ARRIVALS-FIX-V2: Return KPIs without arrivals (will be merged outside)
         const kpis = {
           available,
           occupied,
-          arrivals: arrivalsCount,
           departures: departures?.length || 0,
           inHouse: inHouse?.length || 0,
           pendingPayments: pendingPayments?.length || 0,
           outOfService,
           overstays: overstays?.length || 0,
           dieselLevel: 75,
-        } as FrontDeskKPIs;
+        };
 
-        console.log('📊 KPIs calculated:', kpis);
+        console.log('📊 KPIs calculated (without arrivals):', kpis);
         return kpis;
       } catch (error) {
         console.error('❌ Fatal error in useFrontDeskKPIs:', error);
@@ -135,9 +131,17 @@ export function useFrontDeskKPIs() {
     retry: 2,
   });
 
+  // ARRIVALS-FIX-V2: Merge arrivals count OUTSIDE queryFn to avoid stale closure
+  const kpisWithArrivals = query.data ? {
+    ...query.data,
+    arrivals: todayArrivals.length, // ✅ Fresh value from hook, not stale closure
+  } as FrontDeskKPIs : null;
+
+  console.log('[KPI-ARRIVALS-V2] Fresh arrivals count:', todayArrivals.length);
+
   return {
-    kpis: query.data,
-    isLoading: query.isLoading,
+    kpis: kpisWithArrivals,
+    isLoading: query.isLoading || arrivalsLoading,
     error: query.error,
   };
 }
