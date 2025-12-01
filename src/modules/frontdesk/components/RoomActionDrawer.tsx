@@ -739,8 +739,8 @@ export function RoomActionDrawer({ roomId, contextDate, open, onClose, onOpenAss
         }
       }
 
-      // SAME-DAY-TURNOVER-V1: Add "Book for Today" if departing today with no incoming reservation
-      if (lifecycle.state === 'departing-today' && !incomingReservation && room && onOpenAssignDrawer) {
+      // SAME-DAY-TURNOVER-V1 + OVERSTAY-BOOK-V1: Add "Book for Today" if departing today OR overstay with no incoming reservation
+      if ((lifecycle.state === 'departing-today' || lifecycle.state === 'overstay') && !incomingReservation && room && onOpenAssignDrawer) {
         actions.push({
           label: 'Book for Today',
           action: () => onOpenAssignDrawer(room.id, room.number),

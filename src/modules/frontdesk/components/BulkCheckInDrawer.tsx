@@ -12,7 +12,7 @@ import { Separator } from '@/components/ui/separator';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { AlertCircle, CheckCircle2, Users, Loader2, DollarSign } from 'lucide-react';
-import { format } from 'date-fns';
+import { format, addDays } from 'date-fns';
 
 interface BulkCheckInDrawerProps {
   open: boolean;
@@ -56,14 +56,11 @@ export function BulkCheckInDrawer({ open, onClose }: BulkCheckInDrawerProps) {
       if (!tenantId) return [];
 
       // Calculate fresh date at query time
-      const today = new Date();
-      today.setHours(0, 0, 0, 0);
-      const todayISO = today.toISOString().split('T')[0];
-      const tomorrow = new Date(today);
-      tomorrow.setDate(tomorrow.getDate() + 1);
-      const tomorrowISO = tomorrow.toISOString().split('T')[0];
+      // TIMEZONE-FIX-V1: Use date-fns format for local timezone
+      const todayISO = format(new Date(), 'yyyy-MM-dd');
+      const tomorrowISO = format(addDays(new Date(), 1), 'yyyy-MM-dd');
 
-      console.log('BULK-CHECKIN-DATE-DEBUG', { todayISO, tomorrowISO, now: new Date().toISOString() });
+      console.log('BULK-CHECKIN-DATE-DEBUG', { todayISO, tomorrowISO, localNow: new Date().toString() });
 
       const { data, error } = await supabase
         .from('bookings')

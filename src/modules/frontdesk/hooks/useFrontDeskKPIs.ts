@@ -1,6 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
+import { format, addDays } from 'date-fns';
 
 export interface FrontDeskKPIs {
   available: number;
@@ -27,12 +28,11 @@ export function useFrontDeskKPIs() {
 
       console.log('🔄 useFrontDeskKPIs: Fetching KPIs for tenant:', tenantId);
 
-      const today = new Date();
-      today.setHours(0, 0, 0, 0);
-      const todayISO = today.toISOString().split('T')[0];
-      const tomorrow = new Date(today);
-      tomorrow.setDate(tomorrow.getDate() + 1);
-      const tomorrowISO = tomorrow.toISOString().split('T')[0];
+      // TIMEZONE-FIX-V1: Use date-fns format for local timezone
+      const todayISO = format(new Date(), 'yyyy-MM-dd');
+      const tomorrowISO = format(addDays(new Date(), 1), 'yyyy-MM-dd');
+      
+      console.log('KPI-DATE-DEBUG', { todayISO, tomorrowISO, localNow: new Date().toString() });
 
       try {
         // Get room counts by status
