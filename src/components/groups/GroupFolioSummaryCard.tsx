@@ -3,7 +3,7 @@ import { Badge } from "@/components/ui/badge";
 import { formatCurrency } from "@/lib/finance/tax";
 import { formatFolioMoney, getBalanceColor, getCreditLabel, isCredit } from "@/lib/folio/formatters";
 import { Building2, Users, TrendingUp, TrendingDown, DollarSign } from "lucide-react";
-import type { AggregatedBalances } from "@/hooks/useGroupMasterFolio";
+import type { AggregatedBalances, ExpectedTotals } from "@/hooks/useGroupMasterFolio";
 
 interface GroupFolioSummaryCardProps {
   masterFolio: {
@@ -18,13 +18,16 @@ interface GroupFolioSummaryCardProps {
   };
   aggregatedBalances: AggregatedBalances;
   childFoliosCount: number;
+  expectedTotals: ExpectedTotals;
 }
 
 export function GroupFolioSummaryCard({
   masterFolio,
   aggregatedBalances,
   childFoliosCount,
+  expectedTotals,
 }: GroupFolioSummaryCardProps) {
+  const pendingCheckins = expectedTotals.room_count - childFoliosCount;
   return (
     <Card>
       <CardHeader>
@@ -39,13 +42,44 @@ export function GroupFolioSummaryCard({
         </div>
       </CardHeader>
       <CardContent className="space-y-6">
-        {/* Grand Total */}
+        {/* Expected Total from Bookings */}
+        <div className="p-4 bg-primary/5 border border-primary/20 rounded-lg">
+          <div className="flex items-center justify-between">
+            <div className="flex-1">
+              <p className="text-sm font-medium text-primary">Expected Total</p>
+              <p className="text-xs text-muted-foreground mt-0.5">
+                Total charges from {expectedTotals.room_count} room reservation{expectedTotals.room_count !== 1 ? 's' : ''}
+              </p>
+              <p className="text-3xl font-bold mt-2 text-primary">
+                {formatCurrency(expectedTotals.expected_total, 'NGN')}
+              </p>
+            </div>
+            <DollarSign className="h-12 w-12 text-primary/20" />
+          </div>
+        </div>
+
+        {/* Pending Check-ins Warning */}
+        {pendingCheckins > 0 && (
+          <div className="p-3 bg-amber-50 border border-amber-200 rounded-lg flex items-start gap-3">
+            <Clock className="h-5 w-5 text-amber-600 mt-0.5 flex-shrink-0" />
+            <div className="flex-1">
+              <p className="text-sm font-medium text-amber-900">
+                {pendingCheckins} room{pendingCheckins !== 1 ? 's' : ''} pending check-in
+              </p>
+              <p className="text-xs text-amber-700 mt-1">
+                Charges will be posted to folios when guests check in
+              </p>
+            </div>
+          </div>
+        )}
+
+        {/* Posted Charges (from folios) */}
         <div className="p-4 bg-muted rounded-lg">
           <div className="flex items-center justify-between">
             <div className="flex-1">
               <p className="text-sm text-muted-foreground">Outstanding Balance</p>
               <p className="text-xs text-muted-foreground mt-0.5">
-                Totals are aggregated from all child folios for this group
+                From checked-in guests only
               </p>
               <p className={`text-3xl font-bold mt-2 ${getBalanceColor(aggregatedBalances.outstanding_balance)}`}>
                 {isCredit(aggregatedBalances.outstanding_balance) 
@@ -63,11 +97,12 @@ export function GroupFolioSummaryCard({
           <div className="space-y-1">
             <div className="flex items-center gap-2 text-muted-foreground">
               <TrendingUp className="h-4 w-4" />
-              <span className="text-sm">Total Charges</span>
+              <span className="text-sm">Posted Charges</span>
             </div>
             <p className="text-2xl font-semibold">
               {formatCurrency(aggregatedBalances.total_charges, 'NGN')}
             </p>
+            <p className="text-xs text-muted-foreground">From checked-in guests</p>
           </div>
 
           <div className="space-y-1">
@@ -83,9 +118,10 @@ export function GroupFolioSummaryCard({
           <div className="space-y-1">
             <div className="flex items-center gap-2 text-muted-foreground">
               <Users className="h-4 w-4" />
-              <span className="text-sm">Child Folios</span>
+              <span className="text-sm">Checked In</span>
             </div>
-            <p className="text-2xl font-semibold">{childFoliosCount}</p>
+            <p className="text-2xl font-semibold">{childFoliosCount} / {expectedTotals.room_count}</p>
+            <p className="text-xs text-muted-foreground">Room folios created</p>
           </div>
 
           <div className="space-y-1">
@@ -93,7 +129,8 @@ export function GroupFolioSummaryCard({
               <Building2 className="h-4 w-4" />
               <span className="text-sm">Total Rooms</span>
             </div>
-            <p className="text-2xl font-semibold">{childFoliosCount}</p>
+            <p className="text-2xl font-semibold">{expectedTotals.room_count}</p>
+            <p className="text-xs text-muted-foreground">Reserved rooms</p>
           </div>
         </div>
 
