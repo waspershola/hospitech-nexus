@@ -49,12 +49,14 @@ export function useFrontDeskKPIs() {
         console.log('✅ Rooms fetched:', rooms?.length || 0);
 
         // Get today's arrivals (bookings checking in today)
+        // KPI-ARRIVALS-FIX-V1: Use date range for timestamptz column
         const { data: arrivals, error: arrivalsError } = await supabase
           .from('bookings')
           .select('id')
           .eq('tenant_id', tenantId)
           .in('status', ['reserved', 'confirmed'])
-          .eq('check_in', todayISO);
+          .gte('check_in', todayISO)
+          .lt('check_in', tomorrowISO);
 
         if (arrivalsError) console.error('❌ Error fetching arrivals:', arrivalsError);
         console.log('✅ Arrivals today:', arrivals?.length || 0);
