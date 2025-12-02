@@ -1272,6 +1272,28 @@ export function RoomActionDrawer({ roomId, contextDate, open, onClose, onOpenAss
                                 <Building2 className="w-4 h-4" />
                                 View Master Folio
                               </Button>
+                              
+                              {/* GROUP-BOOKING-DEPOSIT-FIX-V1: Phase 3C - Quick Add Deposit button for reserved rooms */}
+                              {activeBooking?.status === 'reserved' && (
+                                <Button
+                                  variant="default"
+                                  size="sm"
+                                  onClick={() => {
+                                    console.log('GROUP-BOOKING-DEPOSIT-FIX-V1: Switching to payments tab for deposit');
+                                    // Find and click the payments tab trigger
+                                    const tabsTriggers = document.querySelectorAll('[role="tab"]');
+                                    tabsTriggers.forEach((trigger) => {
+                                      if (trigger.textContent?.includes('Payments')) {
+                                        (trigger as HTMLElement).click();
+                                      }
+                                    });
+                                  }}
+                                  className="w-full mt-2"
+                                >
+                                  <CreditCard className="w-4 h-4 mr-2" />
+                                  Add Deposit
+                                </Button>
+                              )}
                             </div>
                           </div>
                           <Separator />
