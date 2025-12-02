@@ -7,6 +7,7 @@ import { cn } from '@/lib/utils';
 import { useOrganizationWallet } from '@/hooks/useOrganizationWallet';
 import { getRoomStatusNow } from '@/lib/roomAvailability';
 import { useOperationsHours } from '@/hooks/useOperationsHours';
+import { useDisplayPreferences } from '@/hooks/useDisplayPreferences';
 
 // Helper to extract surname only from full name
 const extractSurname = (fullName: string) => {
@@ -56,6 +57,11 @@ const statusBorderColors = {
 
 export function RoomTile({ room, onClick, isSelectionMode, isSelected, onSelectionChange }: RoomTileProps) {
   const { data: operationsHours } = useOperationsHours();
+  const { preferences } = useDisplayPreferences();
+  
+  // ROOM-CATEGORY-COLOR-MARKERS-V1: Get category color
+  const showCategoryMarkers = preferences?.showCategoryColorMarkers ?? true;
+  const categoryColor = room.category?.display_color || '#6B7280';
   
   // PHASE-2-FIX: Use canonical status from RoomGrid instead of recomputing
   // RoomGrid already provides room.status from calculateStayLifecycleState
@@ -127,13 +133,20 @@ export function RoomTile({ room, onClick, isSelectionMode, isSelected, onSelecti
     <TooltipProvider>
       <Card 
         className={cn(
-          'cursor-pointer transition-all duration-200 active:scale-95 border-l-4 rounded-lg relative touch-manipulation',
+          'cursor-pointer transition-all duration-200 active:scale-95 border-l-4 rounded-lg relative touch-manipulation overflow-hidden',
           'lg:hover:shadow-md flex flex-col bg-card min-h-[100px]',
           accentColor,
           isSelected && 'ring-2 ring-primary ring-offset-2'
         )}
         onClick={handleClick}
       >
+        {/* ROOM-CATEGORY-COLOR-MARKERS-V1: Category color strip at top */}
+        {showCategoryMarkers && (
+          <div 
+            className="w-full h-1 shrink-0" 
+            style={{ backgroundColor: categoryColor }}
+          />
+        )}
       <CardHeader className="px-2.5 py-2 flex-1 flex flex-col justify-between gap-1.5">
         {isSelectionMode && (
           <div className="absolute top-1.5 left-1.5 z-10">

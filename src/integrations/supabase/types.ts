@@ -6288,6 +6288,7 @@ export type Database = {
           base_rate: number | null
           created_at: string | null
           description: string | null
+          display_color: string | null
           id: string
           max_occupancy: number | null
           name: string
@@ -6300,6 +6301,7 @@ export type Database = {
           base_rate?: number | null
           created_at?: string | null
           description?: string | null
+          display_color?: string | null
           id?: string
           max_occupancy?: number | null
           name: string
@@ -6312,6 +6314,7 @@ export type Database = {
           base_rate?: number | null
           created_at?: string | null
           description?: string | null
+          display_color?: string | null
           id?: string
           max_occupancy?: number | null
           name?: string

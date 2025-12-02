@@ -12,6 +12,7 @@ export interface RoomCategory {
   base_rate: number;
   max_occupancy: number;
   amenities: string[];
+  display_color: string | null; // ROOM-CATEGORY-COLOR-MARKERS-V1
   created_at: string;
   updated_at: string;
 }
