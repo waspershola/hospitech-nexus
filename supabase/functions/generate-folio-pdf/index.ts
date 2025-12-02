@@ -759,7 +759,7 @@ function generateLuxuryFolioHTML(params: {
         <div class="summary-value">${
           folio.folio_type === 'group_master'
             ? (folio.status === 'open' ? 'Active' : 'Closed')
-            : formatDate(folio.booking.check_out)
+            : formatDate(folio.booking?.check_out || folio.created_at)
         }</div>
       </div>
       <div class="summary-item">
