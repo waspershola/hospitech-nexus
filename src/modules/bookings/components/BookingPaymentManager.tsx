@@ -22,6 +22,7 @@ import { useReceiptData } from '@/hooks/useReceiptData';
 import { useReceiptSettings } from '@/hooks/useReceiptSettings';
 import { useFolioById } from '@/hooks/useFolioById';
 import { useEffect } from 'react';
+import { isCredit, getCreditLabel, getBalanceColor } from '@/lib/folio/formatters';
 
 interface BookingPaymentManagerProps {
   bookingId: string;
@@ -53,6 +54,7 @@ export function BookingPaymentManager({ bookingId }: BookingPaymentManagerProps)
   
   const [showAddCharge, setShowAddCharge] = useState(false);
   const [showAddPayment, setShowAddPayment] = useState(false);
+  const [showAddDeposit, setShowAddDeposit] = useState(false); // GROUP-BOOKING-DEPOSIT-FIX-V1: Phase 3A
   const [chargeForm, setChargeForm] = useState({
     description: '',
     amount: '',
@@ -64,6 +66,12 @@ export function BookingPaymentManager({ bookingId }: BookingPaymentManagerProps)
     location_id: '',
     reference: '',
   });
+  const [depositForm, setDepositForm] = useState({
+    amount: '',
+    provider_id: '',
+    location_id: '',
+    reference: '',
+  }); // GROUP-BOOKING-DEPOSIT-FIX-V1: Phase 3A
 
   // Fetch booking details
   const { data: booking, isLoading: bookingLoading, error: bookingError } = useQuery({
@@ -240,6 +248,39 @@ export function BookingPaymentManager({ bookingId }: BookingPaymentManagerProps)
     });
   };
 
+  // GROUP-BOOKING-DEPOSIT-FIX-V1: Phase 3A - Handler for pre-check-in deposits
+  const handleAddDeposit = () => {
+    if (!depositForm.amount) {
+      toast.error('Please enter deposit amount');
+      return;
+    }
+    
+    if (!depositForm.provider_id) {
+      toast.error('Please select a payment provider');
+      return;
+    }
+    
+    const selectedProvider = activeProviders.find(p => p.id === depositForm.provider_id);
+    
+    recordPayment.mutate({
+      transaction_ref: depositForm.reference || `DEP-${Date.now()}`,
+      booking_id: bookingId,
+      guest_id: booking?.guest_id,
+      amount: Number(depositForm.amount),
+      expected_amount: Number(booking?.total_amount),
+      method: selectedProvider?.type || 'cash',
+      provider_id: depositForm.provider_id,
+      location_id: depositForm.location_id || undefined,
+      metadata: { source: 'pre_checkin_deposit', deposit: true },
+    }, {
+      onSuccess: () => {
+        toast.success('Deposit recorded successfully');
+        setDepositForm({ amount: '', provider_id: '', location_id: '', reference: '' });
+        setShowAddDeposit(false);
+      },
+    });
+  };
+
   const handlePrintFolio = async () => {
     if (!booking || !receiptData) return;
     
@@ -393,16 +434,98 @@ export function BookingPaymentManager({ bookingId }: BookingPaymentManagerProps)
   if (!folio) {
     return (
       <div className="space-y-4">
+        {/* GROUP-BOOKING-DEPOSIT-FIX-V1: Phase 3A - Add Deposit Card */}
         <Card>
-          <CardContent className="py-8">
-            <div className="text-center space-y-2">
-              <Receipt className="h-12 w-12 mx-auto text-muted-foreground opacity-50" />
-              <p className="font-semibold">Folio Not Created Yet</p>
-              <p className="text-sm text-muted-foreground">
-                Check-in this guest to create their folio and track charges.
+          <CardHeader className="flex flex-row items-center justify-between">
+            <div>
+              <CardTitle>Add Deposit (Pre-Check-In)</CardTitle>
+              <p className="text-sm text-muted-foreground mt-1">
+                Record a deposit payment before check-in. It will be automatically linked to the folio upon check-in.
               </p>
             </div>
-          </CardContent>
+            <Button onClick={() => setShowAddDeposit(!showAddDeposit)} size="sm">
+              <Plus className="h-4 w-4 mr-2" />
+              Add Deposit
+            </Button>
+          </CardHeader>
+          {showAddDeposit && (
+            <CardContent>
+              <div className="space-y-4 p-4 border rounded-lg bg-muted/50">
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <Label>Amount *</Label>
+                    <Input
+                      type="number"
+                      placeholder="Enter deposit amount"
+                      value={depositForm.amount}
+                      onChange={(e) => setDepositForm({ ...depositForm, amount: e.target.value })}
+                    />
+                  </div>
+                  <div>
+                    <Label>Payment Method *</Label>
+                    <Select
+                      value={depositForm.provider_id}
+                      onValueChange={(value) => setDepositForm({ ...depositForm, provider_id: value })}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select method" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {activeProviders.map(provider => (
+                          <SelectItem key={provider.id} value={provider.id}>
+                            {provider.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <Label>Location (Optional)</Label>
+                    <Select
+                      value={depositForm.location_id}
+                      onValueChange={(value) => setDepositForm({ ...depositForm, location_id: value })}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select location" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {activeLocations.map(location => (
+                          <SelectItem key={location.id} value={location.id}>
+                            {location.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div>
+                    <Label>Reference (Optional)</Label>
+                    <Input
+                      placeholder="Payment reference"
+                      value={depositForm.reference}
+                      onChange={(e) => setDepositForm({ ...depositForm, reference: e.target.value })}
+                    />
+                  </div>
+                </div>
+                <div className="flex gap-2">
+                  <Button onClick={handleAddDeposit} disabled={recordPayment.isPending} className="flex-1">
+                    {recordPayment.isPending ? (
+                      <>
+                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                        Recording...
+                      </>
+                    ) : (
+                      'Record Deposit'
+                    )}
+                  </Button>
+                  <Button variant="outline" onClick={() => setShowAddDeposit(false)}>
+                    Cancel
+                  </Button>
+                </div>
+              </div>
+            </CardContent>
+          )}
         </Card>
         
         {/* Show pre-check-in payments if any exist */}
@@ -477,8 +600,9 @@ export function BookingPaymentManager({ bookingId }: BookingPaymentManagerProps)
             </div>
             <div>
               <p className="text-sm text-muted-foreground">Balance</p>
-              <p className={`text-2xl font-bold ${balance > 0 ? 'text-destructive' : 'text-green-600'}`}>
-                ₦{balance.toLocaleString()}
+              {/* GROUP-BOOKING-DEPOSIT-FIX-V1: Phase 3B - Consistent credit display */}
+              <p className={`text-2xl font-bold ${getBalanceColor(balance)}`}>
+                {isCredit(balance) ? getCreditLabel(balance, 'NGN') : `₦${balance.toLocaleString()}`}
               </p>
             </div>
           </div>
