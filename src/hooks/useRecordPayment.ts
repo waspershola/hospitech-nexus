@@ -30,6 +30,21 @@ export function useRecordPayment() {
     mutationFn: async (params: RecordPaymentParams) => {
       if (!tenantId) throw new Error('No tenant ID');
 
+      // GROUP-BOOKING-DEPOSIT-FIX-V2: Phase 3 - Validation before payment
+      if (!params.guest_id && params.booking_id) {
+        // Try to fetch guest_id from booking if not provided
+        const { data: booking } = await supabase
+          .from('bookings')
+          .select('guest_id')
+          .eq('id', params.booking_id)
+          .eq('tenant_id', tenantId)
+          .single();
+        
+        if (booking?.guest_id) {
+          params.guest_id = booking.guest_id;
+        }
+      }
+
       const { data, error } = await supabase.functions.invoke('create-payment', {
         body: {
           tenant_id: tenantId,
