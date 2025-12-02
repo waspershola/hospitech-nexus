@@ -15,6 +15,7 @@ const categorySchema = z.object({
   description: z.string().optional(),
   base_rate: z.number().min(0, 'Rate must be positive'),
   max_occupancy: z.number().min(1, 'Must accommodate at least 1 guest'),
+  display_color: z.string().regex(/^#[0-9A-Fa-f]{6}$/, 'Must be a valid hex color').optional(),
 });
 
 type CategoryFormData = z.infer<typeof categorySchema>;
@@ -28,7 +29,7 @@ interface CategoryFormProps {
 export function CategoryForm({ open, category, onClose }: CategoryFormProps) {
   const { createCategory, updateCategory } = useRoomCategories();
 
-  const { register, handleSubmit, formState: { errors, isSubmitting }, reset } = useForm<CategoryFormData>({
+  const { register, handleSubmit, formState: { errors, isSubmitting }, reset, watch, setValue } = useForm<CategoryFormData>({
     resolver: zodResolver(categorySchema),
     defaultValues: category ? {
       name: category.name,
@@ -36,14 +37,18 @@ export function CategoryForm({ open, category, onClose }: CategoryFormProps) {
       description: category.description || '',
       base_rate: category.base_rate,
       max_occupancy: category.max_occupancy,
+      display_color: category.display_color || '#6B7280',
     } : {
       name: '',
       short_code: '',
       description: '',
       base_rate: 0,
       max_occupancy: 2,
+      display_color: '#6B7280',
     },
   });
+  
+  const displayColor = watch('display_color') || '#6B7280';
 
   const onSubmit = (data: CategoryFormData) => {
     const formData: Omit<any, 'id' | 'tenant_id' | 'created_at' | 'updated_at'> = {
@@ -53,6 +58,7 @@ export function CategoryForm({ open, category, onClose }: CategoryFormProps) {
       base_rate: data.base_rate,
       max_occupancy: data.max_occupancy,
       amenities: [],
+      display_color: data.display_color || '#6B7280',
     };
     if (category) {
       updateCategory({ id: category.id, ...formData });
@@ -132,6 +138,33 @@ export function CategoryForm({ open, category, onClose }: CategoryFormProps) {
                 <p className="text-sm text-destructive">{errors.max_occupancy.message}</p>
               )}
             </div>
+          </div>
+
+          {/* ROOM-CATEGORY-COLOR-MARKERS-V1: Color picker */}
+          <div className="space-y-2">
+            <Label htmlFor="display_color">Category Color</Label>
+            <div className="flex gap-2 items-center">
+              <Input
+                id="display_color"
+                type="color"
+                value={displayColor}
+                onChange={(e) => setValue('display_color', e.target.value)}
+                className="w-16 h-10 p-1 cursor-pointer"
+              />
+              <Input
+                value={displayColor}
+                onChange={(e) => setValue('display_color', e.target.value)}
+                placeholder="#6B7280"
+                className="flex-1"
+              />
+              <div 
+                className="w-10 h-10 rounded border border-border shrink-0"
+                style={{ backgroundColor: displayColor }}
+              />
+            </div>
+            {errors.display_color && (
+              <p className="text-sm text-destructive">{errors.display_color.message}</p>
+            )}
           </div>
 
           <div className="flex gap-2 pt-4">

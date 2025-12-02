@@ -3,13 +3,15 @@ import { ConfigCard } from '../shared/ConfigCard';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { Palette, Image as ImageIcon, Type, FileText } from 'lucide-react';
+import { Switch } from '@/components/ui/switch';
+import { Palette, Image as ImageIcon, Type, FileText, LayoutGrid } from 'lucide-react';
 import { LogoUploader } from '../branding/LogoUploader';
 import { FaviconUploader } from '../branding/FaviconUploader';
 import { HeroImageUploader } from '../branding/HeroImageUploader';
 import { FontSelector } from '../branding/FontSelector';
 import { BrandingPreview } from '../branding/BrandingPreview';
 import { PortalPreview } from '../shared/PortalPreview';
+import { useDisplayPreferences } from '@/hooks/useDisplayPreferences';
 
 export function BrandingTab() {
   const branding = useConfigStore(state => state.branding);
@@ -18,6 +20,9 @@ export function BrandingTab() {
   const hasBrandingUnsaved = useConfigStore(state => state.unsavedChanges.includes('branding'));
   const sectionError = useConfigStore(state => state.sectionErrors.branding);
   const lastSaved = useConfigStore(state => state.sectionLastSaved.branding);
+  
+  // ROOM-CATEGORY-COLOR-MARKERS-V1: Display preferences
+  const { preferences, updatePreference, isUpdating } = useDisplayPreferences();
 
   const handleChange = (field: string, value: any) => {
     updateBranding({ [field]: value });
@@ -188,6 +193,31 @@ export function BrandingTab() {
                 rows={2}
               />
             </div>
+          </div>
+        </ConfigCard>
+
+        {/* ROOM-CATEGORY-COLOR-MARKERS-V1: Display settings */}
+        <ConfigCard
+          title="Room Grid Display"
+          description="Configure visual elements for the front desk room grid"
+          icon={LayoutGrid}
+          onSave={() => {}}
+          hasUnsavedChanges={false}
+          sectionKey="display"
+        >
+          <div className="flex items-center justify-between">
+            <div className="space-y-0.5">
+              <Label htmlFor="category-markers">Show Category Color Markers</Label>
+              <p className="text-sm text-muted-foreground">
+                Display a colored strip at the top of room tiles indicating room category
+              </p>
+            </div>
+            <Switch
+              id="category-markers"
+              checked={preferences.showCategoryColorMarkers}
+              onCheckedChange={(checked) => updatePreference({ key: 'show_category_color_markers', value: checked })}
+              disabled={isUpdating}
+            />
           </div>
         </ConfigCard>
       </div>
