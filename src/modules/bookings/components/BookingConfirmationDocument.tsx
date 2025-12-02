@@ -79,7 +79,7 @@ export function BookingConfirmationDocument({ bookingId }: BookingConfirmationDo
         .from('payments')
         .select('*')
         .eq('booking_id', bookingId)
-        .eq('status', 'completed');
+        .in('status', ['success', 'completed']);
 
       if (error) throw error;
       return data || [];

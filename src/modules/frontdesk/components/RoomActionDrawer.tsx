@@ -445,7 +445,7 @@ export function RoomActionDrawer({ roomId, contextDate, open, onClose, onOpenAss
         .select('amount, booking_id')
         .in('booking_id', bookingIds)
         .eq('tenant_id', tenantId)
-        .eq('status', 'completed')
+        .in('status', ['success', 'completed'])
         .is('stay_folio_id', null); // Pre-check-in payments only
 
       if (paymentsError) throw paymentsError;

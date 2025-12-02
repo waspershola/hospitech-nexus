@@ -137,7 +137,7 @@ export function CancelBookingModal({ open, onClose, bookingId }: CancelBookingMo
         .from('payments')
         .select('*')
         .eq('booking_id', bookingId)
-        .eq('status', 'completed')
+        .in('status', ['success', 'completed'])
         .is('metadata->refunded', null);
 
       if (error) throw error;
