@@ -93,6 +93,18 @@ export function RoomActionDrawer({ roomId, contextDate, open, onClose, onOpenAss
   const [pendingCheckoutData, setPendingCheckoutData] = useState<{ balance: number } | null>(null);
   const [showEarlyCheckInApproval, setShowEarlyCheckInApproval] = useState(false);
   const [forceCheckoutModalOpen, setForceCheckoutModalOpen] = useState(false);
+  
+  // GROUP-BOOKING-DEPOSIT-FIX-V2: Phase 1 - Controlled tabs state
+  const [activeTab, setActiveTab] = useState<string>('details');
+  
+  // GROUP-BOOKING-DEPOSIT-FIX-V2: Phase 1 - Handle initial tab state for showConfirmationDoc
+  useEffect(() => {
+    if (showConfirmationDoc) {
+      setActiveTab('confirmation');
+    } else {
+      setActiveTab('details');
+    }
+  }, [showConfirmationDoc, open]);
 
   const { data: room, isLoading, isError } = useQuery({
     queryKey: ['room-detail', roomId, contextDate ? format(contextDate, 'yyyy-MM-dd') : 'today'],
@@ -1117,7 +1129,8 @@ export function RoomActionDrawer({ roomId, contextDate, open, onClose, onOpenAss
                 </div>
               </SheetHeader>
 
-              <Tabs defaultValue={showConfirmationDoc ? "confirmation" : "details"} className="mt-6">
+              {/* GROUP-BOOKING-DEPOSIT-FIX-V2: Phase 1 - Controlled tabs */}
+              <Tabs value={activeTab} onValueChange={setActiveTab} className="mt-6">
                 <TabsList className="grid w-full grid-cols-4">
                   <TabsTrigger value="details">Details</TabsTrigger>
                   <TabsTrigger value="payments">
@@ -1273,20 +1286,14 @@ export function RoomActionDrawer({ roomId, contextDate, open, onClose, onOpenAss
                                 View Master Folio
                               </Button>
                               
-                              {/* GROUP-BOOKING-DEPOSIT-FIX-V1: Phase 3C - Quick Add Deposit button for reserved rooms */}
+                              {/* GROUP-BOOKING-DEPOSIT-FIX-V2: Phase 1 - Fixed Add Deposit button */}
                               {activeBooking?.status === 'reserved' && (
                                 <Button
                                   variant="default"
                                   size="sm"
                                   onClick={() => {
-                                    console.log('GROUP-BOOKING-DEPOSIT-FIX-V1: Switching to payments tab for deposit');
-                                    // Find and click the payments tab trigger
-                                    const tabsTriggers = document.querySelectorAll('[role="tab"]');
-                                    tabsTriggers.forEach((trigger) => {
-                                      if (trigger.textContent?.includes('Payments')) {
-                                        (trigger as HTMLElement).click();
-                                      }
-                                    });
+                                    console.log('GROUP-BOOKING-DEPOSIT-FIX-V2: Switching to payments tab for deposit');
+                                    setActiveTab('payments');
                                   }}
                                   className="w-full mt-2"
                                 >

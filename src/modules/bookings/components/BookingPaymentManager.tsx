@@ -9,7 +9,7 @@ import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Plus, Receipt, CreditCard, Trash2, Loader2, Printer, AlertCircle } from 'lucide-react';
+import { Plus, Receipt, CreditCard, Trash2, Loader2, Printer, AlertCircle, Users } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { format } from 'date-fns';
 import { toast } from 'sonner';
@@ -23,6 +23,7 @@ import { useReceiptSettings } from '@/hooks/useReceiptSettings';
 import { useFolioById } from '@/hooks/useFolioById';
 import { useEffect } from 'react';
 import { isCredit, getCreditLabel, getBalanceColor } from '@/lib/folio/formatters';
+import { QuickDepositForm } from '@/modules/frontdesk/components/QuickDepositForm';
 
 interface BookingPaymentManagerProps {
   bookingId: string;
@@ -430,102 +431,58 @@ export function BookingPaymentManager({ bookingId }: BookingPaymentManagerProps)
     console.error('BookingPaymentManager - Folio error:', folioError);
   }
 
+  // GROUP-BOOKING-DEPOSIT-FIX-V2: Phase 2 & 4 - Check if part of group
+  const groupMetadata = booking?.metadata as any;
+  const isPartOfGroup = groupMetadata?.is_part_of_group && groupMetadata?.group_id;
+
   // PAYMENT-TAB-FIX-V2: Pre-check-in handling - show any existing payments
   if (!folio) {
     return (
       <div className="space-y-4">
-        {/* GROUP-BOOKING-DEPOSIT-FIX-V1: Phase 3A - Add Deposit Card */}
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between">
-            <div>
-              <CardTitle>Add Deposit (Pre-Check-In)</CardTitle>
-              <p className="text-sm text-muted-foreground mt-1">
-                Record a deposit payment before check-in. It will be automatically linked to the folio upon check-in.
-              </p>
-            </div>
-            <Button onClick={() => setShowAddDeposit(!showAddDeposit)} size="sm">
-              <Plus className="h-4 w-4 mr-2" />
-              Add Deposit
-            </Button>
-          </CardHeader>
-          {showAddDeposit && (
-            <CardContent>
-              <div className="space-y-4 p-4 border rounded-lg bg-muted/50">
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <Label>Amount *</Label>
-                    <Input
-                      type="number"
-                      placeholder="Enter deposit amount"
-                      value={depositForm.amount}
-                      onChange={(e) => setDepositForm({ ...depositForm, amount: e.target.value })}
-                    />
-                  </div>
-                  <div>
-                    <Label>Payment Method *</Label>
-                    <Select
-                      value={depositForm.provider_id}
-                      onValueChange={(value) => setDepositForm({ ...depositForm, provider_id: value })}
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select method" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {activeProviders.map(provider => (
-                          <SelectItem key={provider.id} value={provider.id}>
-                            {provider.name}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </div>
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <Label>Location (Optional)</Label>
-                    <Select
-                      value={depositForm.location_id}
-                      onValueChange={(value) => setDepositForm({ ...depositForm, location_id: value })}
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select location" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {activeLocations.map(location => (
-                          <SelectItem key={location.id} value={location.id}>
-                            {location.name}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div>
-                    <Label>Reference (Optional)</Label>
-                    <Input
-                      placeholder="Payment reference"
-                      value={depositForm.reference}
-                      onChange={(e) => setDepositForm({ ...depositForm, reference: e.target.value })}
-                    />
-                  </div>
-                </div>
-                <div className="flex gap-2">
-                  <Button onClick={handleAddDeposit} disabled={recordPayment.isPending} className="flex-1">
-                    {recordPayment.isPending ? (
-                      <>
-                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                        Recording...
-                      </>
-                    ) : (
-                      'Record Deposit'
-                    )}
-                  </Button>
-                  <Button variant="outline" onClick={() => setShowAddDeposit(false)}>
-                    Cancel
-                  </Button>
-                </div>
+        {/* GROUP-BOOKING-DEPOSIT-FIX-V2: Phase 4 - Group context badge */}
+        {isPartOfGroup && (
+          <Card className="bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800">
+            <CardContent className="pt-4">
+              <div className="flex items-center gap-2 text-blue-700 dark:text-blue-300">
+                <Users className="h-4 w-4" />
+                <p className="text-sm font-medium">
+                  This room is part of a group booking
+                </p>
               </div>
+              <p className="text-xs text-blue-600 dark:text-blue-400 mt-1">
+                Deposits will be linked to the individual room folio upon check-in
+              </p>
             </CardContent>
-          )}
+          </Card>
+        )}
+        
+        {/* GROUP-BOOKING-DEPOSIT-FIX-V2: Phase 2 - Unified Deposit Form */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Add Deposit (Pre-Check-In)</CardTitle>
+            <p className="text-sm text-muted-foreground">
+              Record a deposit payment before check-in. It will be automatically linked to the folio upon check-in.
+            </p>
+          </CardHeader>
+          <CardContent>
+            {showAddDeposit ? (
+              <QuickDepositForm
+                bookingId={bookingId}
+                guestId={booking?.guest_id}
+                expectedAmount={Number(booking?.total_amount) || 0}
+                onSuccess={() => {
+                  setShowAddDeposit(false);
+                  queryClient.invalidateQueries({ queryKey: ['booking-payments', bookingId] });
+                }}
+                onCancel={() => setShowAddDeposit(false)}
+              />
+            ) : (
+              <Button onClick={() => setShowAddDeposit(true)} size="lg" className="w-full">
+                <Plus className="h-4 w-4 mr-2" />
+                Add Deposit
+              </Button>
+            )}
+          </CardContent>
         </Card>
         
         {/* Show pre-check-in payments if any exist */}
