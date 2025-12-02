@@ -398,12 +398,18 @@ function generateLuxuryFolioHTML(params: {
 
   const outstandingBalance = folio.balance;
 
+  // GROUP-BOOKING-COMPREHENSIVE-FIX-V1: Phase 2 - Handle null booking for group master folios
+  const isGroupMaster = folio.folio_type === 'group_master';
+  const documentTitle = isGroupMaster 
+    ? `Group Master Folio - ${folio.folio_number}`
+    : `Guest Folio - ${folio.booking?.booking_reference || 'Unknown'}`;
+
   return `
 <!DOCTYPE html>
 <html>
 <head>
   <meta charset="UTF-8">
-  <title>Guest Folio - ${folio.booking.booking_reference}</title>
+  <title>${documentTitle}</title>
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
     
