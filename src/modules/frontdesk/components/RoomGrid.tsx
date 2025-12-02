@@ -34,7 +34,7 @@ export function RoomGrid({ searchQuery, statusFilter, categoryFilter, floorFilte
         .from('rooms')
         .select(`
           *,
-          category:room_categories(name, short_code, base_rate, max_occupancy),
+          category:room_categories(name, short_code, base_rate, max_occupancy, display_color),
           bookings!bookings_room_id_fkey(
             id,
             check_in,
