@@ -404,7 +404,7 @@ export function RoomActionDrawer({ roomId, contextDate, open, onClose, onOpenAss
   // Fetch organization wallet info if organization exists
   const { data: orgWallet } = useOrganizationWallet(activeBooking?.organization_id);
 
-  // GROUP-UX-V1: Fetch group booking info if this room is part of a group
+  // GROUP-DRAWER-FINANCIAL-SUMMARY-V1: Enhanced group info query with financial summary and member rooms
   const groupMetadata = activeBooking?.metadata as any;
   const { data: groupInfo } = useQuery({
     queryKey: ['group-booking-info', groupMetadata?.group_id, tenantId],
@@ -413,15 +413,66 @@ export function RoomActionDrawer({ roomId, contextDate, open, onClose, onOpenAss
         return null;
       }
       
-      const { data, error } = await supabase
+      // 1. Fetch group_bookings metadata
+      const { data: group, error: groupError } = await supabase
         .from('group_bookings')
         .select('group_id, group_name, group_size, group_leader')
         .eq('group_id', groupMetadata.group_id)
         .eq('tenant_id', tenantId)
         .maybeSingle();
       
-      if (error) throw error;
-      return data;
+      if (groupError) throw groupError;
+      if (!group) return null;
+
+      // 2. Fetch all bookings in this group
+      const { data: bookings, error: bookingsError } = await supabase
+        .from('bookings')
+        .select(`
+          id, status, total_amount, room_id,
+          room:rooms!bookings_room_id_fkey(number),
+          guest:guests(name)
+        `)
+        .eq('tenant_id', tenantId)
+        .contains('metadata', { group_id: groupMetadata.group_id })
+        .in('status', ['reserved', 'checked_in']);
+
+      if (bookingsError) throw bookingsError;
+
+      // 3. Fetch pre-check-in payments for these bookings
+      const bookingIds = bookings?.map(b => b.id) || [];
+      const { data: payments, error: paymentsError } = await supabase
+        .from('payments')
+        .select('amount, booking_id')
+        .in('booking_id', bookingIds)
+        .eq('tenant_id', tenantId)
+        .eq('status', 'completed')
+        .is('stay_folio_id', null); // Pre-check-in payments only
+
+      if (paymentsError) throw paymentsError;
+
+      // Calculate aggregates
+      const expectedTotal = bookings?.reduce((sum, b) => sum + (b.total_amount || 0), 0) || 0;
+      const preCheckinPayments = payments?.reduce((sum, p) => sum + (p.amount || 0), 0) || 0;
+
+      // Build member rooms list with payment details
+      const memberRooms = bookings?.map(b => ({
+        booking_id: b.id,
+        room_number: (b.room as any)?.number || 'N/A',
+        guest_name: (b.guest as any)?.name || 'Unknown',
+        status: b.status,
+        total_amount: b.total_amount || 0,
+        payments_collected: payments?.filter(p => p.booking_id === b.id)
+          .reduce((sum, p) => sum + (p.amount || 0), 0) || 0
+      })) || [];
+
+      return {
+        ...group,
+        expected_total: expectedTotal,
+        pre_checkin_payments: preCheckinPayments,
+        outstanding: expectedTotal - preCheckinPayments,
+        member_rooms: memberRooms,
+        room_count: bookings?.length || 0
+      };
     },
     enabled: !!groupMetadata?.is_part_of_group && !!groupMetadata?.group_id && !!tenantId,
   });
@@ -1257,7 +1308,7 @@ export function RoomActionDrawer({ roomId, contextDate, open, onClose, onOpenAss
                         </>
                       )}
 
-                      {/* GROUP-UX-V1: Group booking section */}
+                      {/* GROUP-DRAWER-FINANCIAL-SUMMARY-V1: Enhanced group booking section with financial summary */}
                       {groupInfo && (
                         <>
                           <div className="space-y-3">
@@ -1265,43 +1316,82 @@ export function RoomActionDrawer({ roomId, contextDate, open, onClose, onOpenAss
                               <Users className="w-4 h-4" />
                               Group Booking
                             </h3>
-                            <div className="text-sm space-y-2">
-                              <p className="font-medium">{groupInfo.group_name}</p>
-                              <div className="flex items-center justify-between py-2 px-3 bg-muted/30 rounded-lg">
-                                <span className="text-xs text-muted-foreground">Total Rooms</span>
-                                <span className="font-semibold">{groupInfo.group_size}</span>
+                            
+                            <p className="font-medium text-sm">{groupInfo.group_name}</p>
+                            
+                            {/* Financial Summary Card */}
+                            <div className="p-3 bg-primary/5 border border-primary/20 rounded-lg space-y-2">
+                              <div className="flex justify-between text-sm">
+                                <span className="text-muted-foreground">Expected Total ({groupInfo.room_count} rooms)</span>
+                                <span className="font-bold text-primary">₦{groupInfo.expected_total?.toLocaleString()}</span>
                               </div>
-                              {groupInfo.group_leader && (
-                                <div className="flex items-center justify-between py-2 px-3 bg-muted/30 rounded-lg">
-                                  <span className="text-xs text-muted-foreground">Group Leader</span>
-                                  <span className="font-medium text-xs">{groupInfo.group_leader}</span>
-                                </div>
-                              )}
-                              <Button 
-                                variant="outline" 
-                                className="w-full gap-2 mt-2"
-                                onClick={() => navigate(`/dashboard/group-billing/${groupInfo.group_id}`)}
-                              >
-                                <Building2 className="w-4 h-4" />
-                                View Master Folio
-                              </Button>
-                              
-                              {/* GROUP-BOOKING-DEPOSIT-FIX-V2: Phase 1 - Fixed Add Deposit button */}
-                              {activeBooking?.status === 'reserved' && (
-                                <Button
-                                  variant="default"
-                                  size="sm"
-                                  onClick={() => {
-                                    console.log('GROUP-BOOKING-DEPOSIT-FIX-V2: Switching to payments tab for deposit');
-                                    setActiveTab('payments');
-                                  }}
-                                  className="w-full mt-2"
-                                >
-                                  <CreditCard className="w-4 h-4 mr-2" />
-                                  Add Deposit
-                                </Button>
-                              )}
+                              <div className="flex justify-between text-sm">
+                                <span className="text-muted-foreground">Pre-Check-In Deposits</span>
+                                <span className="font-medium text-green-600">₦{groupInfo.pre_checkin_payments?.toLocaleString()}</span>
+                              </div>
+                              <Separator />
+                              <div className="flex justify-between text-sm">
+                                <span className="font-medium">Outstanding</span>
+                                <span className="font-bold">₦{groupInfo.outstanding?.toLocaleString()}</span>
+                              </div>
                             </div>
+                            
+                            {/* Member Rooms List */}
+                            {groupInfo.member_rooms && groupInfo.member_rooms.length > 0 && (
+                              <div className="space-y-1">
+                                <p className="text-xs text-muted-foreground font-medium">Member Rooms</p>
+                                <div className="max-h-32 overflow-y-auto space-y-1">
+                                  {groupInfo.member_rooms.map((room: any) => (
+                                    <div key={room.booking_id} className="flex items-center justify-between py-1.5 px-2 bg-muted/30 rounded text-xs">
+                                      <div className="flex items-center gap-2">
+                                        <span className="font-medium">Room {room.room_number}</span>
+                                        <span className="text-muted-foreground truncate max-w-[100px]">{room.guest_name}</span>
+                                      </div>
+                                      <div className="flex items-center gap-2">
+                                        <Badge variant={room.status === 'checked_in' ? 'default' : 'secondary'} className="text-xs h-5">
+                                          {room.status === 'checked_in' ? 'In' : 'Res'}
+                                        </Badge>
+                                        {room.payments_collected > 0 && (
+                                          <span className="text-green-600">₦{room.payments_collected.toLocaleString()}</span>
+                                        )}
+                                      </div>
+                                    </div>
+                                  ))}
+                                </div>
+                              </div>
+                            )}
+                            
+                            {groupInfo.group_leader && (
+                              <div className="flex items-center justify-between py-2 px-3 bg-muted/30 rounded-lg text-xs">
+                                <span className="text-muted-foreground">Group Leader</span>
+                                <span className="font-medium">{groupInfo.group_leader}</span>
+                              </div>
+                            )}
+                            
+                            <Button 
+                              variant="outline" 
+                              className="w-full gap-2 mt-2"
+                              onClick={() => navigate(`/dashboard/group-billing/${groupInfo.group_id}`)}
+                            >
+                              <Building2 className="w-4 h-4" />
+                              View Master Folio
+                            </Button>
+                            
+                            {/* GROUP-BOOKING-DEPOSIT-FIX-V2: Phase 1 - Fixed Add Deposit button */}
+                            {activeBooking?.status === 'reserved' && (
+                              <Button
+                                variant="default"
+                                size="sm"
+                                onClick={() => {
+                                  console.log('GROUP-BOOKING-DEPOSIT-FIX-V2: Switching to payments tab for deposit');
+                                  setActiveTab('payments');
+                                }}
+                                className="w-full mt-2"
+                              >
+                                <CreditCard className="w-4 h-4 mr-2" />
+                                Add Deposit
+                              </Button>
+                            )}
                           </div>
                           <Separator />
                         </>
