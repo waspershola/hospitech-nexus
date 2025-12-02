@@ -56,6 +56,10 @@ export function useCheckout() {
         toast.error('Outstanding Balance', {
           description: 'Please settle the outstanding balance before checkout. For organization bookings, ensure the payment was recorded correctly.',
         });
+      } else if (errorMessage.includes('GROUP_BALANCE_DUE')) {
+        toast.error('Group Outstanding Balance', {
+          description: 'The group has an outstanding balance. Collect payment from any room in the group before checkout.',
+        });
       } else if (errorMessage.includes('WALLET_NOT_FOUND')) {
         toast.error('Organization wallet not configured. Contact administrator.');
       } else {

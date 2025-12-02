@@ -137,6 +137,56 @@ serve(async (req) => {
       payments_count: successfulPayments.length
     });
 
+    // GROUP-POOLED-CHECKOUT-V1: Check group pooled funds (ONLY for group bookings)
+    const groupId = booking?.metadata?.group_id;
+    let groupCheckoutOverride = false;
+    let effectiveBalanceDue = balanceDue;
+
+    if (groupId && balanceDue > 0.01) {
+      console.log('[complete-checkout] GROUP-POOLED-CHECKOUT-V1: Detected group booking, checking pooled funds');
+      
+      try {
+        const { data: groupCheckResult, error: groupError } = await supabaseClient
+          .rpc('can_checkout_group_room', { p_booking_id: bookingId });
+        
+        console.log('[complete-checkout] GROUP-POOLED-CHECKOUT-V1: RPC result', groupCheckResult);
+        
+        if (groupError) {
+          console.error('[complete-checkout] GROUP-POOLED-CHECKOUT-V1: RPC error', groupError);
+          // Fall through to normal logic on error
+        } else if (groupCheckResult?.can_checkout === true) {
+          console.log('[complete-checkout] GROUP-POOLED-CHECKOUT-V1: Group pool allows checkout', {
+            reason: groupCheckResult.reason,
+            room_balance: groupCheckResult.room_balance,
+            group_balance: groupCheckResult.group_balance
+          });
+          groupCheckoutOverride = true;
+          effectiveBalanceDue = 0; // Override balance for group checkout
+        } else if (groupCheckResult?.can_checkout === false) {
+          console.log('[complete-checkout] GROUP-POOLED-CHECKOUT-V1: Group has outstanding balance', {
+            group_balance: groupCheckResult.group_balance
+          });
+          return new Response(
+            JSON.stringify({ 
+              success: false, 
+              error: 'GROUP_BALANCE_DUE', 
+              balanceDue: groupCheckResult.group_balance,
+              room_balance: groupCheckResult.room_balance,
+              message: `Group has outstanding balance of ₦${Number(groupCheckResult.group_balance || 0).toLocaleString()}. Collect payment or adjust folios before checkout.`
+            }),
+            { 
+              headers: { ...corsHeaders, 'Content-Type': 'application/json' }, 
+              status: 400 
+            }
+          );
+        }
+        // If can_checkout is NULL, fall through to normal logic
+      } catch (groupCheckError) {
+        console.error('[complete-checkout] GROUP-POOLED-CHECKOUT-V1: Exception', groupCheckError);
+        // Fall through to normal logic on exception
+      }
+    }
+
     // 3. Get payment preferences
     const { data: preferences } = await supabaseClient
       .from('hotel_payment_preferences')
@@ -146,9 +196,9 @@ serve(async (req) => {
 
     const allowCheckoutWithDebt = preferences?.allow_checkout_with_debt ?? false;
 
-    // 4. Handle outstanding balance
+    // 4. Handle outstanding balance (skip if group checkout override is active)
     // CRITICAL: Organization bookings with successful org payments should be allowed to checkout
-    if (balanceDue > 0.01) { // Use 0.01 threshold for floating point precision
+    if (effectiveBalanceDue > 0.01 && !groupCheckoutOverride) { // Use 0.01 threshold for floating point precision
       if (hasOrgPayment && booking.organization_id) {
         // Organization booking with existing payment - allow checkout
         console.log('[complete-checkout] Organization booking with payment - proceeding with checkout');
@@ -330,7 +380,10 @@ serve(async (req) => {
         booking_id: bookingId, 
         room_id: booking.room_id, 
         status: 'completed',
-        balance_due: balanceDue 
+        balance_due: balanceDue,
+        group_checkout_override: groupCheckoutOverride,
+        group_id: groupId || null,
+        version: 'GROUP-POOLED-CHECKOUT-V1'
       }
     });
 

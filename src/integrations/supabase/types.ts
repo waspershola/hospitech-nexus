@@ -8842,6 +8842,7 @@ export type Database = {
         }
         Returns: Json
       }
+      can_checkout_group_room: { Args: { p_booking_id: string }; Returns: Json }
       check_tenant_access: { Args: { _tenant_id: string }; Returns: Json }
       clear_approval_token: {
         Args: { p_approver_id: string; p_tenant_id: string }
