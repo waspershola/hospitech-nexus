@@ -4,6 +4,8 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useQueryClient } from '@tanstack/react-query';
 import { updateRequestStatus as broadcastStatusUpdate } from '@/lib/qr/statusBroadcast';
 import { toast } from 'sonner';
+import { useNetworkStore } from '@/state/networkStore';
+import { isNetworkOffline, getCachedQRRequests, updateCache } from '@/lib/offline/offlineDataService';
 
 interface StaffRequest {
   id: string;
@@ -20,15 +22,16 @@ interface StaffRequest {
   assigned_to?: string;
   assigned_department?: string;
   completed_at?: string;
-  responded_at?: string; // PHASE-3: SLA tracking timestamp
-  guest_name?: string; // PHASE-1C: Guest name from QR portal
-  guest_contact?: string; // PHASE-1C: Guest contact from QR portal
-  transferred_to_frontdesk?: boolean; // PHASE-3-TRANSFER-V1
-  transferred_at?: string; // PHASE-3-TRANSFER-V1
-  transferred_by?: string; // PHASE-3-TRANSFER-V1
+  responded_at?: string;
+  guest_name?: string;
+  guest_contact?: string;
+  transferred_to_frontdesk?: boolean;
+  transferred_at?: string;
+  transferred_by?: string;
   room?: { number: string };
   guest?: { name: string };
   guest_order?: { guest_name: string | null }[];
+  _offline?: boolean;
 }
 
 export function useStaffRequests() {
@@ -36,11 +39,44 @@ export function useStaffRequests() {
   const queryClient = useQueryClient();
   const [requests, setRequests] = useState<StaffRequest[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const { hardOffline } = useNetworkStore();
 
   const fetchRequests = async () => {
     if (!tenantId) return;
 
     setIsLoading(true);
+    
+    // OFFLINE-QR-V1: Load from IndexedDB when offline
+    if (isNetworkOffline()) {
+      console.log('[useStaffRequests] OFFLINE-V1: Loading from cache');
+      try {
+        const cached = await getCachedQRRequests(tenantId);
+        setRequests(cached.map(r => ({
+          id: r.id,
+          tenant_id: r.tenant_id,
+          guest_id: null,
+          room_id: r.room_id,
+          type: r.service_type,
+          note: '',
+          status: r.status,
+          priority: r.priority,
+          qr_token: r.qr_token,
+          metadata: r.metadata,
+          created_at: r.created_at,
+          guest_name: r.guest_name || undefined,
+          guest_contact: r.guest_phone || undefined,
+          _offline: true,
+        } as StaffRequest)));
+        toast.info('Offline Mode - Showing cached requests');
+      } catch (err) {
+        console.error('[useStaffRequests] Cache read error:', err);
+        setRequests([]);
+      } finally {
+        setIsLoading(false);
+      }
+      return;
+    }
+    
     try {
       const { data, error } = await supabase
         .from('requests')
@@ -56,6 +92,23 @@ export function useStaffRequests() {
 
       if (error) throw error;
       setRequests(data || []);
+      
+      // Update cache in background
+      if (data?.length) {
+        updateCache(tenantId, 'qr_requests', data.map(d => ({
+          id: d.id,
+          qr_token: d.qr_token,
+          room_id: d.room_id,
+          guest_name: (d as any).guest_name || null,
+          guest_phone: (d as any).guest_contact || null,
+          service_type: d.type,
+          items: typeof d.metadata === 'object' && d.metadata ? (d.metadata as any).items || [] : [],
+          status: d.status,
+          priority: d.priority,
+          metadata: d.metadata,
+          created_at: d.created_at,
+        }))).catch(() => {});
+      }
     } catch (err) {
       console.error('[useStaffRequests] Error fetching requests:', err);
       toast.error('Failed to load requests');
@@ -96,12 +149,15 @@ export function useStaffRequests() {
   useEffect(() => {
     fetchRequests();
 
-    // Set up real-time subscription for new requests
-    if (!tenantId) return;
+    // OFFLINE-QR-V1: Skip realtime subscription when offline
+    if (!tenantId || isNetworkOffline()) {
+      console.log('[useStaffRequests] OFFLINE-V1: Skipping realtime subscription');
+      return;
+    }
 
     let isSubscribed = true;
     const channel = supabase
-      .channel(`staff-requests-${tenantId}`) // REALTIME-STABILITY-FIX: Stable channel name
+      .channel(`staff-requests-${tenantId}`)
       .on(
         'postgres_changes',
         {
@@ -137,7 +193,7 @@ export function useStaffRequests() {
       statusBc.removeEventListener('message', handleBroadcast);
       statusBc.close();
     };
-  }, [tenantId]);
+  }, [tenantId, hardOffline]);
 
   return {
     requests,

@@ -46,6 +46,12 @@ window.__HARD_OFFLINE__ = false;
     });
   }
 
-  // 4. Render React app
+  // 4. Development-only debug helper for network store
+  if (import.meta.env.DEV) {
+    (window as any).__debugNetworkStore__ = () => useNetworkStore.getState();
+    console.log('[Dev] window.__debugNetworkStore__() available');
+  }
+
+  // 5. Render React app
   createRoot(document.getElementById("root")!).render(<App />);
 })();

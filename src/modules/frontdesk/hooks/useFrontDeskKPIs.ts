@@ -3,6 +3,8 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { format, addDays } from 'date-fns';
 import { useTodayArrivals } from '@/hooks/useTodayArrivals';
+import { useNetworkStore } from '@/state/networkStore';
+import { isNetworkOffline, getCachedRooms, getCachedBookings } from '@/lib/offline/offlineDataService';
 
 export interface FrontDeskKPIs {
   available: number;
@@ -14,10 +16,58 @@ export interface FrontDeskKPIs {
   outOfService: number;
   overstays: number;
   dieselLevel: number;
+  _offline?: boolean;
+}
+
+/**
+ * Compute KPIs from cached IndexedDB data
+ */
+async function computeKPIsFromCache(tenantId: string): Promise<Omit<FrontDeskKPIs, 'arrivals'>> {
+  const todayISO = format(new Date(), 'yyyy-MM-dd');
+  
+  const [rooms, bookings] = await Promise.all([
+    getCachedRooms(tenantId),
+    getCachedBookings(tenantId),
+  ]);
+  
+  const available = rooms.filter(r => r.status === 'available').length;
+  const occupied = rooms.filter(r => r.status === 'occupied').length;
+  const outOfService = rooms.filter(r => r.status === 'maintenance').length;
+  
+  // Departures: checked_in bookings with check_out today
+  const departures = bookings.filter(b => {
+    const checkOutDate = b.check_out.split('T')[0];
+    return b.status === 'checked_in' && checkOutDate === todayISO;
+  }).length;
+  
+  // In-house: checked_in bookings with check_out >= today
+  const inHouse = bookings.filter(b => {
+    const checkOutDate = b.check_out.split('T')[0];
+    return b.status === 'checked_in' && checkOutDate >= todayISO;
+  }).length;
+  
+  // Overstays: checked_in bookings with check_out < today
+  const overstays = bookings.filter(b => {
+    const checkOutDate = b.check_out.split('T')[0];
+    return b.status === 'checked_in' && checkOutDate < todayISO;
+  }).length;
+  
+  return {
+    available,
+    occupied,
+    departures,
+    inHouse,
+    pendingPayments: 0, // Can't compute offline without payments cache
+    outOfService,
+    overstays,
+    dieselLevel: 75,
+    _offline: true,
+  };
 }
 
 export function useFrontDeskKPIs() {
   const { tenantId } = useAuth();
+  const { hardOffline } = useNetworkStore();
   
   // ARRIVALS-FIX-V2: Use shared hook for consistent arrivals data
   const { data: todayArrivals = [], isLoading: arrivalsLoading } = useTodayArrivals();
@@ -28,6 +78,12 @@ export function useFrontDeskKPIs() {
       if (!tenantId) {
         console.log('❌ useFrontDeskKPIs: No tenantId available');
         return null;
+      }
+
+      // OFFLINE-KPI-V1: Compute from cache when offline
+      if (isNetworkOffline()) {
+        console.log('[useFrontDeskKPIs] OFFLINE-V1: Computing from cache');
+        return computeKPIsFromCache(tenantId);
       }
 
       console.log('🔄 useFrontDeskKPIs: Fetching KPIs for tenant:', tenantId);
@@ -127,14 +183,14 @@ export function useFrontDeskKPIs() {
       }
     },
     enabled: !!tenantId,
-    refetchInterval: 30000,
-    retry: 2,
+    refetchInterval: hardOffline ? false : 30000,
+    retry: hardOffline ? false : 2,
   });
 
   // ARRIVALS-FIX-V2: Merge arrivals count OUTSIDE queryFn to avoid stale closure
   const kpisWithArrivals = query.data ? {
     ...query.data,
-    arrivals: todayArrivals.length, // ✅ Fresh value from hook, not stale closure
+    arrivals: todayArrivals.length,
   } as FrontDeskKPIs : null;
 
   console.log('[KPI-ARRIVALS-V2] Fresh arrivals count:', todayArrivals.length);
