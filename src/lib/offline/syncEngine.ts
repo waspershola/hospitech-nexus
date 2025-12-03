@@ -65,6 +65,23 @@ class SyncEngine {
   }
 
   /**
+   * Emit sync telemetry to Electron main process (Phase 4)
+   */
+  private emitSyncEvent(event: { type: 'start' | 'complete' | 'error'; queued?: number; synced?: number; failed?: number; error?: string }) {
+    if (isElectronContext() && window.electronAPI?.syncEvent) {
+      try {
+        window.electronAPI.syncEvent({
+          ...event,
+          timestamp: Date.now(),
+        });
+        console.log(`[SyncEngine-V4] Emitted sync event: ${event.type}`);
+      } catch (error) {
+        console.warn('[SyncEngine-V4] Failed to emit sync event:', error);
+      }
+    }
+  }
+
+  /**
    * Main sync function - processes offline queue
    */
   async syncAll(): Promise<SyncResult> {
@@ -86,13 +103,16 @@ class SyncEngine {
     let synced = 0;
     let failed = 0;
 
+    // Emit sync start event (Phase 4)
+    this.emitSyncEvent({ type: 'start' });
+
     try {
       // Get all pending items from queue
       const db = await tenantDBManager.openTenantDB(tenantId);
       const pendingItems = await db.getAll('offline_queue');
       const total = pendingItems.length;
 
-      console.log(`[SyncEngine] Starting sync: ${total} items in queue`);
+      console.log(`[SyncEngine-V4] Starting sync: ${total} items in queue`);
 
       this.notifyProgress({
         total,
@@ -161,11 +181,27 @@ class SyncEngine {
         errors,
       });
 
-      console.log(`[SyncEngine] Sync complete: ${synced} synced, ${failed} failed`);
+      console.log(`[SyncEngine-V4] Sync complete: ${synced} synced, ${failed} failed`);
+
+      // Emit sync complete event (Phase 4)
+      const remainingItems = await db.getAll('offline_queue');
+      this.emitSyncEvent({ 
+        type: 'complete', 
+        queued: remainingItems.length,
+        synced,
+        failed,
+      });
 
       return { success: failed === 0, synced, failed, errors };
     } catch (error) {
-      console.error('[SyncEngine] Fatal sync error:', error);
+      console.error('[SyncEngine-V4] Fatal sync error:', error);
+      
+      // Emit sync error event (Phase 4)
+      this.emitSyncEvent({ 
+        type: 'error', 
+        error: error instanceof Error ? error.message : 'Unknown error',
+      });
+      
       return { success: false, synced, failed, errors };
     } finally {
       this.isSyncing = false;

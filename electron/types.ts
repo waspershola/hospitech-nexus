@@ -32,6 +32,33 @@ export interface LogEvent {
   timestamp: number;
 }
 
+export interface SyncEvent {
+  type: 'start' | 'complete' | 'error';
+  queued?: number;
+  synced?: number;
+  failed?: number;
+  error?: string;
+  timestamp?: number;
+}
+
+export interface SyncInfo {
+  status: 'idle' | 'syncing' | 'error';
+  queued: number;
+  synced: number;
+  failed: number;
+  lastSyncAt: number | null;
+  error?: string;
+}
+
+export interface DiagnosticsState {
+  network: {
+    isOnline: boolean;
+    lastChangeAt: number | null;
+  };
+  sync: SyncInfo;
+  logs: LogEvent[];
+}
+
 export interface PrintOptions {
   silent?: boolean;
   deviceName?: string;
@@ -84,6 +111,14 @@ export interface ElectronAPI {
 
   // App info
   getAppVersion: () => Promise<string>;
+
+  // Sync telemetry (Phase 4)
+  syncEvent: (event: SyncEvent) => void;
+  onSyncEvent: (callback: (info: SyncInfo) => void) => () => void;
+
+  // Diagnostics (Phase 4)
+  openDiagnostics: () => Promise<void>;
+  getDiagnosticsState: () => Promise<DiagnosticsState>;
 }
 
 /**
