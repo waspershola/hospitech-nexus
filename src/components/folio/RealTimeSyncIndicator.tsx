@@ -1,7 +1,8 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef, useCallback } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Wifi, WifiOff } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
+import { isElectronContext } from '@/lib/offline/offlineTypes';
 
 interface RealTimeSyncIndicatorProps {
   folioId: string;
@@ -11,42 +12,70 @@ interface RealTimeSyncIndicatorProps {
 /**
  * Displays real-time sync status indicator for folio updates
  * Shows green pulsing indicator when connected to real-time updates
- * Version: BILLING-CENTER-V2.1-REALTIME-SYNC
  */
 export function RealTimeSyncIndicator({ folioId, className }: RealTimeSyncIndicatorProps) {
   const [isConnected, setIsConnected] = useState(false);
   const [lastSync, setLastSync] = useState<Date | null>(null);
+  const registeredChannelId = useRef<string | null>(null);
+
+  const handleSync = useCallback(() => {
+    setLastSync(new Date());
+    setIsConnected(true);
+  }, []);
 
   useEffect(() => {
-    // Create real-time channel for folio updates
+    const isElectron = isElectronContext();
+
+    // For Electron: Use registry
+    if (isElectron) {
+      import('@/lib/offline/offlineRuntimeController').then(({ offlineRuntimeController }) => {
+        const channelId = offlineRuntimeController.registerRealtimeChannel({
+          id: `folio-sync-${folioId}`,
+          channelName: `folio-sync-${folioId}`,
+          postgresChanges: [
+            {
+              event: '*',
+              table: 'stay_folios',
+              filter: `id=eq.${folioId}`,
+              handler: handleSync
+            },
+            {
+              event: '*',
+              table: 'folio_transactions',
+              filter: `folio_id=eq.${folioId}`,
+              handler: handleSync
+            }
+          ],
+          onSubscribed: () => setIsConnected(true)
+        });
+        registeredChannelId.current = channelId;
+      });
+
+      return () => {
+        if (registeredChannelId.current) {
+          import('@/lib/offline/offlineRuntimeController').then(({ offlineRuntimeController }) => {
+            offlineRuntimeController.unregisterRealtimeChannel(registeredChannelId.current!);
+            registeredChannelId.current = null;
+          });
+        }
+      };
+    }
+
+    // For SPA: Direct subscription
     const channel = supabase
       .channel(`folio-sync-${folioId}`)
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'stay_folios',
-          filter: `id=eq.${folioId}`,
-        },
-        () => {
-          setLastSync(new Date());
-          setIsConnected(true);
-        }
-      )
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'folio_transactions',
-          filter: `folio_id=eq.${folioId}`,
-        },
-        () => {
-          setLastSync(new Date());
-          setIsConnected(true);
-        }
-      )
+      .on('postgres_changes', {
+        event: '*',
+        schema: 'public',
+        table: 'stay_folios',
+        filter: `id=eq.${folioId}`,
+      }, handleSync)
+      .on('postgres_changes', {
+        event: '*',
+        schema: 'public',
+        table: 'folio_transactions',
+        filter: `folio_id=eq.${folioId}`,
+      }, handleSync)
       .subscribe((status) => {
         setIsConnected(status === 'SUBSCRIBED');
       });
@@ -54,7 +83,7 @@ export function RealTimeSyncIndicator({ folioId, className }: RealTimeSyncIndica
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [folioId]);
+  }, [folioId, handleSync]);
 
   return (
     <Badge

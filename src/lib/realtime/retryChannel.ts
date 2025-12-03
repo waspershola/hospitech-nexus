@@ -3,8 +3,9 @@ import { toast } from 'sonner';
 import { isElectronContext } from '@/lib/offline/offlineTypes';
 
 /**
- * ELECTRON-ONLY-V1: Check if currently offline using unified network state
- * Web SPA always returns false
+ * Check if currently offline using unified network state
+ * In Electron: defers to offlineRuntimeController
+ * In SPA: always returns false (online-only)
  */
 function isNetworkOffline(): boolean {
   if (!isElectronContext()) return false;
@@ -16,7 +17,7 @@ function isNetworkOffline(): boolean {
   return false;
 }
 
-// ELECTRON-ONLY-V1: Track toast display to prevent spam in SPA
+// Track toast display to prevent spam (30s debounce)
 let lastConnectionLostToast = 0;
 
 interface RetryConfig {
@@ -28,23 +29,21 @@ interface RetryConfig {
 }
 
 /**
- * PHASE-2: Realtime Retry Logic with Exponential Backoff
- * Creates a Supabase realtime channel with automatic retry logic
+ * Creates a Supabase realtime channel with retry logic
  * 
- * Features:
- * - Exponential backoff: 1s → 2s → 4s → 8s → 16s → 30s max
- * - Auto-reconnect on network restore (navigator.onLine)
- * - Toast notification after permanent failure (5 retries)
- * - Callback hooks for retry and failure events
+ * In Electron: Uses minimal retries, defers lifecycle to offlineRuntimeController
+ * In SPA: Simple retry with exponential backoff (3 attempts max)
  */
 export function createRealtimeChannelWithRetry(
   channelName: string,
   config: RetryConfig = {}
 ) {
+  // In Electron, use fewer retries since controller manages lifecycle
+  const isElectron = isElectronContext();
   const {
-    maxRetries = 5,
-    baseDelay = 1000, // 1s
-    maxDelay = 30000, // 30s
+    maxRetries = isElectron ? 2 : 3,
+    baseDelay = 1000,
+    maxDelay = 10000,
     onRetry,
     onFailure,
   } = config;
@@ -52,74 +51,71 @@ export function createRealtimeChannelWithRetry(
   let retryCount = 0;
   let retryTimeout: NodeJS.Timeout | null = null;
   let currentChannel: any = null;
+  let isCleanedUp = false;
 
   function calculateDelay(attempt: number): number {
-    const delay = Math.min(baseDelay * Math.pow(2, attempt), maxDelay);
-    return delay;
+    return Math.min(baseDelay * Math.pow(2, attempt), maxDelay);
   }
 
   function attemptConnection() {
-    console.log(`[retryChannel] Attempting connection for ${channelName} (attempt ${retryCount + 1}/${maxRetries})`);
+    if (isCleanedUp) return null;
+    
+    // In Electron, don't attempt connection if offline
+    if (isElectron && isNetworkOffline()) {
+      console.log(`[retryChannel] ${channelName} - skipping: offline`);
+      return null;
+    }
+    
+    console.log(`[retryChannel] ${channelName} connecting (attempt ${retryCount + 1}/${maxRetries})`);
     
     currentChannel = supabase.channel(channelName);
-
-    // Store the original subscribe method
     const originalSubscribe = currentChannel.subscribe.bind(currentChannel);
 
-    // Override subscribe to add status monitoring
     currentChannel.subscribe = (callback?: (status: string) => void) => {
       return originalSubscribe((status: string) => {
-        console.log(`[retryChannel] ${channelName} status:`, status);
+        if (isCleanedUp) return;
 
         if (status === 'SUBSCRIBED') {
-          console.log(`[retryChannel] ${channelName} subscribed successfully`);
-          retryCount = 0; // Reset on success
-          
-          // Call original callback if provided
+          retryCount = 0;
           callback?.(status);
         } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
           retryCount++;
 
+          // In Electron offline, stop immediately - controller will handle reconnect
+          if (isElectron && isNetworkOffline()) {
+            console.log(`[retryChannel] ${channelName} - offline, stopping retries`);
+            callback?.(status);
+            return;
+          }
+
           if (retryCount <= maxRetries) {
-            // OFFLINE-PHASE2: Check offline state before scheduling retry
-            if (isNetworkOffline()) {
-              console.log(`[retryChannel] ${channelName} - stopping retry: offline/hardOffline`);
-              return;
-            }
-
             const delay = calculateDelay(retryCount);
-            console.warn(
-              `[retryChannel] ${channelName} failed (attempt ${retryCount}/${maxRetries}), retrying in ${delay}ms`
-            );
-
+            console.warn(`[retryChannel] ${channelName} failed, retry ${retryCount}/${maxRetries} in ${delay}ms`);
             onRetry?.(retryCount, delay);
 
             retryTimeout = setTimeout(() => {
-              supabase.removeChannel(currentChannel);
-              attemptConnection();
+              if (!isCleanedUp && currentChannel) {
+                supabase.removeChannel(currentChannel);
+                attemptConnection();
+              }
             }, delay);
           } else {
-            console.error(`[retryChannel] ${channelName} failed permanently after ${maxRetries} retries`);
-            
+            console.error(`[retryChannel] ${channelName} failed after ${maxRetries} retries`);
             onFailure?.();
             
-            // ELECTRON-ONLY-V1: Show toast only in Electron or if debounced in SPA
+            // Show debounced toast (max once per 30s)
             const now = Date.now();
-            if (isElectronContext() || now - lastConnectionLostToast > 30000) {
+            if (now - lastConnectionLostToast > 30000) {
               lastConnectionLostToast = now;
               toast.error('Connection Lost', {
-                description: isElectronContext() 
-                  ? 'Failed to connect to notification system. Please refresh the page.'
-                  : 'Notification connection lost. Retrying automatically.',
-                duration: isElectronContext() ? 10000 : 5000,
+                description: 'Realtime updates paused. Retrying...',
+                duration: 5000,
               });
             }
           }
           
-          // Call original callback if provided
           callback?.(status);
         } else {
-          // Call original callback for other statuses
           callback?.(status);
         }
       });
@@ -128,21 +124,17 @@ export function createRealtimeChannelWithRetry(
     return currentChannel;
   }
 
-  // Reconnect when network comes back online
+  // Browser online event handler (SPA only - Electron uses controller)
   const handleOnline = () => {
-    // OFFLINE-PHASE2: Verify NOT in forced offline mode before reconnecting
-    if (isNetworkOffline()) {
-      console.log('[retryChannel] Ignoring online event: forced offline mode active');
-      return;
-    }
+    if (isElectron) return; // Electron handled by controller
+    if (isCleanedUp) return;
     
-    console.log('[retryChannel] Network restored, reconnecting channels');
+    console.log('[retryChannel] Browser online, reconnecting');
     retryCount = 0;
     
     if (currentChannel) {
       supabase.removeChannel(currentChannel);
     }
-    
     if (retryTimeout) {
       clearTimeout(retryTimeout);
       retryTimeout = null;
@@ -151,26 +143,36 @@ export function createRealtimeChannelWithRetry(
     attemptConnection();
   };
 
-  window.addEventListener('online', handleOnline);
+  if (!isElectron) {
+    window.addEventListener('online', handleOnline);
+  }
 
-  // Cleanup function
   const cleanup = () => {
-    window.removeEventListener('online', handleOnline);
+    isCleanedUp = true;
+    
+    if (!isElectron) {
+      window.removeEventListener('online', handleOnline);
+    }
     
     if (retryTimeout) {
       clearTimeout(retryTimeout);
+      retryTimeout = null;
     }
     
     if (currentChannel) {
-      supabase.removeChannel(currentChannel);
+      try {
+        supabase.removeChannel(currentChannel);
+      } catch (e) {
+        // Ignore cleanup errors
+      }
+      currentChannel = null;
     }
   };
 
-  // Start initial connection
   const channel = attemptConnection();
-  
-  // Attach cleanup to channel
-  (channel as any).cleanup = cleanup;
+  if (channel) {
+    (channel as any).cleanup = cleanup;
+  }
 
   return channel;
 }

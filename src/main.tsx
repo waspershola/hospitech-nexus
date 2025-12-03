@@ -6,6 +6,7 @@ import "./styles/qr-themes.css";
 // Import store for hydration (non-hook usage)
 import { useNetworkStore } from "./state/networkStore";
 import type { NetworkState, ExtendedElectronAPI } from "./types/electron";
+import { isElectronContext } from "./lib/offline/offlineTypes";
 
 // 1. Set global defaults immediately (browser-compatible)
 window.__NETWORK_STATE__ = {
@@ -46,12 +47,23 @@ window.__HARD_OFFLINE__ = false;
     });
   }
 
-  // 4. Debug helper for network store (available in all environments for diagnostics)
+  // 4. Initialize offline runtime controller (Electron only)
+  if (isElectronContext()) {
+    try {
+      const { offlineRuntimeController } = await import('./lib/offline/offlineRuntimeController');
+      offlineRuntimeController.init();
+      console.log('[OfflineBridge] Runtime controller initialized');
+    } catch (err) {
+      console.warn('[OfflineBridge] Failed to init runtime controller:', err);
+    }
+  }
+
+  // 5. Debug helper for network store (available in all environments for diagnostics)
   (window as any).__debugNetworkStore__ = () => useNetworkStore.getState();
   if (import.meta.env.DEV) {
     console.log('[Dev] window.__debugNetworkStore__() available');
   }
 
-  // 5. Render React app
+  // 6. Render React app
   createRoot(document.getElementById("root")!).render(<App />);
 })();
