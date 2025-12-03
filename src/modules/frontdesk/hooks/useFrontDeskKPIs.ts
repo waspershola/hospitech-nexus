@@ -5,6 +5,7 @@ import { format, addDays } from 'date-fns';
 import { useTodayArrivals } from '@/hooks/useTodayArrivals';
 import { useNetworkStore } from '@/state/networkStore';
 import { isNetworkOffline, getCachedRooms, getCachedBookings } from '@/lib/offline/offlineDataService';
+import { isElectronContext } from '@/lib/offline/offlineTypes';
 
 export interface FrontDeskKPIs {
   available: number;
@@ -80,9 +81,9 @@ export function useFrontDeskKPIs() {
         return null;
       }
 
-      // OFFLINE-KPI-V1: Compute from cache when offline
-      if (isNetworkOffline()) {
-        console.log('[useFrontDeskKPIs] OFFLINE-V1: Computing from cache');
+      // ELECTRON-ONLY-V1: Compute from cache when offline (only in Electron)
+      if (isElectronContext() && isNetworkOffline()) {
+        console.log('[useFrontDeskKPIs] OFFLINE-V1: Computing from cache (Electron)');
         return computeKPIsFromCache(tenantId);
       }
 

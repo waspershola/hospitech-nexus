@@ -1,16 +1,23 @@
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import { isElectronContext } from '@/lib/offline/offlineTypes';
 
 /**
- * OFFLINE-PHASE2: Check if currently offline using unified network state
+ * ELECTRON-ONLY-V1: Check if currently offline using unified network state
+ * Web SPA always returns false
  */
 function isNetworkOffline(): boolean {
+  if (!isElectronContext()) return false;
+  
   if (window.__HARD_OFFLINE__ === true) return true;
   const s = window.__NETWORK_STATE__;
   if (s?.hardOffline === true) return true;
   if (s?.online === false) return true;
   return false;
 }
+
+// ELECTRON-ONLY-V1: Track toast display to prevent spam in SPA
+let lastConnectionLostToast = 0;
 
 interface RetryConfig {
   maxRetries?: number;
@@ -96,11 +103,17 @@ export function createRealtimeChannelWithRetry(
             
             onFailure?.();
             
-            // Show toast notification
-            toast.error('Connection Lost', {
-              description: 'Failed to connect to notification system. Please refresh the page.',
-              duration: 10000,
-            });
+            // ELECTRON-ONLY-V1: Show toast only in Electron or if debounced in SPA
+            const now = Date.now();
+            if (isElectronContext() || now - lastConnectionLostToast > 30000) {
+              lastConnectionLostToast = now;
+              toast.error('Connection Lost', {
+                description: isElectronContext() 
+                  ? 'Failed to connect to notification system. Please refresh the page.'
+                  : 'Notification connection lost. Retrying automatically.',
+                duration: isElectronContext() ? 10000 : 5000,
+              });
+            }
           }
           
           // Call original callback if provided

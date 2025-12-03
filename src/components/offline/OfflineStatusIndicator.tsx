@@ -1,6 +1,7 @@
 /**
  * Offline Status Indicator - Phase 3
  * Shows online/offline status with queue count badge
+ * ELECTRON-ONLY-V1: Only renders in Electron desktop app
  */
 
 import { useEffect, useState } from 'react';
@@ -12,13 +13,12 @@ import { isElectronContext } from '@/lib/offline/offlineTypes';
 export function OfflineStatusIndicator() {
   const [isOnline, setIsOnline] = useState(navigator.onLine);
   const { pendingCount, failedCount } = useOfflineQueueV2();
-
-  // Only show in Electron desktop app
-  if (!isElectronContext()) {
-    return null;
-  }
+  const isElectron = isElectronContext();
 
   useEffect(() => {
+    // ELECTRON-ONLY-V1: Only setup listeners in Electron
+    if (!isElectron) return;
+    
     const handleOnline = () => setIsOnline(true);
     const handleOffline = () => setIsOnline(false);
 
@@ -29,7 +29,12 @@ export function OfflineStatusIndicator() {
       window.removeEventListener('online', handleOnline);
       window.removeEventListener('offline', handleOffline);
     };
-  }, []);
+  }, [isElectron]);
+
+  // Only show in Electron desktop app
+  if (!isElectron) {
+    return null;
+  }
 
   const totalPending = pendingCount + failedCount;
 

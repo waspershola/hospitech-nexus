@@ -3,6 +3,7 @@
  * Admin tool for testing and debugging offline functionality
  * Shows live network state from Electron bridge
  * Includes Force Offline toggle and Queue Status Panel
+ * ELECTRON-ONLY-V1: This component is only functional in Electron desktop app
  */
 
 import { useState } from 'react';
@@ -24,6 +25,7 @@ import {
   AlertTriangle,
   CloudOff,
   RefreshCw,
+  Monitor,
 } from 'lucide-react';
 import {
   seedTestData,
@@ -34,6 +36,7 @@ import {
 } from '@/lib/offline/offlineTestUtils';
 import { useNetworkStore } from '@/state/networkStore';
 import { useOfflineQueueV2 } from '@/hooks/useOfflineQueue.v2';
+import { isElectronContext } from '@/lib/offline/offlineTypes';
 import type { NetworkState } from '@/types/electron';
 
 export function OfflineDiagnostics() {
@@ -178,8 +181,30 @@ export function OfflineDiagnostics() {
   };
 
   // Don't render if not in Electron or not logged in
-  if (!window.electronAPI || !tenantId) {
-    return null;
+  // ELECTRON-ONLY-V1: Component is only functional in Electron desktop app
+  const isElectron = isElectronContext();
+  if (!isElectron || !tenantId) {
+    return (
+      <div className="space-y-6 p-6">
+        <Card className="border-muted">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Monitor className="h-5 w-5" />
+              Offline Diagnostics
+            </CardTitle>
+            <CardDescription>
+              Desktop App Only
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <p className="text-sm text-muted-foreground">
+              Offline diagnostics and testing tools are only available in the Electron desktop application.
+              The web browser version operates in online-only mode.
+            </p>
+          </CardContent>
+        </Card>
+      </div>
+    );
   }
 
   return (

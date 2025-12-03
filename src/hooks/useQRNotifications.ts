@@ -4,13 +4,17 @@ import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
 import { createRealtimeChannelWithRetry } from '@/lib/realtime/retryChannel';
 import { useNetworkStore } from '@/state/networkStore';
+import { isElectronContext } from '@/lib/offline/offlineTypes';
 
 const DEBUG_QR_NOTIFICATIONS = false;
 
 /**
  * Check if currently offline using unified network state
+ * ELECTRON-ONLY-V1: Web SPA always returns false
  */
 function isNetworkOffline(): boolean {
+  if (!isElectronContext()) return false;
+  
   if (window.__HARD_OFFLINE__ === true) return true;
   const s = window.__NETWORK_STATE__;
   if (s?.hardOffline === true) return true;
