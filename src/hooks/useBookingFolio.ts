@@ -1,7 +1,8 @@
-import { useEffect } from 'react';
+import { useEffect, useRef, useCallback } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
+import { isElectronContext } from '@/lib/offline/offlineTypes';
 
 /**
  * FOLIO SYSTEM ARCHITECTURE (Phase 4 - Zero Fallback)
@@ -85,13 +86,67 @@ export interface FolioBalance {
 export function useBookingFolio(bookingId: string | null) {
   const { tenantId } = useAuth();
   const queryClient = useQueryClient();
+  const registeredChannelId = useRef<string | null>(null);
+
+  const handleFolioUpdate = useCallback(() => {
+    queryClient.invalidateQueries({ queryKey: ['booking-folio', bookingId, tenantId] });
+  }, [queryClient, bookingId, tenantId]);
 
   // Real-time folio updates via Supabase channels
   useEffect(() => {
     if (!bookingId || !tenantId) return;
     
-    console.log('[folio] Setting up real-time subscription for booking:', bookingId);
-    
+    const isElectron = isElectronContext();
+
+    // For Electron: Use registry
+    if (isElectron) {
+      import('@/lib/offline/offlineRuntimeController').then(({ offlineRuntimeController }) => {
+        const channelId = offlineRuntimeController.registerRealtimeChannel({
+          id: `folio-updates-${bookingId}`,
+          channelName: `folio-updates-${bookingId}`,
+          postgresChanges: [
+            {
+              event: '*',
+              table: 'stay_folios',
+              filter: `booking_id=eq.${bookingId}`,
+              handler: handleFolioUpdate
+            },
+            {
+              event: '*',
+              table: 'folio_transactions',
+              handler: handleFolioUpdate
+            },
+            {
+              event: '*',
+              table: 'payments',
+              filter: `booking_id=eq.${bookingId}`,
+              handler: handleFolioUpdate
+            }
+          ]
+        });
+        registeredChannelId.current = channelId;
+      });
+
+      // Multi-tab sync via postMessage
+      const handleMessage = (e: MessageEvent) => {
+        if (e.data?.type === 'FOLIO_UPDATED' && e.data?.bookingId === bookingId) {
+          handleFolioUpdate();
+        }
+      };
+      window.addEventListener('message', handleMessage);
+
+      return () => {
+        window.removeEventListener('message', handleMessage);
+        if (registeredChannelId.current) {
+          import('@/lib/offline/offlineRuntimeController').then(({ offlineRuntimeController }) => {
+            offlineRuntimeController.unregisterRealtimeChannel(registeredChannelId.current!);
+            registeredChannelId.current = null;
+          });
+        }
+      };
+    }
+
+    // For SPA: Direct subscription
     const channel = supabase
       .channel(`folio-updates-${bookingId}`)
       .on('postgres_changes', {
@@ -99,45 +154,33 @@ export function useBookingFolio(bookingId: string | null) {
         schema: 'public',
         table: 'stay_folios',
         filter: `booking_id=eq.${bookingId}`
-      }, (payload) => {
-        console.log('[folio] Real-time update received:', payload);
-        queryClient.invalidateQueries({ queryKey: ['booking-folio', bookingId, tenantId] });
-      })
+      }, handleFolioUpdate)
       .on('postgres_changes', {
         event: '*',
         schema: 'public',
         table: 'folio_transactions',
-      }, (payload) => {
-        console.log('[folio-txn] Transaction update received:', payload);
-        queryClient.invalidateQueries({ queryKey: ['booking-folio', bookingId, tenantId] });
-      })
+      }, handleFolioUpdate)
       .on('postgres_changes', {
         event: '*',
         schema: 'public',
         table: 'payments',
         filter: `booking_id=eq.${bookingId}`
-      }, (payload) => {
-        console.log('[payment] Payment update received:', payload);
-        queryClient.invalidateQueries({ queryKey: ['booking-folio', bookingId, tenantId] });
-      })
+      }, handleFolioUpdate)
       .subscribe();
     
     // Multi-tab sync via postMessage
     const handleMessage = (e: MessageEvent) => {
       if (e.data?.type === 'FOLIO_UPDATED' && e.data?.bookingId === bookingId) {
-        console.log('[folio] Multi-tab update received:', e.data);
-        queryClient.invalidateQueries({ queryKey: ['booking-folio', bookingId, tenantId] });
+        handleFolioUpdate();
       }
     };
-    
     window.addEventListener('message', handleMessage);
     
     return () => {
-      console.log('[folio] Cleaning up real-time subscription');
       supabase.removeChannel(channel);
       window.removeEventListener('message', handleMessage);
     };
-  }, [bookingId, tenantId, queryClient]);
+  }, [bookingId, tenantId, handleFolioUpdate]);
 
   return useQuery({
     queryKey: ['booking-folio', bookingId, tenantId],
