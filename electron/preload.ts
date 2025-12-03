@@ -6,7 +6,7 @@
  */
 
 import { contextBridge, ipcRenderer } from 'electron';
-import type { ElectronAPI, QueuedRequest, QueueStatus, LogEvent, PrintOptions, UpdateCheckResult, UpdateInfo } from './types';
+import type { ElectronAPI, QueuedRequest, QueueStatus, LogEvent, PrintOptions, UpdateCheckResult, UpdateInfo, SyncEvent, SyncInfo, DiagnosticsState } from './types';
 
 // Validate we're in a secure context
 if (!process.contextIsolated) {
@@ -105,10 +105,35 @@ const electronAPI: ElectronAPI = {
   getAppVersion: async (): Promise<string> => {
     return ipcRenderer.invoke('app:version');
   },
+
+  // Sync telemetry (Phase 4)
+  syncEvent: (event: SyncEvent): void => {
+    ipcRenderer.send('sync:event', event);
+  },
+
+  onSyncEvent: (callback: (info: SyncInfo) => void): (() => void) => {
+    const listener = (_event: Electron.IpcRendererEvent, info: SyncInfo) => {
+      callback(info);
+    };
+    ipcRenderer.on('sync:update', listener);
+    
+    return () => {
+      ipcRenderer.removeListener('sync:update', listener);
+    };
+  },
+
+  // Diagnostics (Phase 4)
+  openDiagnostics: async (): Promise<void> => {
+    return ipcRenderer.invoke('diagnostics:open');
+  },
+
+  getDiagnosticsState: async (): Promise<DiagnosticsState> => {
+    return ipcRenderer.invoke('diagnostics:state');
+  },
 };
 
 // Expose API to renderer
 contextBridge.exposeInMainWorld('electronAPI', electronAPI);
 
 // Log successful preload
-console.log('[PRELOAD] Secure IPC bridge established');
+console.log('[PRELOAD-V4] Secure IPC bridge established with sync telemetry');
