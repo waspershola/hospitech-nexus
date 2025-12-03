@@ -1,6 +1,7 @@
 /**
  * OFFLINE-DESKTOP-V1: Diagnostic Dashboard
  * Admin tool for testing and debugging offline functionality
+ * Shows live network state from Electron bridge
  */
 
 import { useState } from 'react';
@@ -14,6 +15,7 @@ import {
   Zap,
   TestTube,
   WifiOff,
+  Wifi,
   CheckCircle2,
   XCircle,
   Clock,
@@ -25,9 +27,11 @@ import {
   benchmarkPerformance,
   simulateOffline,
 } from '@/lib/offline/offlineTestUtils';
+import { useNetworkStore } from '@/state/networkStore';
 
 export function OfflineDiagnostics() {
   const { tenantId } = useAuth();
+  const { online, hardOffline, lastChange } = useNetworkStore();
   const [loading, setLoading] = useState<string | null>(null);
   const [integrityResult, setIntegrityResult] = useState<{
     valid: boolean;
@@ -122,6 +126,57 @@ export function OfflineDiagnostics() {
           Testing and debugging tools for offline functionality
         </p>
       </div>
+
+      {/* Live Network State */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            {online && !hardOffline ? (
+              <Wifi className="h-5 w-5 text-green-600" />
+            ) : (
+              <WifiOff className="h-5 w-5 text-destructive" />
+            )}
+            Live Network State
+          </CardTitle>
+          <CardDescription>
+            Real-time network status from Electron bridge
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="grid grid-cols-2 gap-4">
+            <div className="flex items-center justify-between">
+              <span className="text-sm text-muted-foreground">Online:</span>
+              <Badge variant={online ? "default" : "destructive"}>
+                {online ? "Yes" : "No"}
+              </Badge>
+            </div>
+            <div className="flex items-center justify-between">
+              <span className="text-sm text-muted-foreground">Hard Offline:</span>
+              <Badge variant={hardOffline ? "destructive" : "secondary"}>
+                {hardOffline ? "Yes" : "No"}
+              </Badge>
+            </div>
+          </div>
+          <div className="flex items-center justify-between">
+            <span className="text-sm text-muted-foreground">Last Change:</span>
+            <span className="text-sm font-mono">{lastChange || 'N/A'}</span>
+          </div>
+          
+          <div className="pt-4 border-t">
+            <span className="text-sm font-medium">window.__NETWORK_STATE__:</span>
+            <pre className="text-xs bg-muted p-3 rounded mt-2 overflow-auto">
+              {JSON.stringify(window.__NETWORK_STATE__, null, 2)}
+            </pre>
+          </div>
+          
+          <div>
+            <span className="text-sm font-medium">window.__HARD_OFFLINE__:</span>
+            <Badge variant="outline" className="ml-2">
+              {String(window.__HARD_OFFLINE__)}
+            </Badge>
+          </div>
+        </CardContent>
+      </Card>
 
       {/* Test Data Management */}
       <Card>

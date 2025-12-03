@@ -2,6 +2,7 @@ import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { usePlatformRole } from './usePlatformRole';
+import { useNetworkStore } from '@/state/networkStore';
 
 export interface NavigationItem {
   id: string;
@@ -19,20 +20,36 @@ export interface NavigationItem {
   children?: NavigationItem[]; // For hierarchical navigation
 }
 
+// Static cache for offline fallback (persists across renders)
+let lastCachedNav: NavigationItem[] = [];
+
 /**
  * Platform-driven navigation hook with role + department filtering
  * Fetches navigation items from platform_nav_items via edge function
  * Supports tenant-specific overrides and global navigation
+ * Includes offline caching - returns cached nav when offline
  */
 export function useNavigation() {
   const { tenantId, role, department } = useAuth();
   const { platformRole } = usePlatformRole();
+  const { hardOffline } = useNetworkStore();
   
   return useQuery({
     queryKey: ['platform-navigation', tenantId, role, department, platformRole],
     queryFn: async () => {
       console.log('🔍 [Navigation] Starting fetch...');
       console.log('🔍 [Navigation] Auth context:', { platformRole, tenantId, role, department });
+
+      // Check offline state - return cache if offline
+      const currentOfflineState = useNetworkStore.getState().hardOffline;
+      if (currentOfflineState) {
+        if (lastCachedNav.length > 0) {
+          console.log('📦 [Navigation] Using cached nav (offline)');
+          return lastCachedNav;
+        }
+        console.warn('⚠ [Navigation] Offline with no cache');
+        throw new Error('OFFLINE_NO_CACHE');
+      }
 
       try {
         // Verify we have a session with proper auth token
@@ -156,17 +173,26 @@ export function useNavigation() {
       sortTree(rootItems);
 
       console.log('✅ [Navigation] Hierarchical structure:', rootItems.length, 'root items');
+      
+      // Cache successful result for offline use
+      lastCachedNav = rootItems;
+      
       return rootItems;
 
       } catch (error) {
         console.error('❌ [Navigation] Fatal error:', error);
+        // If we have cached nav and fetch failed, return cache
+        if (lastCachedNav.length > 0) {
+          console.log('📦 [Navigation] Returning cached nav after error');
+          return lastCachedNav;
+        }
         throw error;
       }
     },
     enabled: !!platformRole || (!!tenantId && !!role),
     staleTime: 5 * 60 * 1000, // Cache for 5 minutes
     gcTime: 10 * 60 * 1000, // Keep in cache for 10 minutes
-    retry: 3,
+    retry: hardOffline ? false : 3, // No retries when offline
     retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 30000),
   });
 }

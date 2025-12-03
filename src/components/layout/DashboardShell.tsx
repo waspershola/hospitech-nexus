@@ -8,6 +8,7 @@ import { AudioPermissionPrompt } from '@/components/notifications/AudioPermissio
 import { useQRNotifications } from '@/hooks/useQRNotifications';
 import { OfflineStatusIndicator } from '@/components/offline/OfflineStatusIndicator';
 import { SyncStatusIndicator } from '@/components/offline/SyncStatusIndicator';
+import { OfflineBanner } from './OfflineBanner';
 import { StaffAIAssistant } from '@/components/staff/StaffAIAssistant';
 import { Button } from '@/components/ui/button';
 import { Bot } from 'lucide-react';
@@ -37,6 +38,9 @@ export default function DashboardShell() {
         <AppSidebar />
         
         <div className="flex flex-col flex-1">
+          {/* Offline Banner - shows at very top when offline */}
+          <OfflineBanner />
+          
           <header className="h-16 flex items-center justify-between border-b border-border bg-background px-4">
             <div className="flex items-center gap-4">
               <SidebarTrigger />
