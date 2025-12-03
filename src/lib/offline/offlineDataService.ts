@@ -188,6 +188,25 @@ export async function getCachedGuests(tenantId: string) {
 }
 
 /**
+ * Get first cached item matching filter
+ * OFFLINE-PHASE2-V1: Helper for single item lookups
+ */
+export async function getCachedFirst<T>(
+  tenantId: string,
+  storeName: keyof TenantDB,
+  matchFn: (item: T) => boolean
+): Promise<T | null> {
+  try {
+    const db = await tenantDBManager.openTenantDB(tenantId);
+    const items = await db.getAll(storeName as any) as unknown as T[];
+    return items.find(matchFn) || null;
+  } catch (err) {
+    console.error(`[OfflineDataService] getCachedFirst error for ${String(storeName)}:`, err);
+    return null;
+  }
+}
+
+/**
  * Invalidate cache for entity
  */
 export async function invalidateCache(
