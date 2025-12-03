@@ -8,6 +8,7 @@ import { AudioPermissionPrompt } from '@/components/notifications/AudioPermissio
 import { useQRNotifications } from '@/hooks/useQRNotifications';
 import { OfflineStatusIndicator } from '@/components/offline/OfflineStatusIndicator';
 import { SyncStatusIndicator } from '@/components/offline/SyncStatusIndicator';
+import { OfflineBanner } from '@/components/layout/OfflineBanner';
 import { StaffAIAssistant } from '@/components/staff/StaffAIAssistant';
 import { Button } from '@/components/ui/button';
 import { Bot } from 'lucide-react';
@@ -33,6 +34,9 @@ export default function DashboardShell() {
   
   return (
     <SidebarProvider>
+      {/* Global Offline Banner */}
+      <OfflineBanner />
+      
       <div className="flex min-h-screen w-full bg-background">
         <AppSidebar />
         

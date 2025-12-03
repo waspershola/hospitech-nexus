@@ -2,6 +2,9 @@ import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { usePlatformRole } from './usePlatformRole';
+import { useNetworkStore } from '@/state/networkStore';
+
+const NAV_CACHE_KEY = 'lhp_nav_cache';
 
 export interface NavigationItem {
   id: string;
@@ -20,19 +23,65 @@ export interface NavigationItem {
 }
 
 /**
+ * Get cached navigation from localStorage
+ */
+function getCachedNavigation(cacheKey: string): NavigationItem[] | null {
+  try {
+    const cached = localStorage.getItem(cacheKey);
+    if (cached) {
+      const { items, timestamp } = JSON.parse(cached);
+      // Cache valid for 24 hours
+      if (Date.now() - timestamp < 24 * 60 * 60 * 1000) {
+        return items;
+      }
+    }
+  } catch (e) {
+    console.warn('[Navigation] Failed to read cache:', e);
+  }
+  return null;
+}
+
+/**
+ * Save navigation to localStorage cache
+ */
+function setCachedNavigation(cacheKey: string, items: NavigationItem[]): void {
+  try {
+    localStorage.setItem(cacheKey, JSON.stringify({ items, timestamp: Date.now() }));
+  } catch (e) {
+    console.warn('[Navigation] Failed to save cache:', e);
+  }
+}
+
+/**
  * Platform-driven navigation hook with role + department filtering
  * Fetches navigation items from platform_nav_items via edge function
  * Supports tenant-specific overrides and global navigation
+ * Includes offline caching for desktop mode
  */
 export function useNavigation() {
   const { tenantId, role, department } = useAuth();
   const { platformRole } = usePlatformRole();
+  const { hardOffline } = useNetworkStore();
+  
+  // Create a stable cache key based on user context
+  const cacheKey = `${NAV_CACHE_KEY}_${tenantId || 'platform'}_${role || platformRole || 'guest'}`;
   
   return useQuery({
     queryKey: ['platform-navigation', tenantId, role, department, platformRole],
     queryFn: async () => {
       console.log('🔍 [Navigation] Starting fetch...');
-      console.log('🔍 [Navigation] Auth context:', { platformRole, tenantId, role, department });
+      console.log('🔍 [Navigation] Auth context:', { platformRole, tenantId, role, department, hardOffline });
+      
+      // If offline, try to use cached navigation
+      if (hardOffline) {
+        const cached = getCachedNavigation(cacheKey);
+        if (cached) {
+          console.log('📦 [Navigation] Using cached navigation (offline mode):', cached.length, 'items');
+          return cached;
+        }
+        console.warn('⚠️ [Navigation] Offline with no cache available');
+        throw new Error('Offline with no cached navigation');
+      }
 
       try {
         // Verify we have a session with proper auth token
@@ -156,17 +205,29 @@ export function useNavigation() {
       sortTree(rootItems);
 
       console.log('✅ [Navigation] Hierarchical structure:', rootItems.length, 'root items');
+      
+      // Cache to localStorage for offline use
+      setCachedNavigation(cacheKey, rootItems);
+      
       return rootItems;
 
       } catch (error) {
         console.error('❌ [Navigation] Fatal error:', error);
+        
+        // On error, try to return cached navigation
+        const cached = getCachedNavigation(cacheKey);
+        if (cached) {
+          console.log('📦 [Navigation] Using cached navigation after error:', cached.length, 'items');
+          return cached;
+        }
+        
         throw error;
       }
     },
     enabled: !!platformRole || (!!tenantId && !!role),
     staleTime: 5 * 60 * 1000, // Cache for 5 minutes
     gcTime: 10 * 60 * 1000, // Keep in cache for 10 minutes
-    retry: 3,
+    retry: hardOffline ? 0 : 3, // Don't retry when offline
     retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 30000),
   });
 }

@@ -1,22 +1,30 @@
 /**
- * OFFLINE-DESKTOP-V1: Diagnostic Dashboard
+ * OFFLINE-DESKTOP-V2: Diagnostic Dashboard
  * Admin tool for testing and debugging offline functionality
+ * Enhanced with network store integration and better UX
  */
 
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { Separator } from '@/components/ui/separator';
 import { useAuth } from '@/contexts/AuthContext';
+import { useNetworkStore } from '@/state/networkStore';
 import { toast } from 'sonner';
 import {
   Database,
   Zap,
   TestTube,
   WifiOff,
+  Wifi,
   CheckCircle2,
   XCircle,
   Clock,
+  Monitor,
+  AlertTriangle,
+  Loader2,
 } from 'lucide-react';
 import {
   seedTestData,
@@ -26,8 +34,83 @@ import {
   simulateOffline,
 } from '@/lib/offline/offlineTestUtils';
 
+/**
+ * Debug card showing Electron and network detection status
+ */
+function ElectronDetectionCard() {
+  const { online, hardOffline, lastChange } = useNetworkStore();
+  const isElectron = !!window.electronAPI;
+  const isDesktop = window.electronAPI?.isDesktop;
+  
+  return (
+    <Card>
+      <CardHeader className="pb-3">
+        <CardTitle className="flex items-center gap-2 text-lg">
+          <Monitor className="h-5 w-5" />
+          Environment Detection
+        </CardTitle>
+      </CardHeader>
+      <CardContent>
+        <div className="grid grid-cols-2 gap-4 text-sm">
+          <div className="space-y-2">
+            <div className="flex items-center justify-between">
+              <span className="text-muted-foreground">Electron API:</span>
+              <Badge variant={isElectron ? "default" : "secondary"}>
+                {isElectron ? "Available" : "Not Found"}
+              </Badge>
+            </div>
+            <div className="flex items-center justify-between">
+              <span className="text-muted-foreground">isDesktop Flag:</span>
+              <Badge variant={isDesktop ? "default" : "secondary"}>
+                {String(isDesktop ?? 'undefined')}
+              </Badge>
+            </div>
+            <div className="flex items-center justify-between">
+              <span className="text-muted-foreground">navigator.onLine:</span>
+              <Badge variant={navigator.onLine ? "default" : "destructive"}>
+                {String(navigator.onLine)}
+              </Badge>
+            </div>
+          </div>
+          <div className="space-y-2">
+            <div className="flex items-center justify-between">
+              <span className="text-muted-foreground">Store Online:</span>
+              <Badge variant={online ? "default" : "destructive"}>
+                {String(online)}
+              </Badge>
+            </div>
+            <div className="flex items-center justify-between">
+              <span className="text-muted-foreground">Hard Offline:</span>
+              <Badge variant={hardOffline ? "destructive" : "default"}>
+                {String(hardOffline)}
+              </Badge>
+            </div>
+            <div className="flex items-center justify-between">
+              <span className="text-muted-foreground">Last Change:</span>
+              <span className="text-xs">
+                {lastChange ? new Date(lastChange).toLocaleTimeString() : 'N/A'}
+              </span>
+            </div>
+          </div>
+        </div>
+        
+        <Separator className="my-4" />
+        
+        <div className="space-y-2">
+          <p className="text-xs font-medium text-muted-foreground">Global State:</p>
+          <pre className="text-xs bg-muted p-2 rounded-md overflow-auto">
+{`window.__NETWORK_STATE__ = ${JSON.stringify(window.__NETWORK_STATE__, null, 2)}
+window.__HARD_OFFLINE__ = ${String(window.__HARD_OFFLINE__)}`}
+          </pre>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
 export function OfflineDiagnostics() {
   const { tenantId } = useAuth();
+  const { hardOffline } = useNetworkStore();
   const [loading, setLoading] = useState<string | null>(null);
   const [integrityResult, setIntegrityResult] = useState<{
     valid: boolean;
@@ -105,23 +188,91 @@ export function OfflineDiagnostics() {
   };
 
   const handleSimulateOffline = () => {
-    const cleanup = simulateOffline(10000); // 10 seconds
+    simulateOffline(10000); // 10 seconds
     toast.info('Offline mode simulated for 10 seconds');
   };
 
-  // Don't render if not in Electron or not logged in
-  if (!window.electronAPI || !tenantId) {
-    return null;
+  // Always show the detection card for debugging
+  // Show helpful message if Electron is not detected
+  if (!window.electronAPI) {
+    return (
+      <div className="space-y-6">
+        <ElectronDetectionCard />
+        
+        <Alert>
+          <AlertTriangle className="h-4 w-4" />
+          <AlertTitle>Electron Desktop Not Detected</AlertTitle>
+          <AlertDescription>
+            <p className="mb-3">
+              Full offline diagnostics require the Electron desktop app. 
+              You're currently running in a web browser.
+            </p>
+            <p className="text-sm text-muted-foreground">
+              The detection card above shows the current environment state for debugging purposes.
+            </p>
+          </AlertDescription>
+        </Alert>
+        
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Monitor className="h-5 w-5" />
+              How to Run Offline Desktop
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3 text-sm">
+            <p>To use the full offline diagnostics:</p>
+            <ol className="list-decimal list-inside space-y-2 text-muted-foreground">
+              <li>Build Electron: <code className="bg-muted px-1.5 py-0.5 rounded">npm run build:electron</code></li>
+              <li>Run desktop: <code className="bg-muted px-1.5 py-0.5 rounded">npm run dev:electron</code></li>
+              <li>Or build installer: <code className="bg-muted px-1.5 py-0.5 rounded">npm run dist</code></li>
+            </ol>
+          </CardContent>
+        </Card>
+      </div>
+    );
   }
 
-  return (
-    <div className="space-y-6 p-6">
-      <div>
-        <h2 className="text-2xl font-bold">Offline Diagnostics</h2>
-        <p className="text-sm text-muted-foreground mt-1">
-          Testing and debugging tools for offline functionality
-        </p>
+  // Show login required message
+  if (!tenantId) {
+    return (
+      <div className="space-y-6">
+        <ElectronDetectionCard />
+        
+        <Alert>
+          <AlertTriangle className="h-4 w-4" />
+          <AlertTitle>Login Required</AlertTitle>
+          <AlertDescription>
+            Please log in to access offline diagnostics tools.
+          </AlertDescription>
+        </Alert>
       </div>
+    );
+  }
+
+  // Full diagnostics UI for Electron + logged-in users
+  return (
+    <div className="space-y-6">
+      <ElectronDetectionCard />
+      
+      {/* Network Status */}
+      <Card>
+        <CardHeader className="pb-3">
+          <CardTitle className="flex items-center gap-2 text-lg">
+            {hardOffline ? (
+              <WifiOff className="h-5 w-5 text-destructive" />
+            ) : (
+              <Wifi className="h-5 w-5 text-green-500" />
+            )}
+            Network Status
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <Badge variant={hardOffline ? "destructive" : "default"} className="text-sm">
+            {hardOffline ? "Offline Mode Active" : "Online"}
+          </Badge>
+        </CardContent>
+      </Card>
 
       {/* Test Data Management */}
       <Card>
@@ -140,7 +291,9 @@ export function OfflineDiagnostics() {
             disabled={loading !== null}
             className="w-full"
           >
-            {loading === 'seed' ? 'Seeding...' : 'Seed Test Data'}
+            {loading === 'seed' ? (
+              <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Seeding...</>
+            ) : 'Seed Test Data'}
           </Button>
           <Button
             onClick={handleClearData}
@@ -148,7 +301,9 @@ export function OfflineDiagnostics() {
             variant="outline"
             className="w-full"
           >
-            {loading === 'clear' ? 'Clearing...' : 'Clear Test Data'}
+            {loading === 'clear' ? (
+              <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Clearing...</>
+            ) : 'Clear Test Data'}
           </Button>
         </CardContent>
       </Card>
@@ -170,7 +325,9 @@ export function OfflineDiagnostics() {
             disabled={loading !== null}
             className="w-full"
           >
-            {loading === 'verify' ? 'Verifying...' : 'Verify Data Integrity'}
+            {loading === 'verify' ? (
+              <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Verifying...</>
+            ) : 'Verify Data Integrity'}
           </Button>
 
           {integrityResult && (
@@ -228,7 +385,9 @@ export function OfflineDiagnostics() {
             disabled={loading !== null}
             className="w-full"
           >
-            {loading === 'benchmark' ? 'Running...' : 'Run Performance Benchmark'}
+            {loading === 'benchmark' ? (
+              <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Running...</>
+            ) : 'Run Performance Benchmark'}
           </Button>
 
           {performanceResult && (
