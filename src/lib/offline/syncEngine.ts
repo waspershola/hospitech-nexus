@@ -1,6 +1,7 @@
 /**
- * Sync Engine - Phase 4
+ * Sync Engine - Phase 4 + Offline Phase 2
  * Handles automatic synchronization of offline queue with conflict resolution
+ * Now respects unified offline state from Electron bridge
  */
 
 import { supabase } from '@/integrations/supabase/client';
@@ -8,6 +9,18 @@ import { tenantDBManager } from './tenantDBManager';
 import { sessionManager } from './sessionManager';
 import { isElectronContext } from './offlineTypes';
 import type { OfflineQueueItem } from './offlineTypes';
+
+/**
+ * Check if currently offline using unified network state
+ */
+function isNetworkOffline(): boolean {
+  if (window.__HARD_OFFLINE__ === true) return true;
+  const s = window.__NETWORK_STATE__;
+  if (s?.hardOffline === true) return true;
+  if (s?.online === false) return true;
+  if (typeof navigator !== 'undefined' && !navigator.onLine) return true;
+  return false;
+}
 
 export interface SyncProgress {
   total: number;
@@ -87,6 +100,12 @@ class SyncEngine {
   async syncAll(): Promise<SyncResult> {
     if (this.isSyncing) {
       console.log('[SyncEngine] Sync already in progress, skipping');
+      return { success: false, synced: 0, failed: 0, errors: [] };
+    }
+
+    // OFFLINE-PHASE2: Check unified offline state before syncing
+    if (isNetworkOffline()) {
+      console.log('[SyncEngine] Skipping sync: offline/hardOffline state detected');
       return { success: false, synced: 0, failed: 0, errors: [] };
     }
 
@@ -362,6 +381,11 @@ export const syncEngine = new SyncEngine();
  */
 export function initializeAutoSync(): () => void {
   const handleOnline = () => {
+    // OFFLINE-PHASE2: Check unified offline state before auto-sync
+    if (isNetworkOffline()) {
+      console.log('[SyncEngine] Skipping auto-sync: still in offline/hardOffline state');
+      return;
+    }
     console.log('[SyncEngine] Connection restored, triggering auto-sync');
     setTimeout(() => syncEngine.syncAll(), 1000); // Delay to ensure connection is stable
   };
@@ -372,9 +396,12 @@ export function initializeAutoSync(): () => void {
   let unsubscribeElectron: (() => void) | undefined;
   if (isElectronContext()) {
     unsubscribeElectron = window.electronAPI?.onOnlineStatusChange((isOnline) => {
-      if (isOnline) {
+      // OFFLINE-PHASE2: Double-check unified state, not just isOnline flag
+      if (isOnline && !isNetworkOffline()) {
         console.log('[SyncEngine] Electron reports online, triggering auto-sync');
         setTimeout(() => syncEngine.syncAll(), 1000);
+      } else if (isOnline) {
+        console.log('[SyncEngine] Electron reports online but hardOffline is active, skipping auto-sync');
       }
     });
   }
