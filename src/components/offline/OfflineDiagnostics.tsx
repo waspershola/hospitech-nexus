@@ -1,13 +1,15 @@
 /**
- * OFFLINE-DESKTOP-V1: Diagnostic Dashboard
+ * OFFLINE-DESKTOP-V1 + OFFLINE-PHASE2: Diagnostic Dashboard
  * Admin tool for testing and debugging offline functionality
  * Shows live network state from Electron bridge
+ * Includes Force Offline toggle and Queue Status Panel
  */
 
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { Switch } from '@/components/ui/switch';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
 import {
@@ -19,6 +21,9 @@ import {
   CheckCircle2,
   XCircle,
   Clock,
+  AlertTriangle,
+  CloudOff,
+  RefreshCw,
 } from 'lucide-react';
 import {
   seedTestData,
@@ -28,11 +33,16 @@ import {
   simulateOffline,
 } from '@/lib/offline/offlineTestUtils';
 import { useNetworkStore } from '@/state/networkStore';
+import { useOfflineQueueV2 } from '@/hooks/useOfflineQueue.v2';
+import type { NetworkState } from '@/types/electron';
 
 export function OfflineDiagnostics() {
   const { tenantId } = useAuth();
   const { online, hardOffline, lastChange } = useNetworkStore();
+  const { pendingCount, failedCount, isSyncing, triggerSync } = useOfflineQueueV2();
+  
   const [loading, setLoading] = useState<string | null>(null);
+  const [forceOffline, setForceOffline] = useState(false);
   const [integrityResult, setIntegrityResult] = useState<{
     valid: boolean;
     errors: string[];
@@ -42,6 +52,60 @@ export function OfflineDiagnostics() {
     writeLatency: number;
     queryLatency: number;
   } | null>(null);
+
+  // Force offline mode functions
+  const simulateOfflineMode = () => {
+    const simulated: NetworkState = {
+      online: false,
+      hardOffline: true,
+      lastChange: new Date().toISOString(),
+    };
+    window.__NETWORK_STATE__ = simulated;
+    window.__HARD_OFFLINE__ = true;
+    useNetworkStore.getState().setFromEvent(simulated);
+    console.log('[OfflineDiagnostics] Force offline mode ENABLED');
+    toast.warning('Force Offline Mode Enabled', {
+      description: 'All network operations are now blocked',
+    });
+  };
+
+  const restoreRealNetworkState = async () => {
+    // Cast to extended type for network APIs
+    const electronAPI = window.electronAPI as import('@/types/electron').ExtendedElectronAPI | undefined;
+    
+    if (electronAPI?.getNetworkState) {
+      try {
+        const actual = await electronAPI.getNetworkState();
+        window.__NETWORK_STATE__ = actual;
+        window.__HARD_OFFLINE__ = actual.hardOffline;
+        useNetworkStore.getState().setFromEvent(actual);
+      } catch (err) {
+        console.warn('[OfflineDiagnostics] Failed to restore from Electron:', err);
+      }
+    } else {
+      const fallback: NetworkState = {
+        online: typeof navigator !== 'undefined' ? navigator.onLine : true,
+        hardOffline: false,
+        lastChange: new Date().toISOString(),
+      };
+      window.__NETWORK_STATE__ = fallback;
+      window.__HARD_OFFLINE__ = false;
+      useNetworkStore.getState().setFromEvent(fallback);
+    }
+    console.log('[OfflineDiagnostics] Force offline mode DISABLED');
+    toast.success('Network State Restored', {
+      description: 'Using real network status',
+    });
+  };
+
+  const handleForceOfflineToggle = async (checked: boolean) => {
+    setForceOffline(checked);
+    if (checked) {
+      simulateOfflineMode();
+    } else {
+      await restoreRealNetworkState();
+    }
+  };
 
   const handleSeedData = async () => {
     if (!tenantId) return;
@@ -126,6 +190,91 @@ export function OfflineDiagnostics() {
           Testing and debugging tools for offline functionality
         </p>
       </div>
+
+      {/* Force Offline Mode (Debug) */}
+      <Card className="border-amber-500/50">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <AlertTriangle className="h-5 w-5 text-amber-500" />
+            Force Offline Mode (Debug)
+          </CardTitle>
+          <CardDescription>
+            Simulate offline state for testing without disconnecting network
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <Switch
+                checked={forceOffline}
+                onCheckedChange={handleForceOfflineToggle}
+              />
+              <span className="text-sm">
+                {forceOffline ? (
+                  <span className="text-amber-500 font-medium">Forced Offline Active</span>
+                ) : (
+                  'Using Real Network State'
+                )}
+              </span>
+            </div>
+            {forceOffline && (
+              <Badge variant="destructive" className="animate-pulse">
+                <WifiOff className="h-3 w-3 mr-1" />
+                OFFLINE
+              </Badge>
+            )}
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Offline Queue Status */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <CloudOff className="h-5 w-5" />
+            Offline Queue Status
+          </CardTitle>
+          <CardDescription>
+            Pending mutations queued for sync when online
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="grid grid-cols-2 gap-4">
+            <div className="flex items-center justify-between p-3 bg-muted rounded-md">
+              <span className="text-sm text-muted-foreground">Pending:</span>
+              <Badge variant="default">{pendingCount}</Badge>
+            </div>
+            <div className="flex items-center justify-between p-3 bg-muted rounded-md">
+              <span className="text-sm text-muted-foreground">Failed:</span>
+              <Badge variant={failedCount > 0 ? "destructive" : "secondary"}>
+                {failedCount}
+              </Badge>
+            </div>
+          </div>
+          <Button
+            onClick={triggerSync}
+            disabled={isSyncing || pendingCount === 0 || hardOffline}
+            className="w-full"
+          >
+            {isSyncing ? (
+              <>
+                <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+                Syncing...
+              </>
+            ) : (
+              <>
+                <RefreshCw className="h-4 w-4 mr-2" />
+                Manual Sync Now
+              </>
+            )}
+          </Button>
+          {hardOffline && pendingCount > 0 && (
+            <p className="text-xs text-muted-foreground text-center">
+              Sync disabled while offline. Will auto-sync when connection is restored.
+            </p>
+          )}
+        </CardContent>
+      </Card>
 
       {/* Live Network State */}
       <Card>

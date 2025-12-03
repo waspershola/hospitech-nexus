@@ -1,6 +1,17 @@
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 
+/**
+ * OFFLINE-PHASE2: Check if currently offline using unified network state
+ */
+function isNetworkOffline(): boolean {
+  if (window.__HARD_OFFLINE__ === true) return true;
+  const s = window.__NETWORK_STATE__;
+  if (s?.hardOffline === true) return true;
+  if (s?.online === false) return true;
+  return false;
+}
+
 interface RetryConfig {
   maxRetries?: number;
   baseDelay?: number;
@@ -63,6 +74,12 @@ export function createRealtimeChannelWithRetry(
           retryCount++;
 
           if (retryCount <= maxRetries) {
+            // OFFLINE-PHASE2: Check offline state before scheduling retry
+            if (isNetworkOffline()) {
+              console.log(`[retryChannel] ${channelName} - stopping retry: offline/hardOffline`);
+              return;
+            }
+
             const delay = calculateDelay(retryCount);
             console.warn(
               `[retryChannel] ${channelName} failed (attempt ${retryCount}/${maxRetries}), retrying in ${delay}ms`
@@ -100,6 +117,12 @@ export function createRealtimeChannelWithRetry(
 
   // Reconnect when network comes back online
   const handleOnline = () => {
+    // OFFLINE-PHASE2: Verify NOT in forced offline mode before reconnecting
+    if (isNetworkOffline()) {
+      console.log('[retryChannel] Ignoring online event: forced offline mode active');
+      return;
+    }
+    
     console.log('[retryChannel] Network restored, reconnecting channels');
     retryCount = 0;
     

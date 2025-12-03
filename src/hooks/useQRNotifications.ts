@@ -3,15 +3,34 @@ import { useRingtone } from './useRingtone';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
 import { createRealtimeChannelWithRetry } from '@/lib/realtime/retryChannel';
+import { useNetworkStore } from '@/state/networkStore';
 
 const DEBUG_QR_NOTIFICATIONS = false;
+
+/**
+ * Check if currently offline using unified network state
+ */
+function isNetworkOffline(): boolean {
+  if (window.__HARD_OFFLINE__ === true) return true;
+  const s = window.__NETWORK_STATE__;
+  if (s?.hardOffline === true) return true;
+  if (s?.online === false) return true;
+  return false;
+}
 
 export function useQRNotifications() {
   const { playRingtone, permissionGranted } = useRingtone();
   const { tenantId } = useAuth();
+  const { online, hardOffline } = useNetworkStore();
 
   useEffect(() => {
     if (!tenantId) return;
+
+    // OFFLINE-PHASE2: Skip channel creation entirely when offline
+    if (isNetworkOffline() || hardOffline || !online) {
+      console.log('[useQRNotifications] Suppressing realtime connection: offline/hardOffline');
+      return;
+    }
 
     if (DEBUG_QR_NOTIFICATIONS) {
       console.log('[useQRNotifications] Setting up notification listeners for tenant:', tenantId);
