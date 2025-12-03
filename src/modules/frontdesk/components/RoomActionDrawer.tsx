@@ -50,6 +50,7 @@ import {
 } from 'lucide-react';
 import { useNetworkStore } from '@/state/networkStore';
 import { isNetworkOffline, getCachedRoom, getCachedBookingsForRoom } from '@/lib/offline/offlineDataService';
+import { isElectronContext } from '@/lib/offline/offlineTypes';
 
 interface RoomActionDrawerProps {
   roomId: string | null;
@@ -120,9 +121,10 @@ export function RoomActionDrawer({ roomId, contextDate, open, onClose, onOpenAss
       const filterDate = contextDate ? new Date(contextDate) : now;
       const filterDateStr = format(filterDate, 'yyyy-MM-dd');
       
-        // OFFLINE-DRAWER-V1: Load from IndexedDB when offline
-      if (isNetworkOffline() || hardOffline) {
-        console.log('[RoomActionDrawer] OFFLINE-V1: Loading from cache');
+      // ELECTRON-ONLY-V1: Load from IndexedDB when offline (only in Electron)
+      const isElectron = isElectronContext();
+      if (isElectron && (isNetworkOffline() || hardOffline)) {
+        console.log('[RoomActionDrawer] OFFLINE-V1: Loading from cache (Electron)');
         const cachedRoom = await getCachedRoom(tenantId, roomId);
         const cachedBookings = await getCachedBookingsForRoom(tenantId, roomId);
         
@@ -249,13 +251,13 @@ export function RoomActionDrawer({ roomId, contextDate, open, onClose, onOpenAss
   });
 
   // Phase 2: Debounced realtime subscription for room changes
-  // OFFLINE-DRAWER-V1: Skip realtime when offline
+  // ELECTRON-ONLY-V1: Skip realtime when offline (only in Electron)
   useEffect(() => {
     if (!roomId || !tenantId) return;
     
-    // Skip realtime subscription when offline
-    if (isNetworkOffline() || hardOffline) {
-      console.log('[RoomActionDrawer] OFFLINE-V1: Skipping realtime subscription');
+    // Skip realtime subscription when offline in Electron
+    if (isElectronContext() && (isNetworkOffline() || hardOffline)) {
+      console.log('[RoomActionDrawer] OFFLINE-V1: Skipping realtime subscription (Electron)');
       return;
     }
 
@@ -1118,7 +1120,7 @@ export function RoomActionDrawer({ roomId, contextDate, open, onClose, onOpenAss
             </div>
           ) : !room ? (
             <div className="flex flex-col items-center justify-center h-full gap-2">
-              {(isNetworkOffline() || hardOffline) ? (
+              {isElectronContext() && (isNetworkOffline() || hardOffline) ? (
                 <>
                   <WifiOff className="w-8 h-8 text-amber-500" />
                   <p className="text-sm text-muted-foreground">Room data not cached</p>

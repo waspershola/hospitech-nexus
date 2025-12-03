@@ -7,10 +7,18 @@
 import { tenantDBManager } from './tenantDBManager';
 import type { TenantDB, CachedRoom, CachedBooking, CachedQRRequest } from './offlineTypes';
 
+import { isElectronContext } from './offlineTypes';
+
 /**
  * Check if network is offline using unified state
+ * ELECTRON-ONLY-V1: Web SPA always returns false - no offline engine in browser
  */
 export function isNetworkOffline(): boolean {
+  // Web SPA: Never use offline engine - always return false
+  if (!isElectronContext()) {
+    return false;
+  }
+  
   if (typeof window === 'undefined') return false;
   
   if ((window as any).__HARD_OFFLINE__ === true) return true;

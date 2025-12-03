@@ -23,6 +23,7 @@ import { useOverdueRequests } from '@/hooks/useOverdueRequests';
 import { generateRequestReference } from '@/lib/qr/requestReference';
 import { getBillingStatusLabel, getBillingStatusColor } from '@/lib/qr/billingStatus';
 import { Gift, FileText, DollarSign, ArrowRight } from 'lucide-react';
+import { isElectronContext } from '@/lib/offline/offlineTypes';
 
 interface RequestsTableProps {
   requests: any[] | RequestGroup[];
@@ -283,8 +284,8 @@ export default function RequestsTable({
 
   return (
     <div className="border border-border rounded-lg overflow-hidden bg-card">
-      {/* OFFLINE-PHASE2-V1: Offline indicator */}
-      {hasOfflineData && (
+      {/* ELECTRON-ONLY-V1: Offline indicator - only show in Electron desktop app */}
+      {hasOfflineData && isElectronContext() && (
         <div className="px-4 py-2 bg-amber-50 dark:bg-amber-950/30 border-b border-amber-200 dark:border-amber-800 flex items-center gap-2">
           <WifiOff className="h-4 w-4 text-amber-600 dark:text-amber-400" />
           <span className="text-sm text-amber-700 dark:text-amber-300">

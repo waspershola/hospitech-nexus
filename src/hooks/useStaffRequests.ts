@@ -6,6 +6,7 @@ import { updateRequestStatus as broadcastStatusUpdate } from '@/lib/qr/statusBro
 import { toast } from 'sonner';
 import { useNetworkStore } from '@/state/networkStore';
 import { isNetworkOffline, getCachedQRRequests, updateCache } from '@/lib/offline/offlineDataService';
+import { isElectronContext } from '@/lib/offline/offlineTypes';
 
 interface StaffRequest {
   id: string;
@@ -49,9 +50,10 @@ export function useStaffRequests() {
 
     setIsLoading(true);
     
-    // OFFLINE-QR-V1: Load from IndexedDB when offline
-    if (isNetworkOffline() || hardOffline) {
-      console.log('[useStaffRequests] OFFLINE-V1: Loading from cache');
+    // ELECTRON-ONLY-V1: Load from IndexedDB when offline (only in Electron)
+    const isElectron = isElectronContext();
+    if (isElectron && (isNetworkOffline() || hardOffline)) {
+      console.log('[useStaffRequests] OFFLINE-V1: Loading from cache (Electron)');
       try {
         const cached = await getCachedQRRequests(tenantId);
         setRequests(cached.map(r => ({
@@ -163,8 +165,8 @@ export function useStaffRequests() {
   useEffect(() => {
     fetchRequests();
 
-    // OFFLINE-QR-V1: Skip realtime subscription when offline
-    if (!tenantId || isNetworkOffline()) {
+    // ELECTRON-ONLY-V1: Skip realtime subscription when offline (only check in Electron)
+    if (!tenantId || (isElectronContext() && isNetworkOffline())) {
       console.log('[useStaffRequests] OFFLINE-V1: Skipping realtime subscription');
       return;
     }
