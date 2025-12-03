@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useQueryClient } from '@tanstack/react-query';
@@ -40,6 +40,9 @@ export function useStaffRequests() {
   const [requests, setRequests] = useState<StaffRequest[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const { hardOffline } = useNetworkStore();
+  
+  // OFFLINE-PHASE2-V1: Track toast display to prevent spam
+  const hasShownOfflineToast = useRef(false);
 
   const fetchRequests = async () => {
     if (!tenantId) return;
@@ -47,7 +50,7 @@ export function useStaffRequests() {
     setIsLoading(true);
     
     // OFFLINE-QR-V1: Load from IndexedDB when offline
-    if (isNetworkOffline()) {
+    if (isNetworkOffline() || hardOffline) {
       console.log('[useStaffRequests] OFFLINE-V1: Loading from cache');
       try {
         const cached = await getCachedQRRequests(tenantId);
@@ -67,7 +70,12 @@ export function useStaffRequests() {
           guest_contact: r.guest_phone || undefined,
           _offline: true,
         } as StaffRequest)));
-        toast.info('Offline Mode - Showing cached requests');
+        
+        // OFFLINE-PHASE2-V1: Show toast only once per offline session
+        if (!hasShownOfflineToast.current) {
+          hasShownOfflineToast.current = true;
+          toast.info('Offline Mode - Showing cached requests');
+        }
       } catch (err) {
         console.error('[useStaffRequests] Cache read error:', err);
         setRequests([]);
@@ -76,6 +84,9 @@ export function useStaffRequests() {
       }
       return;
     }
+    
+    // Reset toast flag when back online
+    hasShownOfflineToast.current = false;
     
     try {
       const { data, error } = await supabase
@@ -111,7 +122,10 @@ export function useStaffRequests() {
       }
     } catch (err) {
       console.error('[useStaffRequests] Error fetching requests:', err);
-      toast.error('Failed to load requests');
+      // OFFLINE-PHASE2-V1: Don't show error toast when offline
+      if (!isNetworkOffline() && !hardOffline) {
+        toast.error('Failed to load requests');
+      }
     } finally {
       setIsLoading(false);
     }

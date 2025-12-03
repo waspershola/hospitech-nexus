@@ -120,15 +120,26 @@ export function RoomActionDrawer({ roomId, contextDate, open, onClose, onOpenAss
       const filterDate = contextDate ? new Date(contextDate) : now;
       const filterDateStr = format(filterDate, 'yyyy-MM-dd');
       
-      // OFFLINE-DRAWER-V1: Load from IndexedDB when offline
-      if (isNetworkOffline()) {
+        // OFFLINE-DRAWER-V1: Load from IndexedDB when offline
+      if (isNetworkOffline() || hardOffline) {
         console.log('[RoomActionDrawer] OFFLINE-V1: Loading from cache');
         const cachedRoom = await getCachedRoom(tenantId, roomId);
         const cachedBookings = await getCachedBookingsForRoom(tenantId, roomId);
         
+        // OFFLINE-PHASE2-V1: Return skeleton data instead of null for better UX
         if (!cachedRoom) {
-          console.log('[RoomActionDrawer] OFFLINE-V1: No cached room found');
-          return null;
+          console.log('[RoomActionDrawer] OFFLINE-V1: No cached room found, returning skeleton');
+          return {
+            id: roomId,
+            number: '—',
+            status: 'unknown',
+            floor: null,
+            type: 'Unknown',
+            bookings: [],
+            notes: null,
+            _offline: true,
+            _noCache: true,
+          } as any;
         }
         
         // Filter bookings for the view date
@@ -1107,8 +1118,31 @@ export function RoomActionDrawer({ roomId, contextDate, open, onClose, onOpenAss
             </div>
           ) : !room ? (
             <div className="flex flex-col items-center justify-center h-full gap-2">
-              <AlertCircle className="w-8 h-8 text-muted-foreground" />
-              <p className="text-sm text-muted-foreground">Room not found</p>
+              {(isNetworkOffline() || hardOffline) ? (
+                <>
+                  <WifiOff className="w-8 h-8 text-amber-500" />
+                  <p className="text-sm text-muted-foreground">Room data not cached</p>
+                  <p className="text-xs text-muted-foreground">Connect to network to load room details</p>
+                </>
+              ) : (
+                <>
+                  <AlertCircle className="w-8 h-8 text-muted-foreground" />
+                  <p className="text-sm text-muted-foreground">Room not found</p>
+                </>
+              )}
+            </div>
+          ) : (room as any)?._noCache ? (
+            <div className="flex flex-col items-center justify-center h-full gap-4 p-6">
+              <WifiOff className="w-12 h-12 text-amber-500" />
+              <div className="text-center">
+                <p className="font-medium text-foreground">Offline Mode</p>
+                <p className="text-sm text-muted-foreground mt-1">
+                  This room hasn't been cached yet.
+                </p>
+                <p className="text-xs text-muted-foreground mt-2">
+                  Connect to network to load complete room details.
+                </p>
+              </div>
             </div>
           ) : (
             <>
@@ -1128,6 +1162,14 @@ export function RoomActionDrawer({ roomId, contextDate, open, onClose, onOpenAss
                     <SheetTitle className="text-2xl font-display">Room {room.number}</SheetTitle>
                     <div className="flex items-center gap-2 mt-1 flex-wrap">
                       <Badge className="capitalize">{computedStatus.replace('_', ' ')}</Badge>
+                      
+                      {/* OFFLINE-PHASE2-V1: Offline indicator badge */}
+                      {(room as any)?._offline && (
+                        <Badge variant="outline" className="gap-1 bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-200">
+                          <WifiOff className="h-3 w-3" />
+                          Offline Cached
+                        </Badge>
+                      )}
                       
                       {/* GROUP-UX-V1: Group booking indicator */}
                       {groupInfo && (

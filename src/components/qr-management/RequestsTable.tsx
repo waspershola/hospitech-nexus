@@ -1,6 +1,6 @@
 import { Fragment } from 'react';
 import { format } from 'date-fns';
-import { MessageSquare, Clock, CheckCircle2, XCircle, UtensilsCrossed, MapPin, AlertCircle } from 'lucide-react';
+import { MessageSquare, Clock, CheckCircle2, XCircle, UtensilsCrossed, MapPin, AlertCircle, WifiOff } from 'lucide-react';
 import { RequestGroup } from '@/utils/dateGrouping';
 import {
   Table,
@@ -28,6 +28,7 @@ interface RequestsTableProps {
   requests: any[] | RequestGroup[];
   grouped?: boolean;
   isLoading: boolean;
+  isOffline?: boolean;
   onViewChat: (request: any) => void;
   onUpdateStatus: (requestId: string, status: string) => Promise<boolean>;
   onViewOrder?: (request: any) => void;
@@ -46,12 +47,20 @@ export default function RequestsTable({
   requests,
   grouped = false,
   isLoading,
+  isOffline = false,
   onViewChat,
   onUpdateStatus,
   onViewOrder,
   onViewDetails,
 }: RequestsTableProps) {
   const { calculateOverdue } = useOverdueRequests();
+  
+  // OFFLINE-PHASE2-V1: Check if any request is from offline cache
+  const hasOfflineData = isOffline || (
+    grouped 
+      ? (requests as RequestGroup[]).some(g => g.items.some((r: any) => r._offline))
+      : (requests as any[]).some(r => r._offline)
+  );
 
   const getStatusBadge = (status: string, overdueInfo?: { isOverdue: boolean; minutesOverdue: number }) => {
     // PHASE-3: Show overdue badge for pending requests past SLA
@@ -274,6 +283,15 @@ export default function RequestsTable({
 
   return (
     <div className="border border-border rounded-lg overflow-hidden bg-card">
+      {/* OFFLINE-PHASE2-V1: Offline indicator */}
+      {hasOfflineData && (
+        <div className="px-4 py-2 bg-amber-50 dark:bg-amber-950/30 border-b border-amber-200 dark:border-amber-800 flex items-center gap-2">
+          <WifiOff className="h-4 w-4 text-amber-600 dark:text-amber-400" />
+          <span className="text-sm text-amber-700 dark:text-amber-300">
+            Offline Mode — Showing cached requests
+          </span>
+        </div>
+      )}
       <Table>
         <TableHeader>
           <TableRow>
