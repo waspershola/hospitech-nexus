@@ -39,15 +39,6 @@ export interface PrintOptions {
 }
 
 /**
- * Network state structure for offline bridge
- */
-export interface NetworkState {
-  online: boolean;
-  hardOffline: boolean;
-  lastChange?: string;
-}
-
-/**
  * Typed Electron API exposed to renderer via preload bridge
  */
 export interface UpdateInfo {
@@ -70,12 +61,8 @@ export interface ElectronAPI {
   queueRequest: (req: QueuedRequest) => Promise<void>;
   getQueueStatus: () => Promise<QueueStatus>;
 
-  // Connectivity (legacy)
+  // Connectivity
   onOnlineStatusChange: (callback: (isOnline: boolean) => void) => () => void;
-
-  // Connectivity (new - rich network state)
-  getNetworkState?: () => Promise<NetworkState>;
-  onNetworkChanged?: (callback: (state: NetworkState) => void) => () => void;
 
   // Logging
   log: (event: LogEvent) => void;
@@ -105,7 +92,5 @@ export interface ElectronAPI {
 declare global {
   interface Window {
     electronAPI?: ElectronAPI;
-    __NETWORK_STATE__?: NetworkState;
-    __HARD_OFFLINE__?: boolean;
   }
 }

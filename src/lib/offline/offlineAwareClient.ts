@@ -1,31 +1,20 @@
 /**
  * Offline-Aware Request Wrapper - Phase 3
  * Intercepts all mutations and routes through queue when offline
- * Updated to use centralized network store
  */
 
 import { supabase } from '@/integrations/supabase/client';
 import { sessionManager } from './sessionManager';
 import { queueOfflineRequest } from './offlineQueue';
 import { isElectronContext, getElectronAPI } from './offlineTypes';
-import { useNetworkStore } from '@/state/networkStore';
 
 /**
  * Check if we're currently offline
- * Uses centralized network store as single source of truth
  */
 function isOffline(): boolean {
-  // Check Zustand store first (most accurate when Electron is present)
-  const { hardOffline } = useNetworkStore.getState();
-  if (hardOffline) return true;
-  
-  // Check global flag
-  if (window.__HARD_OFFLINE__) return true;
-  
-  // Browser fallback
   if (!navigator.onLine) return true;
   
-  // Legacy Electron check
+  // In Electron, check if main process reports offline
   if (isElectronContext()) {
     const onlineStatus = (window as any).__electronOnline;
     return onlineStatus !== undefined ? !onlineStatus : false;
@@ -200,12 +189,9 @@ export async function offlineAwareMutation<T = any>(
 
 /**
  * Initialize online/offline status listener
- * Now handled centrally in main.tsx - this function is for backwards compatibility
  */
 export function initializeOfflineListener(): () => void {
-  console.log('[OfflineAwareClient] Listener initialization delegated to main.tsx bootstrap');
-  
-  // Legacy: still set up browser events for backwards compatibility
+  // Browser online/offline events
   const handleOnline = () => {
     console.log('[OfflineAwareClient] Browser went online');
     (window as any).__electronOnline = true;
@@ -219,7 +205,7 @@ export function initializeOfflineListener(): () => void {
   window.addEventListener('online', handleOnline);
   window.addEventListener('offline', handleOffline);
 
-  // Electron-specific listener (legacy)
+  // Electron-specific listener
   let unsubscribeElectron: (() => void) | undefined;
   if (isElectronContext()) {
     const electronAPI = getElectronAPI();
@@ -229,6 +215,7 @@ export function initializeOfflineListener(): () => void {
     });
   }
 
+  // Return cleanup function
   return () => {
     window.removeEventListener('online', handleOnline);
     window.removeEventListener('offline', handleOffline);
