@@ -5,12 +5,13 @@
 
 import { WifiOff } from 'lucide-react';
 import { useNetworkStore } from '@/state/networkStore';
+import { isElectronContext } from '@/lib/offline/offlineTypes';
 
 export function OfflineBanner() {
   const { online, hardOffline } = useNetworkStore();
 
   // Only show in Electron context when offline
-  if (!window.electronAPI?.isDesktop) return null;
+  if (!isElectronContext()) return null;
   if (online && !hardOffline) return null;
 
   return (
