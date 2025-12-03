@@ -46,9 +46,9 @@ window.__HARD_OFFLINE__ = false;
     });
   }
 
-  // 4. Development-only debug helper for network store
+  // 4. Debug helper for network store (available in all environments for diagnostics)
+  (window as any).__debugNetworkStore__ = () => useNetworkStore.getState();
   if (import.meta.env.DEV) {
-    (window as any).__debugNetworkStore__ = () => useNetworkStore.getState();
     console.log('[Dev] window.__debugNetworkStore__() available');
   }
 
