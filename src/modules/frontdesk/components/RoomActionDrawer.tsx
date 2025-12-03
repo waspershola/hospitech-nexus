@@ -46,8 +46,10 @@ import { Switch } from '@/components/ui/switch';
 import { Skeleton } from '@/components/ui/skeleton';
 import { 
   Loader2, User, CreditCard, Calendar, AlertCircle, Clock, Building2, AlertTriangle, 
-  Wallet, Zap, Coffee, BellOff, UserPlus, LogIn, LogOut, Wrench, Sparkles, FileText, Receipt, Edit, Printer, MessageSquare, Users, MoveRight
+  Wallet, Zap, Coffee, BellOff, UserPlus, LogIn, LogOut, Wrench, Sparkles, FileText, Receipt, Edit, Printer, MessageSquare, Users, MoveRight, WifiOff
 } from 'lucide-react';
+import { useNetworkStore } from '@/state/networkStore';
+import { isNetworkOffline, getCachedRoom, getCachedBookingsForRoom } from '@/lib/offline/offlineDataService';
 
 interface RoomActionDrawerProps {
   roomId: string | null;
@@ -106,6 +108,8 @@ export function RoomActionDrawer({ roomId, contextDate, open, onClose, onOpenAss
     }
   }, [showConfirmationDoc, open]);
 
+  const { hardOffline } = useNetworkStore();
+  
   const { data: room, isLoading, isError } = useQuery({
     queryKey: ['room-detail', roomId, contextDate ? format(contextDate, 'yyyy-MM-dd') : 'today'],
     queryFn: async () => {
@@ -115,6 +119,35 @@ export function RoomActionDrawer({ roomId, contextDate, open, onClose, onOpenAss
       // Use contextDate if provided (from By Date view), otherwise use current date
       const filterDate = contextDate ? new Date(contextDate) : now;
       const filterDateStr = format(filterDate, 'yyyy-MM-dd');
+      
+      // OFFLINE-DRAWER-V1: Load from IndexedDB when offline
+      if (isNetworkOffline()) {
+        console.log('[RoomActionDrawer] OFFLINE-V1: Loading from cache');
+        const cachedRoom = await getCachedRoom(tenantId, roomId);
+        const cachedBookings = await getCachedBookingsForRoom(tenantId, roomId);
+        
+        if (!cachedRoom) {
+          console.log('[RoomActionDrawer] OFFLINE-V1: No cached room found');
+          return null;
+        }
+        
+        // Filter bookings for the view date
+        const filteredBookings = cachedBookings.filter(b => {
+          if (['completed', 'cancelled'].includes(b.status)) return false;
+          const checkInDate = b.check_in.split('T')[0];
+          const checkOutDate = b.check_out.split('T')[0];
+          return checkInDate <= filterDateStr && checkOutDate >= filterDateStr;
+        });
+        
+        // Return as any to avoid type union issues - offline data has fewer fields
+        return {
+          ...cachedRoom,
+          bookings: filteredBookings,
+          notes: null,
+          type: cachedRoom.category?.name || 'Standard',
+          _offline: true,
+        } as any;
+      }
       
       const { data, error } = await supabase
         .from('rooms')
@@ -200,11 +233,20 @@ export function RoomActionDrawer({ roomId, contextDate, open, onClose, onOpenAss
     },
     enabled: !!roomId && !!tenantId,
     staleTime: 30 * 1000, // FOLIO-PREFETCH-V1: Cache for 30 seconds
+    retry: hardOffline ? false : 2,
+    refetchOnWindowFocus: !hardOffline,
   });
 
   // Phase 2: Debounced realtime subscription for room changes
+  // OFFLINE-DRAWER-V1: Skip realtime when offline
   useEffect(() => {
     if (!roomId || !tenantId) return;
+    
+    // Skip realtime subscription when offline
+    if (isNetworkOffline() || hardOffline) {
+      console.log('[RoomActionDrawer] OFFLINE-V1: Skipping realtime subscription');
+      return;
+    }
 
     const channel = supabase
       .channel(`room-changes-${roomId}`) // Unique channel per room
@@ -233,7 +275,7 @@ export function RoomActionDrawer({ roomId, contextDate, open, onClose, onOpenAss
       if (realtimeDebounceTimer) clearTimeout(realtimeDebounceTimer);
       supabase.removeChannel(channel);
     };
-  }, [roomId, tenantId, queryClient]);
+  }, [roomId, tenantId, queryClient, hardOffline]);
 
   // PHASE-3-FIX: Use identical overlap rule as RoomGrid for booking resolution
   const bookingsArray = Array.isArray(room?.bookings) ? room.bookings : room?.bookings ? [room.bookings] : [];
