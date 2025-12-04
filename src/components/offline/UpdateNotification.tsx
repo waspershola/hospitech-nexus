@@ -1,6 +1,7 @@
 /**
  * OFFLINE-DESKTOP-V1: Update notification component
  * Shows update available toast and install prompt
+ * GUARDED: Only renders in Electron context
  */
 
 import { useState } from 'react';
@@ -16,19 +17,24 @@ import {
 import { Progress } from '@/components/ui/progress';
 import { Download, RefreshCw } from 'lucide-react';
 import { useAutoUpdate } from '@/hooks/useAutoUpdate';
+import { isElectronContext } from '@/lib/environment/isElectron';
 import { toast } from 'sonner';
 
 export function UpdateNotification() {
+  // Call hooks FIRST (before any guards) to respect Rules of Hooks
   const { status, downloadUpdate, installUpdate } = useAutoUpdate();
   const [showDialog, setShowDialog] = useState(false);
+  
+  // Check Electron context once
+  const inElectron = isElectronContext();
 
-  // Show dialog when update is available
-  if (status.available && !status.downloading && !status.downloaded && !showDialog) {
+  // Show dialog when update is available (only in Electron)
+  if (inElectron && status.available && !status.downloading && !status.downloaded && !showDialog) {
     setShowDialog(true);
   }
 
-  // Auto-show install dialog when download completes
-  if (status.downloaded && !showDialog) {
+  // Auto-show install dialog when download completes (only in Electron)
+  if (inElectron && status.downloaded && !showDialog) {
     setShowDialog(true);
   }
 
@@ -54,8 +60,8 @@ export function UpdateNotification() {
     setShowDialog(false);
   };
 
-  // Don't render if not in Electron
-  if (!window.electronAPI) {
+  // GUARD: Don't render if not in Electron - check AFTER hooks
+  if (!inElectron) {
     return null;
   }
 

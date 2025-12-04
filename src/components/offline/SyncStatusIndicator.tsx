@@ -16,12 +16,13 @@ import {
 } from '@/components/ui/popover';
 
 export function SyncStatusIndicator() {
-  // GUARD: Only show in Electron context - check BEFORE hooks
+  // Call hook FIRST (hook returns dummy values when not in Electron)
+  const { syncProgress, queueCount, isSyncing, lastSyncAt, triggerSync, retryFailed } = useOfflineSync();
+
+  // GUARD: Only show in Electron context - check AFTER hooks
   if (!isElectronContext()) {
     return null;
   }
-
-  const { syncProgress, queueCount, isSyncing, lastSyncAt, triggerSync, retryFailed } = useOfflineSync();
 
   const hasErrors = syncProgress.errors.length > 0;
   const hasQueue = queueCount > 0;
