@@ -723,16 +723,68 @@ export function RoomActionDrawer({ roomId, contextDate, open, onClose, onOpenAss
         },
       });
 
-      if (error) throw error;
+      if (error) {
+        // Check if error contains INSUFFICIENT_SMS_CREDITS
+        const errorBody = error.message || '';
+        if (errorBody.includes('INSUFFICIENT_SMS_CREDITS') || error.status === 429) {
+          toast({ 
+            title: 'SMS Credits Depleted', 
+            description: 'Your SMS credits are exhausted. Purchase more credits from the Marketplace to continue sending messages.',
+            variant: 'destructive',
+            action: (
+              <Button 
+                variant="outline" 
+                size="sm" 
+                onClick={() => navigate('/dashboard/marketplace')}
+                className="shrink-0"
+              >
+                Buy Credits
+              </Button>
+            ),
+          });
+          return;
+        }
+        throw error;
+      }
 
       toast({ 
         title: 'Reminder Sent!', 
         description: `Payment reminder sent to ${guest.name}`,
       });
     } catch (error: any) {
+      // Parse error response if it's a FunctionsHttpError
+      let errorMessage = 'Could not send SMS reminder';
+      try {
+        if (error.context?.body) {
+          const body = await error.context.body.json?.() || JSON.parse(error.context.body);
+          if (body.error === 'INSUFFICIENT_SMS_CREDITS') {
+            toast({ 
+              title: 'SMS Credits Depleted', 
+              description: 'Your SMS credits are exhausted. Purchase more credits from the Marketplace.',
+              variant: 'destructive',
+              action: (
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  onClick={() => navigate('/dashboard/marketplace')}
+                  className="shrink-0"
+                >
+                  Buy Credits
+                </Button>
+              ),
+            });
+            return;
+          }
+          errorMessage = body.message || body.error || errorMessage;
+        }
+      } catch {
+        // Fallback to original error message
+        errorMessage = error.message || errorMessage;
+      }
+      
       toast({ 
         title: 'Failed to Send', 
-        description: error.message || 'Could not send SMS reminder', 
+        description: errorMessage, 
         variant: 'destructive' 
       });
     }
