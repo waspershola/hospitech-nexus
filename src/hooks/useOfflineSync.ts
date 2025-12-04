@@ -1,27 +1,68 @@
 /**
  * Offline Sync Hook - Phase 4
  * React hook for sync engine operations and progress tracking
+ * GUARDED: Only runs in Electron context
  */
 
 import { useState, useEffect, useCallback } from 'react';
-import { syncEngine, initializeAutoSync } from '@/lib/offline/syncEngine';
-import type { SyncProgress, SyncResult } from '@/lib/offline/syncEngine';
-import { sessionManager } from '@/lib/offline/sessionManager';
+import { isElectronContext } from '@/lib/environment/isElectron';
 import { toast } from 'sonner';
 
+// Lazy imports for Electron-only modules
+let syncEngine: any = null;
+let initializeAutoSync: any = null;
+let sessionManager: any = null;
+
+// Default sync progress for browser mode
+const DEFAULT_SYNC_PROGRESS = {
+  total: 0,
+  synced: 0,
+  failed: 0,
+  inProgress: false,
+  errors: [] as string[],
+};
+
+// Default sync result for browser mode
+const DEFAULT_SYNC_RESULT = {
+  success: false,
+  synced: 0,
+  failed: 0,
+  errors: [] as string[],
+};
+
 export function useOfflineSync() {
-  const [syncProgress, setSyncProgress] = useState<SyncProgress>({
-    total: 0,
-    synced: 0,
-    failed: 0,
-    inProgress: false,
-    errors: [],
-  });
-
+  // GUARD: Return dummy values in browser mode (before any hooks)
+  const inElectron = isElectronContext();
+  
+  const [syncProgress, setSyncProgress] = useState(DEFAULT_SYNC_PROGRESS);
   const [queueCount, setQueueCount] = useState(0);
+  const [initialized, setInitialized] = useState(false);
 
-  // Update queue count periodically
+  // Initialize Electron-only modules
   useEffect(() => {
+    if (!inElectron) return;
+    
+    const initModules = async () => {
+      try {
+        const syncEngineModule = await import('@/lib/offline/syncEngine');
+        const sessionManagerModule = await import('@/lib/offline/sessionManager');
+        
+        syncEngine = syncEngineModule.syncEngine;
+        initializeAutoSync = syncEngineModule.initializeAutoSync;
+        sessionManager = sessionManagerModule.sessionManager;
+        setInitialized(true);
+      } catch (err) {
+        console.warn('[useOfflineSync] Failed to load offline modules:', err);
+      }
+    };
+    
+    initModules();
+  }, [inElectron]);
+
+  // Update queue count periodically (Electron only)
+  useEffect(() => {
+    if (!inElectron || !initialized || !syncEngine || !sessionManager) return;
+
     const updateQueueCount = async () => {
       const tenantId = sessionManager.getTenantId();
       if (!tenantId) return;
@@ -31,17 +72,18 @@ export function useOfflineSync() {
     };
 
     updateQueueCount();
-    const interval = setInterval(updateQueueCount, 10000); // Every 10 seconds
+    const interval = setInterval(updateQueueCount, 10000);
 
     return () => clearInterval(interval);
-  }, []);
+  }, [inElectron, initialized]);
 
-  // Subscribe to sync progress
+  // Subscribe to sync progress (Electron only)
   useEffect(() => {
-    const unsubscribe = syncEngine.onSyncProgress((progress) => {
+    if (!inElectron || !initialized || !syncEngine) return;
+
+    const unsubscribe = syncEngine.onSyncProgress((progress: typeof DEFAULT_SYNC_PROGRESS) => {
       setSyncProgress(progress);
 
-      // Show toast notifications for sync completion
       if (!progress.inProgress && progress.total > 0) {
         if (progress.failed === 0) {
           toast.success(`Synced ${progress.synced} offline action(s)`);
@@ -54,24 +96,29 @@ export function useOfflineSync() {
     });
 
     return unsubscribe;
-  }, []);
+  }, [inElectron, initialized]);
 
-  // Initialize auto-sync on mount
+  // Initialize auto-sync on mount (Electron only)
   useEffect(() => {
+    if (!inElectron || !initialized || !initializeAutoSync) return;
+    
     const cleanup = initializeAutoSync();
     return cleanup;
-  }, []);
+  }, [inElectron, initialized]);
 
   // Manual sync trigger
-  const triggerSync = useCallback(async (): Promise<SyncResult> => {
+  const triggerSync = useCallback(async () => {
+    if (!inElectron || !syncEngine || !sessionManager) {
+      return DEFAULT_SYNC_RESULT;
+    }
+
     if (syncEngine.isCurrentlySyncing) {
       toast.info('Sync already in progress');
-      return { success: false, synced: 0, failed: 0, errors: [] };
+      return DEFAULT_SYNC_RESULT;
     }
 
     const result = await syncEngine.syncAll();
     
-    // Update queue count after sync
     const tenantId = sessionManager.getTenantId();
     if (tenantId) {
       const status = await syncEngine.getQueueStatus(tenantId);
@@ -79,13 +126,16 @@ export function useOfflineSync() {
     }
 
     return result;
-  }, []);
+  }, [inElectron]);
 
   // Retry failed items
-  const retryFailed = useCallback(async (): Promise<SyncResult> => {
+  const retryFailed = useCallback(async () => {
+    if (!inElectron || !syncEngine || !sessionManager) {
+      return DEFAULT_SYNC_RESULT;
+    }
+
     const result = await syncEngine.retryFailed();
     
-    // Update queue count after retry
     const tenantId = sessionManager.getTenantId();
     if (tenantId) {
       const status = await syncEngine.getQueueStatus(tenantId);
@@ -93,13 +143,13 @@ export function useOfflineSync() {
     }
 
     return result;
-  }, []);
+  }, [inElectron]);
 
   return {
     syncProgress,
     queueCount,
     isSyncing: syncProgress.inProgress,
-    lastSyncAt: syncProgress.lastSyncAt,
+    lastSyncAt: (syncProgress as any).lastSyncAt,
     triggerSync,
     retryFailed,
   };

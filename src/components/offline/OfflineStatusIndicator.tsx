@@ -1,22 +1,61 @@
 /**
  * Offline Status Indicator - Phase 3
  * Shows online/offline status with queue count badge
+ * GUARDED: Only renders in Electron context
  */
 
 import { useEffect, useState } from 'react';
 import { Wifi, WifiOff } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
-import { useOfflineQueueV2 } from '@/hooks/useOfflineQueue.v2';
-import { isElectronContext } from '@/lib/offline/offlineTypes';
+import { isElectronContext } from '@/lib/environment/isElectron';
 
 export function OfflineStatusIndicator() {
-  const [isOnline, setIsOnline] = useState(navigator.onLine);
-  const { pendingCount, failedCount } = useOfflineQueueV2();
-
-  // Only show in Electron desktop app
+  // GUARD: Only show in Electron desktop app - check BEFORE hooks
   if (!isElectronContext()) {
     return null;
   }
+
+  const [isOnline, setIsOnline] = useState(navigator.onLine);
+  const [pendingCount, setPendingCount] = useState(0);
+  const [failedCount, setFailedCount] = useState(0);
+
+  // Lazy load the offline queue hook only in Electron
+  useEffect(() => {
+    let mounted = true;
+    
+    const loadQueueStatus = async () => {
+      try {
+        const { useOfflineQueueV2 } = await import('@/hooks/useOfflineQueue.v2');
+        // Note: We can't use hooks conditionally, so we'll manually poll instead
+        const { getQueueStatus } = await import('@/lib/offline/offlineQueue');
+        
+        const checkQueue = async () => {
+          if (!mounted) return;
+          try {
+            const status = await getQueueStatus();
+            setPendingCount(status.pending);
+            setFailedCount(status.failed);
+          } catch (err) {
+            console.warn('[OfflineStatusIndicator] Queue check failed:', err);
+          }
+        };
+        
+        checkQueue();
+        const interval = setInterval(checkQueue, 10000);
+        
+        return () => {
+          mounted = false;
+          clearInterval(interval);
+        };
+      } catch (err) {
+        console.warn('[OfflineStatusIndicator] Failed to load queue module:', err);
+      }
+    };
+    
+    loadQueueStatus();
+    
+    return () => { mounted = false; };
+  }, []);
 
   useEffect(() => {
     const handleOnline = () => setIsOnline(true);

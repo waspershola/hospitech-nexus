@@ -1,10 +1,11 @@
 /**
  * Sync Status Indicator - Phase 4
  * UI component showing sync progress and queue status
+ * GUARDED: Only renders in Electron context
  */
 
 import { useOfflineSync } from '@/hooks/useOfflineSync';
-import { isElectronContext } from '@/lib/offline/offlineTypes';
+import { isElectronContext } from '@/lib/environment/isElectron';
 import { Button } from '@/components/ui/button';
 import { RefreshCw, AlertCircle, CheckCircle, Loader2 } from 'lucide-react';
 import { Progress } from '@/components/ui/progress';
@@ -15,12 +16,12 @@ import {
 } from '@/components/ui/popover';
 
 export function SyncStatusIndicator() {
-  const { syncProgress, queueCount, isSyncing, lastSyncAt, triggerSync, retryFailed } = useOfflineSync();
-
-  // Only show in Electron context
+  // GUARD: Only show in Electron context - check BEFORE hooks
   if (!isElectronContext()) {
     return null;
   }
+
+  const { syncProgress, queueCount, isSyncing, lastSyncAt, triggerSync, retryFailed } = useOfflineSync();
 
   const hasErrors = syncProgress.errors.length > 0;
   const hasQueue = queueCount > 0;
@@ -85,7 +86,7 @@ export function SyncStatusIndicator() {
                 </span>
               </div>
               <Progress 
-                value={(syncProgress.synced / syncProgress.total) * 100} 
+                value={syncProgress.total > 0 ? (syncProgress.synced / syncProgress.total) * 100 : 0} 
                 className="h-2"
               />
             </div>
@@ -148,7 +149,7 @@ export function SyncStatusIndicator() {
                 {syncProgress.errors.slice(0, 5).map((error, idx) => (
                   <div key={idx} className="rounded bg-destructive/10 p-2">
                     <p className="font-mono text-[10px] text-destructive">
-                      {error.error}
+                      {typeof error === 'string' ? error : String(error)}
                     </p>
                   </div>
                 ))}

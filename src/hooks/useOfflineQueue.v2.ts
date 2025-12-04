@@ -1,26 +1,53 @@
 /**
  * Offline Queue Hook V2 - Phase 2
  * Enhanced hook with tenant isolation
+ * GUARDED: Only runs in Electron context
  */
 
 import { useState, useEffect } from 'react';
-import { useOfflineSession } from './useOfflineSession';
-import {
-  getQueueStatus,
-  getPendingQueueItems,
-  getFailedQueueItems,
-  clearSyncedQueueItems,
-} from '@/lib/offline/offlineQueue';
+import { isElectronContext } from '@/lib/environment/isElectron';
 import { toast } from 'sonner';
 
+// Lazy imports for Electron-only modules
+let getQueueStatus: any = null;
+let sessionManager: any = null;
+
 export function useOfflineQueueV2() {
-  const { tenantId } = useOfflineSession();
+  // GUARD: Check Electron context
+  const inElectron = isElectronContext();
+  
   const [pendingCount, setPendingCount] = useState(0);
   const [failedCount, setFailedCount] = useState(0);
   const [isOnline, setIsOnline] = useState(navigator.onLine);
   const [isSyncing, setIsSyncing] = useState(false);
+  const [tenantId, setTenantId] = useState<string | null>(null);
+  const [initialized, setInitialized] = useState(false);
 
-  // Monitor network status
+  // Initialize Electron-only modules
+  useEffect(() => {
+    if (!inElectron) return;
+    
+    const initModules = async () => {
+      try {
+        const offlineQueueModule = await import('@/lib/offline/offlineQueue');
+        const sessionManagerModule = await import('@/lib/offline/sessionManager');
+        
+        getQueueStatus = offlineQueueModule.getQueueStatus;
+        sessionManager = sessionManagerModule.sessionManager;
+        
+        // Get tenant ID from session
+        const tid = sessionManager.getTenantId?.() || null;
+        setTenantId(tid);
+        setInitialized(true);
+      } catch (err) {
+        console.warn('[useOfflineQueueV2] Failed to load offline modules:', err);
+      }
+    };
+    
+    initModules();
+  }, [inElectron]);
+
+  // Monitor network status (works in both browser and Electron)
   useEffect(() => {
     const updateOnlineStatus = () => setIsOnline(navigator.onLine);
     window.addEventListener('online', updateOnlineStatus);
@@ -32,9 +59,9 @@ export function useOfflineQueueV2() {
     };
   }, []);
 
-  // Poll queue status
+  // Poll queue status (Electron only)
   useEffect(() => {
-    if (!tenantId) return;
+    if (!inElectron || !initialized || !getQueueStatus || !tenantId) return;
 
     const checkQueue = async () => {
       try {
@@ -47,13 +74,15 @@ export function useOfflineQueueV2() {
     };
 
     checkQueue();
-    const interval = setInterval(checkQueue, 10000); // Every 10s
+    const interval = setInterval(checkQueue, 10000);
 
     return () => clearInterval(interval);
-  }, [tenantId]);
+  }, [inElectron, initialized, tenantId]);
 
-  // Manual sync trigger (Phase 4 will implement actual sync logic)
+  // Manual sync trigger (Electron only)
   const triggerSync = async () => {
+    if (!inElectron) return;
+    
     if (!tenantId) {
       toast.error('No active session');
       return;
@@ -61,13 +90,13 @@ export function useOfflineQueueV2() {
 
     setIsSyncing(true);
     try {
-      // TODO: Phase 4 - Implement actual sync engine
       toast.info('Sync will be implemented in Phase 4');
       
-      // For now, just refresh status
-      const status = await getQueueStatus();
-      setPendingCount(status.pending);
-      setFailedCount(status.failed);
+      if (getQueueStatus) {
+        const status = await getQueueStatus();
+        setPendingCount(status.pending);
+        setFailedCount(status.failed);
+      }
     } catch (error) {
       toast.error('Sync failed');
       console.error('[useOfflineQueue] Sync error:', error);
@@ -76,12 +105,12 @@ export function useOfflineQueueV2() {
     }
   };
 
-  // Auto-sync when coming online
+  // Auto-sync when coming online (Electron only)
   useEffect(() => {
-    if (isOnline && pendingCount > 0 && tenantId) {
+    if (inElectron && isOnline && pendingCount > 0 && tenantId) {
       triggerSync();
     }
-  }, [isOnline, tenantId]);
+  }, [isOnline, inElectron, tenantId]);
 
   return {
     pendingCount,
