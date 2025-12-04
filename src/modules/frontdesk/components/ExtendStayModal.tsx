@@ -8,6 +8,8 @@ import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { toast } from 'sonner';
 import { Loader2 } from 'lucide-react';
+import { isElectronContext } from '@/lib/environment/isElectron';
+import { offlineExtendStay, saveFrontDeskEvent } from '@/lib/offline/electronFrontDeskBridge';
 
 interface ExtendStayModalProps {
   open: boolean;
@@ -42,7 +44,39 @@ export function ExtendStayModal({
           throw new Error('New check-out date must be after current check-out');
         }
 
-        // Get current session for authentication
+        // PHASE-11: Try Electron offline path first
+        if (isElectronContext() && tenantId) {
+          console.log('[extend-stay-modal] PHASE-11: Attempting offline extend stay');
+          
+          const offlineResult = await offlineExtendStay(tenantId, bookingId, newCheckOut);
+          
+          if (offlineResult.source === 'offline' && offlineResult.data?.success) {
+            // Save event to journal
+            await saveFrontDeskEvent(tenantId, {
+              type: 'extend_stay',
+              bookingId,
+              timestamp: new Date().toISOString(),
+              payload: { 
+                newCheckOut, 
+                previousCheckOut: currentCheckOut,
+                additionalNights: offlineResult.data.additionalNights 
+              }
+            });
+            
+            console.log('[extend-stay-modal] PHASE-11: Offline extend stay successful');
+            return { 
+              success: true, 
+              offline: true,
+              data: { additional_nights: offlineResult.data.additionalNights || 1 }
+            };
+          }
+          
+          if (offlineResult.source === 'offline-error') {
+            console.warn('[extend-stay-modal] PHASE-11: Offline failed, falling back to online');
+          }
+        }
+
+        // Online path - existing implementation
         const { data: { session }, error: sessionError } = await supabase.auth.getSession();
         
         if (sessionError) {
@@ -56,7 +90,6 @@ export function ExtendStayModal({
 
         console.log('[extend-stay-modal] EXTEND-STAY-V2: Calling extend-stay edge function');
 
-        // EXTEND-STAY-V2: Call edge function with explicit auth and error handling
         const { data, error } = await supabase.functions.invoke('extend-stay', {
           body: {
             booking_id: bookingId,
@@ -74,7 +107,6 @@ export function ExtendStayModal({
         if (error) {
           console.error('[extend-stay-modal] EXTEND-STAY-V2: Edge function error:', error);
           
-          // Check for 404 - function not deployed
           if (error.message?.includes('404') || error.context?.status === 404) {
             throw new Error('FUNCTION_NOT_DEPLOYED: The extend-stay operation is not available. Please contact your system administrator.');
           }
@@ -99,14 +131,13 @@ export function ExtendStayModal({
           throw new Error(data?.error || 'Failed to extend stay');
         }
 
-        return data;
+        return { ...data, offline: false };
       } catch (err) {
         console.error('[extend-stay-modal] Error:', err);
         throw err;
       }
     },
     onSuccess: (data) => {
-      // QUERY-KEY-FIX-V1: Specific cache invalidation with IDs
       const folioId = data?.data?.folio_id;
       
       queryClient.invalidateQueries({ queryKey: ['rooms-grid'] });
@@ -117,8 +148,9 @@ export function ExtendStayModal({
         queryClient.invalidateQueries({ queryKey: ['folio', folioId, tenantId] });
       }
       
+      const offlineIndicator = data?.offline ? ' (offline)' : '';
       toast.success(
-        `Stay extended for Room ${roomNumber}. ${data?.data?.additional_nights} additional night(s) charged.`
+        `Stay extended for Room ${roomNumber}. ${data?.data?.additional_nights || 1} additional night(s) charged${offlineIndicator}.`
       );
       onClose();
     },
