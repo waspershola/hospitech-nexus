@@ -10,23 +10,25 @@ import { Badge } from '@/components/ui/badge';
 import { isElectronContext } from '@/lib/environment/isElectron';
 
 export function OfflineStatusIndicator() {
-  // GUARD: Only show in Electron desktop app - check BEFORE hooks
-  if (!isElectronContext()) {
-    return null;
-  }
-
+  // Call hooks FIRST (before any guards) to respect Rules of Hooks
   const [isOnline, setIsOnline] = useState(navigator.onLine);
   const [pendingCount, setPendingCount] = useState(0);
   const [failedCount, setFailedCount] = useState(0);
+  
+  // Check Electron context once
+  const inElectron = isElectronContext();
 
-  // Lazy load the offline queue hook only in Electron
+  // Lazy load queue status only in Electron
   useEffect(() => {
+    // Skip if not in Electron
+    if (!inElectron) return;
+    
     let mounted = true;
+    let intervalId: ReturnType<typeof setInterval> | null = null;
     
     const loadQueueStatus = async () => {
       try {
-        const { useOfflineQueueV2 } = await import('@/hooks/useOfflineQueue.v2');
-        // Note: We can't use hooks conditionally, so we'll manually poll instead
+        // Dynamic import only happens in Electron context
         const { getQueueStatus } = await import('@/lib/offline/offlineQueue');
         
         const checkQueue = async () => {
@@ -41,12 +43,7 @@ export function OfflineStatusIndicator() {
         };
         
         checkQueue();
-        const interval = setInterval(checkQueue, 10000);
-        
-        return () => {
-          mounted = false;
-          clearInterval(interval);
-        };
+        intervalId = setInterval(checkQueue, 10000);
       } catch (err) {
         console.warn('[OfflineStatusIndicator] Failed to load queue module:', err);
       }
@@ -54,9 +51,13 @@ export function OfflineStatusIndicator() {
     
     loadQueueStatus();
     
-    return () => { mounted = false; };
-  }, []);
+    return () => {
+      mounted = false;
+      if (intervalId) clearInterval(intervalId);
+    };
+  }, [inElectron]);
 
+  // Network status listener (works in both browser and Electron)
   useEffect(() => {
     const handleOnline = () => setIsOnline(true);
     const handleOffline = () => setIsOnline(false);
@@ -69,6 +70,11 @@ export function OfflineStatusIndicator() {
       window.removeEventListener('offline', handleOffline);
     };
   }, []);
+
+  // GUARD: Only show in Electron desktop app - check AFTER hooks
+  if (!inElectron) {
+    return null;
+  }
 
   const totalPending = pendingCount + failedCount;
 
