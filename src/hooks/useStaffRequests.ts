@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useQueryClient } from '@tanstack/react-query';
@@ -6,7 +6,6 @@ import { updateRequestStatus as broadcastStatusUpdate } from '@/lib/qr/statusBro
 import { toast } from 'sonner';
 import { useNetworkStore } from '@/state/networkStore';
 import { isNetworkOffline, getCachedQRRequests, updateCache } from '@/lib/offline/offlineDataService';
-import { isElectronContext } from '@/lib/offline/offlineTypes';
 
 interface StaffRequest {
   id: string;
@@ -41,19 +40,15 @@ export function useStaffRequests() {
   const [requests, setRequests] = useState<StaffRequest[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const { hardOffline } = useNetworkStore();
-  
-  // OFFLINE-PHASE2-V1: Track toast display to prevent spam
-  const hasShownOfflineToast = useRef(false);
 
   const fetchRequests = async () => {
     if (!tenantId) return;
 
     setIsLoading(true);
     
-    // ELECTRON-ONLY-V1: Load from IndexedDB when offline (only in Electron)
-    const isElectron = isElectronContext();
-    if (isElectron && (isNetworkOffline() || hardOffline)) {
-      console.log('[useStaffRequests] OFFLINE-V1: Loading from cache (Electron)');
+    // OFFLINE-QR-V1: Load from IndexedDB when offline
+    if (isNetworkOffline()) {
+      console.log('[useStaffRequests] OFFLINE-V1: Loading from cache');
       try {
         const cached = await getCachedQRRequests(tenantId);
         setRequests(cached.map(r => ({
@@ -72,12 +67,7 @@ export function useStaffRequests() {
           guest_contact: r.guest_phone || undefined,
           _offline: true,
         } as StaffRequest)));
-        
-        // OFFLINE-PHASE2-V1: Show toast only once per offline session
-        if (!hasShownOfflineToast.current) {
-          hasShownOfflineToast.current = true;
-          toast.info('Offline Mode - Showing cached requests');
-        }
+        toast.info('Offline Mode - Showing cached requests');
       } catch (err) {
         console.error('[useStaffRequests] Cache read error:', err);
         setRequests([]);
@@ -86,9 +76,6 @@ export function useStaffRequests() {
       }
       return;
     }
-    
-    // Reset toast flag when back online
-    hasShownOfflineToast.current = false;
     
     try {
       const { data, error } = await supabase
@@ -124,10 +111,7 @@ export function useStaffRequests() {
       }
     } catch (err) {
       console.error('[useStaffRequests] Error fetching requests:', err);
-      // OFFLINE-PHASE2-V1: Don't show error toast when offline
-      if (!isNetworkOffline() && !hardOffline) {
-        toast.error('Failed to load requests');
-      }
+      toast.error('Failed to load requests');
     } finally {
       setIsLoading(false);
     }
@@ -165,8 +149,8 @@ export function useStaffRequests() {
   useEffect(() => {
     fetchRequests();
 
-    // ELECTRON-ONLY-V1: Skip realtime subscription when offline (only check in Electron)
-    if (!tenantId || (isElectronContext() && isNetworkOffline())) {
+    // OFFLINE-QR-V1: Skip realtime subscription when offline
+    if (!tenantId || isNetworkOffline()) {
       console.log('[useStaffRequests] OFFLINE-V1: Skipping realtime subscription');
       return;
     }

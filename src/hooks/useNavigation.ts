@@ -30,13 +30,9 @@ let lastCachedNav: NavigationItem[] = [];
  * Includes offline caching - returns cached nav when offline
  */
 export function useNavigation() {
-  const { tenantId, role, department, user, loading } = useAuth();
+  const { tenantId, role, department } = useAuth();
   const { platformRole } = usePlatformRole();
   const { hardOffline } = useNetworkStore();
-  
-  // OFFLINE-EXTREME-V1: Don't fetch if auth is still loading or user not logged in
-  const isAuthReady = !loading && !!user;
-  const hasValidContext = !!platformRole || (!!tenantId && !!role);
   
   return useQuery({
     queryKey: ['platform-navigation', tenantId, role, department, platformRole],
@@ -193,7 +189,7 @@ export function useNavigation() {
         throw error;
       }
     },
-    enabled: isAuthReady && hasValidContext,
+    enabled: !!platformRole || (!!tenantId && !!role),
     staleTime: 5 * 60 * 1000, // Cache for 5 minutes
     gcTime: 10 * 60 * 1000, // Keep in cache for 10 minutes
     retry: hardOffline ? false : 3, // No retries when offline

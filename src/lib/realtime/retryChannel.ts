@@ -1,24 +1,16 @@
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-import { isElectronContext } from '@/lib/offline/offlineTypes';
 
 /**
- * Check if currently offline using unified network state
- * In Electron: defers to offlineRuntimeController
- * In SPA: always returns false (online-only)
+ * OFFLINE-PHASE2: Check if currently offline using unified network state
  */
 function isNetworkOffline(): boolean {
-  if (!isElectronContext()) return false;
-  
   if (window.__HARD_OFFLINE__ === true) return true;
   const s = window.__NETWORK_STATE__;
   if (s?.hardOffline === true) return true;
   if (s?.online === false) return true;
   return false;
 }
-
-// Track toast display to prevent spam (30s debounce)
-let lastConnectionLostToast = 0;
 
 interface RetryConfig {
   maxRetries?: number;
@@ -29,21 +21,23 @@ interface RetryConfig {
 }
 
 /**
- * Creates a Supabase realtime channel with retry logic
+ * PHASE-2: Realtime Retry Logic with Exponential Backoff
+ * Creates a Supabase realtime channel with automatic retry logic
  * 
- * In Electron: Uses minimal retries, defers lifecycle to offlineRuntimeController
- * In SPA: Simple retry with exponential backoff (3 attempts max)
+ * Features:
+ * - Exponential backoff: 1s → 2s → 4s → 8s → 16s → 30s max
+ * - Auto-reconnect on network restore (navigator.onLine)
+ * - Toast notification after permanent failure (5 retries)
+ * - Callback hooks for retry and failure events
  */
 export function createRealtimeChannelWithRetry(
   channelName: string,
   config: RetryConfig = {}
 ) {
-  // In Electron, use fewer retries since controller manages lifecycle
-  const isElectron = isElectronContext();
   const {
-    maxRetries = isElectron ? 2 : 3,
-    baseDelay = 1000,
-    maxDelay = 10000,
+    maxRetries = 5,
+    baseDelay = 1000, // 1s
+    maxDelay = 30000, // 30s
     onRetry,
     onFailure,
   } = config;
@@ -51,71 +45,68 @@ export function createRealtimeChannelWithRetry(
   let retryCount = 0;
   let retryTimeout: NodeJS.Timeout | null = null;
   let currentChannel: any = null;
-  let isCleanedUp = false;
 
   function calculateDelay(attempt: number): number {
-    return Math.min(baseDelay * Math.pow(2, attempt), maxDelay);
+    const delay = Math.min(baseDelay * Math.pow(2, attempt), maxDelay);
+    return delay;
   }
 
   function attemptConnection() {
-    if (isCleanedUp) return null;
-    
-    // In Electron, don't attempt connection if offline
-    if (isElectron && isNetworkOffline()) {
-      console.log(`[retryChannel] ${channelName} - skipping: offline`);
-      return null;
-    }
-    
-    console.log(`[retryChannel] ${channelName} connecting (attempt ${retryCount + 1}/${maxRetries})`);
+    console.log(`[retryChannel] Attempting connection for ${channelName} (attempt ${retryCount + 1}/${maxRetries})`);
     
     currentChannel = supabase.channel(channelName);
+
+    // Store the original subscribe method
     const originalSubscribe = currentChannel.subscribe.bind(currentChannel);
 
+    // Override subscribe to add status monitoring
     currentChannel.subscribe = (callback?: (status: string) => void) => {
       return originalSubscribe((status: string) => {
-        if (isCleanedUp) return;
+        console.log(`[retryChannel] ${channelName} status:`, status);
 
         if (status === 'SUBSCRIBED') {
-          retryCount = 0;
+          console.log(`[retryChannel] ${channelName} subscribed successfully`);
+          retryCount = 0; // Reset on success
+          
+          // Call original callback if provided
           callback?.(status);
         } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
           retryCount++;
 
-          // In Electron offline, stop immediately - controller will handle reconnect
-          if (isElectron && isNetworkOffline()) {
-            console.log(`[retryChannel] ${channelName} - offline, stopping retries`);
-            callback?.(status);
-            return;
-          }
-
           if (retryCount <= maxRetries) {
+            // OFFLINE-PHASE2: Check offline state before scheduling retry
+            if (isNetworkOffline()) {
+              console.log(`[retryChannel] ${channelName} - stopping retry: offline/hardOffline`);
+              return;
+            }
+
             const delay = calculateDelay(retryCount);
-            console.warn(`[retryChannel] ${channelName} failed, retry ${retryCount}/${maxRetries} in ${delay}ms`);
+            console.warn(
+              `[retryChannel] ${channelName} failed (attempt ${retryCount}/${maxRetries}), retrying in ${delay}ms`
+            );
+
             onRetry?.(retryCount, delay);
 
             retryTimeout = setTimeout(() => {
-              if (!isCleanedUp && currentChannel) {
-                supabase.removeChannel(currentChannel);
-                attemptConnection();
-              }
+              supabase.removeChannel(currentChannel);
+              attemptConnection();
             }, delay);
           } else {
-            console.error(`[retryChannel] ${channelName} failed after ${maxRetries} retries`);
+            console.error(`[retryChannel] ${channelName} failed permanently after ${maxRetries} retries`);
+            
             onFailure?.();
             
-            // Show debounced toast (max once per 30s)
-            const now = Date.now();
-            if (now - lastConnectionLostToast > 30000) {
-              lastConnectionLostToast = now;
-              toast.error('Connection Lost', {
-                description: 'Realtime updates paused. Retrying...',
-                duration: 5000,
-              });
-            }
+            // Show toast notification
+            toast.error('Connection Lost', {
+              description: 'Failed to connect to notification system. Please refresh the page.',
+              duration: 10000,
+            });
           }
           
+          // Call original callback if provided
           callback?.(status);
         } else {
+          // Call original callback for other statuses
           callback?.(status);
         }
       });
@@ -124,17 +115,21 @@ export function createRealtimeChannelWithRetry(
     return currentChannel;
   }
 
-  // Browser online event handler (SPA only - Electron uses controller)
+  // Reconnect when network comes back online
   const handleOnline = () => {
-    if (isElectron) return; // Electron handled by controller
-    if (isCleanedUp) return;
+    // OFFLINE-PHASE2: Verify NOT in forced offline mode before reconnecting
+    if (isNetworkOffline()) {
+      console.log('[retryChannel] Ignoring online event: forced offline mode active');
+      return;
+    }
     
-    console.log('[retryChannel] Browser online, reconnecting');
+    console.log('[retryChannel] Network restored, reconnecting channels');
     retryCount = 0;
     
     if (currentChannel) {
       supabase.removeChannel(currentChannel);
     }
+    
     if (retryTimeout) {
       clearTimeout(retryTimeout);
       retryTimeout = null;
@@ -143,36 +138,26 @@ export function createRealtimeChannelWithRetry(
     attemptConnection();
   };
 
-  if (!isElectron) {
-    window.addEventListener('online', handleOnline);
-  }
+  window.addEventListener('online', handleOnline);
 
+  // Cleanup function
   const cleanup = () => {
-    isCleanedUp = true;
-    
-    if (!isElectron) {
-      window.removeEventListener('online', handleOnline);
-    }
+    window.removeEventListener('online', handleOnline);
     
     if (retryTimeout) {
       clearTimeout(retryTimeout);
-      retryTimeout = null;
     }
     
     if (currentChannel) {
-      try {
-        supabase.removeChannel(currentChannel);
-      } catch (e) {
-        // Ignore cleanup errors
-      }
-      currentChannel = null;
+      supabase.removeChannel(currentChannel);
     }
   };
 
+  // Start initial connection
   const channel = attemptConnection();
-  if (channel) {
-    (channel as any).cleanup = cleanup;
-  }
+  
+  // Attach cleanup to channel
+  (channel as any).cleanup = cleanup;
 
   return channel;
 }

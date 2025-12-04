@@ -5,7 +5,6 @@ import { getRoomStatusForDate } from '@/lib/roomAvailability';
 import { format } from 'date-fns';
 import { useNetworkStore } from '@/state/networkStore';
 import { isNetworkOffline, getCachedRooms, getCachedBookings, updateCache } from '@/lib/offline/offlineDataService';
-import { isElectronContext } from '@/lib/offline/offlineTypes';
 
 interface RoomAvailabilityData {
   roomId: string;
@@ -35,9 +34,9 @@ export function useRoomAvailabilityByDate(startDate: Date | null, endDate: Date 
       const startDateStr = format(startDate, 'yyyy-MM-dd');
       const endDateStr = format(endDate, 'yyyy-MM-dd');
 
-      // ELECTRON-ONLY-V1: Load from IndexedDB when offline (only in Electron)
-      if (isElectronContext() && isNetworkOffline()) {
-        console.log('[useRoomAvailabilityByDate] OFFLINE-V1: Loading from cache (Electron)');
+      // OFFLINE-BYDATE-V1: Load from IndexedDB when offline
+      if (isNetworkOffline()) {
+        console.log('[useRoomAvailabilityByDate] OFFLINE-V1: Loading from cache');
         
         const [cachedRooms, cachedBookings] = await Promise.all([
           getCachedRooms(tenantId),

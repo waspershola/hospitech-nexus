@@ -1,14 +1,12 @@
 /**
- * Tenant Database Manager - Phase 3C
+ * Tenant Database Manager - Phase 2
  * Manages per-tenant IndexedDB instances with complete isolation
- * OFFLINE-EXTREME-V1
  */
 
 import { openDB, IDBPDatabase } from 'idb';
 import type { TenantDB, TenantSession, SyncMetadata } from './offlineTypes';
-import { OFFLINE_SCHEMA_VERSION } from './offlineTypes';
 
-const DB_VERSION = 2; // OFFLINE-EXTREME-V1: Bumped for new stores
+const DB_VERSION = 1;
 
 class TenantDBManager {
   private activeDatabases: Map<string, IDBPDatabase<TenantDB>> = new Map();
@@ -23,7 +21,6 @@ class TenantDBManager {
 
   /**
    * Open or get existing database for tenant
-   * OFFLINE-EXTREME-V1: Added kpi_snapshots, night_audit_snapshots, conflicts stores
    */
   async openTenantDB(tenantId: string): Promise<IDBPDatabase<TenantDB>> {
     // Check if already open
@@ -36,9 +33,7 @@ class TenantDBManager {
     const dbName = this.getDBName(tenantId);
     
     const db = await openDB<TenantDB>(dbName, DB_VERSION, {
-      upgrade(db, oldVersion, newVersion) {
-        console.log(`[TenantDBManager] Upgrading DB from v${oldVersion} to v${newVersion}`);
-
+      upgrade(db) {
         // Session store
         if (!db.objectStoreNames.contains('session')) {
           db.createObjectStore('session', { keyPath: 'tenant_id' });
@@ -49,7 +44,6 @@ class TenantDBManager {
           const roomStore = db.createObjectStore('rooms', { keyPath: 'id' });
           roomStore.createIndex('by-status', 'status');
           roomStore.createIndex('by-cached', 'cached_at');
-          roomStore.createIndex('by-synced', 'last_synced_at');
         }
 
         // Bookings
@@ -59,7 +53,6 @@ class TenantDBManager {
           bookingStore.createIndex('by-guest', 'guest_id');
           bookingStore.createIndex('by-room', 'room_id');
           bookingStore.createIndex('by-cached', 'cached_at');
-          bookingStore.createIndex('by-synced', 'last_synced_at');
         }
 
         // Guests
@@ -132,36 +125,13 @@ class TenantDBManager {
         if (!db.objectStoreNames.contains('sync_metadata')) {
           db.createObjectStore('sync_metadata', { keyPath: 'entity' });
         }
-
-        // ============= NEW STORES (DB_VERSION 2) =============
-        // OFFLINE-EXTREME-V1: KPI Snapshots
-        if (!db.objectStoreNames.contains('kpi_snapshots')) {
-          const kpiStore = db.createObjectStore('kpi_snapshots', { keyPath: 'id' });
-          kpiStore.createIndex('by-tenant', 'tenant_id');
-          kpiStore.createIndex('by-date', 'date_key');
-        }
-
-        // OFFLINE-EXTREME-V1: Night Audit Snapshots
-        if (!db.objectStoreNames.contains('night_audit_snapshots')) {
-          const naStore = db.createObjectStore('night_audit_snapshots', { keyPath: 'id' });
-          naStore.createIndex('by-tenant', 'tenant_id');
-          naStore.createIndex('by-date', 'business_date');
-        }
-
-        // CONFLICT-RESOLUTION-V1: Conflicts store
-        if (!db.objectStoreNames.contains('conflicts')) {
-          const conflictStore = db.createObjectStore('conflicts', { keyPath: 'id' });
-          conflictStore.createIndex('by-tenant', 'tenant_id');
-          conflictStore.createIndex('by-entity', 'entity_type');
-          conflictStore.createIndex('by-resolved', 'resolved_at');
-        }
       },
     });
 
     this.activeDatabases.set(tenantId, db);
     this.currentTenantId = tenantId;
     
-    console.log(`[TenantDBManager] Opened database v${DB_VERSION} for tenant: ${tenantId}`);
+    console.log(`[TenantDBManager] Opened database for tenant: ${tenantId}`);
     return db;
   }
 

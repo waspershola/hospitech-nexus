@@ -46,11 +46,8 @@ import { Switch } from '@/components/ui/switch';
 import { Skeleton } from '@/components/ui/skeleton';
 import { 
   Loader2, User, CreditCard, Calendar, AlertCircle, Clock, Building2, AlertTriangle, 
-  Wallet, Zap, Coffee, BellOff, UserPlus, LogIn, LogOut, Wrench, Sparkles, FileText, Receipt, Edit, Printer, MessageSquare, Users, MoveRight, WifiOff
+  Wallet, Zap, Coffee, BellOff, UserPlus, LogIn, LogOut, Wrench, Sparkles, FileText, Receipt, Edit, Printer, MessageSquare, Users, MoveRight
 } from 'lucide-react';
-import { useNetworkStore } from '@/state/networkStore';
-import { isNetworkOffline, getCachedRoom, getCachedBookingsForRoom } from '@/lib/offline/offlineDataService';
-import { isElectronContext } from '@/lib/offline/offlineTypes';
 
 interface RoomActionDrawerProps {
   roomId: string | null;
@@ -109,8 +106,6 @@ export function RoomActionDrawer({ roomId, contextDate, open, onClose, onOpenAss
     }
   }, [showConfirmationDoc, open]);
 
-  const { hardOffline } = useNetworkStore();
-  
   const { data: room, isLoading, isError } = useQuery({
     queryKey: ['room-detail', roomId, contextDate ? format(contextDate, 'yyyy-MM-dd') : 'today'],
     queryFn: async () => {
@@ -120,47 +115,6 @@ export function RoomActionDrawer({ roomId, contextDate, open, onClose, onOpenAss
       // Use contextDate if provided (from By Date view), otherwise use current date
       const filterDate = contextDate ? new Date(contextDate) : now;
       const filterDateStr = format(filterDate, 'yyyy-MM-dd');
-      
-      // ELECTRON-ONLY-V1: Load from IndexedDB when offline (only in Electron)
-      const isElectron = isElectronContext();
-      if (isElectron && (isNetworkOffline() || hardOffline)) {
-        console.log('[RoomActionDrawer] OFFLINE-V1: Loading from cache (Electron)');
-        const cachedRoom = await getCachedRoom(tenantId, roomId);
-        const cachedBookings = await getCachedBookingsForRoom(tenantId, roomId);
-        
-        // OFFLINE-PHASE2-V1: Return skeleton data instead of null for better UX
-        if (!cachedRoom) {
-          console.log('[RoomActionDrawer] OFFLINE-V1: No cached room found, returning skeleton');
-          return {
-            id: roomId,
-            number: '—',
-            status: 'unknown',
-            floor: null,
-            type: 'Unknown',
-            bookings: [],
-            notes: null,
-            _offline: true,
-            _noCache: true,
-          } as any;
-        }
-        
-        // Filter bookings for the view date
-        const filteredBookings = cachedBookings.filter(b => {
-          if (['completed', 'cancelled'].includes(b.status)) return false;
-          const checkInDate = b.check_in.split('T')[0];
-          const checkOutDate = b.check_out.split('T')[0];
-          return checkInDate <= filterDateStr && checkOutDate >= filterDateStr;
-        });
-        
-        // Return as any to avoid type union issues - offline data has fewer fields
-        return {
-          ...cachedRoom,
-          bookings: filteredBookings,
-          notes: null,
-          type: cachedRoom.category?.name || 'Standard',
-          _offline: true,
-        } as any;
-      }
       
       const { data, error } = await supabase
         .from('rooms')
@@ -246,20 +200,11 @@ export function RoomActionDrawer({ roomId, contextDate, open, onClose, onOpenAss
     },
     enabled: !!roomId && !!tenantId,
     staleTime: 30 * 1000, // FOLIO-PREFETCH-V1: Cache for 30 seconds
-    retry: hardOffline ? false : 2,
-    refetchOnWindowFocus: !hardOffline,
   });
 
   // Phase 2: Debounced realtime subscription for room changes
-  // ELECTRON-ONLY-V1: Skip realtime when offline (only in Electron)
   useEffect(() => {
     if (!roomId || !tenantId) return;
-    
-    // Skip realtime subscription when offline in Electron
-    if (isElectronContext() && (isNetworkOffline() || hardOffline)) {
-      console.log('[RoomActionDrawer] OFFLINE-V1: Skipping realtime subscription (Electron)');
-      return;
-    }
 
     const channel = supabase
       .channel(`room-changes-${roomId}`) // Unique channel per room
@@ -288,7 +233,7 @@ export function RoomActionDrawer({ roomId, contextDate, open, onClose, onOpenAss
       if (realtimeDebounceTimer) clearTimeout(realtimeDebounceTimer);
       supabase.removeChannel(channel);
     };
-  }, [roomId, tenantId, queryClient, hardOffline]);
+  }, [roomId, tenantId, queryClient]);
 
   // PHASE-3-FIX: Use identical overlap rule as RoomGrid for booking resolution
   const bookingsArray = Array.isArray(room?.bookings) ? room.bookings : room?.bookings ? [room.bookings] : [];
@@ -1120,31 +1065,8 @@ export function RoomActionDrawer({ roomId, contextDate, open, onClose, onOpenAss
             </div>
           ) : !room ? (
             <div className="flex flex-col items-center justify-center h-full gap-2">
-              {isElectronContext() && (isNetworkOffline() || hardOffline) ? (
-                <>
-                  <WifiOff className="w-8 h-8 text-amber-500" />
-                  <p className="text-sm text-muted-foreground">Room data not cached</p>
-                  <p className="text-xs text-muted-foreground">Connect to network to load room details</p>
-                </>
-              ) : (
-                <>
-                  <AlertCircle className="w-8 h-8 text-muted-foreground" />
-                  <p className="text-sm text-muted-foreground">Room not found</p>
-                </>
-              )}
-            </div>
-          ) : (room as any)?._noCache ? (
-            <div className="flex flex-col items-center justify-center h-full gap-4 p-6">
-              <WifiOff className="w-12 h-12 text-amber-500" />
-              <div className="text-center">
-                <p className="font-medium text-foreground">Offline Mode</p>
-                <p className="text-sm text-muted-foreground mt-1">
-                  This room hasn't been cached yet.
-                </p>
-                <p className="text-xs text-muted-foreground mt-2">
-                  Connect to network to load complete room details.
-                </p>
-              </div>
+              <AlertCircle className="w-8 h-8 text-muted-foreground" />
+              <p className="text-sm text-muted-foreground">Room not found</p>
             </div>
           ) : (
             <>
@@ -1164,14 +1086,6 @@ export function RoomActionDrawer({ roomId, contextDate, open, onClose, onOpenAss
                     <SheetTitle className="text-2xl font-display">Room {room.number}</SheetTitle>
                     <div className="flex items-center gap-2 mt-1 flex-wrap">
                       <Badge className="capitalize">{computedStatus.replace('_', ' ')}</Badge>
-                      
-                      {/* OFFLINE-PHASE2-V1: Offline indicator badge */}
-                      {(room as any)?._offline && (
-                        <Badge variant="outline" className="gap-1 bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-200">
-                          <WifiOff className="h-3 w-3" />
-                          Offline Cached
-                        </Badge>
-                      )}
                       
                       {/* GROUP-UX-V1: Group booking indicator */}
                       {groupInfo && (

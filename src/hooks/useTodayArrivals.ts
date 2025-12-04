@@ -4,7 +4,6 @@ import { useAuth } from '@/contexts/AuthContext';
 import { format, addDays } from 'date-fns';
 import { useNetworkStore } from '@/state/networkStore';
 import { isNetworkOffline, getCachedBookings, getCachedRooms, getCachedGuests, updateCache } from '@/lib/offline/offlineDataService';
-import { isElectronContext } from '@/lib/offline/offlineTypes';
 
 export interface TodayArrival {
   id: string;
@@ -52,13 +51,13 @@ export function useTodayArrivals() {
         tenantId,
         todayISO,
         tomorrowISO,
-        offline: isElectronContext() && isNetworkOffline(),
+        offline: isNetworkOffline(),
         localNow: new Date().toString(),
       });
 
-      // ELECTRON-ONLY-V1: Load from cache when offline (only in Electron)
-      if (isElectronContext() && isNetworkOffline()) {
-        console.log('[ARRIVALS-SHARED-V2] OFFLINE: Loading from IndexedDB cache (Electron)');
+      // OFFLINE-V1: Load from cache when offline
+      if (isNetworkOffline()) {
+        console.log('[ARRIVALS-SHARED-V2] OFFLINE: Loading from IndexedDB cache');
         
         const [cachedBookings, cachedRooms, cachedGuests] = await Promise.all([
           getCachedBookings(tenantId, todayISO, tomorrowISO),
