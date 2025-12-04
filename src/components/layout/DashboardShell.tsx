@@ -9,6 +9,7 @@ import { useQRNotifications } from '@/hooks/useQRNotifications';
 import { OfflineStatusIndicator } from '@/components/offline/OfflineStatusIndicator';
 import { SyncStatusIndicator } from '@/components/offline/SyncStatusIndicator';
 import { StaffAIAssistant } from '@/components/staff/StaffAIAssistant';
+import { SMSCreditsWarningBanner } from '@/components/alerts/SMSCreditsWarningBanner';
 import { Button } from '@/components/ui/button';
 import { Bot } from 'lucide-react';
 
@@ -49,6 +50,9 @@ export default function DashboardShell() {
               <SyncStatusIndicator />
             </div>
           </header>
+          
+          {/* Global SMS Credits Warning Banner */}
+          <SMSCreditsWarningBanner />
           
           <main className="flex-1 overflow-y-auto p-4 md:p-6">
             <Outlet />
