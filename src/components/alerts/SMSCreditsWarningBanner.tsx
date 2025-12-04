@@ -76,7 +76,7 @@ export function SMSCreditsWarningBanner() {
         <Button
           size="sm"
           variant={isDepleted ? 'secondary' : 'outline'}
-          onClick={() => navigate('/dashboard/sms-settings')}
+          onClick={() => navigate('/dashboard/configuration-center?tab=sms-credits')}
           className="h-7 text-xs"
         >
           Purchase Credits
