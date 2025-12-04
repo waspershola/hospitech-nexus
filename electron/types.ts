@@ -53,6 +53,47 @@ export interface UpdateCheckResult {
   info: UpdateInfo | null;
 }
 
+// Phase 8: Booking event for event journal
+export interface BookingEvent {
+  type: 'checkin_performed' | 'checkout_performed' | 'checkin_undone' | 'checkout_undone';
+  bookingId: string;
+  roomId: string;
+  timestamp: string;
+  payload: any;
+}
+
+// Phase 8: Check-in API
+export interface OfflineCheckinAPI {
+  performCheckIn: (tenantId: string, booking: any) => Promise<{ success: boolean; booking?: any; folio?: any; error?: string }>;
+  undoCheckIn: (tenantId: string, bookingId: string) => Promise<{ success: boolean; error?: string }>;
+}
+
+// Phase 8: Checkout API
+export interface OfflineCheckoutAPI {
+  performCheckout: (tenantId: string, bookingId: string, payload: any) => Promise<{ success: boolean; error?: string }>;
+  undoCheckout: (tenantId: string, bookingId: string) => Promise<{ success: boolean; error?: string }>;
+}
+
+// Phase 8: Offline Data API extensions
+export interface OfflineDataAPI {
+  bulkUpdateRooms: (tenantId: string, rooms: any[]) => Promise<void>;
+  updateRoom: (tenantId: string, room: any) => Promise<void>;
+  updateBooking: (tenantId: string, booking: any) => Promise<void>;
+  saveBookingEvent: (tenantId: string, event: BookingEvent) => Promise<void>;
+  getSnapshot?: (tenantId: string) => Promise<any>;
+}
+
+// Phase 8: Combined Offline API
+export interface OfflineAPI {
+  checkin: OfflineCheckinAPI;
+  checkout: OfflineCheckoutAPI;
+  offlineData: OfflineDataAPI;
+  sync?: {
+    triggerSync: () => Promise<void>;
+    getStatus: () => Promise<{ pending: number; syncing: boolean }>;
+  };
+}
+
 export interface ElectronAPI {
   // Desktop detection
   isDesktop: boolean;
@@ -84,6 +125,9 @@ export interface ElectronAPI {
 
   // App info
   getAppVersion: () => Promise<string>;
+
+  // Phase 8: Offline APIs for check-in/checkout
+  offlineApi?: OfflineAPI;
 }
 
 /**

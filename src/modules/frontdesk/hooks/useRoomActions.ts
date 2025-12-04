@@ -5,7 +5,13 @@ import { useAuditLog } from '@/hooks/useAuditLog';
 import { useAuth } from '@/contexts/AuthContext';
 import { isElectronContext } from '@/lib/environment/isElectron';
 import { setOfflineRoomStatus, setOfflineHousekeepingStatus } from '@/lib/offline/electronRoomGridBridge';
-
+import { 
+  offlineCheckIn, 
+  offlineCheckout,
+  saveBookingEvent, 
+  updateBookingCache,
+  updateRoomCache 
+} from '@/lib/offline/electronCheckinCheckoutBridge';
 export function useRoomActions() {
   const queryClient = useQueryClient();
   const { logAction } = useAuditLog();
@@ -75,7 +81,7 @@ export function useRoomActions() {
       // Find the booking that is active TODAY (check-in is today or in the past, checkout is today or in the future)
       const { data: booking, error: bookingFetchError } = await supabase
         .from('bookings')
-        .select('id, status, metadata')
+        .select('id, status, metadata, guest_id')
         .eq('room_id', roomId)
         .in('status', ['reserved', 'checked_in'])
         .lte('check_in', `${today}T23:59:59`)
@@ -87,7 +93,62 @@ export function useRoomActions() {
       if (bookingFetchError) throw bookingFetchError;
       if (!booking) throw new Error('No active booking found for this room today');
 
-      // FOLIO-FIX-V1-DIAG: Call checkin-guest edge function FIRST
+      // PHASE-8: Try Electron offline check-in first
+      if (isElectronContext() && tenantId) {
+        console.log('[useRoomActions] PHASE-8 Attempting offline check-in:', { roomId, bookingId: booking.id });
+        
+        const offlineResult = await offlineCheckIn(tenantId, {
+          id: booking.id,
+          room_id: roomId,
+          guest_id: booking.guest_id,
+          status: 'checked_in',
+          metadata: { ...(booking.metadata as Record<string, any> || {}), checked_in_at: new Date().toISOString() }
+        });
+
+        if (offlineResult.source === 'offline' && offlineResult.data?.success) {
+          console.log('[useRoomActions] PHASE-8 Offline check-in succeeded');
+          
+          // Save check-in event to journal
+          await saveBookingEvent(tenantId, {
+            type: 'checkin_performed',
+            bookingId: booking.id,
+            roomId,
+            timestamp: new Date().toISOString(),
+            payload: { guestId: booking.guest_id, folioCreated: false }
+          });
+
+          // Update booking cache
+          await updateBookingCache(tenantId, {
+            id: booking.id,
+            status: 'checked_in',
+            room_id: roomId
+          });
+
+          // Update room cache to occupied
+          await updateRoomCache(tenantId, {
+            id: roomId,
+            status: 'occupied'
+          });
+
+          // Also update via existing bridge for consistency
+          await setOfflineRoomStatus(tenantId, roomId, 'occupied', { reason: 'Guest checked in (offline)' });
+
+          logAction({
+            action: 'UPDATE',
+            table_name: 'bookings',
+            record_id: booking.id,
+            before_data: { status: booking.status },
+            after_data: { status: 'checked_in', offline: true },
+          });
+
+          return { id: roomId, status: 'occupied', offline: true };
+        }
+        
+        // Fall through to online path if offline fails or not available
+        console.log('[useRoomActions] PHASE-8 Falling through to online path:', offlineResult.source);
+      }
+
+      // ONLINE PATH (unchanged) - FOLIO-FIX-V1-DIAG: Call checkin-guest edge function FIRST
       console.log('[useRoomActions] FOLIO-FIX-V1-DIAG Starting check-in', {
         roomId,
         bookingId: booking.id,
@@ -266,12 +327,64 @@ export function useRoomActions() {
       // First get the active booking to update its metadata
       const { data: booking } = await supabase
         .from('bookings')
-        .select('id, metadata')
+        .select('id, metadata, guest_id')
         .eq('room_id', roomId)
         .in('status', ['checked_in', 'reserved'])
         .single();
 
-      // Update room status
+      // PHASE-8: Try Electron offline checkout first
+      if (isElectronContext() && tenantId && booking) {
+        console.log('[useRoomActions] PHASE-8 Attempting offline checkout:', { roomId, bookingId: booking.id });
+        
+        const offlineResult = await offlineCheckout(tenantId, booking.id, {
+          roomId,
+          autoChargeToWallet: false
+        });
+
+        if (offlineResult.source === 'offline' && offlineResult.data?.success) {
+          console.log('[useRoomActions] PHASE-8 Offline checkout succeeded');
+          
+          // Save checkout event to journal
+          await saveBookingEvent(tenantId, {
+            type: 'checkout_performed',
+            bookingId: booking.id,
+            roomId,
+            timestamp: new Date().toISOString(),
+            payload: { guestId: booking.guest_id, roomStatus: 'cleaning' }
+          });
+
+          // Update booking cache
+          await updateBookingCache(tenantId, {
+            id: booking.id,
+            status: 'completed',
+            metadata: { ...(booking.metadata as object || {}), actual_checkout: new Date().toISOString() }
+          });
+
+          // Update room cache to cleaning
+          await updateRoomCache(tenantId, {
+            id: roomId,
+            status: 'cleaning'
+          });
+
+          // Also update via existing bridge for consistency
+          await setOfflineRoomStatus(tenantId, roomId, 'cleaning', { reason: 'Guest checked out (offline)' });
+
+          logAction({
+            action: 'UPDATE',
+            table_name: 'bookings',
+            record_id: booking.id,
+            before_data: { status: 'checked_in' },
+            after_data: { status: 'completed', offline: true },
+          });
+
+          return { id: roomId, status: 'cleaning', offline: true };
+        }
+        
+        // Fall through to online path if offline fails or not available
+        console.log('[useRoomActions] PHASE-8 Falling through to online path:', offlineResult.source);
+      }
+
+      // ONLINE PATH (unchanged) - Update room status
       await updateRoomStatus(roomId, 'cleaning', 'Guest checked out');
       
       // Complete the active booking with updated metadata
