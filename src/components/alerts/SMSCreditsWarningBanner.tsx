@@ -1,23 +1,48 @@
 import { useState } from 'react';
 import { AlertTriangle, X, MessageSquare } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { useTenantSMSCredits } from '@/hooks/useTenantSMSCredits';
 import { useNavigate } from 'react-router-dom';
+import { useQuery } from '@tanstack/react-query';
+import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/contexts/AuthContext';
 
 export function SMSCreditsWarningBanner() {
-  const { credits, isLoading } = useTenantSMSCredits();
+  const { tenantId } = useAuth();
   const navigate = useNavigate();
   const [dismissed, setDismissed] = useState(false);
 
-  if (isLoading || dismissed) return null;
+  // Fetch SMS credits from the correct table (platform_sms_credit_pool)
+  const { data: credits, isLoading } = useQuery({
+    queryKey: ['sms-credit-pool', tenantId],
+    queryFn: async () => {
+      if (!tenantId) return null;
+      
+      const { data, error } = await supabase
+        .from('platform_sms_credit_pool')
+        .select('total_credits, consumed_credits')
+        .eq('tenant_id', tenantId)
+        .maybeSingle();
 
-  const available = credits?.credits_available ?? 0;
-  const total = credits?.total_purchased ?? 0;
-  const usagePercent = total > 0 ? ((total - available) / total) * 100 : 0;
+      if (error) {
+        console.error('Error fetching SMS credits:', error);
+        return null;
+      }
+      return data;
+    },
+    enabled: !!tenantId,
+    staleTime: 30000, // 30 seconds
+  });
+
+  if (isLoading || dismissed || !credits) return null;
+
+  const total = credits.total_credits ?? 0;
+  const consumed = credits.consumed_credits ?? 0;
+  const available = total - consumed;
+  const usagePercent = total > 0 ? (consumed / total) * 100 : 0;
 
   // Show warning when credits are depleted or critically low (< 20% remaining)
-  const isDepleted = available === 0 && total > 0;
-  const isCriticallyLow = available > 0 && usagePercent > 80;
+  const isDepleted = available <= 0 && total > 0;
+  const isCriticallyLow = available > 0 && usagePercent >= 80;
 
   if (!isDepleted && !isCriticallyLow) return null;
 
