@@ -1,10 +1,22 @@
 /**
  * OFFLINE-DESKTOP-V1: Testing Utilities
  * Helper functions for testing offline functionality
+ * OFFLINE-EXTREME-V1: Updated for schema v2
  */
 
 import { tenantDBManager } from './tenantDBManager';
 import type { CachedRoom, CachedBooking, CachedGuest, CachedFolio, CachedPayment } from './offlineTypes';
+
+// Helper to create default cache fields
+function defaultCacheFields() {
+  const now = Date.now();
+  return {
+    cached_at: now,
+    last_synced_at: now,
+    schema_version: 2,
+    sync_status: 'fresh' as const,
+  };
+}
 
 /**
  * Seed test data into IndexedDB for testing
@@ -13,6 +25,7 @@ export async function seedTestData(tenantId: string) {
   console.log('[OfflineTestUtils] SEED-TEST-DATA-V1', { tenantId });
 
   const db = await tenantDBManager.openTenantDB(tenantId);
+  const cacheFields = defaultCacheFields();
 
   // Test rooms
   const testRooms: CachedRoom[] = [
@@ -23,7 +36,7 @@ export async function seedTestData(tenantId: string) {
       floor: '1',
       status: 'available',
       category: { name: 'Standard', rate: 15000 },
-      cached_at: Date.now(),
+      ...cacheFields,
     },
     {
       id: 'room-201',
@@ -32,7 +45,7 @@ export async function seedTestData(tenantId: string) {
       floor: '2',
       status: 'occupied',
       category: { name: 'Deluxe', rate: 25000 },
-      cached_at: Date.now(),
+      ...cacheFields,
     },
   ];
 
@@ -45,7 +58,7 @@ export async function seedTestData(tenantId: string) {
       email: 'john@example.com',
       phone: '+2348012345678',
       id_number: 'A12345678',
-      cached_at: Date.now(),
+      ...cacheFields,
     },
   ];
 
@@ -62,7 +75,7 @@ export async function seedTestData(tenantId: string) {
       status: 'checked_in',
       total_amount: 75000,
       metadata: {},
-      cached_at: Date.now(),
+      ...cacheFields,
     },
   ];
 
@@ -81,7 +94,7 @@ export async function seedTestData(tenantId: string) {
       total_payments: 50000,
       balance: 25000,
       created_at: new Date().toISOString(),
-      cached_at: Date.now(),
+      ...cacheFields,
     },
   ];
 
@@ -105,7 +118,7 @@ export async function seedTestData(tenantId: string) {
         provider_name: 'Cash',
         location_name: 'Front Desk',
       },
-      cached_at: Date.now(),
+      ...cacheFields,
     },
   ];
 
@@ -235,6 +248,7 @@ export async function benchmarkPerformance(tenantId: string): Promise<{
   console.log('[OfflineTestUtils] BENCHMARK-PERFORMANCE-V1', { tenantId });
 
   const db = await tenantDBManager.openTenantDB(tenantId);
+  const cacheFields = defaultCacheFields();
 
   // Read benchmark (100 reads)
   const readStart = performance.now();
@@ -253,7 +267,7 @@ export async function benchmarkPerformance(tenantId: string): Promise<{
       floor: '1',
       status: 'available',
       category: { name: 'Test', rate: 10000 },
-      cached_at: Date.now(),
+      ...cacheFields,
     };
     await db.put('rooms', testRoom);
   }

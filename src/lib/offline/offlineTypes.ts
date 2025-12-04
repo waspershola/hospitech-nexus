@@ -1,10 +1,17 @@
 /**
- * Offline Desktop Types - Phase 2
+ * Offline Desktop Types - Phase 3C
  * Enhanced type definitions for multi-tenant offline storage
+ * OFFLINE-EXTREME-V1
  */
 
 import type { DBSchema } from 'idb';
 import type { QueuedRequest, ElectronAPI } from '../../../electron/types';
+
+// ============= Schema Version =============
+export const OFFLINE_SCHEMA_VERSION = 2;
+
+// ============= Sync Status =============
+export type SyncStatus = 'fresh' | 'stale' | 'conflict';
 
 // ============= Session Management =============
 
@@ -26,8 +33,11 @@ export interface CachedRoom {
   number: string;
   floor: string | null;
   status: 'available' | 'occupied' | 'cleaning' | 'maintenance' | 'out_of_order';
-  category: any; // Will match existing Room type
+  category: any;
   cached_at: number;
+  last_synced_at: number;
+  schema_version: number;
+  sync_status: SyncStatus;
 }
 
 export interface CachedBooking {
@@ -42,6 +52,9 @@ export interface CachedBooking {
   total_amount: number | null;
   metadata: any;
   cached_at: number;
+  last_synced_at: number;
+  schema_version: number;
+  sync_status: SyncStatus;
 }
 
 export interface CachedGuest {
@@ -52,6 +65,9 @@ export interface CachedGuest {
   phone: string | null;
   id_number: string | null;
   cached_at: number;
+  last_synced_at: number;
+  schema_version: number;
+  sync_status: SyncStatus;
 }
 
 export interface CachedFolio {
@@ -68,6 +84,9 @@ export interface CachedFolio {
   balance: number;
   created_at: string;
   cached_at: number;
+  last_synced_at: number;
+  schema_version: number;
+  sync_status: SyncStatus;
 }
 
 export interface CachedFolioTransaction {
@@ -84,6 +103,9 @@ export interface CachedFolioTransaction {
   created_at: string;
   metadata?: Record<string, any>;
   cached_at: number;
+  last_synced_at: number;
+  schema_version: number;
+  sync_status: SyncStatus;
 }
 
 export interface CachedPayment {
@@ -102,6 +124,9 @@ export interface CachedPayment {
   created_at: string;
   metadata?: Record<string, any>;
   cached_at: number;
+  last_synced_at: number;
+  schema_version: number;
+  sync_status: SyncStatus;
 }
 
 export interface CachedQRRequest {
@@ -118,6 +143,9 @@ export interface CachedQRRequest {
   metadata: any;
   created_at: string;
   cached_at: number;
+  last_synced_at: number;
+  schema_version: number;
+  sync_status: SyncStatus;
 }
 
 export interface CachedMenuItem {
@@ -128,6 +156,9 @@ export interface CachedMenuItem {
   price: number;
   is_available: boolean;
   cached_at: number;
+  last_synced_at: number;
+  schema_version: number;
+  sync_status: SyncStatus;
 }
 
 export interface CachedHousekeeping {
@@ -138,15 +169,91 @@ export interface CachedHousekeeping {
   assigned_to: string | null;
   notes: string | null;
   cached_at: number;
+  last_synced_at: number;
+  schema_version: number;
+  sync_status: SyncStatus;
+}
+
+// ============= KPI Snapshots =============
+// OFFLINE-EXTREME-V1: Front Desk KPI caching
+
+export interface CachedKPI {
+  id: string; // Format: `${tenantId}_${dateKey}`
+  tenant_id: string;
+  date_key: string; // YYYY-MM-DD
+  available: number;
+  occupied: number;
+  arrivals: number;
+  departures: number;
+  inHouse: number;
+  pendingPayments: number;
+  outOfService: number;
+  overstays: number;
+  dieselLevel: number;
+  cached_at: number;
+  last_synced_at: number;
+  schema_version: number;
+}
+
+// ============= Night Audit Snapshots =============
+// OFFLINE-EXTREME-V1: Night Audit offline support
+
+export interface CachedNightAuditSnapshot {
+  id: string; // Format: `${tenantId}_${businessDate}`
+  tenant_id: string;
+  business_date: string; // YYYY-MM-DD
+  rooms_in_house: number;
+  arrivals_count: number;
+  departures_count: number;
+  total_revenue: number;
+  outstanding_balance: number;
+  folio_summaries: Array<{
+    folio_id: string;
+    room_number: string;
+    guest_name: string;
+    balance: number;
+  }>;
+  audit_history: Array<{
+    id: string;
+    audit_date: string;
+    status: string;
+    total_revenue: number;
+  }>;
+  cached_at: number;
+  last_synced_at: number;
+  schema_version: number;
+}
+
+// ============= Conflict Records =============
+// CONFLICT-RESOLUTION-V1: Track sync conflicts
+
+export type ConflictEntityType = 'room' | 'booking' | 'folio' | 'request' | 'payment';
+export type ConflictOperation = 'create' | 'update' | 'delete' | 'checkin' | 'checkout';
+export type ConflictResolution = 'local_wins' | 'server_wins' | 'deferred' | 'dropped';
+
+export interface ConflictRecord {
+  id: string;
+  tenant_id: string;
+  entity_type: ConflictEntityType;
+  entity_id: string;
+  operation: ConflictOperation;
+  local_payload: Record<string, any>;
+  server_payload?: Record<string, any>;
+  error_code?: string;
+  error_message?: string;
+  created_at: string;
+  resolved_at?: string;
+  resolution?: ConflictResolution;
 }
 
 // ============= Offline Queue =============
 
 export interface OfflineQueueItem extends QueuedRequest {
   created_at: string;
-  status: 'pending' | 'synced' | 'failed';
+  status: 'pending' | 'synced' | 'failed' | 'conflict';
   error?: string;
   last_attempt?: number;
+  conflict_id?: string;
 }
 
 // ============= Sync Metadata =============
@@ -171,13 +278,13 @@ export interface TenantDB extends DBSchema {
   rooms: {
     key: string;
     value: CachedRoom;
-    indexes: { 'by-status': string; 'by-cached': number };
+    indexes: { 'by-status': string; 'by-cached': number; 'by-synced': number };
   };
 
   bookings: {
     key: string;
     value: CachedBooking;
-    indexes: { 'by-status': string; 'by-guest': string; 'by-room': string; 'by-cached': number };
+    indexes: { 'by-status': string; 'by-guest': string; 'by-room': string; 'by-cached': number; 'by-synced': number };
   };
 
   guests: {
@@ -220,6 +327,27 @@ export interface TenantDB extends DBSchema {
     key: string;
     value: CachedHousekeeping;
     indexes: { 'by-room': string; 'by-status': string; 'by-cached': number };
+  };
+
+  // KPI Snapshots - OFFLINE-EXTREME-V1
+  kpi_snapshots: {
+    key: string;
+    value: CachedKPI;
+    indexes: { 'by-tenant': string; 'by-date': string };
+  };
+
+  // Night Audit Snapshots - OFFLINE-EXTREME-V1
+  night_audit_snapshots: {
+    key: string;
+    value: CachedNightAuditSnapshot;
+    indexes: { 'by-tenant': string; 'by-date': string };
+  };
+
+  // Conflicts - CONFLICT-RESOLUTION-V1
+  conflicts: {
+    key: string;
+    value: ConflictRecord;
+    indexes: { 'by-tenant': string; 'by-entity': string; 'by-resolved': string | undefined };
   };
 
   // Offline queue

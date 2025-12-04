@@ -1,6 +1,7 @@
 /**
  * Offline Payment Manager - Phase 5
  * Handles local payment operations when offline with provider/location tracking
+ * OFFLINE-EXTREME-V1: Updated for schema v2
  */
 
 import { tenantDBManager } from './tenantDBManager';
@@ -56,6 +57,7 @@ class OfflinePaymentManager {
 
     const paymentId = crypto.randomUUID();
     const now = new Date().toISOString();
+    const nowMs = Date.now();
     const transactionRef = `OFF-${Date.now()}-${paymentId.substring(0, 8).toUpperCase()}`;
 
     const payment: CachedPayment = {
@@ -83,7 +85,10 @@ class OfflinePaymentManager {
         offline_created_at: now,
       },
       created_at: now,
-      cached_at: Date.now(),
+      cached_at: nowMs,
+      last_synced_at: nowMs,
+      schema_version: 2,
+      sync_status: 'fresh',
     };
 
     // Store in IndexedDB
