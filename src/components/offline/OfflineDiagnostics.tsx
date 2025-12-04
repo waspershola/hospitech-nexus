@@ -1,14 +1,16 @@
 /**
  * OFFLINE-DESKTOP-V1: Diagnostic Dashboard
  * Admin tool for testing and debugging offline functionality
+ * GUARDED: Only renders and initializes in Electron context
  */
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
+import { isElectronContext } from '@/lib/environment/isElectron';
 import {
   Database,
   Zap,
@@ -18,17 +20,25 @@ import {
   XCircle,
   Clock,
 } from 'lucide-react';
-import {
-  seedTestData,
-  clearTestData,
-  verifyDataIntegrity,
-  benchmarkPerformance,
-  simulateOffline,
-} from '@/lib/offline/offlineTestUtils';
+
+// Lazy-loaded test utils (Electron-only)
+let testUtils: {
+  seedTestData: (tenantId: string) => Promise<any>;
+  clearTestData: (tenantId: string) => Promise<void>;
+  verifyDataIntegrity: (tenantId: string) => Promise<{ valid: boolean; errors: string[] }>;
+  benchmarkPerformance: (tenantId: string) => Promise<{ readLatency: number; writeLatency: number; queryLatency: number }>;
+  simulateOffline: (durationMs?: number) => () => void;
+} | null = null;
 
 export function OfflineDiagnostics() {
+  // GUARD: Only render in Electron context
+  if (!isElectronContext()) {
+    return null;
+  }
+
   const { tenantId } = useAuth();
   const [loading, setLoading] = useState<string | null>(null);
+  const [initialized, setInitialized] = useState(false);
   const [integrityResult, setIntegrityResult] = useState<{
     valid: boolean;
     errors: string[];
@@ -39,12 +49,37 @@ export function OfflineDiagnostics() {
     queryLatency: number;
   } | null>(null);
 
+  // Lazy load test utils only in Electron
+  useEffect(() => {
+    const loadTestUtils = async () => {
+      try {
+        const module = await import('@/lib/offline/offlineTestUtils');
+        testUtils = {
+          seedTestData: module.seedTestData,
+          clearTestData: module.clearTestData,
+          verifyDataIntegrity: module.verifyDataIntegrity,
+          benchmarkPerformance: module.benchmarkPerformance,
+          simulateOffline: module.simulateOffline,
+        };
+        setInitialized(true);
+      } catch (err) {
+        console.warn('[OfflineDiagnostics] Failed to load test utils:', err);
+      }
+    };
+    loadTestUtils();
+  }, []);
+
+  // Don't render until initialized and logged in
+  if (!initialized || !tenantId) {
+    return null;
+  }
+
   const handleSeedData = async () => {
-    if (!tenantId) return;
+    if (!tenantId || !testUtils) return;
     
     setLoading('seed');
     try {
-      await seedTestData(tenantId);
+      await testUtils.seedTestData(tenantId);
       toast.success('Test data seeded successfully');
     } catch (error: any) {
       toast.error(error?.message || 'Failed to seed test data');
@@ -54,14 +89,12 @@ export function OfflineDiagnostics() {
   };
 
   const handleClearData = async () => {
-    if (!tenantId) return;
+    if (!tenantId || !testUtils) return;
     
     setLoading('clear');
     try {
-      await clearTestData(tenantId);
+      await testUtils.clearTestData(tenantId);
       toast.success('Test data cleared successfully');
-      setIntegrityResult(null);
-      setPerformanceResult(null);
     } catch (error: any) {
       toast.error(error?.message || 'Failed to clear test data');
     } finally {
@@ -70,17 +103,16 @@ export function OfflineDiagnostics() {
   };
 
   const handleVerifyIntegrity = async () => {
-    if (!tenantId) return;
+    if (!tenantId || !testUtils) return;
     
-    setLoading('verify');
+    setLoading('integrity');
     try {
-      const result = await verifyDataIntegrity(tenantId);
+      const result = await testUtils.verifyDataIntegrity(tenantId);
       setIntegrityResult(result);
-      
       if (result.valid) {
-        toast.success('Data integrity verified - no errors found');
+        toast.success('Data integrity verified');
       } else {
-        toast.error(`Data integrity errors found: ${result.errors.length}`);
+        toast.error(`Found ${result.errors.length} integrity issue(s)`);
       }
     } catch (error: any) {
       toast.error(error?.message || 'Failed to verify data integrity');
@@ -90,13 +122,13 @@ export function OfflineDiagnostics() {
   };
 
   const handleBenchmark = async () => {
-    if (!tenantId) return;
+    if (!tenantId || !testUtils) return;
     
     setLoading('benchmark');
     try {
-      const result = await benchmarkPerformance(tenantId);
+      const result = await testUtils.benchmarkPerformance(tenantId);
       setPerformanceResult(result);
-      toast.success('Performance benchmark completed');
+      toast.success('Benchmark complete');
     } catch (error: any) {
       toast.error(error?.message || 'Failed to run benchmark');
     } finally {
@@ -104,182 +136,195 @@ export function OfflineDiagnostics() {
     }
   };
 
-  const handleSimulateOffline = () => {
-    const cleanup = simulateOffline(10000); // 10 seconds
-    toast.info('Offline mode simulated for 10 seconds');
+  const handleSimulateOffline = async () => {
+    if (!testUtils) return;
+    
+    setLoading('simulate');
+    try {
+      toast.info('Simulating offline mode for 5 seconds...');
+      const cleanup = testUtils.simulateOffline(5000);
+      
+      // Wait for simulation to complete
+      await new Promise(resolve => setTimeout(resolve, 5000));
+      
+      toast.success('Offline simulation complete');
+    } catch (error: any) {
+      toast.error(error?.message || 'Failed to simulate offline');
+    } finally {
+      setLoading(null);
+    }
   };
 
-  // Don't render if not in Electron or not logged in
-  if (!window.electronAPI || !tenantId) {
-    return null;
-  }
-
   return (
-    <div className="space-y-6 p-6">
+    <div className="space-y-6">
       <div>
-        <h2 className="text-2xl font-bold">Offline Diagnostics</h2>
-        <p className="text-sm text-muted-foreground mt-1">
-          Testing and debugging tools for offline functionality
+        <h2 className="text-2xl font-bold tracking-tight">Offline Diagnostics</h2>
+        <p className="text-muted-foreground">
+          Test and debug offline functionality (Electron only)
         </p>
       </div>
 
-      {/* Test Data Management */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Database className="h-5 w-5" />
-            Test Data Management
-          </CardTitle>
-          <CardDescription>
-            Seed and clear test data in IndexedDB for testing
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-3">
-          <Button
-            onClick={handleSeedData}
-            disabled={loading !== null}
-            className="w-full"
-          >
-            {loading === 'seed' ? 'Seeding...' : 'Seed Test Data'}
-          </Button>
-          <Button
-            onClick={handleClearData}
-            disabled={loading !== null}
-            variant="outline"
-            className="w-full"
-          >
-            {loading === 'clear' ? 'Clearing...' : 'Clear Test Data'}
-          </Button>
-        </CardContent>
-      </Card>
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+        {/* Test Data Management */}
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="flex items-center gap-2 text-base">
+              <Database className="h-4 w-4" />
+              Test Data
+            </CardTitle>
+            <CardDescription>Seed or clear test data in IndexedDB</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-2">
+            <Button 
+              onClick={handleSeedData} 
+              disabled={loading !== null}
+              className="w-full"
+              variant="outline"
+            >
+              {loading === 'seed' ? 'Seeding...' : 'Seed Test Data'}
+            </Button>
+            <Button 
+              onClick={handleClearData} 
+              disabled={loading !== null}
+              className="w-full"
+              variant="destructive"
+            >
+              {loading === 'clear' ? 'Clearing...' : 'Clear Test Data'}
+            </Button>
+          </CardContent>
+        </Card>
 
-      {/* Data Integrity Check */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <TestTube className="h-5 w-5" />
-            Data Integrity Check
-          </CardTitle>
-          <CardDescription>
-            Verify data consistency and referential integrity
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-3">
-          <Button
-            onClick={handleVerifyIntegrity}
-            disabled={loading !== null}
-            className="w-full"
-          >
-            {loading === 'verify' ? 'Verifying...' : 'Verify Data Integrity'}
-          </Button>
-
-          {integrityResult && (
-            <div className={`rounded-md p-4 ${
-              integrityResult.valid 
-                ? 'bg-green-500/10 border border-green-500/20' 
-                : 'bg-destructive/10 border border-destructive/20'
-            }`}>
-              <div className="flex items-center gap-2 mb-2">
-                {integrityResult.valid ? (
-                  <>
-                    <CheckCircle2 className="h-5 w-5 text-green-600" />
-                    <span className="font-medium text-green-600">
-                      Data integrity verified
-                    </span>
-                  </>
-                ) : (
-                  <>
-                    <XCircle className="h-5 w-5 text-destructive" />
-                    <span className="font-medium text-destructive">
-                      {integrityResult.errors.length} error(s) found
-                    </span>
-                  </>
+        {/* Data Integrity Check */}
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="flex items-center gap-2 text-base">
+              <TestTube className="h-4 w-4" />
+              Integrity Check
+            </CardTitle>
+            <CardDescription>Verify data consistency in IndexedDB</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-2">
+            <Button 
+              onClick={handleVerifyIntegrity} 
+              disabled={loading !== null}
+              className="w-full"
+              variant="outline"
+            >
+              {loading === 'integrity' ? 'Verifying...' : 'Verify Integrity'}
+            </Button>
+            
+            {integrityResult && (
+              <div className="mt-2 p-2 rounded-md bg-muted">
+                <div className="flex items-center gap-2">
+                  {integrityResult.valid ? (
+                    <CheckCircle2 className="h-4 w-4 text-green-500" />
+                  ) : (
+                    <XCircle className="h-4 w-4 text-red-500" />
+                  )}
+                  <span className="text-sm font-medium">
+                    {integrityResult.valid ? 'All checks passed' : `${integrityResult.errors.length} issues found`}
+                  </span>
+                </div>
+                {integrityResult.errors.length > 0 && (
+                  <ul className="mt-2 text-xs text-destructive space-y-1">
+                    {integrityResult.errors.slice(0, 5).map((err, i) => (
+                      <li key={i}>• {err}</li>
+                    ))}
+                  </ul>
                 )}
               </div>
+            )}
+          </CardContent>
+        </Card>
 
-              {integrityResult.errors.length > 0 && (
-                <div className="space-y-1 mt-3">
-                  {integrityResult.errors.map((error, index) => (
-                    <div key={index} className="text-sm text-destructive">
-                      • {error}
-                    </div>
-                  ))}
+        {/* Performance Benchmark */}
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="flex items-center gap-2 text-base">
+              <Zap className="h-4 w-4" />
+              Performance
+            </CardTitle>
+            <CardDescription>Benchmark IndexedDB operations</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-2">
+            <Button 
+              onClick={handleBenchmark} 
+              disabled={loading !== null}
+              className="w-full"
+              variant="outline"
+            >
+              {loading === 'benchmark' ? 'Running...' : 'Run Benchmark'}
+            </Button>
+            
+            {performanceResult && (
+              <div className="mt-2 space-y-1 text-sm">
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Read:</span>
+                  <Badge variant="secondary">{performanceResult.readLatency.toFixed(2)}ms</Badge>
                 </div>
-              )}
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Write:</span>
+                  <Badge variant="secondary">{performanceResult.writeLatency.toFixed(2)}ms</Badge>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Query:</span>
+                  <Badge variant="secondary">{performanceResult.queryLatency.toFixed(2)}ms</Badge>
+                </div>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Offline Simulation */}
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="flex items-center gap-2 text-base">
+              <WifiOff className="h-4 w-4" />
+              Offline Simulation
+            </CardTitle>
+            <CardDescription>Test offline queue and sync</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <Button 
+              onClick={handleSimulateOffline} 
+              disabled={loading !== null}
+              className="w-full"
+              variant="outline"
+            >
+              {loading === 'simulate' ? 'Simulating...' : 'Simulate 5s Offline'}
+            </Button>
+          </CardContent>
+        </Card>
+
+        {/* Status Info */}
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="flex items-center gap-2 text-base">
+              <Clock className="h-4 w-4" />
+              Environment
+            </CardTitle>
+            <CardDescription>Current runtime status</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-2 text-sm">
+            <div className="flex justify-between">
+              <span className="text-muted-foreground">Electron:</span>
+              <Badge variant="default">Active</Badge>
             </div>
-          )}
-        </CardContent>
-      </Card>
-
-      {/* Performance Benchmark */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Zap className="h-5 w-5" />
-            Performance Benchmark
-          </CardTitle>
-          <CardDescription>
-            Measure IndexedDB read/write/query performance
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-3">
-          <Button
-            onClick={handleBenchmark}
-            disabled={loading !== null}
-            className="w-full"
-          >
-            {loading === 'benchmark' ? 'Running...' : 'Run Performance Benchmark'}
-          </Button>
-
-          {performanceResult && (
-            <div className="rounded-md bg-muted p-4 space-y-2">
-              <div className="flex items-center justify-between">
-                <span className="text-sm text-muted-foreground">Read Latency:</span>
-                <Badge variant="secondary">
-                  <Clock className="h-3 w-3 mr-1" />
-                  {performanceResult.readLatency.toFixed(2)}ms
-                </Badge>
-              </div>
-              <div className="flex items-center justify-between">
-                <span className="text-sm text-muted-foreground">Write Latency:</span>
-                <Badge variant="secondary">
-                  <Clock className="h-3 w-3 mr-1" />
-                  {performanceResult.writeLatency.toFixed(2)}ms
-                </Badge>
-              </div>
-              <div className="flex items-center justify-between">
-                <span className="text-sm text-muted-foreground">Query Latency:</span>
-                <Badge variant="secondary">
-                  <Clock className="h-3 w-3 mr-1" />
-                  {performanceResult.queryLatency.toFixed(2)}ms
-                </Badge>
-              </div>
+            <div className="flex justify-between">
+              <span className="text-muted-foreground">Online:</span>
+              <Badge variant={navigator.onLine ? 'default' : 'secondary'}>
+                {navigator.onLine ? 'Yes' : 'No'}
+              </Badge>
             </div>
-          )}
-        </CardContent>
-      </Card>
-
-      {/* Offline Simulation */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <WifiOff className="h-5 w-5" />
-            Offline Simulation
-          </CardTitle>
-          <CardDescription>
-            Simulate offline mode for 10 seconds
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <Button
-            onClick={handleSimulateOffline}
-            variant="outline"
-            className="w-full"
-          >
-            Simulate Offline Mode
-          </Button>
-        </CardContent>
-      </Card>
+            <div className="flex justify-between">
+              <span className="text-muted-foreground">Tenant:</span>
+              <Badge variant="outline" className="font-mono text-xs truncate max-w-[100px]">
+                {tenantId?.slice(0, 8)}...
+              </Badge>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
     </div>
   );
 }
