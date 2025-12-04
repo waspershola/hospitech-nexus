@@ -3,6 +3,8 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { useAuditLog } from '@/hooks/useAuditLog';
 import { useAuth } from '@/contexts/AuthContext';
+import { isElectronContext } from '@/lib/environment/isElectron';
+import { setOfflineRoomStatus, setOfflineHousekeepingStatus } from '@/lib/offline/electronRoomGridBridge';
 
 export function useRoomActions() {
   const queryClient = useQueryClient();
@@ -10,6 +12,24 @@ export function useRoomActions() {
   const { tenantId } = useAuth();
 
   const updateRoomStatus = async (roomId: string, status: string, reason?: string, manualOverride?: boolean) => {
+    // PHASE-7A: Try Electron offline path first
+    if (isElectronContext() && tenantId) {
+      const offlineResult = await setOfflineRoomStatus(tenantId, roomId, status, { reason, manualOverride });
+      
+      if (offlineResult.source === 'offline' && offlineResult.data?.success) {
+        console.log('[useRoomActions] Room status updated via offline:', { roomId, status });
+        logAction({
+          action: 'UPDATE',
+          table_name: 'rooms',
+          record_id: roomId,
+          before_data: null,
+          after_data: { status, offline: true },
+        });
+        return offlineResult.data.room;
+      }
+      // Fall through to online path if offline fails or not available
+    }
+    
     const { data: oldRoom } = await supabase
       .from('rooms')
       .select('*')
