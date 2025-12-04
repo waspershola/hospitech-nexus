@@ -172,7 +172,91 @@ export interface OfflineBalanceAPI {
   getFolioBalance: (tenantId: string, folioId: string) => Promise<{ charges: number; payments: number; balance: number } | null>;
 }
 
-// Phase 8 + 9 + 10: Combined Offline API
+// Phase 11: Front Desk Event for event journal
+export interface FrontDeskEvent {
+  type:
+    | 'assign_room'
+    | 'change_room'
+    | 'extend_stay'
+    | 'shorten_stay'
+    | 'update_guest_profile'
+    | 'post_adjustment'
+    | 'post_discount'
+    | 'lock_room'
+    | 'unlock_room'
+    | 'force_close_folio';
+  bookingId?: string;
+  roomId?: string;
+  guestId?: string;
+  folioId?: string;
+  timestamp: string;
+  payload: any;
+}
+
+// Phase 11: Offline Front Desk Operations Center API
+export interface OfflineFrontDeskAPI {
+  assignRoom: (
+    tenantId: string,
+    bookingId: string,
+    roomId: string
+  ) => Promise<{ success: boolean; error?: string }>;
+
+  changeRoom: (
+    tenantId: string,
+    bookingId: string,
+    fromRoomId: string,
+    toRoomId: string,
+    reason?: string
+  ) => Promise<{ success: boolean; newRoomNumber?: string; error?: string }>;
+
+  extendStay: (
+    tenantId: string,
+    bookingId: string,
+    newCheckOut: string
+  ) => Promise<{ success: boolean; additionalNights?: number; error?: string }>;
+
+  shortenStay: (
+    tenantId: string,
+    bookingId: string,
+    newCheckOut: string
+  ) => Promise<{ success: boolean; error?: string }>;
+
+  updateGuestProfile: (
+    tenantId: string,
+    guestId: string,
+    updates: Record<string, any>
+  ) => Promise<{ success: boolean; error?: string }>;
+
+  postAdjustment: (
+    tenantId: string,
+    folioId: string,
+    adjustment: { amount: number; description: string; reason?: string }
+  ) => Promise<{ success: boolean; transactionId?: string; error?: string }>;
+
+  postDiscount: (
+    tenantId: string,
+    folioId: string,
+    discount: { amount: number; description: string; reason?: string }
+  ) => Promise<{ success: boolean; transactionId?: string; error?: string }>;
+
+  lockRoom: (
+    tenantId: string,
+    roomId: string,
+    reason: string
+  ) => Promise<{ success: boolean; error?: string }>;
+
+  unlockRoom: (
+    tenantId: string,
+    roomId: string
+  ) => Promise<{ success: boolean; error?: string }>;
+
+  forceCloseFolio: (
+    tenantId: string,
+    folioId: string
+  ) => Promise<{ success: boolean; error?: string }>;
+}
+
+// Phase 8 + 9 + 10 + 11: Combined Offline API
 export interface OfflineAPI {
   checkin: OfflineCheckinAPI;
   checkout: OfflineCheckoutAPI;
@@ -188,6 +272,8 @@ export interface OfflineAPI {
   balance?: OfflineBalanceAPI;
   // Phase 10: Housekeeping API (optional - may not be implemented yet)
   housekeeping?: OfflineHousekeepingAPI;
+  // Phase 11: Front Desk Operations Center API (optional - may not be implemented yet)
+  frontdesk?: OfflineFrontDeskAPI;
 }
 
 export interface ElectronAPI {

@@ -22,6 +22,8 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
 import { Loader2 } from "lucide-react";
+import { isElectronContext } from "@/lib/environment/isElectron";
+import { offlineChangeRoom, saveFrontDeskEvent } from "@/lib/offline/electronFrontDeskBridge";
 
 interface TransferRoomModalProps {
   open: boolean;
@@ -67,7 +69,51 @@ export function TransferRoomModal({
   const transferMutation = useMutation({
     mutationFn: async () => {
       try {
-        // Get current session for authentication
+        // PHASE-11: Try Electron offline path first
+        if (isElectronContext() && tenantId) {
+          console.log('[TransferRoomModal] PHASE-11: Attempting offline room transfer');
+          
+          const offlineResult = await offlineChangeRoom(
+            tenantId, 
+            bookingId, 
+            currentRoomId, 
+            newRoomId, 
+            reason || 'Guest request'
+          );
+          
+          if (offlineResult.source === 'offline' && offlineResult.data?.success) {
+            // Get new room number for display
+            const newRoom = rooms?.find(r => r.id === newRoomId);
+            
+            // Save event to journal
+            await saveFrontDeskEvent(tenantId, {
+              type: 'change_room',
+              bookingId,
+              roomId: newRoomId,
+              timestamp: new Date().toISOString(),
+              payload: { 
+                fromRoomId: currentRoomId,
+                toRoomId: newRoomId,
+                fromRoomNumber: currentRoomNumber,
+                toRoomNumber: newRoom?.number,
+                reason 
+              }
+            });
+            
+            console.log('[TransferRoomModal] PHASE-11: Offline room transfer successful');
+            return { 
+              success: true, 
+              offline: true,
+              data: { new_room_number: newRoom?.number || 'Unknown' }
+            };
+          }
+          
+          if (offlineResult.source === 'offline-error') {
+            console.warn('[TransferRoomModal] PHASE-11: Offline failed, falling back to online');
+          }
+        }
+
+        // Online path - existing implementation
         const { data: { session }, error: sessionError } = await supabase.auth.getSession();
         
         if (sessionError) {
@@ -117,17 +163,18 @@ export function TransferRoomModal({
         }
 
         console.log('[TransferRoomModal] TRANSFER-ROOM-V1: Transfer successful:', data);
-        return data;
+        return { ...data, offline: false };
       } catch (err) {
         console.error('[TransferRoomModal] Error:', err);
         throw err;
       }
     },
     onSuccess: (data) => {
-      // QUERY-KEY-FIX-V1: Specific cache invalidation with IDs
-      toast.success(`Room transferred successfully to ${data.data.new_room_number}`);
+      const offlineIndicator = data?.offline ? ' (offline)' : '';
+      toast.success(`Room transferred successfully to ${data.data.new_room_number}${offlineIndicator}`);
       queryClient.invalidateQueries({ queryKey: ["bookings"] });
       queryClient.invalidateQueries({ queryKey: ["rooms"] });
+      queryClient.invalidateQueries({ queryKey: ["rooms-grid"] });
       queryClient.invalidateQueries({ queryKey: ["booking-folio", bookingId, tenantId] });
       setNewRoomId("");
       setReason("");
