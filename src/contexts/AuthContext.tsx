@@ -1,7 +1,6 @@
 import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
 import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
-import { sessionManager } from '@/lib/offline/sessionManager';
 
 interface AuthContextType {
   user: User | null;
@@ -109,28 +108,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setSession(session);
         setUser(session?.user ?? null);
         
-        // Initialize offline sessionManager for edge function calls
         if (session?.user) {
           setTimeout(() => {
             fetchUserRoleAndTenant(session.user.id);
-            
-            // Initialize sessionManager with current session for offline support
-            if (session.access_token && session.refresh_token) {
-              sessionManager.setSession(
-                '', // tenantId will be set in fetchUserRoleAndTenant
-                session.user.id,
-                session.access_token,
-                session.refresh_token,
-                [], // roles will be determined in fetchUserRoleAndTenant
-                session.expires_in || 3600
-              ).catch(err => console.error('[SessionManager] Init failed:', err));
-            }
           }, 0);
         } else {
           setTenantId(null);
           setRole(null);
           setLoading(false);
-          sessionManager.clearSession().catch(err => console.error('[SessionManager] Clear failed:', err));
         }
       }
     );
@@ -142,18 +127,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       
       if (session?.user) {
         fetchUserRoleAndTenant(session.user.id);
-        
-        // Initialize sessionManager for existing session
-        if (session.access_token && session.refresh_token) {
-          sessionManager.setSession(
-            '', // tenantId will be set in fetchUserRoleAndTenant
-            session.user.id,
-            session.access_token,
-            session.refresh_token,
-            [], // roles will be determined in fetchUserRoleAndTenant
-            session.expires_in || 3600
-          ).catch(err => console.error('[SessionManager] Init failed:', err));
-        }
       } else {
         setLoading(false);
       }
@@ -217,20 +190,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         if (staffData) {
           setDepartment(staffData.department);
           setPasswordResetRequired(staffData.password_reset_required || false);
-        }
-        
-        // Update sessionManager with tenant and role info for offline edge function support
-        const currentSession = await supabase.auth.getSession();
-        if (currentSession.data.session && data.tenant_id) {
-          await sessionManager.setSession(
-            data.tenant_id,
-            userId,
-            currentSession.data.session.access_token,
-            currentSession.data.session.refresh_token,
-            data.role ? [data.role] : [],
-            currentSession.data.session.expires_in || 3600
-          );
-          console.log('[SessionManager] Initialized for tenant:', data.tenant_id);
         }
       }
     } catch (error) {

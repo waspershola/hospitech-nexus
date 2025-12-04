@@ -2,13 +2,10 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { useAuth } from '@/contexts/AuthContext';
-import { offlineAwareEdgeFunction } from '@/lib/offline/offlineAwareClient';
 
 export function useCheckout() {
   const queryClient = useQueryClient();
-  const { user } = useAuth();
-
-  const { tenantId } = useAuth();
+  const { user, tenantId } = useAuth();
   
   return useMutation({
     mutationFn: async ({ 
@@ -18,16 +15,14 @@ export function useCheckout() {
       bookingId: string; 
       autoChargeToWallet?: boolean;
     }) => {
-      // Use offline-aware wrapper
-      const { data, error, queued } = await offlineAwareEdgeFunction('complete-checkout', {
-        bookingId,
-        staffId: user?.id,
-        autoChargeToWallet
+      // Direct Supabase call - no offline wrapper
+      const { data, error } = await supabase.functions.invoke('complete-checkout', {
+        body: {
+          bookingId,
+          staffId: user?.id,
+          autoChargeToWallet
+        }
       });
-
-      if (queued) {
-        return { success: true, queued: true, message: 'Checkout queued for sync' };
-      }
 
       if (error) throw error;
       if (!data?.success) throw new Error(data?.error || 'Checkout failed');
@@ -41,13 +36,7 @@ export function useCheckout() {
       queryClient.invalidateQueries({ queryKey: ['frontdesk-kpis'] });
       queryClient.invalidateQueries({ queryKey: ['booking-folio', variables.bookingId, tenantId] });
       
-      if (data.queued) {
-        toast.info('Checkout queued for sync when online', {
-          description: 'Changes will be synchronized automatically'
-        });
-      } else {
-        toast.success('Guest checked out successfully');
-      }
+      toast.success('Guest checked out successfully');
     },
     onError: (error: any) => {
       const errorMessage = error.message || 'Unknown error';
