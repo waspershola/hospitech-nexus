@@ -33,7 +33,7 @@ export interface FrontDeskKPIs {
  * Compute KPIs from cached IndexedDB data
  * OFFLINE-EXTREME-V1
  */
-async function computeKPIsFromCache(tenantId: string): Promise<Omit<FrontDeskKPIs, 'arrivals'>> {
+async function computeKPIsFromCache(tenantId: string): Promise<FrontDeskKPIs> {
   const todayISO = format(new Date(), 'yyyy-MM-dd');
   
   const [rooms, bookings] = await Promise.all([
@@ -44,6 +44,12 @@ async function computeKPIsFromCache(tenantId: string): Promise<Omit<FrontDeskKPI
   const available = rooms.filter(r => r.status === 'available').length;
   const occupied = rooms.filter(r => r.status === 'occupied').length;
   const outOfService = rooms.filter(r => r.status === 'maintenance').length;
+  
+  // Arrivals: reserved bookings with check_in today
+  const arrivals = bookings.filter(b => {
+    const checkInDate = b.check_in.split('T')[0];
+    return b.status === 'reserved' && checkInDate === todayISO;
+  }).length;
   
   // Departures: checked_in bookings with check_out today
   const departures = bookings.filter(b => {
@@ -69,6 +75,7 @@ async function computeKPIsFromCache(tenantId: string): Promise<Omit<FrontDeskKPI
   return {
     available,
     occupied,
+    arrivals,
     departures,
     inHouse,
     pendingPayments: 0,
@@ -120,6 +127,13 @@ export function useFrontDeskKPIs() {
           .select('status')
           .eq('tenant_id', tenantId);
 
+        const { data: arrivals } = await supabase
+          .from('bookings')
+          .select('id')
+          .eq('tenant_id', tenantId)
+          .eq('status', 'reserved')
+          .eq('check_in', todayISO);
+
         const { data: departures } = await supabase
           .from('bookings')
           .select('id')
@@ -163,6 +177,7 @@ export function useFrontDeskKPIs() {
         const kpis = {
           available,
           occupied,
+          arrivals: arrivals?.length || 0,
           departures: departures?.length || 0,
           inHouse: inHouse?.length || 0,
           pendingPayments: pendingPayments?.length || 0,
