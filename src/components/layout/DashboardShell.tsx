@@ -8,6 +8,7 @@ import { AudioPermissionPrompt } from '@/components/notifications/AudioPermissio
 import { useQRNotifications } from '@/hooks/useQRNotifications';
 import { OfflineStatusIndicator } from '@/components/offline/OfflineStatusIndicator';
 import { SyncStatusIndicator } from '@/components/offline/SyncStatusIndicator';
+import { OfflineBanner } from '@/components/offline/OfflineBanner';
 import { StaffAIAssistant } from '@/components/staff/StaffAIAssistant';
 import { SMSCreditsWarningBanner } from '@/components/alerts/SMSCreditsWarningBanner';
 import { Button } from '@/components/ui/button';
@@ -50,6 +51,9 @@ export default function DashboardShell() {
               <SyncStatusIndicator />
             </div>
           </header>
+          
+          {/* Offline Mode Banner (Electron only) */}
+          <OfflineBanner />
           
           {/* Global SMS Credits Warning Banner */}
           <SMSCreditsWarningBanner />
