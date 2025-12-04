@@ -1,6 +1,15 @@
+/**
+ * Folio Transactions Hook - Phase 9 Offline Support
+ * Attempts Electron offline path first, falls back to online Supabase
+ */
+
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
+import {
+  isElectronContext,
+  offlineGetFolioTransactions,
+} from "@/lib/offline/electronFolioBridge";
 
 export interface FolioTransaction {
   id: string;
@@ -14,6 +23,7 @@ export interface FolioTransaction {
   created_at: string;
   created_by: string | null;
   metadata: Record<string, any>;
+  offline?: boolean; // Phase 9: Flag for offline transactions
 }
 
 export function useFolioTransactions(folioId: string | null) {
@@ -26,6 +36,23 @@ export function useFolioTransactions(folioId: string | null) {
         return [];
       }
 
+      // Phase 9: Electron offline path first
+      if (isElectronContext()) {
+        console.log('[useFolioTransactions] Attempting offline fetch...');
+        const offlineResult = await offlineGetFolioTransactions(tenantId, folioId);
+        
+        if (offlineResult.data && offlineResult.data.length > 0) {
+          console.log('[useFolioTransactions] Using offline data:', offlineResult.data.length, 'transactions');
+          return offlineResult.data as FolioTransaction[];
+        }
+        
+        // If no offline data or error, fall through to online
+        if (offlineResult.source === 'electron-no-api') {
+          console.log('[useFolioTransactions] No offline API, falling back to online');
+        }
+      }
+
+      // Online path
       const { data, error } = await supabase
         .from('folio_transactions')
         .select('*')
