@@ -4,6 +4,8 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useQueryClient } from '@tanstack/react-query';
 import { updateRequestStatus as broadcastStatusUpdate } from '@/lib/qr/statusBroadcast';
 import { toast } from 'sonner';
+import { isElectronContext } from '@/lib/environment/isElectron';
+import { offlineUpdateRequestStatus, saveHousekeepingEvent } from '@/lib/offline/electronHousekeepingBridge';
 
 interface StaffRequest {
   id: string;
@@ -66,6 +68,38 @@ export function useStaffRequests() {
 
   const updateRequestStatus = async (requestId: string, status: string): Promise<boolean> => {
     try {
+      // PHASE-10: Try Electron offline path first
+      if (isElectronContext() && tenantId) {
+        console.log('[useStaffRequests] PHASE-10 Attempting offline status update:', { requestId, status });
+        
+        const offlineResult = await offlineUpdateRequestStatus(tenantId, requestId, status);
+        
+        if (offlineResult.source === 'offline' && offlineResult.data?.success) {
+          console.log('[useStaffRequests] PHASE-10 Offline status update succeeded');
+          
+          // Save event to journal
+          await saveHousekeepingEvent(tenantId, {
+            type: 'task_updated',
+            taskId: requestId,
+            timestamp: new Date().toISOString(),
+            payload: { status, action: 'status_updated' },
+          });
+
+          // Optimistically update local state
+          setRequests((prev) =>
+            prev.map((req) =>
+              req.id === requestId
+                ? { ...req, status, responded_at: req.responded_at || new Date().toISOString() }
+                : req
+            )
+          );
+
+          return true;
+        }
+        // Fall through to online path
+        console.log('[useStaffRequests] PHASE-10 Falling through to online path:', offlineResult.source);
+      }
+
       console.log('[useStaffRequests] PHASE-2A-V1: Using unified status broadcast');
       
       // Use unified status broadcast system (PHASE-2A)

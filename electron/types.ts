@@ -94,6 +94,57 @@ export interface FolioEvent {
   payload: any;
 }
 
+// Phase 10: Housekeeping Event for event journal
+export interface HousekeepingEvent {
+  type: 
+    | 'room_status_updated' 
+    | 'maintenance_ticket_created' 
+    | 'maintenance_ticket_updated'
+    | 'task_created'
+    | 'task_updated'
+    | 'task_completed'
+    | 'checklist_item_completed';
+  roomId?: string;
+  ticketId?: string;
+  taskId?: string;
+  staffId?: string;
+  timestamp: string;
+  payload: any;
+}
+
+// Phase 10: Offline Housekeeping API
+export interface OfflineHousekeepingAPI {
+  updateRoomStatus: (
+    tenantId: string,
+    roomId: string,
+    payload: { status: string; note?: string }
+  ) => Promise<{ success: boolean; room?: any; error?: string }>;
+
+  createMaintenanceTicket: (
+    tenantId: string,
+    payload: any
+  ) => Promise<{ success: boolean; ticketId?: string; error?: string }>;
+
+  updateMaintenanceTicket: (
+    tenantId: string,
+    ticketId: string,
+    payload: any
+  ) => Promise<{ success: boolean; error?: string }>;
+
+  createTask: (
+    tenantId: string,
+    payload: any
+  ) => Promise<{ success: boolean; taskId?: string; error?: string }>;
+
+  updateTask: (
+    tenantId: string,
+    taskId: string,
+    payload: any
+  ) => Promise<{ success: boolean; error?: string }>;
+
+  getSnapshot?: (tenantId: string) => Promise<any>;
+}
+
 // Phase 9: Offline Folio API
 export interface OfflineFolioAPI {
   createFolio: (tenantId: string, params: any) => Promise<{ success: boolean; folio?: any; error?: string }>;
@@ -121,7 +172,7 @@ export interface OfflineBalanceAPI {
   getFolioBalance: (tenantId: string, folioId: string) => Promise<{ charges: number; payments: number; balance: number } | null>;
 }
 
-// Phase 8 + 9: Combined Offline API
+// Phase 8 + 9 + 10: Combined Offline API
 export interface OfflineAPI {
   checkin: OfflineCheckinAPI;
   checkout: OfflineCheckoutAPI;
@@ -135,6 +186,8 @@ export interface OfflineAPI {
   transactions?: OfflineTransactionAPI;
   payments?: OfflinePaymentAPI;
   balance?: OfflineBalanceAPI;
+  // Phase 10: Housekeeping API (optional - may not be implemented yet)
+  housekeeping?: OfflineHousekeepingAPI;
 }
 
 export interface ElectronAPI {
