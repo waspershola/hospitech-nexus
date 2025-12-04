@@ -40,6 +40,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [qrToken, setQrToken] = useState<string | null>(null);
 
   // Checkout reminder scheduler - runs daily at 10 AM
+  // Non-blocking: errors are logged but don't disrupt auth
   useEffect(() => {
     if (!tenantId) return;
 
@@ -53,12 +54,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         });
 
         if (error) {
-          console.error(`Error sending ${hoursBefore}h reminders:`, error);
+          // Log but don't disrupt app - this is non-critical
+          console.warn(`[AuthContext] Checkout reminder ${hoursBefore}h failed (non-blocking):`, error.message);
         } else {
-          console.log(`Sent ${hoursBefore}h checkout reminders:`, data);
+          console.log(`[AuthContext] Sent ${hoursBefore}h checkout reminders:`, data);
         }
       } catch (err) {
-        console.error(`Failed to send ${hoursBefore}h reminders:`, err);
+        // Silent failure - don't crash auth or show toasts
+        console.warn(`[AuthContext] Checkout reminder ${hoursBefore}h exception (non-blocking):`, err);
       }
     };
 
@@ -93,7 +96,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       return () => clearInterval(interval2h);
     }, ms2h);
 
-    console.log(`Checkout reminders scheduled: 24h in ${Math.round(ms24h / 1000 / 60)} min, 2h in ${Math.round(ms2h / 1000 / 60)} min`);
+    console.log(`[AuthContext] Checkout reminders scheduled: 24h in ${Math.round(ms24h / 1000 / 60)} min, 2h in ${Math.round(ms2h / 1000 / 60)} min`);
 
     return () => {
       clearTimeout(timer24h);

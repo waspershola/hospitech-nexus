@@ -5,6 +5,10 @@
 
 import type { DBSchema } from 'idb';
 import type { QueuedRequest, ElectronAPI } from '../../../electron/types';
+import { isElectronContext } from '@/lib/environment/isElectron';
+
+// Re-export for backward compatibility
+export { isElectronContext };
 
 // ============= Session Management =============
 
@@ -236,11 +240,7 @@ export interface TenantDB extends DBSchema {
   };
 }
 
-// ============= Type Guards =============
-
-export function isElectronContext(): boolean {
-  return typeof window !== 'undefined' && !!window.electronAPI;
-}
+// ============= Electron API Access =============
 
 export function getElectronAPI(): ElectronAPI | null {
   return isElectronContext() ? window.electronAPI! : null;
