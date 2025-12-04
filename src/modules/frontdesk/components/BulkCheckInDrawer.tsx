@@ -3,6 +3,14 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
+import { isElectronContext } from '@/lib/environment/isElectron';
+import { 
+  offlineCheckIn, 
+  saveBookingEvent, 
+  updateBookingCache,
+  updateRoomCache 
+} from '@/lib/offline/electronCheckinCheckoutBridge';
+import { setOfflineRoomStatus } from '@/lib/offline/electronRoomGridBridge';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from '@/components/ui/sheet';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -69,7 +77,7 @@ export function BulkCheckInDrawer({ open, onClose }: BulkCheckInDrawerProps) {
     }
   }, [open, tenantId, refetch, queryClient]);
 
-  // Bulk check-in mutation - FOLIO-FIX-V2: Always use checkin-guest edge function
+  // Bulk check-in mutation - PHASE-8: Support offline check-in in Electron
   const bulkCheckInMutation = useMutation({
     mutationFn: async (bookingIds: string[]) => {
       if (!tenantId) throw new Error('Not authenticated');
@@ -79,11 +87,50 @@ export function BulkCheckInDrawer({ open, onClose }: BulkCheckInDrawerProps) {
           const booking = arrivals.find(b => b.id === bookingId);
           if (!booking) throw new Error('Booking not found');
 
-          // FOLIO-FIX-V2: Call checkin-guest to create folio atomically
-          const { data: folioResult, error: folioError } = await supabase.functions.invoke('checkin-guest', {
-            body: { 
-              booking_id: bookingId,
+          // PHASE-8: Try Electron offline check-in first
+          if (isElectronContext() && tenantId) {
+            console.log('[BulkCheckInDrawer] PHASE-8 Attempting offline check-in:', { bookingId });
+            
+            const offlineResult = await offlineCheckIn(tenantId, {
+              id: bookingId,
+              room_id: booking.room_id,
+              guest_id: booking.guest_id,
+              status: 'checked_in',
+              metadata: { checked_in_at: new Date().toISOString() }
+            });
+
+            if (offlineResult.source === 'offline' && offlineResult.data?.success) {
+              console.log('[BulkCheckInDrawer] PHASE-8 Offline check-in succeeded:', { bookingId });
+              
+              // Save check-in event to journal
+              await saveBookingEvent(tenantId, {
+                type: 'checkin_performed',
+                bookingId,
+                roomId: booking.room_id,
+                timestamp: new Date().toISOString(),
+                payload: { guestId: booking.guest_id, folioCreated: false, bulk: true }
+              });
+
+              // Update booking cache
+              await updateBookingCache(tenantId, {
+                id: bookingId,
+                status: 'checked_in',
+                room_id: booking.room_id
+              });
+
+              // Update room cache to occupied
+              await updateRoomCache(tenantId, { id: booking.room_id, status: 'occupied' });
+              await setOfflineRoomStatus(tenantId, booking.room_id, 'occupied', { reason: 'Bulk check-in (offline)' });
+
+              return { bookingId, success: true, offline: true };
             }
+            
+            console.log('[BulkCheckInDrawer] PHASE-8 Falling through to online:', offlineResult.source);
+          }
+
+          // ONLINE PATH: Call checkin-guest to create folio atomically
+          const { data: folioResult, error: folioError } = await supabase.functions.invoke('checkin-guest', {
+            body: { booking_id: bookingId }
           });
 
           if (folioError) throw new Error(`Check-in failed: ${folioError.message}`);

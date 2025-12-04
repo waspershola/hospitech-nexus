@@ -3,6 +3,14 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useFinancials } from '@/hooks/useFinancials';
+import { isElectronContext } from '@/lib/environment/isElectron';
+import { 
+  offlineCheckIn, 
+  saveBookingEvent, 
+  updateBookingCache,
+  updateRoomCache 
+} from '@/lib/offline/electronCheckinCheckoutBridge';
+import { setOfflineRoomStatus } from '@/lib/offline/electronRoomGridBridge';
 import { useOrganizations } from '@/hooks/useOrganizations';
 import { useOrgLimitValidation } from '@/hooks/useOrgLimitValidation';
 import { usePlatformFee } from '@/hooks/usePlatformFee';
@@ -201,62 +209,105 @@ export function AssignRoomDrawer({ open, onClose, roomId, roomNumber }: AssignRo
       queryClient.invalidateQueries({ queryKey: ['frontdesk-kpis'] });
       queryClient.invalidateQueries({ queryKey: ['bookings'] });
       
-      // FOLIO-FIX-V1-DIAG: If user selected "Check In Now", immediately call checkin-guest
+      // PHASE-8: If user selected "Check In Now", perform check-in with offline support
       if (actionType === 'checkin' && data.booking?.id) {
         try {
-          console.log('[AssignRoomDrawer] FOLIO-FIX-V1-DIAG Starting check-in', {
+          console.log('[AssignRoomDrawer] PHASE-8 Starting check-in', {
             actionType,
             bookingId: data.booking.id,
             bookingStatus: data.booking.status,
             roomId,
           });
-          
-          // Call checkin-guest edge function to create folio
-          const { data: folioResult, error: folioError } = await supabase.functions.invoke('checkin-guest', {
-            body: { 
-              booking_id: data.booking.id,
-            }
-          });
-          
-          if (folioError) {
-            console.error('[AssignRoomDrawer] FOLIO-FIX-V1-DIAG checkin-guest error', { 
-              bookingId: data.booking.id, 
-              folioError 
-            });
-            throw new Error(`Check-in failed: ${folioError.message}`);
-          }
 
-          if (!folioResult?.folio?.id) {
-            console.error('[AssignRoomDrawer] FOLIO-FIX-V1-DIAG checkin-guest returned no folio', { 
-              bookingId: data.booking.id, 
-              folioResult 
+          // PHASE-8: Try Electron offline check-in first
+          if (isElectronContext() && tenantId) {
+            console.log('[AssignRoomDrawer] PHASE-8 Attempting offline check-in');
+            
+            const offlineResult = await offlineCheckIn(tenantId, {
+              id: data.booking.id,
+              room_id: roomId,
+              guest_id: guestId,
+              status: 'checked_in',
+              metadata: { checked_in_at: new Date().toISOString() }
             });
-            throw new Error('Folio creation failed (no folio returned from checkin-guest)');
+
+            if (offlineResult.source === 'offline' && offlineResult.data?.success) {
+              console.log('[AssignRoomDrawer] PHASE-8 Offline check-in succeeded');
+              
+              // Save check-in event to journal
+              await saveBookingEvent(tenantId, {
+                type: 'checkin_performed',
+                bookingId: data.booking.id,
+                roomId,
+                timestamp: new Date().toISOString(),
+                payload: { guestId, folioCreated: false }
+              });
+
+              // Update booking cache
+              await updateBookingCache(tenantId, {
+                id: data.booking.id,
+                status: 'checked_in',
+                room_id: roomId
+              });
+
+              // Update room cache to occupied
+              await updateRoomCache(tenantId, { id: roomId, status: 'occupied' });
+              await setOfflineRoomStatus(tenantId, roomId, 'occupied', { reason: 'Guest checked in (offline)' });
+
+              toast.success(`Guest checked in to Room ${roomNumber} (offline mode)`);
+              // Continue to payment dialog if requested, don't return early
+            } else {
+              console.log('[AssignRoomDrawer] PHASE-8 Falling through to online path:', offlineResult.source);
+              // Fall through to online path below
+              throw new Error('FALLTHROUGH_TO_ONLINE');
+            }
+          } else {
+            // Not in Electron, use online path
+            throw new Error('FALLTHROUGH_TO_ONLINE');
           }
-          
-          // Update room status to occupied
-          await supabase
-            .from('rooms')
-            .update({ status: 'occupied' })
-            .eq('id', roomId)
-            .eq('tenant_id', tenantId);
-          
-          toast.success(`Guest checked in to Room ${roomNumber} - Folio created`);
-          console.log('[AssignRoomDrawer] FOLIO-FIX-V1-DIAG Check-in successful', {
-            bookingId: data.booking.id,
-            folioId: folioResult.folio.id,
-          });
-          
-        } catch (error: any) {
-          console.error('[AssignRoomDrawer] FOLIO-FIX-V1-DIAG Check-in failed', { 
-            bookingId: data.booking.id, 
-            error: error.message,
-            stack: error.stack 
-          });
-          toast.error('Booking created but check-in failed', {
-            description: `Error: ${error.message}. Please check-in manually from Room Actions.`,
-            duration: 8000
-          });
+        } catch (offlineError: any) {
+          // If fallthrough marker or offline failed, try online path
+          if (offlineError.message === 'FALLTHROUGH_TO_ONLINE' || !isElectronContext()) {
+            try {
+              // ONLINE PATH: Call checkin-guest edge function to create folio
+              const { data: folioResult, error: folioError } = await supabase.functions.invoke('checkin-guest', {
+                body: { booking_id: data.booking.id }
+              });
+              
+              if (folioError) {
+                console.error('[AssignRoomDrawer] PHASE-8 checkin-guest error', { bookingId: data.booking.id, folioError });
+                throw new Error(`Check-in failed: ${folioError.message}`);
+              }
+
+              if (!folioResult?.folio?.id) {
+                console.error('[AssignRoomDrawer] PHASE-8 checkin-guest returned no folio', { bookingId: data.booking.id, folioResult });
+                throw new Error('Folio creation failed (no folio returned from checkin-guest)');
+              }
+              
+              // Update room status to occupied
+              await supabase
+                .from('rooms')
+                .update({ status: 'occupied' })
+                .eq('id', roomId)
+                .eq('tenant_id', tenantId);
+              
+              toast.success(`Guest checked in to Room ${roomNumber} - Folio created`);
+              console.log('[AssignRoomDrawer] PHASE-8 Check-in successful', { bookingId: data.booking.id, folioId: folioResult.folio.id });
+            } catch (onlineError: any) {
+              console.error('[AssignRoomDrawer] PHASE-8 Check-in failed', { bookingId: data.booking.id, error: onlineError.message });
+              toast.error('Booking created but check-in failed', {
+                description: `Error: ${onlineError.message}. Please check-in manually from Room Actions.`,
+                duration: 8000
+              });
+            }
+          } else {
+            // Real offline error
+            console.error('[AssignRoomDrawer] PHASE-8 Offline check-in error', { error: offlineError.message });
+            toast.error('Booking created but check-in failed', {
+              description: `Error: ${offlineError.message}. Please check-in manually from Room Actions.`,
+              duration: 8000
+            });
+          }
         }
       } else {
         // Just a reservation
