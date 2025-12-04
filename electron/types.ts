@@ -81,9 +81,47 @@ export interface OfflineDataAPI {
   updateBooking: (tenantId: string, booking: any) => Promise<void>;
   saveBookingEvent: (tenantId: string, event: BookingEvent) => Promise<void>;
   getSnapshot?: (tenantId: string) => Promise<any>;
+  // Phase 9: Folio events
+  saveFolioEvent?: (tenantId: string, event: FolioEvent) => Promise<void>;
 }
 
-// Phase 8: Combined Offline API
+// Phase 9: Folio Event for event journal
+export interface FolioEvent {
+  type: 'folio_created' | 'charge_posted' | 'payment_recorded' | 'transaction_voided' | 'folio_closed';
+  folioId: string;
+  bookingId: string;
+  timestamp: string;
+  payload: any;
+}
+
+// Phase 9: Offline Folio API
+export interface OfflineFolioAPI {
+  createFolio: (tenantId: string, params: any) => Promise<{ success: boolean; folio?: any; error?: string }>;
+  getFolio: (tenantId: string, folioId: string) => Promise<any | null>;
+  getByBooking: (tenantId: string, bookingId: string) => Promise<any | null>;
+  closeFolio: (tenantId: string, folioId: string) => Promise<{ success: boolean; error?: string }>;
+  getSnapshot: (tenantId: string, folioId: string) => Promise<any>;
+}
+
+// Phase 9: Offline Transaction API
+export interface OfflineTransactionAPI {
+  postCharge: (tenantId: string, params: any) => Promise<{ success: boolean; transaction?: any; error?: string }>;
+  voidTransaction: (tenantId: string, transactionId: string, reason: string) => Promise<{ success: boolean; error?: string }>;
+  getByFolio: (tenantId: string, folioId: string) => Promise<any[]>;
+}
+
+// Phase 9: Offline Payment API
+export interface OfflinePaymentAPI {
+  recordPayment: (tenantId: string, params: any) => Promise<{ success: boolean; payment?: any; error?: string }>;
+  getByFolio: (tenantId: string, folioId: string) => Promise<any[]>;
+}
+
+// Phase 9: Offline Balance API
+export interface OfflineBalanceAPI {
+  getFolioBalance: (tenantId: string, folioId: string) => Promise<{ charges: number; payments: number; balance: number } | null>;
+}
+
+// Phase 8 + 9: Combined Offline API
 export interface OfflineAPI {
   checkin: OfflineCheckinAPI;
   checkout: OfflineCheckoutAPI;
@@ -92,6 +130,11 @@ export interface OfflineAPI {
     triggerSync: () => Promise<void>;
     getStatus: () => Promise<{ pending: number; syncing: boolean }>;
   };
+  // Phase 9: Folio APIs (optional - may not be implemented yet)
+  folios?: OfflineFolioAPI;
+  transactions?: OfflineTransactionAPI;
+  payments?: OfflinePaymentAPI;
+  balance?: OfflineBalanceAPI;
 }
 
 export interface ElectronAPI {
