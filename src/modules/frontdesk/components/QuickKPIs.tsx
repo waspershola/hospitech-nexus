@@ -116,7 +116,7 @@ export function QuickKPIs({ onFilterClick, activeFilter, onArrivalsClick }: Quic
   }
 
   return (
-    <div className="flex items-center gap-2 overflow-x-auto">
+    <div className="flex items-center gap-2 flex-wrap lg:flex-nowrap lg:overflow-x-auto">
       {cards.map((card) => (
         <Card 
           key={card.label}

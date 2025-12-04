@@ -98,7 +98,7 @@ export default function FrontDesk() {
   }, []);
 
   return (
-    <div className="h-full flex flex-col bg-background">
+    <div className="h-full flex flex-col bg-background overflow-hidden max-w-full">
       <HeaderBar 
         searchQuery={searchQuery} 
         onSearchChange={setSearchQuery}
@@ -133,7 +133,7 @@ export default function FrontDesk() {
             </div>
             
             <ScrollArea className="flex-1">
-              <div className="px-3 sm:px-4 lg:px-6 pt-2 pb-20 lg:pb-6">
+              <div className="px-3 sm:px-4 lg:px-6 pt-2 pb-20 lg:pb-6 max-w-full overflow-hidden">
                 <RoomStatusOverview 
                   statusFilter={statusFilter}
                   onRoomClick={async (roomId) => {
