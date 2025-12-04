@@ -111,7 +111,7 @@ export default function Marketplace() {
                     <CardContent className="space-y-4">
                       <div className="flex items-center justify-between">
                         <div>
-                          <div className="text-3xl font-bold">{addon.units_available.toLocaleString()}</div>
+                          <div className="text-3xl font-bold">{(addon.units_available ?? 0).toLocaleString()}</div>
                           <div className="text-sm text-muted-foreground">SMS Credits</div>
                         </div>
                         <div className="text-right">
@@ -119,7 +119,7 @@ export default function Marketplace() {
                             {formatCurrency(pricing?.amount || 0, pricing?.currency)}
                           </div>
                           <div className="text-xs text-muted-foreground">
-                            {((pricing?.amount || 0) / addon.units_available).toFixed(2)} per SMS
+                            {addon.units_available ? ((pricing?.amount || 0) / addon.units_available).toFixed(2) : '0.00'} per SMS
                           </div>
                         </div>
                       </div>
