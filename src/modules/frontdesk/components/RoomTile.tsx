@@ -134,7 +134,7 @@ export function RoomTile({ room, onClick, isSelectionMode, isSelected, onSelecti
       <Card 
         className={cn(
           'cursor-pointer transition-all duration-200 active:scale-95 border-l-4 rounded-lg relative touch-manipulation overflow-hidden',
-          'lg:hover:shadow-md flex flex-col bg-card min-h-[100px]',
+          'lg:hover:shadow-md flex flex-col bg-card min-h-[100px] min-w-0 w-full',
           accentColor,
           isSelected && 'ring-2 ring-primary ring-offset-2'
         )}
