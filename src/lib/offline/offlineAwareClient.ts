@@ -1,7 +1,6 @@
 /**
  * Offline-Aware Request Wrapper - Phase 3
  * Intercepts all mutations and routes through queue when offline
- * Uses unified window.__NETWORK_STATE__ from Electron bridge
  */
 
 import { supabase } from '@/integrations/supabase/client';
@@ -10,19 +9,16 @@ import { queueOfflineRequest } from './offlineQueue';
 import { isElectronContext, getElectronAPI } from './offlineTypes';
 
 /**
- * Check if we're currently offline using unified network state
+ * Check if we're currently offline
  */
 function isOffline(): boolean {
-  // Check hard offline first (Electron reports no network adapters)
-  if (window.__HARD_OFFLINE__ === true) return true;
-  
-  // Check global network state
-  const s = window.__NETWORK_STATE__;
-  if (s?.hardOffline === true) return true;
-  if (s?.online === false) return true;
-  
-  // Browser fallback
   if (!navigator.onLine) return true;
+  
+  // In Electron, check if main process reports offline
+  if (isElectronContext()) {
+    const onlineStatus = (window as any).__electronOnline;
+    return onlineStatus !== undefined ? !onlineStatus : false;
+  }
   
   return false;
 }
@@ -193,44 +189,29 @@ export async function offlineAwareMutation<T = any>(
 
 /**
  * Initialize online/offline status listener
- * Syncs browser events with global network state
  */
 export function initializeOfflineListener(): () => void {
-  // Browser online/offline events - sync with globals
+  // Browser online/offline events
   const handleOnline = () => {
     console.log('[OfflineAwareClient] Browser went online');
-    if (window.__NETWORK_STATE__) {
-      window.__NETWORK_STATE__.online = true;
-      window.__NETWORK_STATE__.hardOffline = false;
-      window.__NETWORK_STATE__.lastChange = new Date().toISOString();
-    }
-    window.__HARD_OFFLINE__ = false;
+    (window as any).__electronOnline = true;
   };
 
   const handleOffline = () => {
     console.log('[OfflineAwareClient] Browser went offline');
-    if (window.__NETWORK_STATE__) {
-      window.__NETWORK_STATE__.online = false;
-      window.__NETWORK_STATE__.lastChange = new Date().toISOString();
-    }
-    window.__HARD_OFFLINE__ = true;
+    (window as any).__electronOnline = false;
   };
 
   window.addEventListener('online', handleOnline);
   window.addEventListener('offline', handleOffline);
 
-  // Electron-specific listener (for legacy onOnlineStatusChange API)
+  // Electron-specific listener
   let unsubscribeElectron: (() => void) | undefined;
   if (isElectronContext()) {
     const electronAPI = getElectronAPI();
     unsubscribeElectron = electronAPI?.onOnlineStatusChange((isOnline) => {
       console.log(`[OfflineAwareClient] Electron reports ${isOnline ? 'online' : 'offline'}`);
-      if (window.__NETWORK_STATE__) {
-        window.__NETWORK_STATE__.online = isOnline;
-        window.__NETWORK_STATE__.hardOffline = !isOnline;
-        window.__NETWORK_STATE__.lastChange = new Date().toISOString();
-      }
-      window.__HARD_OFFLINE__ = !isOnline;
+      (window as any).__electronOnline = isOnline;
     });
   }
 

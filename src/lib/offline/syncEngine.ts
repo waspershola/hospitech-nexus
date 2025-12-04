@@ -1,7 +1,6 @@
 /**
- * Sync Engine - Phase 4 + Offline Phase 2
+ * Sync Engine - Phase 4
  * Handles automatic synchronization of offline queue with conflict resolution
- * Now respects unified offline state from Electron bridge
  */
 
 import { supabase } from '@/integrations/supabase/client';
@@ -9,18 +8,6 @@ import { tenantDBManager } from './tenantDBManager';
 import { sessionManager } from './sessionManager';
 import { isElectronContext } from './offlineTypes';
 import type { OfflineQueueItem } from './offlineTypes';
-
-/**
- * Check if currently offline using unified network state
- */
-function isNetworkOffline(): boolean {
-  if (window.__HARD_OFFLINE__ === true) return true;
-  const s = window.__NETWORK_STATE__;
-  if (s?.hardOffline === true) return true;
-  if (s?.online === false) return true;
-  if (typeof navigator !== 'undefined' && !navigator.onLine) return true;
-  return false;
-}
 
 export interface SyncProgress {
   total: number;
@@ -78,34 +65,11 @@ class SyncEngine {
   }
 
   /**
-   * Emit sync telemetry to Electron main process (Phase 4)
-   */
-  private emitSyncEvent(event: { type: 'start' | 'complete' | 'error'; queued?: number; synced?: number; failed?: number; error?: string }) {
-    if (isElectronContext() && window.electronAPI?.syncEvent) {
-      try {
-        window.electronAPI.syncEvent({
-          ...event,
-          timestamp: Date.now(),
-        });
-        console.log(`[SyncEngine-V4] Emitted sync event: ${event.type}`);
-      } catch (error) {
-        console.warn('[SyncEngine-V4] Failed to emit sync event:', error);
-      }
-    }
-  }
-
-  /**
    * Main sync function - processes offline queue
    */
   async syncAll(): Promise<SyncResult> {
     if (this.isSyncing) {
       console.log('[SyncEngine] Sync already in progress, skipping');
-      return { success: false, synced: 0, failed: 0, errors: [] };
-    }
-
-    // OFFLINE-PHASE2: Check unified offline state before syncing
-    if (isNetworkOffline()) {
-      console.log('[SyncEngine] Skipping sync: offline/hardOffline state detected');
       return { success: false, synced: 0, failed: 0, errors: [] };
     }
 
@@ -122,16 +86,13 @@ class SyncEngine {
     let synced = 0;
     let failed = 0;
 
-    // Emit sync start event (Phase 4)
-    this.emitSyncEvent({ type: 'start' });
-
     try {
       // Get all pending items from queue
       const db = await tenantDBManager.openTenantDB(tenantId);
       const pendingItems = await db.getAll('offline_queue');
       const total = pendingItems.length;
 
-      console.log(`[SyncEngine-V4] Starting sync: ${total} items in queue`);
+      console.log(`[SyncEngine] Starting sync: ${total} items in queue`);
 
       this.notifyProgress({
         total,
@@ -200,27 +161,11 @@ class SyncEngine {
         errors,
       });
 
-      console.log(`[SyncEngine-V4] Sync complete: ${synced} synced, ${failed} failed`);
-
-      // Emit sync complete event (Phase 4)
-      const remainingItems = await db.getAll('offline_queue');
-      this.emitSyncEvent({ 
-        type: 'complete', 
-        queued: remainingItems.length,
-        synced,
-        failed,
-      });
+      console.log(`[SyncEngine] Sync complete: ${synced} synced, ${failed} failed`);
 
       return { success: failed === 0, synced, failed, errors };
     } catch (error) {
-      console.error('[SyncEngine-V4] Fatal sync error:', error);
-      
-      // Emit sync error event (Phase 4)
-      this.emitSyncEvent({ 
-        type: 'error', 
-        error: error instanceof Error ? error.message : 'Unknown error',
-      });
-      
+      console.error('[SyncEngine] Fatal sync error:', error);
       return { success: false, synced, failed, errors };
     } finally {
       this.isSyncing = false;
@@ -381,11 +326,6 @@ export const syncEngine = new SyncEngine();
  */
 export function initializeAutoSync(): () => void {
   const handleOnline = () => {
-    // OFFLINE-PHASE2: Check unified offline state before auto-sync
-    if (isNetworkOffline()) {
-      console.log('[SyncEngine] Skipping auto-sync: still in offline/hardOffline state');
-      return;
-    }
     console.log('[SyncEngine] Connection restored, triggering auto-sync');
     setTimeout(() => syncEngine.syncAll(), 1000); // Delay to ensure connection is stable
   };
@@ -396,12 +336,9 @@ export function initializeAutoSync(): () => void {
   let unsubscribeElectron: (() => void) | undefined;
   if (isElectronContext()) {
     unsubscribeElectron = window.electronAPI?.onOnlineStatusChange((isOnline) => {
-      // OFFLINE-PHASE2: Double-check unified state, not just isOnline flag
-      if (isOnline && !isNetworkOffline()) {
+      if (isOnline) {
         console.log('[SyncEngine] Electron reports online, triggering auto-sync');
         setTimeout(() => syncEngine.syncAll(), 1000);
-      } else if (isOnline) {
-        console.log('[SyncEngine] Electron reports online but hardOffline is active, skipping auto-sync');
       }
     });
   }

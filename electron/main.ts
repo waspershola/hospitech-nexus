@@ -14,7 +14,7 @@ import { autoUpdater } from 'electron-updater';
 import AutoLaunch from 'auto-launch';
 import * as path from 'path';
 import * as fs from 'fs';
-import type { QueuedRequest, QueueStatus, LogEvent, PrintOptions, UpdateCheckResult, UpdateInfo, SyncEvent, SyncInfo, DiagnosticsState } from './types';
+import type { QueuedRequest, QueueStatus, LogEvent, PrintOptions, UpdateCheckResult, UpdateInfo } from './types';
 
 // ============= Configuration =============
 
@@ -130,94 +130,17 @@ function createMainWindow() {
 // ============= Network Status Monitoring =============
 
 let isOnline = true;
-let lastNetworkChangeAt: number | null = null;
-
-// ============= Sync Telemetry State (Phase 4) =============
-
-let syncInfo: SyncInfo = {
-  status: 'idle',
-  queued: 0,
-  synced: 0,
-  failed: 0,
-  lastSyncAt: null,
-};
-
-// ============= Log Buffer for Diagnostics (Phase 4) =============
-
-const logBuffer: LogEvent[] = [];
-const MAX_LOG_BUFFER = 100;
-
-function addToLogBuffer(event: LogEvent) {
-  logBuffer.push(event);
-  if (logBuffer.length > MAX_LOG_BUFFER) {
-    logBuffer.shift();
-  }
-  
-  // Broadcast to diagnostics window if open
-  if (diagnosticsWindow && !diagnosticsWindow.isDestroyed()) {
-    try {
-      diagnosticsWindow.webContents.send('log:update', event);
-    } catch (error) {
-      // Diagnostics window may have been closed, ignore error
-    }
-  }
-}
-
-// ============= Diagnostics Window (Phase 4) =============
-
-let diagnosticsWindow: BrowserWindow | null = null;
-
-function createDiagnosticsWindow() {
-  if (diagnosticsWindow && !diagnosticsWindow.isDestroyed()) {
-    diagnosticsWindow.focus();
-    return;
-  }
-
-  logger.info('[PHASE4] Creating diagnostics window');
-
-  diagnosticsWindow = new BrowserWindow({
-    width: 600,
-    height: 700,
-    title: 'Offline Diagnostics',
-    webPreferences: {
-      preload: path.join(__dirname, 'preload.js'),
-      nodeIntegration: false,
-      contextIsolation: true,
-      sandbox: true,
-    },
-    autoHideMenuBar: true,
-    backgroundColor: '#1a1a2e',
-  });
-
-  // Load diagnostics.html
-  if (isDevelopment) {
-    // In dev, serve from public folder via Vite
-    diagnosticsWindow.loadURL(`${VITE_DEV_SERVER_URL}/diagnostics.html`);
-  } else {
-    diagnosticsWindow.loadFile(path.join(__dirname, '../dist/diagnostics.html'));
-  }
-
-  diagnosticsWindow.on('closed', () => {
-    diagnosticsWindow = null;
-  });
-}
 
 function setupNetworkMonitoring() {
   const checkOnlineStatus = () => {
     const currentStatus = net.isOnline();
     if (currentStatus !== isOnline) {
       isOnline = currentStatus;
-      lastNetworkChangeAt = Date.now();
-      logger.info(`[PHASE4] Network status changed: ${isOnline ? 'ONLINE' : 'OFFLINE'}`);
+      logger.info(`Network status changed: ${isOnline ? 'ONLINE' : 'OFFLINE'}`);
       
-      // Notify main renderer
+      // Notify renderer
       if (mainWindow && !mainWindow.isDestroyed()) {
         mainWindow.webContents.send('network:status', isOnline);
-      }
-      
-      // Notify diagnostics window
-      if (diagnosticsWindow && !diagnosticsWindow.isDestroyed()) {
-        diagnosticsWindow.webContents.send('network:status', isOnline);
       }
     }
   };
@@ -225,7 +148,6 @@ function setupNetworkMonitoring() {
   // Check every 5 seconds
   setInterval(checkOnlineStatus, 5000);
   checkOnlineStatus(); // Initial check
-  lastNetworkChangeAt = Date.now(); // Initialize
 }
 
 // ============= IPC Handlers =============
@@ -250,66 +172,6 @@ ipcMain.handle('queue:status', async (): Promise<QueueStatus> => {
 // Logging
 ipcMain.on('log:event', (_event, logEvent: LogEvent) => {
   logger.log(logEvent.level, logEvent.message, logEvent.context);
-  
-  // Add to buffer for diagnostics (Phase 4)
-  addToLogBuffer({
-    ...logEvent,
-    timestamp: logEvent.timestamp || Date.now(),
-  });
-});
-
-// ============= Sync Telemetry IPC Handlers (Phase 4) =============
-
-ipcMain.on('sync:event', (_event, event: SyncEvent) => {
-  logger.info(`[PHASE4] Sync event received: ${event.type}`, event);
-  
-  // Update sync info state
-  if (event.type === 'start') {
-    syncInfo = {
-      ...syncInfo,
-      status: 'syncing',
-    };
-  } else if (event.type === 'complete') {
-    syncInfo = {
-      status: 'idle',
-      queued: event.queued ?? 0,
-      synced: event.synced ?? syncInfo.synced,
-      failed: event.failed ?? syncInfo.failed,
-      lastSyncAt: Date.now(),
-    };
-  } else if (event.type === 'error') {
-    syncInfo = {
-      ...syncInfo,
-      status: 'error',
-      error: event.error,
-    };
-  }
-  
-  // Broadcast to main renderer
-  if (mainWindow && !mainWindow.isDestroyed()) {
-    mainWindow.webContents.send('sync:update', syncInfo);
-  }
-  
-  // Broadcast to diagnostics window
-  if (diagnosticsWindow && !diagnosticsWindow.isDestroyed()) {
-    diagnosticsWindow.webContents.send('sync:update', syncInfo);
-  }
-});
-
-// Diagnostics IPC handlers (Phase 4)
-ipcMain.handle('diagnostics:open', async () => {
-  createDiagnosticsWindow();
-});
-
-ipcMain.handle('diagnostics:state', async (): Promise<DiagnosticsState> => {
-  return {
-    network: {
-      isOnline,
-      lastChangeAt: lastNetworkChangeAt,
-    },
-    sync: syncInfo,
-    logs: logBuffer,
-  };
 });
 
 // Auto-sync scheduler - runs every 5 minutes when online

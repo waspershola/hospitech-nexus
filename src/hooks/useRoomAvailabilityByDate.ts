@@ -3,8 +3,6 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { getRoomStatusForDate } from '@/lib/roomAvailability';
 import { format } from 'date-fns';
-import { useNetworkStore } from '@/state/networkStore';
-import { isNetworkOffline, getCachedRooms, getCachedBookings, updateCache } from '@/lib/offline/offlineDataService';
 
 interface RoomAvailabilityData {
   roomId: string;
@@ -17,69 +15,16 @@ interface RoomAvailabilityData {
   guestName?: string;
   checkIn?: string;
   checkOut?: string;
-  _offline?: boolean;
 }
 
 export function useRoomAvailabilityByDate(startDate: Date | null, endDate: Date | null) {
   const { tenantId } = useAuth();
-  const { hardOffline } = useNetworkStore();
 
   return useQuery({
     queryKey: ['room-availability-by-date', tenantId, startDate?.toISOString(), endDate?.toISOString()],
     queryFn: async () => {
       if (!tenantId || !startDate || !endDate) {
         return [];
-      }
-
-      const startDateStr = format(startDate, 'yyyy-MM-dd');
-      const endDateStr = format(endDate, 'yyyy-MM-dd');
-
-      // OFFLINE-BYDATE-V1: Load from IndexedDB when offline
-      if (isNetworkOffline()) {
-        console.log('[useRoomAvailabilityByDate] OFFLINE-V1: Loading from cache');
-        
-        const [cachedRooms, cachedBookings] = await Promise.all([
-          getCachedRooms(tenantId),
-          getCachedBookings(tenantId, startDateStr, endDateStr),
-        ]);
-
-        // Compute availability client-side
-        const roomAvailability: RoomAvailabilityData[] = cachedRooms.map((room) => {
-          const roomBookings = cachedBookings.filter(b => b.room_id === room.id);
-          
-          // Find booking overlapping with start date
-          const booking = roomBookings.find(b => {
-            const checkInDate = b.check_in.split('T')[0];
-            const checkOutDate = b.check_out.split('T')[0];
-            return checkInDate <= startDateStr && checkOutDate > startDateStr;
-          });
-
-          let status: RoomAvailabilityData['status'] = 'available';
-          if (booking) {
-            if (booking.status === 'checked_in') {
-              status = 'occupied';
-            } else if (booking.status === 'reserved') {
-              const checkInDate = booking.check_in.split('T')[0];
-              status = checkInDate === startDateStr ? 'checking_in' : 'reserved';
-            }
-          }
-
-          return {
-            roomId: room.id,
-            roomNumber: room.number,
-            roomType: room.category?.name || 'Standard',
-            categoryName: room.category?.name,
-            floor: room.floor ? parseInt(room.floor) : undefined,
-            status,
-            bookingId: booking?.id,
-            guestName: undefined, // Not available in cached booking
-            checkIn: booking?.check_in,
-            checkOut: booking?.check_out,
-            _offline: true,
-          };
-        });
-
-        return roomAvailability;
       }
 
       // Fetch all rooms
@@ -115,17 +60,6 @@ export function useRoomAvailabilityByDate(startDate: Date | null, endDate: Date 
         .gt('check_out', startDate.toISOString());
 
       if (bookingsError) throw bookingsError;
-
-      // Cache rooms in background
-      if (rooms?.length) {
-        updateCache(tenantId, 'rooms', rooms.map(r => ({
-          id: r.id,
-          number: r.number,
-          floor: r.floor?.toString() || null,
-          status: r.status as any,
-          category: r.category,
-        }))).catch(() => {});
-      }
 
       // Fetch hotel check-out time configuration
       const { data: checkOutConfig } = await supabase
@@ -192,7 +126,5 @@ export function useRoomAvailabilityByDate(startDate: Date | null, endDate: Date 
       return roomAvailability;
     },
     enabled: !!tenantId && !!startDate && !!endDate,
-    retry: hardOffline ? false : 2,
-    refetchOnWindowFocus: !hardOffline,
   });
 }
