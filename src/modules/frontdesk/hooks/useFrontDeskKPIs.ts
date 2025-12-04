@@ -4,7 +4,14 @@ import { useAuth } from '@/contexts/AuthContext';
 import { format, addDays } from 'date-fns';
 import { useTodayArrivals } from '@/hooks/useTodayArrivals';
 import { useNetworkStore } from '@/state/networkStore';
-import { isNetworkOffline, getCachedRooms, getCachedBookings } from '@/lib/offline/offlineDataService';
+import { 
+  isNetworkOffline, 
+  getCachedRooms, 
+  getCachedBookings,
+  getCachedFrontDeskKPIs,
+  cacheFrontDeskKPIs,
+  formatRelativeSyncTime 
+} from '@/lib/offline/offlineDataService';
 import { isElectronContext } from '@/lib/offline/offlineTypes';
 
 export interface FrontDeskKPIs {
@@ -18,10 +25,13 @@ export interface FrontDeskKPIs {
   overstays: number;
   dieselLevel: number;
   _offline?: boolean;
+  _lastSyncedAt?: number;
+  _lastSyncedDisplay?: string;
 }
 
 /**
  * Compute KPIs from cached IndexedDB data
+ * OFFLINE-EXTREME-V1
  */
 async function computeKPIsFromCache(tenantId: string): Promise<Omit<FrontDeskKPIs, 'arrivals'>> {
   const todayISO = format(new Date(), 'yyyy-MM-dd');
@@ -53,16 +63,21 @@ async function computeKPIsFromCache(tenantId: string): Promise<Omit<FrontDeskKPI
     return b.status === 'checked_in' && checkOutDate < todayISO;
   }).length;
   
+  // Get last sync time from first room's cache metadata
+  const lastSyncedAt = rooms[0]?.last_synced_at || null;
+  
   return {
     available,
     occupied,
     departures,
     inHouse,
-    pendingPayments: 0, // Can't compute offline without payments cache
+    pendingPayments: 0,
     outOfService,
     overstays,
     dieselLevel: 75,
     _offline: true,
+    _lastSyncedAt: lastSyncedAt || undefined,
+    _lastSyncedDisplay: formatRelativeSyncTime(lastSyncedAt),
   };
 }
 
@@ -70,87 +85,68 @@ export function useFrontDeskKPIs() {
   const { tenantId } = useAuth();
   const { hardOffline } = useNetworkStore();
   
-  // ARRIVALS-FIX-V2: Use shared hook for consistent arrivals data
   const { data: todayArrivals = [], isLoading: arrivalsLoading } = useTodayArrivals();
 
   const query = useQuery({
     queryKey: ['frontdesk-kpis', tenantId],
     queryFn: async () => {
-      if (!tenantId) {
-        console.log('❌ useFrontDeskKPIs: No tenantId available');
-        return null;
-      }
+      if (!tenantId) return null;
 
-      // ELECTRON-ONLY-V1: Compute from cache when offline (only in Electron)
+      const todayISO = format(new Date(), 'yyyy-MM-dd');
+
+      // OFFLINE-EXTREME-V1: Check for cached KPIs first when offline
       if (isElectronContext() && isNetworkOffline()) {
-        console.log('[useFrontDeskKPIs] OFFLINE-V1: Computing from cache (Electron)');
+        console.log('[useFrontDeskKPIs] OFFLINE-EXTREME-V1: Loading from cache');
+        
+        // Try cached KPI snapshot first
+        const cachedKPI = await getCachedFrontDeskKPIs(tenantId, todayISO);
+        if (cachedKPI) {
+          return {
+            ...cachedKPI,
+            _offline: true,
+            _lastSyncedAt: cachedKPI.last_synced_at,
+            _lastSyncedDisplay: formatRelativeSyncTime(cachedKPI.last_synced_at),
+          };
+        }
+        
+        // Fallback to computing from cached data
         return computeKPIsFromCache(tenantId);
       }
 
-      console.log('🔄 useFrontDeskKPIs: Fetching KPIs for tenant:', tenantId);
-
-      // TIMEZONE-FIX-V1: Use date-fns format for local timezone
-      const todayISO = format(new Date(), 'yyyy-MM-dd');
-      const tomorrowISO = format(addDays(new Date(), 1), 'yyyy-MM-dd');
-
+      // Online path
       try {
-        // Get room counts by status
-        const { data: rooms, error: roomsError } = await supabase
+        const { data: rooms } = await supabase
           .from('rooms')
           .select('status')
           .eq('tenant_id', tenantId);
 
-        if (roomsError) {
-          console.error('❌ Error fetching rooms:', roomsError);
-          throw roomsError;
-        }
-
-        console.log('✅ Rooms fetched:', rooms?.length || 0);
-
-        // Get today's departures (bookings checking out today)
-        const { data: departures, error: departuresError } = await supabase
+        const { data: departures } = await supabase
           .from('bookings')
           .select('id')
           .eq('tenant_id', tenantId)
           .eq('status', 'checked_in')
           .eq('check_out', todayISO);
 
-        if (departuresError) console.error('❌ Error fetching departures:', departuresError);
-        console.log('✅ Departures today:', departures?.length || 0);
-
-        // Get current guests (checked in and not overstaying)
-        const { data: inHouse, error: inHouseError } = await supabase
+        const { data: inHouse } = await supabase
           .from('bookings')
           .select('id')
           .eq('tenant_id', tenantId)
           .eq('status', 'checked_in')
           .gte('check_out', todayISO);
 
-        if (inHouseError) console.error('❌ Error fetching in-house:', inHouseError);
-        console.log('✅ In-house guests:', inHouse?.length || 0);
-
-        // Get pending payments
-        const { data: pendingPayments, error: paymentsError } = await supabase
+        const { data: pendingPayments } = await supabase
           .from('payments')
           .select('id')
           .eq('tenant_id', tenantId)
           .eq('status', 'pending');
 
-        if (paymentsError) console.error('❌ Error fetching pending payments:', paymentsError);
-        console.log('✅ Pending payments:', pendingPayments?.length || 0);
-
-        // Get overstays (checked-in bookings past check-out date)
-        const { data: overstays, error: overstaysError } = await supabase
+        const { data: overstays } = await supabase
           .from('bookings')
           .select('id, room_id')
           .eq('tenant_id', tenantId)
           .eq('status', 'checked_in')
           .lt('check_out', todayISO);
 
-        if (overstaysError) console.error('❌ Error fetching overstays:', overstaysError);
-        console.log('✅ Overstays:', overstays?.length || 0);
-
-        // Mark rooms as overstay
         if (overstays && overstays.length > 0) {
           const overstayRoomIds = overstays.map(b => b.room_id);
           await supabase
@@ -164,7 +160,6 @@ export function useFrontDeskKPIs() {
         const occupied = rooms?.filter(r => r.status === 'occupied' || r.status === 'overstay').length || 0;
         const outOfService = rooms?.filter(r => r.status === 'maintenance').length || 0;
 
-        // ARRIVALS-FIX-V2: Return KPIs without arrivals (will be merged outside)
         const kpis = {
           available,
           occupied,
@@ -176,25 +171,27 @@ export function useFrontDeskKPIs() {
           dieselLevel: 75,
         };
 
-        console.log('📊 KPIs calculated (without arrivals):', kpis);
+        // OFFLINE-EXTREME-V1: Cache KPIs after successful fetch
+        if (isElectronContext()) {
+          cacheFrontDeskKPIs(tenantId, todayISO, kpis).catch(() => {});
+        }
+
         return kpis;
       } catch (error) {
-        console.error('❌ Fatal error in useFrontDeskKPIs:', error);
+        console.error('[useFrontDeskKPIs] Error:', error);
         throw error;
       }
     },
     enabled: !!tenantId,
     refetchInterval: hardOffline ? false : 30000,
     retry: hardOffline ? false : 2,
+    staleTime: 30000, // OFFLINE-EXTREME-V1: 30s stale time for better UX
   });
 
-  // ARRIVALS-FIX-V2: Merge arrivals count OUTSIDE queryFn to avoid stale closure
   const kpisWithArrivals = query.data ? {
     ...query.data,
     arrivals: todayArrivals.length,
   } as FrontDeskKPIs : null;
-
-  console.log('[KPI-ARRIVALS-V2] Fresh arrivals count:', todayArrivals.length);
 
   return {
     kpis: kpisWithArrivals,

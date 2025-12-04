@@ -1,6 +1,7 @@
 /**
  * Offline Folio Manager - Phase 5
  * Handles local folio operations when offline with balance calculations
+ * OFFLINE-EXTREME-V1: Updated for schema v2
  */
 
 import { tenantDBManager } from './tenantDBManager';
@@ -53,6 +54,7 @@ class OfflineFolioManager {
 
     const folioId = crypto.randomUUID();
     const now = new Date().toISOString();
+    const nowMs = Date.now();
 
     const folio: CachedFolio = {
       id: folioId,
@@ -67,7 +69,10 @@ class OfflineFolioManager {
       total_payments: 0,
       balance: 0,
       created_at: now,
-      cached_at: Date.now(),
+      cached_at: nowMs,
+      last_synced_at: nowMs,
+      schema_version: 2,
+      sync_status: 'fresh',
     };
 
     // Store in IndexedDB
@@ -100,6 +105,7 @@ class OfflineFolioManager {
 
     const transactionId = crypto.randomUUID();
     const now = new Date().toISOString();
+    const nowMs = Date.now();
 
     const transaction: CachedFolioTransaction = {
       id: transactionId,
@@ -108,13 +114,16 @@ class OfflineFolioManager {
       transaction_type: 'charge',
       amount: params.amount,
       description: params.description,
-      department: params.department,
-      reference_type: params.reference_type,
-      reference_id: params.reference_id,
+      department: params.department || null,
+      reference_type: params.reference_type || null,
+      reference_id: params.reference_id || null,
       created_by: userId,
       created_at: now,
       metadata: params.metadata,
-      cached_at: Date.now(),
+      cached_at: nowMs,
+      last_synced_at: nowMs,
+      schema_version: 2,
+      sync_status: 'fresh',
     };
 
     // Store transaction in IndexedDB
@@ -159,6 +168,7 @@ class OfflineFolioManager {
 
     const transactionId = crypto.randomUUID();
     const now = new Date().toISOString();
+    const nowMs = Date.now();
 
     const transaction: CachedFolioTransaction = {
       id: transactionId,
@@ -173,7 +183,10 @@ class OfflineFolioManager {
       created_by: userId,
       created_at: now,
       metadata: { payment_id: params.payment_id },
-      cached_at: Date.now(),
+      cached_at: nowMs,
+      last_synced_at: nowMs,
+      schema_version: 2,
+      sync_status: 'fresh',
     };
 
     // Store transaction in IndexedDB
