@@ -8,6 +8,8 @@ import { getRoomStatusNow } from '@/lib/roomAvailability';
 import { useOperationsHours } from '@/hooks/useOperationsHours';
 import { format } from 'date-fns';
 import { calculateStayLifecycleState } from '@/lib/stayLifecycle';
+import { isElectronContext } from '@/lib/environment/isElectron';
+import { getOfflineRoomGridSnapshot, bulkUpdateOfflineRooms } from '@/lib/offline/electronRoomGridBridge';
 
 interface RoomGridProps {
   searchQuery?: string;
@@ -29,6 +31,22 @@ export function RoomGrid({ searchQuery, statusFilter, categoryFilter, floorFilte
     queryKey: ['rooms-grid', tenantId, searchQuery, statusFilter, categoryFilter, floorFilter, organizationFilter],
     queryFn: async () => {
       if (!tenantId) return [];
+      
+      // PHASE-7A: Try Electron offline cache first (graceful fallback)
+      if (isElectronContext()) {
+        const offlineResult = await getOfflineRoomGridSnapshot(tenantId, {
+          statusFilter,
+          categoryFilter,
+          floorFilter,
+          searchQuery
+        });
+        
+        if (offlineResult.source === 'offline' && offlineResult.data?.rooms?.length) {
+          console.log('[RoomGrid] Using offline cache:', offlineResult.data.rooms.length, 'rooms');
+          return offlineResult.data.rooms;
+        }
+        // Fall through to online path if offline not available
+      }
       
       let query = supabase
         .from('rooms')
@@ -234,6 +252,11 @@ export function RoomGrid({ searchQuery, statusFilter, categoryFilter, floorFilte
         );
         
         filteredData = roomsWithBalance.filter(r => r !== null);
+      }
+      
+      // PHASE-7A: Cache rooms in Electron offline store after successful fetch
+      if (isElectronContext() && filteredData.length > 0) {
+        bulkUpdateOfflineRooms(tenantId, filteredData);
       }
       
       return filteredData;
