@@ -211,6 +211,90 @@ serve(async (req) => {
 
     console.log('[CREATE-BOOKING-V3.1-UUID-CAST] Booking created:', newBooking.id);
 
+    // ORG-PAYMENT-FIX-V1: Auto-create payment and wallet deduction for organization bookings
+    if (organization_id && newBooking) {
+      try {
+        console.log('[ORG-PAYMENT-FIX-V1] Creating organization payment for booking:', newBooking.id);
+        
+        // Get organization wallet
+        const { data: org } = await supabase
+          .from('organizations')
+          .select('wallet_id, name')
+          .eq('id', organization_id)
+          .single();
+        
+        if (org?.wallet_id) {
+          // Get room number for description
+          const { data: room } = await supabase
+            .from('rooms')
+            .select('number')
+            .eq('id', room_id)
+            .single();
+          
+          // Create payment record
+          const { data: payment, error: paymentError } = await supabase
+            .from('payments')
+            .insert({
+              tenant_id,
+              booking_id: newBooking.id,
+              guest_id,
+              organization_id,
+              wallet_id: org.wallet_id,
+              amount: total_amount,
+              expected_amount: total_amount,
+              payment_type: 'full',
+              method: 'organization_wallet',
+              status: 'completed',
+              department: 'front_desk',
+              transaction_ref: `ORG-${Date.now()}-${newBooking.id.substring(0, 8)}`,
+              metadata: {
+                booking_id: newBooking.id,
+                organization_name: org.name,
+                auto_created: true,
+                version: 'ORG-PAYMENT-FIX-V1'
+              }
+            })
+            .select()
+            .single();
+          
+          if (paymentError) {
+            console.error('[ORG-PAYMENT-FIX-V1] Payment creation failed:', paymentError);
+          } else {
+            console.log('[ORG-PAYMENT-FIX-V1] Payment created:', payment.id);
+            
+            // Create wallet transaction to debit organization
+            const { error: walletError } = await supabase
+              .from('wallet_transactions')
+              .insert({
+                tenant_id,
+                wallet_id: org.wallet_id,
+                payment_id: payment.id,
+                amount: total_amount,
+                type: 'debit',
+                description: `Booking charge - Room ${room?.number || 'N/A'} - ${newBooking.booking_reference}`,
+                department: 'front_desk',
+                metadata: {
+                  booking_id: newBooking.id,
+                  organization_name: org.name,
+                  room_number: room?.number,
+                  version: 'ORG-PAYMENT-FIX-V1'
+                }
+              });
+            
+            if (walletError) {
+              console.error('[ORG-PAYMENT-FIX-V1] Wallet transaction failed:', walletError);
+            } else {
+              console.log('[ORG-PAYMENT-FIX-V1] Organization wallet debited successfully:', total_amount);
+            }
+          }
+        } else {
+          console.warn('[ORG-PAYMENT-FIX-V1] Organization has no wallet:', organization_id);
+        }
+      } catch (orgPaymentError) {
+        console.error('[ORG-PAYMENT-FIX-V1] Organization payment error (non-blocking):', orgPaymentError);
+      }
+    }
+
     let platformFeeResult = { applied: false, fee_amount: 0, base_amount: total_amount };
     try {
       platformFeeResult = await applyPlatformFee(supabase, tenant_id, newBooking.id, total_amount);
