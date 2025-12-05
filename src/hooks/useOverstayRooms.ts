@@ -1,6 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
+import { isOfflineMode } from '@/lib/offline/requestInterceptor';
 
 export interface OverstayRoom {
   id: string;
@@ -17,6 +18,12 @@ export function useOverstayRooms() {
     queryKey: ['overstay-rooms', tenantId],
     queryFn: async () => {
       if (!tenantId) return [];
+
+      // Phase 14B: Return empty when offline in Electron
+      if (isOfflineMode()) {
+        console.log('[useOverstayRooms] Offline: Returning empty array');
+        return [];
+      }
 
       // Get checkout time configuration
       const { data: configData } = await supabase

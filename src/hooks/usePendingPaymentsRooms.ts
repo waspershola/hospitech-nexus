@@ -1,6 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
+import { isOfflineMode } from '@/lib/offline/requestInterceptor';
 
 export function usePendingPaymentsRooms() {
   const { tenantId } = useAuth();
@@ -9,6 +10,12 @@ export function usePendingPaymentsRooms() {
     queryKey: ['pending-payments-rooms', tenantId],
     queryFn: async () => {
       if (!tenantId) return { count: 0, rooms: [] };
+
+      // Phase 14B: Return empty when offline in Electron
+      if (isOfflineMode()) {
+        console.log('[usePendingPaymentsRooms] Offline: Returning fallback');
+        return { count: 0, rooms: [] };
+      }
 
       // Fetch all bookings with balance calculation
       const { data: bookings, error: bookingsError } = await supabase

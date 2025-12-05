@@ -43,6 +43,12 @@ export function useOfflineSync() {
     if (!inElectron) return;
     
     const initModules = async () => {
+      // Phase 14B: Don't attempt dynamic imports when offline
+      if (!navigator.onLine) {
+        console.log('[useOfflineSync] Offline: Skipping module imports - network unavailable');
+        return;
+      }
+
       try {
         const syncEngineModule = await import('@/lib/offline/syncEngine');
         const sessionManagerModule = await import('@/lib/offline/sessionManager');

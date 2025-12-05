@@ -103,6 +103,9 @@ export interface OfflineDataAPI {
   getSessionState?: (userId: string) => Promise<OfflineSessionState | null>;
   saveSessionState?: (userId: string, session: OfflineSessionState) => Promise<void>;
   shouldBlockRequest?: (url: string) => Promise<boolean>;
+  // Phase 14B: Booking and room data for offline display
+  getBookings?: (tenantId: string) => Promise<any[]>;
+  getRooms?: (tenantId: string) => Promise<any[]>;
 }
 
 // Phase 9: Folio Event for event journal

@@ -3,6 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { getRoomStatusForDate } from '@/lib/roomAvailability';
 import { format } from 'date-fns';
+import { isOfflineMode } from '@/lib/offline/requestInterceptor';
 
 interface RoomAvailabilityData {
   roomId: string;
@@ -24,6 +25,12 @@ export function useRoomAvailabilityByDate(startDate: Date | null, endDate: Date 
     queryKey: ['room-availability-by-date', tenantId, startDate?.toISOString(), endDate?.toISOString()],
     queryFn: async () => {
       if (!tenantId || !startDate || !endDate) {
+        return [];
+      }
+
+      // Phase 14B: Return empty when offline in Electron
+      if (isOfflineMode()) {
+        console.log('[useRoomAvailabilityByDate] Offline: Returning empty array');
         return [];
       }
 

@@ -2,6 +2,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
+import { isOfflineMode } from '@/lib/offline/requestInterceptor';
 
 export interface MultiFolio {
   id: string;
@@ -34,6 +35,12 @@ export function useMultiFolios(bookingId: string | null) {
     queryKey: ['multi-folios', bookingId, tenantId],
     queryFn: async () => {
       if (!bookingId || !tenantId) return [];
+
+      // Phase 14B: Return empty when offline in Electron
+      if (isOfflineMode()) {
+        console.log('[useMultiFolios] Offline: Returning empty array');
+        return [];
+      }
 
       const { data, error } = await supabase
         .from('stay_folios')

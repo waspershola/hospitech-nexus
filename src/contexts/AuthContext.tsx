@@ -43,7 +43,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   // Checkout reminder scheduler - runs daily at 10 AM
   // Non-blocking: errors are logged but don't disrupt auth
   useEffect(() => {
-    if (!tenantId) return;
+    // Phase 14B: Skip reminders when offline in Electron
+    if (!tenantId || (isElectronContext() && !navigator.onLine)) return;
 
     const sendReminders = async (hoursBefore: number) => {
       try {
@@ -142,6 +143,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   // Auto-checkout disabled - Front desk must manually process checkouts
 
   const fetchPlatformRole = async (userId: string) => {
+    // Phase 14B: Skip platform role fetch when offline - use cache
+    if (isElectronContext() && !navigator.onLine) {
+      console.log('[AuthContext] Offline: Skipping platform role fetch');
+      try {
+        const api = (window as any).electronAPI;
+        const cached = await api?.offlineApi?.offlineData?.getSessionState?.(userId);
+        if (cached?.platformRole) {
+          console.log('[AuthContext] Offline: Using cached platformRole:', cached.platformRole);
+          setPlatformRole(cached.platformRole);
+        }
+      } catch (e) {
+        console.warn('[AuthContext] Offline: Failed to load cached platformRole:', e);
+      }
+      return;
+    }
+
     try {
       // Using any to bypass TypeScript complexity with platform_users table
       const { data, error } = await (supabase as any)
@@ -162,6 +179,37 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const fetchUserRoleAndTenant = async (userId: string) => {
+    // Phase 14B: Use cached session state when offline in Electron
+    if (isElectronContext() && !navigator.onLine) {
+      console.log('[AuthContext] Offline: Loading session from cache');
+      try {
+        const api = (window as any).electronAPI;
+        const cached = await api?.offlineApi?.offlineData?.getSessionState?.(userId);
+        if (cached) {
+          console.log('[AuthContext] Offline: Using cached session:', { 
+            tenantId: cached.tenantId, 
+            role: cached.role, 
+            platformRole: cached.platformRole 
+          });
+          setTenantId(cached.tenantId);
+          setRole(cached.role);
+          setPlatformRole(cached.platformRole);
+          setDepartment(cached.department);
+          setTenantName(cached.tenantName);
+          setLoading(false);
+          return;
+        }
+        // No cache available - set loading false but keep nulls
+        console.warn('[AuthContext] Offline: No cached session found');
+        setLoading(false);
+        return;
+      } catch (e) {
+        console.warn('[AuthContext] Offline: Failed to load cached session:', e);
+        setLoading(false);
+        return;
+      }
+    }
+
     try {
       // Fetch platform role first
       await fetchPlatformRole(userId);

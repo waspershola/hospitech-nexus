@@ -2,6 +2,7 @@ import { useEffect } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
+import { isOfflineMode } from '@/lib/offline/requestInterceptor';
 
 /**
  * FOLIO SYSTEM ARCHITECTURE (Phase 4 - Zero Fallback)
@@ -143,6 +144,12 @@ export function useBookingFolio(bookingId: string | null) {
     queryKey: ['booking-folio', bookingId, tenantId],
     queryFn: async (): Promise<FolioBalance | null> => {
       if (!bookingId || !tenantId) return null;
+
+      // Phase 14B: Return null when offline in Electron
+      if (isOfflineMode()) {
+        console.log('[useBookingFolio] Offline: Returning null');
+        return null;
+      }
 
       // Fetch booking details to check for group_id
       const { data: booking, error: bookingError } = await supabase

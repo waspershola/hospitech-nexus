@@ -45,7 +45,13 @@ export function RoomGrid({ searchQuery, statusFilter, categoryFilter, floorFilte
           console.log('[RoomGrid] Using offline cache:', offlineResult.data.rooms.length, 'rooms');
           return offlineResult.data.rooms;
         }
-        // Fall through to online path if offline not available
+        
+        // Phase 14B: If offline and no cache, return empty instead of falling through to online
+        if (!navigator.onLine) {
+          console.log('[RoomGrid] Offline with no cache - returning empty array');
+          return [];
+        }
+        // Fall through to online path only if online
       }
       
       let query = supabase

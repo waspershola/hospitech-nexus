@@ -3,6 +3,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
+import { isElectronContext } from '@/lib/environment/isElectron';
 
 export function useTenantAccess() {
   const { tenantId, user, loading } = useAuth();
@@ -12,6 +13,12 @@ export function useTenantAccess() {
     if (loading || !tenantId || !user) return;
 
     const checkTenantAccess = async () => {
+      // Phase 14B: Skip tenant access check when offline in Electron
+      if (isElectronContext() && !navigator.onLine) {
+        console.log('[useTenantAccess] Offline: Skipping tenant access check - assuming allowed');
+        return;
+      }
+
       try {
         const { data, error } = await supabase.rpc('check_tenant_access', {
           _tenant_id: tenantId

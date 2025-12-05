@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
+import { isOfflineMode } from '@/lib/offline/requestInterceptor';
 
 interface ValidationResult {
   canSuspend: boolean;
@@ -21,6 +22,12 @@ export function useValidatedSuspension(tenantId: string) {
   const { data: activeBookings } = useQuery({
     queryKey: ['tenant-active-bookings', tenantId],
     queryFn: async () => {
+      // Phase 14B: Return empty when offline in Electron
+      if (isOfflineMode()) {
+        console.log('[useValidatedSuspension] Offline: Returning empty array');
+        return [];
+      }
+
       const { data, error } = await supabase
         .from('bookings')
         .select('id, status')

@@ -2,6 +2,7 @@ import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { differenceInHours, format } from 'date-fns';
+import { isOfflineMode } from '@/lib/offline/requestInterceptor';
 
 interface CheckoutReminder {
   id: string;
@@ -19,6 +20,12 @@ export function useCheckoutReminders() {
     queryKey: ['checkout-reminders', tenantId],
     queryFn: async (): Promise<CheckoutReminder[]> => {
       if (!tenantId) return [];
+
+      // Phase 14B: Return empty when offline in Electron
+      if (isOfflineMode()) {
+        console.log('[useCheckoutReminders] Offline: Returning empty array');
+        return [];
+      }
 
       // Get checkout time configuration
       const { data: configData } = await supabase
