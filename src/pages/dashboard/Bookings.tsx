@@ -36,6 +36,9 @@ import { Plus, Search, Filter } from 'lucide-react';
 import { useBookingSearch, type BookingFilters } from '@/hooks/useBookingSearch';
 import { BookingFlow } from '@/modules/bookings/BookingFlow';
 import { toast } from 'sonner';
+import { isElectronContext } from '@/lib/environment/isElectron';
+import { isOfflineMode } from '@/lib/offline/requestInterceptor';
+import { getOfflineBookings, bulkSaveSnapshot } from '@/lib/offline/electronOfflineBridge';
 
 interface Booking {
   id: string;
@@ -82,6 +85,14 @@ export default function Bookings() {
         return [];
       }
       
+      // Phase 16: Offline read path - load from IndexedDB when offline
+      if (isOfflineMode()) {
+        console.log('[Bookings] Phase 16: Loading from offline cache...');
+        const offlineData = await getOfflineBookings(tenantId);
+        console.log('[Bookings] Offline: Loaded', offlineData.length, 'bookings from IndexedDB');
+        return offlineData as Booking[];
+      }
+      
       console.log('📊 Fetching bookings for tenant:', tenantId);
       const { data, error } = await supabase
         .from('bookings')
@@ -115,6 +126,13 @@ export default function Bookings() {
           return { ...booking, profiles: null };
         })
       );
+      
+      // Phase 16: Seed to IndexedDB when online in Electron
+      if (isElectronContext() && bookingsWithUsers.length > 0) {
+        bulkSaveSnapshot(tenantId, 'bookings', bookingsWithUsers).catch(e =>
+          console.warn('[Bookings] Phase 16: Failed to seed:', e)
+        );
+      }
       
       return bookingsWithUsers as Booking[];
     },

@@ -106,6 +106,26 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     };
   }, [tenantId]);
 
+  // Phase 16: Initialize Electron offline DB after tenant is set
+  useEffect(() => {
+    if (!tenantId) return;
+    if (!isElectronContext()) return;
+    
+    const initDB = async () => {
+      try {
+        const api = (window as any).electronAPI;
+        if (api?.offlineApi?.offlineData?.initTenantDB) {
+          await api.offlineApi.offlineData.initTenantDB(tenantId);
+          console.log('[AuthContext] Phase 16: Tenant DB initialized for', tenantId);
+        }
+      } catch (e) {
+        console.warn('[AuthContext] Phase 16: Failed to init tenant DB:', e);
+      }
+    };
+    
+    initDB();
+  }, [tenantId]);
+
   useEffect(() => {
     // Set up auth state listener FIRST
     const { data: { subscription } } = supabase.auth.onAuthStateChange(

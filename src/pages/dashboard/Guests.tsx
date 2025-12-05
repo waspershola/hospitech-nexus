@@ -37,6 +37,9 @@ import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
 import { Plus, Edit, Trash2, User, Search, Eye } from 'lucide-react';
 import { useGuestSearch } from '@/hooks/useGuestSearch';
+import { isElectronContext } from '@/lib/environment/isElectron';
+import { isOfflineMode } from '@/lib/offline/requestInterceptor';
+import { getOfflineGuests, bulkSaveSnapshot } from '@/lib/offline/electronOfflineBridge';
 
 interface Guest {
   id: string;
@@ -72,6 +75,16 @@ export default function Guests() {
   const { data: guests = [], isLoading } = useQuery({
     queryKey: ['guests', tenantId],
     queryFn: async () => {
+      if (!tenantId) return [];
+      
+      // Phase 16: Offline read path - load from IndexedDB when offline
+      if (isOfflineMode()) {
+        console.log('[Guests] Phase 16: Loading from offline cache...');
+        const offlineData = await getOfflineGuests(tenantId);
+        console.log('[Guests] Offline: Loaded', offlineData.length, 'guests from IndexedDB');
+        return offlineData as Guest[];
+      }
+      
       const { data, error } = await supabase
         .from('guests')
         .select('*')
@@ -79,6 +92,14 @@ export default function Guests() {
         .order('created_at', { ascending: false });
 
       if (error) throw error;
+      
+      // Phase 16: Seed to IndexedDB when online in Electron
+      if (isElectronContext() && data && data.length > 0) {
+        bulkSaveSnapshot(tenantId, 'guests', data).catch(e =>
+          console.warn('[Guests] Phase 16: Failed to seed:', e)
+        );
+      }
+      
       return data as Guest[];
     },
     enabled: !!tenantId,
