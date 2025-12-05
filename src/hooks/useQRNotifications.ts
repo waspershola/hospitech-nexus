@@ -3,6 +3,7 @@ import { useRingtone } from './useRingtone';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
 import { createRealtimeChannelWithRetry } from '@/lib/realtime/retryChannel';
+import { isElectronContext } from '@/lib/environment/isElectron';
 
 const DEBUG_QR_NOTIFICATIONS = false;
 
@@ -12,6 +13,12 @@ export function useQRNotifications() {
 
   useEffect(() => {
     if (!tenantId) return;
+
+    // Phase 14: Skip WebSocket setup when offline in Electron
+    if (isElectronContext() && !navigator.onLine) {
+      console.log('[useQRNotifications] Offline: WebSocket disabled...');
+      return; // No cleanup needed since we didn't create anything
+    }
 
     if (DEBUG_QR_NOTIFICATIONS) {
       console.log('[useQRNotifications] Setting up notification listeners for tenant:', tenantId);

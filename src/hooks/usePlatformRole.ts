@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
+import { isElectronContext } from '@/lib/environment/isElectron';
 
 export function usePlatformRole() {
   const { user } = useAuth();
@@ -10,6 +11,28 @@ export function usePlatformRole() {
   useEffect(() => {
     async function fetchPlatformRole() {
       if (!user?.id) {
+        setPlatformRole(null);
+        setIsLoading(false);
+        return;
+      }
+
+      // Phase 14: Check for offline mode in Electron - use cached session state
+      if (isElectronContext() && !navigator.onLine) {
+        const api = (window as any).electronAPI;
+        if (api?.offlineApi?.offlineData?.getSessionState) {
+          try {
+            const cachedSession = await api.offlineApi.offlineData.getSessionState(user.id);
+            if (cachedSession?.platformRole) {
+              console.log('[usePlatformRole] Offline: Using cached role...', cachedSession.platformRole);
+              setPlatformRole(cachedSession.platformRole);
+              setIsLoading(false);
+              return;
+            }
+          } catch (e) {
+            console.warn('[usePlatformRole] Offline cache read failed:', e);
+          }
+        }
+        console.log('[usePlatformRole] Offline: No cached role, returning null');
         setPlatformRole(null);
         setIsLoading(false);
         return;

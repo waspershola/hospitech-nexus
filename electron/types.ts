@@ -74,6 +74,17 @@ export interface OfflineCheckoutAPI {
   undoCheckout: (tenantId: string, bookingId: string) => Promise<{ success: boolean; error?: string }>;
 }
 
+// Phase 14: Session state for offline caching
+export interface OfflineSessionState {
+  userId: string;
+  tenantId: string | null;
+  role: string | null;
+  platformRole: string | null;
+  department: string | null;
+  tenantName: string | null;
+  timestamp: string;
+}
+
 // Phase 8: Offline Data API extensions
 export interface OfflineDataAPI {
   bulkUpdateRooms: (tenantId: string, rooms: any[]) => Promise<void>;
@@ -86,6 +97,12 @@ export interface OfflineDataAPI {
   // Phase 13: POS and Request events
   savePosEvent?: (tenantId: string, event: POSEvent) => Promise<void>;
   saveRequestEvent?: (tenantId: string, event: RequestEvent) => Promise<void>;
+  // Phase 14: Navigation and session caching for offline
+  getNavigationCache?: (tenantId: string) => Promise<any[] | null>;
+  saveNavigationCache?: (tenantId: string, navTree: any[]) => Promise<void>;
+  getSessionState?: (userId: string) => Promise<OfflineSessionState | null>;
+  saveSessionState?: (userId: string, session: OfflineSessionState) => Promise<void>;
+  shouldBlockRequest?: (url: string) => Promise<boolean>;
 }
 
 // Phase 9: Folio Event for event journal
