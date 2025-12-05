@@ -106,6 +106,14 @@ export interface OfflineDataAPI {
   // Phase 14B: Booking and room data for offline display
   getBookings?: (tenantId: string) => Promise<any[]>;
   getRooms?: (tenantId: string) => Promise<any[]>;
+  // Phase 16: Tenant DB init and bulk snapshot seeding
+  initTenantDB?: (tenantId: string) => Promise<void>;
+  bulkSaveSnapshot?: (tenantId: string, store: 'rooms' | 'bookings' | 'guests' | 'stay_folios' | 'folio_transactions' | 'folio_payments', items: any[]) => Promise<void>;
+  // Phase 16: Guest and folio data for offline display
+  getGuests?: (tenantId: string) => Promise<any[]>;
+  getStayFolios?: (tenantId: string) => Promise<any[]>;
+  getFolioTransactions?: (tenantId: string, folioId: string) => Promise<any[]>;
+  getFolioPayments?: (tenantId: string, folioId: string) => Promise<any[]>;
 }
 
 // Phase 9: Folio Event for event journal
