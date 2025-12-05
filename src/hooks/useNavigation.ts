@@ -2,6 +2,7 @@ import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { usePlatformRole } from './usePlatformRole';
+import { isElectronContext } from '@/lib/environment/isElectron';
 
 export interface NavigationItem {
   id: string;
@@ -23,6 +24,7 @@ export interface NavigationItem {
  * Platform-driven navigation hook with role + department filtering
  * Fetches navigation items from platform_nav_items via edge function
  * Supports tenant-specific overrides and global navigation
+ * Phase 14: Supports offline caching in Electron
  */
 export function useNavigation() {
   const { tenantId, role, department } = useAuth();
@@ -33,6 +35,24 @@ export function useNavigation() {
     queryFn: async () => {
       console.log('🔍 [Navigation] Starting fetch...');
       console.log('🔍 [Navigation] Auth context:', { platformRole, tenantId, role, department });
+
+      // Phase 14: Check for offline mode in Electron - use cached navigation
+      if (isElectronContext() && !navigator.onLine && tenantId) {
+        const api = (window as any).electronAPI;
+        if (api?.offlineApi?.offlineData?.getNavigationCache) {
+          try {
+            const cachedNav = await api.offlineApi.offlineData.getNavigationCache(tenantId);
+            if (cachedNav?.length > 0) {
+              console.log('[Navigation] Offline: Using cached navigation...', cachedNav.length, 'items');
+              return cachedNav as NavigationItem[];
+            }
+          } catch (e) {
+            console.warn('[Navigation] Offline cache read failed:', e);
+          }
+        }
+        console.warn('[Navigation] Offline: No cached navigation available');
+        return [];
+      }
 
       try {
         // Verify we have a session with proper auth token
@@ -156,6 +176,17 @@ export function useNavigation() {
       sortTree(rootItems);
 
       console.log('✅ [Navigation] Hierarchical structure:', rootItems.length, 'root items');
+
+      // Phase 14: Save navigation to offline cache in Electron
+      if (isElectronContext() && rootItems.length > 0 && tenantId) {
+        const api = (window as any).electronAPI;
+        if (api?.offlineApi?.offlineData?.saveNavigationCache) {
+          api.offlineApi.offlineData.saveNavigationCache(tenantId, rootItems).catch((e: any) => {
+            console.warn('[Navigation] Failed to cache navigation:', e);
+          });
+        }
+      }
+
       return rootItems;
 
       } catch (error) {

@@ -1,6 +1,7 @@
 import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
 import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
+import { isElectronContext } from '@/lib/environment/isElectron';
 
 interface AuthContextType {
   user: User | null;
@@ -193,6 +194,24 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         if (staffData) {
           setDepartment(staffData.department);
           setPasswordResetRequired(staffData.password_reset_required || false);
+        }
+      }
+
+      // Phase 14: Save session state to Electron offline cache
+      if (isElectronContext()) {
+        const api = (window as any).electronAPI;
+        if (api?.offlineApi?.offlineData?.saveSessionState) {
+          api.offlineApi.offlineData.saveSessionState(userId, {
+            userId,
+            tenantId: data?.tenant_id || null,
+            role: data?.role || null,
+            platformRole,
+            department: null, // Will be updated below if staff data fetched
+            tenantName: (data?.tenants as any)?.name || null,
+            timestamp: new Date().toISOString(),
+          }).catch((e: any) => {
+            console.warn('[AuthContext] Failed to cache session state:', e);
+          });
         }
       }
     } catch (error) {
