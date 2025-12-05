@@ -1,4 +1,4 @@
-import { Hotel, ChevronDown } from 'lucide-react';
+import { Hotel, ChevronDown, Bug } from 'lucide-react';
 import * as Icons from 'lucide-react';
 import { NavLink, useLocation } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
@@ -6,6 +6,7 @@ import { useNavigation, NavigationItem } from '@/hooks/useNavigation';
 import { useRequestNotificationCount } from '@/hooks/useRequestNotificationCount';
 import { useQRBillingTasks } from '@/hooks/useQRBillingTasks';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Separator } from '@/components/ui/separator';
 import { useState, useMemo, useEffect } from 'react';
 import {
   Sidebar,
@@ -353,6 +354,40 @@ export function AppSidebar() {
             )}
           </SidebarGroupContent>
         </SidebarGroup>
+
+        {/* Developer Tools - Only in dev mode or when debugEnabled */}
+        {(import.meta.env.DEV || localStorage.getItem('debugEnabled') === 'true') && (
+          <>
+            <Separator className="my-2" />
+            <SidebarGroup>
+              <SidebarGroupLabel className="text-yellow-500/70">
+                {open ? 'Developer Tools' : ''}
+              </SidebarGroupLabel>
+              <SidebarGroupContent>
+                <SidebarMenu>
+                  <SidebarMenuItem>
+                    <SidebarMenuButton asChild tooltip="Offline Diagnostics">
+                      <NavLink
+                        to="/dev/offline-diagnostics"
+                        onClick={handleNavClick}
+                        className={({ isActive }) =>
+                          `flex items-center gap-3 px-3 py-2 rounded-xl transition-colors ${
+                            isActive
+                              ? 'bg-yellow-500/20 text-yellow-500 font-semibold'
+                              : 'text-sidebar-foreground hover:bg-yellow-500/10 hover:text-yellow-500'
+                          }`
+                        }
+                      >
+                        <Bug className="h-5 w-5 shrink-0" />
+                        {open && <span>Offline Diagnostics</span>}
+                      </NavLink>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                </SidebarMenu>
+              </SidebarGroupContent>
+            </SidebarGroup>
+          </>
+        )}
 
       </SidebarContent>
     </Sidebar>
