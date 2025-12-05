@@ -1,6 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
+import { isOfflineMode } from '@/lib/offline/requestInterceptor';
 import { format, addDays } from 'date-fns';
 
 export interface TodayArrival {
@@ -37,6 +38,12 @@ export function useTodayArrivals() {
     queryKey: ['today-arrivals', tenantId],
     queryFn: async () => {
       if (!tenantId) return [];
+
+      // Phase 14B: Return empty when offline in Electron
+      if (isOfflineMode()) {
+        console.log('[useTodayArrivals] Offline: Returning empty array');
+        return [];
+      }
 
       // TIMEZONE-FIX-V1: Calculate fresh local date at query time
       const todayISO = format(new Date(), 'yyyy-MM-dd');

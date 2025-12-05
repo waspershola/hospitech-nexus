@@ -1,6 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
+import { isOfflineMode } from '@/lib/offline/requestInterceptor';
 
 export interface UnpaidFolio {
   booking_id: string;
@@ -32,6 +33,17 @@ export function useFrontDeskAlerts() {
     queryKey: ['frontdesk-alerts', tenantId],
     queryFn: async () => {
       if (!tenantId) throw new Error('No tenant ID');
+
+      // Phase 14B: Return empty alerts when offline in Electron
+      if (isOfflineMode()) {
+        console.log('[useFrontDeskAlerts] Offline: Returning empty alerts');
+        return {
+          unpaidFolios: [],
+          overpayments: [],
+          orgLimitWarnings: [],
+          totalAlerts: 0,
+        };
+      }
 
       // Fetch unpaid folios (occupied rooms with outstanding balance)
       const { data: unpaidFolios, error: unpaidError } = await supabase
