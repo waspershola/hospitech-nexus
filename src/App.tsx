@@ -116,6 +116,7 @@ import SpaManagement from "./pages/dashboard/SpaManagement";
 import QuickReplyTemplatesManagement from "./pages/dashboard/QuickReplyTemplatesManagement";
 import QRBillingTasks from "./pages/dashboard/QRBillingTasks";
 import OfflineDiagnosticsPage from "./pages/dashboard/OfflineDiagnostics";
+import DevOfflineDiagnostics from "./pages/dev/OfflineDiagnostics";
 import FAQManagement from './pages/dashboard/FAQManagement';
 import SOPManagement from './pages/dashboard/SOPManagement';
 import AIConciergeSetting from './pages/dashboard/AIConciergeSetting';
@@ -273,6 +274,11 @@ const App = () => (
                 </QRPortalWrapper>
               </Suspense>
             } />
+
+            {/* Developer-only offline diagnostics route */}
+            {(import.meta.env.DEV || localStorage.getItem('debugEnabled') === 'true') && (
+              <Route path="/dev/offline-diagnostics" element={<DevOfflineDiagnostics />} />
+            )}
 
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
