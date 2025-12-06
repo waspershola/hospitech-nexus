@@ -63,6 +63,27 @@ export interface FullDiagnosticsResult {
   };
 }
 
+// ============ Helpers ============
+
+/**
+ * Safe array extraction from API responses
+ * Handles both direct arrays and { data: [...], error: null } formats
+ */
+function safeExtractArray(result: unknown): any[] {
+  // Direct array response
+  if (Array.isArray(result)) {
+    return result;
+  }
+  
+  // { data: [...] } response format
+  if (result && typeof result === 'object' && 'data' in result) {
+    const data = (result as any).data;
+    return Array.isArray(data) ? data : [];
+  }
+  
+  return [];
+}
+
 // ============ Diagnostic Utilities ============
 
 /**
@@ -113,8 +134,9 @@ export async function checkTenantDBInit(tenantId: string): Promise<DiagnosticRes
     
     // Try to get any data to verify DB is initialized
     if (api.getRooms) {
-      await api.getRooms(tenantId);
-      return { supported: true, value: true, message: `Tenant DB accessible for: ${tenantId}` };
+      const result = await api.getRooms(tenantId);
+      const rooms = safeExtractArray(result);
+      return { supported: true, value: true, message: `Tenant DB accessible for: ${tenantId} (${rooms.length} rooms)` };
     }
     
     return { supported: true, value: false, message: 'getRooms API not available' };
@@ -141,7 +163,7 @@ export async function getStoreCounts(tenantId: string): Promise<StoreCountsResul
       return { supported: false, error: 'Electron offline API unavailable' };
     }
     
-    // Get counts from each store (force read by temporarily treating as online)
+    // Get counts from each store using safe extraction
     const counts = {
       rooms: 0,
       bookings: 0,
@@ -151,25 +173,24 @@ export async function getStoreCounts(tenantId: string): Promise<StoreCountsResul
       folioPayments: 0
     };
     
-    // Use direct API calls that don't check online status
     if (api.getRooms) {
-      const rooms = await api.getRooms(tenantId);
-      counts.rooms = rooms?.length || 0;
+      const rawRooms = await api.getRooms(tenantId);
+      counts.rooms = safeExtractArray(rawRooms).length;
     }
     
     if (api.getBookings) {
-      const bookings = await api.getBookings(tenantId);
-      counts.bookings = bookings?.length || 0;
+      const rawBookings = await api.getBookings(tenantId);
+      counts.bookings = safeExtractArray(rawBookings).length;
     }
     
     if (api.getGuests) {
-      const guests = await api.getGuests(tenantId);
-      counts.guests = guests?.length || 0;
+      const rawGuests = await api.getGuests(tenantId);
+      counts.guests = safeExtractArray(rawGuests).length;
     }
     
     if (api.getStayFolios) {
-      const folios = await api.getStayFolios(tenantId);
-      counts.stayFolios = folios?.length || 0;
+      const rawFolios = await api.getStayFolios(tenantId);
+      counts.stayFolios = safeExtractArray(rawFolios).length;
     }
     
     return { supported: true, counts };
@@ -196,9 +217,10 @@ export async function verifyBookingsSnapshot(tenantId: string): Promise<Snapshot
       return { supported: false, hasData: false, count: 0, error: 'API unavailable' };
     }
     
-    const bookings = await api.getBookings(tenantId);
-    const count = bookings?.length || 0;
-    const sampleIds = bookings?.slice(0, 3).map((b: any) => b.id) || [];
+    const rawBookings = await api.getBookings(tenantId);
+    const bookings = safeExtractArray(rawBookings);
+    const count = bookings.length;
+    const sampleIds = bookings.slice(0, 3).map((b: any) => b.id);
     
     return {
       supported: true,
@@ -229,9 +251,10 @@ export async function verifyRoomsSnapshot(tenantId: string): Promise<SnapshotVer
       return { supported: false, hasData: false, count: 0, error: 'API unavailable' };
     }
     
-    const rooms = await api.getRooms(tenantId);
-    const count = rooms?.length || 0;
-    const sampleIds = rooms?.slice(0, 3).map((r: any) => r.id) || [];
+    const rawRooms = await api.getRooms(tenantId);
+    const rooms = safeExtractArray(rawRooms);
+    const count = rooms.length;
+    const sampleIds = rooms.slice(0, 3).map((r: any) => r.id);
     
     return {
       supported: true,
@@ -262,9 +285,10 @@ export async function verifyGuestsSnapshot(tenantId: string): Promise<SnapshotVe
       return { supported: false, hasData: false, count: 0, error: 'API unavailable' };
     }
     
-    const guests = await api.getGuests(tenantId);
-    const count = guests?.length || 0;
-    const sampleIds = guests?.slice(0, 3).map((g: any) => g.id) || [];
+    const rawGuests = await api.getGuests(tenantId);
+    const guests = safeExtractArray(rawGuests);
+    const count = guests.length;
+    const sampleIds = guests.slice(0, 3).map((g: any) => g.id);
     
     return {
       supported: true,
