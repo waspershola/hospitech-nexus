@@ -15,11 +15,12 @@ import AutoLaunch from 'auto-launch';
 import * as path from 'path';
 import * as fs from 'fs';
 import type { QueuedRequest, QueueStatus, LogEvent, PrintOptions, UpdateCheckResult, UpdateInfo } from './types';
+import { getSpaLoadMode, getRemoteSpaUrl, getLocalSpaPath } from './config/loadConfig';
 
 // ============= Configuration =============
 
 const isDevelopment = process.env.NODE_ENV === 'development';
-const VITE_DEV_SERVER_URL = process.env.VITE_DEV_SERVER_URL || 'http://localhost:8080';
+const spaLoadMode = getSpaLoadMode();
 
 // Logging directory
 const LOG_DIR = path.join(app.getPath('userData'), 'logs');
@@ -103,12 +104,22 @@ function createMainWindow() {
     });
   });
 
-  // Load app
-  if (isDevelopment) {
-    mainWindow.loadURL(VITE_DEV_SERVER_URL);
-    mainWindow.webContents.openDevTools();
+  // Load app based on configured mode (Phase 19: Local SPA Boot)
+  logger.info(`[PHASE-19-LOCAL-SPA-BOOT] Loading SPA in ${spaLoadMode} mode`);
+  
+  if (spaLoadMode === 'local') {
+    const localPath = path.join(__dirname, getLocalSpaPath());
+    logger.info(`Loading local SPA from: ${localPath}`);
+    mainWindow.loadFile(localPath);
   } else {
-    mainWindow.loadFile(path.join(__dirname, '../dist/index.html'));
+    const remoteUrl = getRemoteSpaUrl();
+    logger.info(`Loading remote SPA from: ${remoteUrl}`);
+    mainWindow.loadURL(remoteUrl);
+  }
+  
+  // Open DevTools in development
+  if (isDevelopment) {
+    mainWindow.webContents.openDevTools();
   }
 
   // Open external links in browser
@@ -478,4 +489,9 @@ process.on('unhandledRejection', (reason) => {
   logger.error('Unhandled rejection', { reason: String(reason) });
 });
 
-logger.info('Electron main process started', { version: app.getVersion(), isDevelopment });
+logger.info('Electron main process started', { 
+  version: app.getVersion(), 
+  isDevelopment,
+  spaLoadMode,
+  marker: 'PHASE-19-LOCAL-SPA-BOOT'
+});
