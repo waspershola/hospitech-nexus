@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { format } from 'date-fns';
-import { Calendar as CalendarIcon, CheckCircle, Clock, XCircle, BedDouble, Filter } from 'lucide-react';
+import { Calendar as CalendarIcon, CheckCircle, Clock, XCircle, BedDouble, Filter, WifiOff } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Label } from '@/components/ui/label';
@@ -11,6 +11,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { useRoomAvailabilityByDate } from '@/hooks/useRoomAvailabilityByDate';
 import { Skeleton } from '@/components/ui/skeleton';
 import { getRoomStatusForDate } from '@/lib/roomAvailability';
+import { isOfflineMode } from '@/lib/offline/requestInterceptor';
 
 interface AvailabilityCalendarProps {
   onRoomClick?: (roomId: string, date: Date) => void;
@@ -20,6 +21,9 @@ export function AvailabilityCalendar({ onRoomClick }: AvailabilityCalendarProps)
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [typeFilter, setTypeFilter] = useState<string>('all');
   const [floorFilter, setFloorFilter] = useState<string>('all');
+  
+  // Phase 17: Track offline mode for UI indicator
+  const isOffline = isOfflineMode();
 
   const { data: roomAvailability, isLoading } = useRoomAvailabilityByDate(
     selectedDate,
@@ -63,6 +67,14 @@ export function AvailabilityCalendar({ onRoomClick }: AvailabilityCalendarProps)
 
   return (
     <div className="space-y-3">
+      {/* Phase 17: Offline mode indicator */}
+      {isOffline && (
+        <div className="flex items-center gap-2 px-3 py-2 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg text-amber-700 dark:text-amber-400 text-sm">
+          <WifiOff className="h-4 w-4 flex-shrink-0" />
+          <span>Offline snapshot — data may not reflect the latest changes</span>
+        </div>
+      )}
+      
       {/* Compact Filters */}
       <div className="flex flex-wrap items-end gap-3">
         <div className="flex-1 min-w-[200px] space-y-1.5">
