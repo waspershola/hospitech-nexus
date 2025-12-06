@@ -46,8 +46,10 @@ import { Switch } from '@/components/ui/switch';
 import { Skeleton } from '@/components/ui/skeleton';
 import { 
   Loader2, User, CreditCard, Calendar, AlertCircle, Clock, Building2, AlertTriangle, 
-  Wallet, Zap, Coffee, BellOff, UserPlus, LogIn, LogOut, Wrench, Sparkles, FileText, Receipt, Edit, Printer, MessageSquare, Users, MoveRight
+  Wallet, Zap, Coffee, BellOff, UserPlus, LogIn, LogOut, Wrench, Sparkles, FileText, Receipt, Edit, Printer, MessageSquare, Users, MoveRight, WifiOff
 } from 'lucide-react';
+import { isOfflineMode } from '@/lib/offline/requestInterceptor';
+import { getOfflineRooms, getOfflineBookings, getOfflineGuests, getOfflineStayFolios } from '@/lib/offline/electronOfflineBridge';
 
 interface RoomActionDrawerProps {
   roomId: string | null;
@@ -106,6 +108,9 @@ export function RoomActionDrawer({ roomId, contextDate, open, onClose, onOpenAss
     }
   }, [showConfirmationDoc, open]);
 
+  // Phase 18: Offline read-only mode flag
+  const isOfflineReadOnly = isOfflineMode();
+
   const { data: room, isLoading, isError } = useQuery({
     queryKey: ['room-detail', roomId, contextDate ? format(contextDate, 'yyyy-MM-dd') : 'today'],
     queryFn: async () => {
@@ -116,6 +121,61 @@ export function RoomActionDrawer({ roomId, contextDate, open, onClose, onOpenAss
       const filterDate = contextDate ? new Date(contextDate) : now;
       const filterDateStr = format(filterDate, 'yyyy-MM-dd');
       
+      // Phase 18: Offline mode - load from IndexedDB
+      if (isOfflineReadOnly) {
+        console.log('[RoomActionDrawer] Offline: Loading from IndexedDB');
+        
+        const [offlineRooms, offlineBookings, offlineGuests, offlineFolios] = await Promise.all([
+          getOfflineRooms(tenantId),
+          getOfflineBookings(tenantId),
+          getOfflineGuests(tenantId),
+          getOfflineStayFolios(tenantId),
+        ]);
+
+        // Find the room
+        const offlineRoom = offlineRooms.find(r => r.id === roomId);
+        if (!offlineRoom) return null;
+
+        // Find overlapping bookings for this room
+        const today = format(new Date(), 'yyyy-MM-dd');
+        const isViewingFutureDate = filterDateStr > today;
+        
+        const roomBookings = offlineBookings.filter((b: any) => {
+          if (b.room_id !== roomId) return false;
+          if (['completed', 'cancelled'].includes(b.status)) return false;
+          
+          const checkInDate = format(new Date(b.check_in), 'yyyy-MM-dd');
+          const checkOutDate = format(new Date(b.check_out), 'yyyy-MM-dd');
+          
+          const standardOverlap = isViewingFutureDate
+            ? (checkInDate <= filterDateStr && checkOutDate > filterDateStr)
+            : (checkInDate <= filterDateStr && checkOutDate >= filterDateStr);
+          
+          const isOverstayStillCheckedIn = !isViewingFutureDate && 
+            b.status === 'checked_in' && 
+            checkInDate <= filterDateStr;
+          
+          return standardOverlap || isOverstayStillCheckedIn;
+        });
+
+        // Hydrate bookings with guest data
+        const hydratedBookings = roomBookings.map((booking: any) => {
+          const guest = offlineGuests.find(g => g.id === booking.guest_id);
+          const folio = offlineFolios.find(f => f.booking_id === booking.id);
+          return {
+            ...booking,
+            guest: guest || null,
+            folio: folio || null,
+          };
+        });
+
+        return {
+          ...offlineRoom,
+          bookings: hydratedBookings,
+          category: offlineRoom.category || { name: offlineRoom.type },
+        };
+      }
+
       const { data, error } = await supabase
         .from('rooms')
         .select(`
@@ -497,7 +557,17 @@ export function RoomActionDrawer({ roomId, contextDate, open, onClose, onOpenAss
     return () => window.removeEventListener('message', handleFolioUpdate);
   }, [activeBooking?.id, folio?.folioId, tenantId, queryClient]);
 
+  // Phase 18: Helper for offline action blocking
+  const showOfflineBlockedMessage = () => {
+    toast({
+      title: 'Action Unavailable',
+      description: 'This action is not available in Offline Mode. Please reconnect to complete this operation.',
+      variant: 'destructive',
+    });
+  };
+
   const handleQuickCheckIn = () => {
+    if (isOfflineReadOnly) { showOfflineBlockedMessage(); return; }
     if (!room || !onOpenAssignDrawer) return;
     
     toast({ 
@@ -510,6 +580,7 @@ export function RoomActionDrawer({ roomId, contextDate, open, onClose, onOpenAss
   };
 
   const handleExpressCheckout = async () => {
+    if (isOfflineReadOnly) { showOfflineBlockedMessage(); return; }
     if (!room || !activeBooking) return;
     
     const hasDebt = folio && folio.balance > 0;
@@ -573,6 +644,7 @@ export function RoomActionDrawer({ roomId, contextDate, open, onClose, onOpenAss
   };
 
   const handleForceCheckout = async () => {
+    if (isOfflineReadOnly) { showOfflineBlockedMessage(); return; }
     if (!room || !activeBooking || !folio) return;
     setForceCheckoutModalOpen(true);
   };
@@ -607,6 +679,7 @@ export function RoomActionDrawer({ roomId, contextDate, open, onClose, onOpenAss
   };
 
   const handleCheckIn = async () => {
+    if (isOfflineReadOnly) { showOfflineBlockedMessage(); return; }
     if (!room) return;
     await checkIn(room.id);
     toast({ title: 'Check-In Complete', description: 'Guest checked in successfully' });
@@ -616,6 +689,7 @@ export function RoomActionDrawer({ roomId, contextDate, open, onClose, onOpenAss
   };
 
   const handleEarlyCheckIn = () => {
+    if (isOfflineReadOnly) { showOfflineBlockedMessage(); return; }
     setShowEarlyCheckInApproval(true);
   };
 
@@ -640,6 +714,7 @@ export function RoomActionDrawer({ roomId, contextDate, open, onClose, onOpenAss
   };
 
   const handleMarkClean = async () => {
+    if (isOfflineReadOnly) { showOfflineBlockedMessage(); return; }
     if (!room) return;
     await markClean(room.id);
     toast({ title: 'Room Cleaned', description: 'Room marked as clean and ready' });
@@ -649,6 +724,7 @@ export function RoomActionDrawer({ roomId, contextDate, open, onClose, onOpenAss
   };
 
   const handleMarkMaintenance = async () => {
+    if (isOfflineReadOnly) { showOfflineBlockedMessage(); return; }
     if (!room) return;
     await markMaintenance(room.id);
     toast({ title: 'Maintenance Mode', description: 'Room marked for maintenance' });
@@ -658,11 +734,13 @@ export function RoomActionDrawer({ roomId, contextDate, open, onClose, onOpenAss
   };
 
   const handleRoomService = () => {
+    if (isOfflineReadOnly) { showOfflineBlockedMessage(); return; }
     if (!activeBooking) return;
     setChargeModalOpen(true);
   };
 
   const handleToggleDND = async () => {
+    if (isOfflineReadOnly) { showOfflineBlockedMessage(); return; }
     if (!room) return;
 
     const currentNotes = room.notes || '';
@@ -689,6 +767,7 @@ export function RoomActionDrawer({ roomId, contextDate, open, onClose, onOpenAss
   };
 
   const handleSendPaymentReminder = async () => {
+    if (isOfflineReadOnly) { showOfflineBlockedMessage(); return; }
     if (!activeBooking || !folio) return;
     
     const guest = Array.isArray(activeBooking.guest) ? activeBooking.guest[0] : activeBooking.guest;
@@ -1122,6 +1201,16 @@ export function RoomActionDrawer({ roomId, contextDate, open, onClose, onOpenAss
             </div>
           ) : (
             <>
+              {/* Phase 18: Offline mode banner */}
+              {isOfflineReadOnly && (
+                <Alert className="mb-4 bg-amber-50 dark:bg-amber-900/20 border-amber-200 dark:border-amber-800 -mx-4 -mt-4">
+                  <WifiOff className="h-4 w-4 text-amber-600 dark:text-amber-400" />
+                  <AlertDescription className="text-amber-700 dark:text-amber-300 text-sm">
+                    Offline snapshot — actions are disabled until you reconnect.
+                  </AlertDescription>
+                </Alert>
+              )}
+              
               {/* Date Context Badge */}
               {contextDate && format(contextDate, 'yyyy-MM-dd') !== format(new Date(), 'yyyy-MM-dd') && (
                 <div className="px-4 py-2 bg-blue-50 dark:bg-blue-900/20 border-b -mx-4 -mt-4 mb-4">
@@ -1528,6 +1617,7 @@ export function RoomActionDrawer({ roomId, contextDate, open, onClose, onOpenAss
                                   size="sm"
                                   onClick={() => setQuickPaymentOpen(true)}
                                   className="w-full"
+                                  disabled={isOfflineReadOnly}
                                 >
                                   <CreditCard className="w-4 h-4 mr-2" />
                                   Collect Payment
@@ -1538,6 +1628,7 @@ export function RoomActionDrawer({ roomId, contextDate, open, onClose, onOpenAss
                                     size="sm"
                                     onClick={handleSendPaymentReminder}
                                     className="w-full"
+                                    disabled={isOfflineReadOnly}
                                   >
                                     <MessageSquare className="w-4 h-4 mr-2" />
                                     Send Payment Reminder
@@ -1559,6 +1650,7 @@ export function RoomActionDrawer({ roomId, contextDate, open, onClose, onOpenAss
                               size="sm"
                               onClick={() => setAmendmentDrawerOpen(true)}
                               className="w-full"
+                              disabled={isOfflineReadOnly}
                             >
                               <Edit className="w-4 h-4 mr-2" />
                               Amend Booking
@@ -1648,13 +1740,16 @@ export function RoomActionDrawer({ roomId, contextDate, open, onClose, onOpenAss
                                 variant={action.variant}
                                 className="w-full rounded-xl"
                                 onClick={action.action}
+                                disabled={isOfflineReadOnly}
                               >
                                 {'icon' in action && action.icon && <action.icon className="w-4 h-4 mr-2" />}
                                 {action.label}
                               </Button>
                             </TooltipTrigger>
                             {'tooltip' in action && action.tooltip && (
-                              <TooltipContent>{action.tooltip}</TooltipContent>
+                              <TooltipContent>
+                                {isOfflineReadOnly ? 'Unavailable offline' : action.tooltip}
+                              </TooltipContent>
                             )}
                           </Tooltip>
                         ))}
